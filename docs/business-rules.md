@@ -2,6 +2,15 @@
 
 All numeric values below are centralized in `src/shared/config/businessRules.ts` and remain provisional until approved.
 
+## Seat commerce and operations
+
+- One purchased unit is one seat on a Departure, not a vehicle or pre-assigned physical seat.
+- Allocation is sequential fill: fill Vehicle 1, then open Vehicle 2, then Vehicle 3. Do not resize an already-full assignment merely because another booking arrives.
+- Demo business-sale capacities are Alphard 6, Hiace 9, Hiace 13 and 25-seat vehicle 25. They are centralized Demo/TBD configuration.
+- 80% load factor is an internal planning target, not a public promise or absolute departure threshold.
+- Each Vehicle Assignment owns an isolated Vehicle Group. Members never receive other participants' private contact identities.
+- Private Group / Charter requests are separate from the seat pool and do not have invented pricing.
+
 ## Members and travel credit
 
 - A new member receives 5% off their first valid order.

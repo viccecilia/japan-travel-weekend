@@ -1,6 +1,6 @@
-# Japan Travel Weekend — Preview
+# Japan Travel Weekend — Demo 2.0
 
-An installable website and PWA/Web App prototype for small-group weekend trips from Osaka, operated by 株式会社大寅 / Daitora Group. This repository is independent from `japan-travel.info`.
+An installable website and PWA/Web App prototype for weekend seat commerce and trip fulfilment from Osaka, operated by 株式会社大寅 / Daitora Group. Travellers buy seats on a Departure; operations later create sequentially filled Vehicle Assignments and private Vehicle Groups. This repository is independent from `japan-travel.info`.
 
 ## Stack
 
@@ -27,17 +27,17 @@ npm run build
 
 ## Routes
 
-Website: `/`, `/trips`, `/trips/:slug`, `/how-it-works`, `/rewards`, `/safety`, `/about`, `/app`.
+Website: `/`, `/trips`, `/trips/:slug`, `/private-groups`, `/how-it-works`, `/rewards`, `/safety`, `/about`, `/app`.
 
-App Demo: `/app-demo`, `/app-demo/login`, `/app-demo/trips`, `/app-demo/trips/:slug`, `/app-demo/booking/:slug`, `/app-demo/passengers`, `/app-demo/checkout`, `/app-demo/payment`, `/app-demo/payment-result`, `/app-demo/orders`, `/app-demo/orders/:id`, `/app-demo/boarding-pass/:id`, `/app-demo/rewards`, `/app-demo/referral`, `/app-demo/profile`.
+App Demo adds `/app-demo/my-trip`, `/app-demo/my-trip/room` and `/app-demo/private-groups` to the existing browse, booking, order, boarding, rewards and profile routes.
 
 ## Demo data
 
-The app stores its fake user, draft booking, demo orders, language, rewards progress, travel credit, referral code and UI preference under `jtw-demo-state-v1` in browser `localStorage`. Use **Profile → Reset Demo Data** to remove it.
+The app stores its fake user, draft booking, demo orders, Trip Room interactions, language, rewards progress, travel credit, referral code and UI preference under `jtw-demo-state-v1` in browser `localStorage`. Use **Profile → Reset Demo Data** to remove it.
 
 ## Limits
 
-No real authentication, inventory, departure, price, payment, booking, boarding validation, translation service, database or API is connected. All unconfirmed commercial and operational fields are `null`, `TBD` or `preview`. Vietnamese and Nepali are entry points with Coming Soon messaging only. `noindex,nofollow` and a blocking `robots.txt` are intentional.
+No real authentication, inventory, GPS, maps, chat, photo upload, departure, price, payment, booking, boarding validation, translation service, database or API is connected. Map, countdown, driver location, messages and group data are labelled simulations. All unconfirmed commercial and operational fields are `null`, `TBD`, `sample` or `preview`. `noindex,nofollow` and a blocking `robots.txt` are intentional.
 
 ## Next phase
 
