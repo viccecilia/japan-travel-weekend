@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+*.log
+.playwright-cli/
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
