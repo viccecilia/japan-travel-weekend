@@ -1,6 +1,6 @@
 # 已批准测试服务栈
 
-本地与测试环境采用 Supabase + Stripe + Google Maps Platform。当前提交只提供迁移、接口、校验和测试替身；没有外部账户、凭证、远程迁移、真实收费或生产连接。
+本地与测试环境采用 Supabase + Stripe + Google Maps Platform。Supabase 测试项目已完成三份迁移和只读结构验收；行为联调仍未执行。仓库不保存外部账户标识或凭证，也没有真实收费或生产连接。
 
 ## Supabase
 
@@ -8,7 +8,7 @@
 
 安全修正迁移位于 `202608210002_security_and_compensation.sql`：auth.users trigger 只创建 passenger profile；客户端只有读权限和受控的本人显示名 RPC，不能更新 role 或直接写业务表。服务端事务 RPC 只授予 service_role，accountId 必须来自服务端已验证 session。原始辅助需求与工作人员履约投影分表，司机／司导不能读取儿童年龄或完整说明。私有 Realtime 通过 `realtime.messages` topic 策略授权；订单文件 bucket 为 private，路径首段必须是 auth.uid。
 
-当前机器没有 Docker，因此 Supabase CLI 本地数据库启动、SQL 实际执行、RLS 越权查询和 Storage／Realtime policy 实测均为 **NOT RUN**。单元测试中的 SQL 检查只叫“静态迁移审计”；并发、幂等、迟到支付和权限可见字段由独立领域模型做本地行为测试，不能替代 PostgreSQL 集成测试。
+当前机器没有 Docker，因此 Supabase CLI 本地数据库启动为 **NOT RUN**。三份迁移已由用户在远程测试项目 SQL Editor 执行成功；只读结构验收为 **PASS**。RLS 越权查询和 Storage／Realtime policy 行为实测仍为 **NOT RUN**。单元测试中的 SQL 检查只叫“静态迁移审计”；并发、幂等、迟到支付和权限可见字段由独立领域模型做本地行为测试，不能替代 PostgreSQL 集成测试。
 
 成员与聊天修正迁移位于 `202608210003_vehicle_group_membership_and_chat.sql`。RLS 不再直接依赖可能被下层 RLS 阻断的关联查询，而通过固定 `search_path`、撤销 public/anon execute、仅授予 authenticated 的 membership helpers 判断。普通本车乘客可以接收私有群内容；Trip Room 只有 `open` 时，成员或本车工作人员才能发送普通聊天，`frozen` 与 `closed` 均拒绝。该规则已通过独立领域行为测试；真实 PostgreSQL 策略递归、Realtime 授权和写入测试仍为 **NOT RUN**。
 

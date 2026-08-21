@@ -2,7 +2,7 @@
 
 ## Supabase 测试迁移
 
-可执行基线位于 `supabase/migrations/202608210001_test_stack_foundation.sql`。私密乘客辅助需求与 Vehicle Group 公共数据物理分表；库存锁和支付事件分别使用唯一幂等键。该迁移尚未在远程测试项目运行。
+可执行迁移位于 `supabase/migrations/`，三份迁移已在 Supabase 远程测试项目顺序执行成功。私密乘客辅助需求与 Vehicle Group 公共数据物理分表；库存锁和支付事件分别使用唯一幂等键。远程结构通过不代表 RLS、并发库存或 Realtime 行为已经联调。
 
 正式业务链路为：Trip（行程）→ Departure（出发班次）→ Seat Booking（座位预订）→ Passenger（乘客）→ Order（订单）→ Vehicle Assignment（车辆分配）→ Vehicle Group（车辆群组）→ Staff Assignment（工作人员分配）→ Trip Room（行程房间）→ Boarding（登车）→ Completed（已完成）。
 

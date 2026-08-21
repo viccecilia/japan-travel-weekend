@@ -1,10 +1,14 @@
 # 真实用户验收清单
 
-## 外部测试服务（尚未远程执行）
+## 外部测试服务
 
-- Supabase 迁移可重复执行，RLS 负面用例覆盖订单本人、运营、本车工作人员和普通乘客。
-- 并发最后一席只成功一个库存锁；重复 idempotency key 返回同一业务结果。
-- Stripe 测试 Webhook 拒绝伪造签名、去重重复事件并容忍乱序；禁止 live key。
+- Supabase 001／002／003 迁移远程执行：PASS。
+- 只读结构验收：PASS（17 个 public tables、17 个 RLS tables、15 个 public policies、2 个 Realtime policies、3 个 Storage policies、4 个 membership helpers、1 个 auth trigger、1 个 private bucket）。
+- 虚构账户登录、RLS 越权、Realtime 收发、Storage 上传、库存并发和 Stripe Webhook 远程行为联调：NOT RUN。
+
+- Supabase 迁移按顺序执行一次；只读验收脚本可重复执行。
+- 并发最后一席和重复 idempotency key 当前仅本地域模型 PASS，远程数据库行为 NOT RUN。
+- Stripe 测试 Webhook 的伪造签名、去重和乱序当前仅本地 PASS，远程 NOT RUN；禁止 live key。
 - Google Maps 浏览器 key 已限制网站来源和 API；无 key/坐标时明确显示不可用。
 - 全流程仅使用虚构乘客与 Stripe 测试数据，结束后执行删除和密钥轮换。
 
