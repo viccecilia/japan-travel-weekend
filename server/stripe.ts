@@ -23,6 +23,11 @@ export class StripeTestAdapter{
     return {accepted:applied,duplicate:false} as const;
   }
 }
+export class StripeCardPaymentSessionGateway{
+  constructor(private readonly adapter:StripeTestAdapter){}
+  get available(){return this.adapter.available}
+  async create(input:{orderId:string;amount:number;idempotencyKey:string}){const intent=await this.adapter.createPaymentIntent(input);return intent?.client_secret?{clientSecret:intent.client_secret}:null}
+}
 export async function extractOrderId(event:Stripe.Event,store:Pick<PaymentEventStore,'findOrderIdByPaymentIntent'>){
   if(event.type.startsWith('payment_intent.'))return (event.data.object as Stripe.PaymentIntent).metadata?.order_id||null;
   if(event.type==='charge.refunded'){const charge=event.data.object as Stripe.Charge;const paymentIntentId=typeof charge.payment_intent==='string'?charge.payment_intent:charge.payment_intent?.id;if(!paymentIntentId)return null;return store.findOrderIdByPaymentIntent(paymentIntentId)}

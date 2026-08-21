@@ -9,7 +9,8 @@
 - 私有 Storage 新文件上传和读取隔离：PASS；同名对象 upsert 因无 UPDATE policy 按预期失败。
 - 库存 004 修复迁移与单事务回滚式回归：PASS。
 - 两个独立 SQL 会话的最后一席并发：PASS；第二事务等待行锁后被余量检查拒绝，无超卖。
-- Realtime WebSocket 收发、支付/补偿函数回归和 Stripe Webhook 远程联调：NOT RUN。
+- 数据库支付事件与补偿函数回滚式远程回归：PASS。
+- Realtime WebSocket 收发和 Stripe 签名 Webhook 端到端联调：NOT RUN。
 
 - Supabase 迁移按顺序执行一次；只读验收脚本可重复执行。
 - 并发最后一席、容量边界和重复 idempotency key 远程数据库行为：PASS。

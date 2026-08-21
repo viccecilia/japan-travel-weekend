@@ -43,7 +43,7 @@
 
 当前策略仅允许新对象 INSERT，没有 UPDATE 权限；对已有同名对象使用 `upsert` 会失败，这是当前预期限制。正式产品应优先使用不可变唯一文件名；若确需覆盖，必须另行设计受限 UPDATE policy、所有权校验和审计，不得直接放宽现有策略。
 
-以下仍为 **NOT RUN**：Realtime WebSocket 实际收发、支付事件/补偿函数回归，以及 Stripe Webhook 远程联调。
+以下仍为 **NOT RUN**：Realtime WebSocket 实际收发，以及 Stripe 签名 Webhook 端到端联调。
 
 ## 库存阶段门
 
@@ -55,6 +55,6 @@
 
 另以两个独立 SQL 会话完成真实最后一席竞争：容量为 1；事务 A 成功预留并在持有 Departure 行锁期间等待后提交；事务 B 等待锁释放后以 `insufficient inventory` 被拒绝。没有超卖。单事务回归与双会话并发均为 **PASS**，库存阶段门为 **PASS**。
 
-## 支付事件与补偿函数待验收
+## 支付事件与补偿函数
 
-静态审查暂未发现必须先修改函数的确定缺陷。新增 `supabase/verification/payment_and_compensation_regression.sql`，在单一事务内覆盖：event ID 幂等、旧事件不回退新状态、有效 hold 成功后 committed + paid、过期或已释放 hold 的成功支付进入 `payment_review`、退款、`release_expired_inventory` 以及 `cancel_pending_order` 首次/重复调用边界，最终 `ROLLBACK`。远程执行前状态为 **NOT RUN**；这也不替代 Stripe 签名 Webhook 端到端联调。
+`supabase/verification/payment_and_compensation_regression.sql` 已在远程测试项目成功执行并回滚。event ID 幂等、旧事件不回退新状态、有效 hold 成功后 committed + paid、过期或已释放 hold 的成功支付进入 `payment_review`、退款、`release_expired_inventory` 以及 `cancel_pending_order` 首次/重复调用边界均为 **PASS**。这只证明数据库函数行为；Stripe 签名、HTTP Webhook、事件对象提取和供应商投递仍为 **NOT RUN**。

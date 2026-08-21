@@ -1,4 +1,5 @@
 import {createClient, type SupabaseClient} from '@supabase/supabase-js';
+import {createHash} from 'node:crypto';
 
 export type SupabaseServerConfig={url:string;serviceRoleKey:string};
 export function createSupabaseServerClient(config:SupabaseServerConfig):SupabaseClient|null{
@@ -7,7 +8,7 @@ export function createSupabaseServerClient(config:SupabaseServerConfig):Supabase
 }
 
 export type VerifiedSession={accountId:string;accessTokenHash:string};
-export interface OrderInventoryGateway{reserve(session:VerifiedSession,input:{departureId:string;seats:number;idempotencyKey:string;expiresAt:string}):Promise<{orderId:string;holdId:string}|null>}
+export interface OrderInventoryGateway{reserve(session:VerifiedSession,input:{departureId:string;seats:number;idempotencyKey:string;expiresAt:string}):Promise<{orderId:string;holdId:string}|null>;cancel(session:VerifiedSession,orderId:string):Promise<boolean>}
 export class SupabaseOrderInventoryGateway implements OrderInventoryGateway{
   constructor(private readonly client:SupabaseClient|null){}
   async reserve(session:VerifiedSession,input:{departureId:string;seats:number;idempotencyKey:string;expiresAt:string}){
@@ -16,4 +17,13 @@ export class SupabaseOrderInventoryGateway implements OrderInventoryGateway{
     if(error||!data?.[0])return null;
     return {orderId:data[0].order_id as string,holdId:data[0].hold_id as string};
   }
+  async cancel(session:VerifiedSession,orderId:string){if(!this.client)return false;const {data,error}=await this.client.rpc('cancel_pending_order',{p_order:orderId,p_account:session.accountId});return !error&&data===true}
+}
+export class SupabaseAccessTokenVerifier{
+  constructor(private readonly client:SupabaseClient|null){}
+  async verify(token:string):Promise<VerifiedSession|null>{if(!this.client||!token)return null;const {data,error}=await this.client.auth.getUser(token);if(error||!data.user)return null;return {accountId:data.user.id,accessTokenHash:createHash('sha256').update(token).digest('hex')}}
+}
+export class SupabaseManualPaymentGateway{
+  constructor(private readonly client:SupabaseClient|null){}
+  async markPending(orderId:string){if(!this.client)return false;const {data,error}=await this.client.rpc('mark_bank_transfer_pending',{p_order:orderId});return !error&&data===true}
 }
