@@ -30,4 +30,4 @@ npm run build
 - 正式环境不编造价格、余位、距离或实时状态，缺少数据时展示正式空状态。
 - 保留 `noindex,nofollow` 和阻止抓取的 `robots.txt`，直到产品具备公开上线条件。
 
-详细说明见 `docs/production-foundation.md`、`docs/runtime-modes.md`、`docs/data-model.md`、`docs/vehicle-allocation.md` 与 `docs/trip-room.md`。
+详细说明见 `docs/production-foundation.md`、`docs/runtime-modes.md`、`docs/data-model.md`、`docs/vehicle-allocation.md`、`docs/trip-room.md` 与 `docs/account-authentication.md`。

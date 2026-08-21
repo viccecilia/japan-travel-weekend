@@ -58,6 +58,12 @@ export function AppProvider({
   useEffect(() => {
     let active = true;
     if (!services) return () => { active = false; };
+    const unsubscribe=services.onAuthStateChange((event,user)=>{
+      if(!active)return;
+      if(event==='SIGNED_OUT'||!user?.email)setState((s)=>({...s,user:null}));
+      else setState((s)=>({...s,user:{email:user.email!}}));
+      setAuthResolved(true);
+    });
     void services.currentUser().then((user) => {
       if (!active) return;
       setState((s) => ({ ...s, user: user?.email ? { email: user.email } : null }));
@@ -66,7 +72,7 @@ export function AppProvider({
     }).finally(() => {
       if (active) setAuthResolved(true);
     });
-    return () => { active = false; };
+    return () => { active = false;unsubscribe(); };
   }, [services]);
   const setUi = (ui: UiPreferences) => {
     localStorage.setItem(UI_KEY, JSON.stringify(ui));

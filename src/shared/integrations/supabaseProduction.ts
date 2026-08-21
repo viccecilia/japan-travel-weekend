@@ -1,17 +1,32 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 export class SupabaseAuthRepository {
-  constructor(private readonly client: SupabaseClient | null) {}
+  constructor(private readonly client: SupabaseClient | null,private readonly appOrigin:string=typeof window==='undefined'?'http://localhost':window.location.origin) {}
   get available() {
     return this.client !== null;
   }
-  async signUp(email: string, password: string, displayName: string) {
+  private redirect(path:'/app/auth/callback'|'/app/reset-password'){
+    try{const origin=new URL(this.appOrigin);if(!['http:','https:'].includes(origin.protocol)||origin.pathname!=='/'||origin.search||origin.hash)return null;return new URL(path,origin.origin).toString()}catch{return null}
+  }
+  async signUp(email: string, password: string) {
     if (!this.client) return null;
-    const { data, error } = await this.client.auth.signUp({
-      email,
-      password,
-      options: { data: { display_name: displayName } },
-    });
-    return error ? null : data;
+    const emailRedirectTo=this.redirect('/app/auth/callback');if(!emailRedirectTo)return null;
+    try{const { data, error } = await this.client.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo },
+      });
+      return error ? null : data;
+    }catch{return null}
+  }
+  async requestPasswordReset(email:string){
+    if(!this.client)return false;const redirectTo=this.redirect('/app/reset-password');if(!redirectTo)return false;
+    try{await this.client.auth.resetPasswordForEmail(email,{redirectTo});}catch{/* 防账户枚举：网络与账户状态使用同一客户端结果。 */}return true;
+  }
+  async updatePassword(password:string){if(!this.client)return false;try{return !(await this.client.auth.updateUser({password})).error}catch{return false}}
+  onAuthStateChange(handler:(event:string,user:{email?:string|null}|null)=>void){
+    if(!this.client||typeof this.client.auth.onAuthStateChange!=='function')return ()=>{};
+    const {data}=this.client.auth.onAuthStateChange((event,session)=>handler(event,session?.user??null));
+    return ()=>data.subscription.unsubscribe();
   }
   async signIn(email: string, password: string) {
     if (!this.client) return null;

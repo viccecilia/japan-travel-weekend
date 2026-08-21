@@ -1,7 +1,7 @@
 import fs from 'node:fs';import path from 'node:path';
 const root=process.cwd(), read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const router=read('src/router/Router.tsx'),html=read('index.html'),robots=read('public/robots.txt');
-const routes=['/','/trips','/private-groups','/how-it-works','/rewards','/safety','/about','/app-info','/app','/app/login','/app/trips','/app/booking/:slug','/app/passengers','/app/checkout','/app/payment','/app/payment-result','/app/orders','/app/my-trip','/app/my-trip/room','/app/private-groups','/app/boarding-pass/:id','/app/rewards','/app/referral','/app/profile'];
+const routes=['/','/trips','/private-groups','/how-it-works','/rewards','/safety','/about','/terms','/privacy','/app-info','/app','/app/login','/app/create-account','/app/forgot-password','/app/reset-password','/app/auth/callback','/app/trips','/app/booking/:slug','/app/passengers','/app/checkout','/app/payment','/app/payment-result','/app/orders','/app/my-trip','/app/my-trip/room','/app/private-groups','/app/boarding-pass/:id','/app/rewards','/app/referral','/app/profile'];
 const missing=routes.filter(r=>r!=='/'&&!router.includes(`path="${r}"`));if(missing.length)throw new Error(`Missing routes: ${missing.join(', ')}`);
 if(!html.includes('lang="zh-CN"'))throw new Error('HTML lang 必须固定为 zh-CN');
 if(!html.includes('noindex,nofollow')||!robots.includes('Disallow: /'))throw new Error('Noindex protection missing');

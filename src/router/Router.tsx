@@ -10,6 +10,8 @@ import {
   About,
   AppLanding,
   PrivateGroups,
+  Terms,
+  Privacy,
 } from "../website/Website";
 import {
   AppShell,
@@ -32,6 +34,7 @@ import {
 } from "../app/App";
 import { AppPrivateGroups, MyTrip, TripRoom } from "../app/TripRoom";
 import { LegacyAppRedirect, RequireAccount } from "../app/auth";
+import {AuthCallback,CreateAccount,ForgotPassword,ResetPassword} from "../app/AuthPages";
 export function Router() {
   return (
     <Routes>
@@ -45,6 +48,8 @@ export function Router() {
         <Route path="/safety" element={<Safety />} />
         <Route path="/about" element={<About />} />
         <Route path="/app-info" element={<AppLanding />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy" element={<Privacy />} />
       </Route>
       <Route
         path="/app/login"
@@ -54,6 +59,10 @@ export function Router() {
           </AppShell>
         }
       />
+      <Route path="/app/create-account" element={<AppShell><CreateAccount /></AppShell>} />
+      <Route path="/app/forgot-password" element={<AppShell><ForgotPassword /></AppShell>} />
+      <Route path="/app/reset-password" element={<AppShell><ResetPassword /></AppShell>} />
+      <Route path="/app/auth/callback" element={<AppShell><AuthCallback /></AppShell>} />
       <Route
         path="/app"
         element={

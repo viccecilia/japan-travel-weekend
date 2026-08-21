@@ -406,3 +406,5 @@ export function AppLanding() {
     </section>
   );
 }
+export function Terms(){return <section><Meta title="服务条款" description="Japan Travel Weekend 服务条款。"/><div className="page-title"><div className="eyebrow">正式发布前确认</div><h1>服务条款</h1><p>正式法律文本尚待批准。开放真实注册与预订前，将在此公布适用条款、生效日期和运营主体信息。</p></div></section>}
+export function Privacy(){return <section><Meta title="隐私政策" description="Japan Travel Weekend 隐私政策。"/><div className="page-title"><div className="eyebrow">隐私与数据保护</div><h1>隐私政策</h1><p>正式法律文本尚待批准。开放真实注册前，将在此说明数据用途、保存期限、权利请求和联系窗口。</p></div></section>}

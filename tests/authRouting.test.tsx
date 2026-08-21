@@ -45,4 +45,14 @@ describe('正式账户路由守卫',()=>{
     renderRoute('/app-demo/trips?from=legacy');
     await waitFor(()=>expect(screen.getByTestId('location').textContent).toBe('/app/trips?from=legacy'));
   });
+  it('认证回调只从 SDK 会话恢复用户并拒绝外部 returnTo',async()=>{
+    const services=new ProductionBrowserServices(clientWithUser({id:'account-1',email:'safe@example.invalid'}),undefined);
+    renderRoute('/app/auth/callback?returnTo=https%3A%2F%2Fevil.example',services);
+    await waitFor(()=>expect(screen.getByTestId('location').textContent).toBe('/app'));
+  });
+  it('重置密码服务未配置时明确关闭',()=>{
+    renderRoute('/app/reset-password');
+    expect(screen.getByText('账户服务暂未开放')).toBeInTheDocument();
+    expect(screen.getByText('当前不会创建账户、发送邮件或修改密码。')).toBeInTheDocument();
+  });
 });

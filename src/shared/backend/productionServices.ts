@@ -39,6 +39,10 @@ export class ProductionBrowserServices {
   signIn(email: string, password: string) {
     return this.auth.signIn(email, password);
   }
+  signUp(email:string,password:string){return this.auth.signUp(email,password);}
+  requestPasswordReset(email:string){return this.auth.requestPasswordReset(email);}
+  updatePassword(password:string){return this.auth.updatePassword(password);}
+  onAuthStateChange(handler:(event:string,user:{email?:string|null}|null)=>void){return this.auth.onAuthStateChange(handler);}
   currentUser() {
     return this.auth.currentUser();
   }

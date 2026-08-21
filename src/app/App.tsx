@@ -21,6 +21,7 @@ import type { ChildSeatChoice } from "../shared/types";
 import { GoogleMapsAdapter } from "../shared/integrations/googleMaps";
 import { useApp } from "./store";
 import { safeReturnTo } from "./auth";
+import { passwordRules, passwordRuleText } from "../shared/config/authConfig";
 const trips = travelRepository.listTrips();
 const Empty = ({
   title = "暂无内容",
@@ -170,11 +171,11 @@ export function Login() {
           密码
           <input
             required
-            minLength={10}
+            minLength={passwordRules.minLength}
             name="password"
             type="password"
             autoComplete={services ? "current-password" : "new-password"}
-            placeholder="至少 10 个字符"
+            placeholder={passwordRuleText}
           />
         </label>
         <LanguageSelect />
@@ -207,6 +208,12 @@ export function Login() {
               ? "正式账户服务未配置，不会创建本地账户或加载演示订单。"
               : "本地开发账户和会话只存在于内存，不写入 localStorage。"}
         </p>
+        {production && services?.authAvailable && (
+          <div className="auth-links">
+            <Link to="/app/create-account">创建账户</Link>
+            <Link to="/app/forgot-password">忘记密码</Link>
+          </div>
+        )}
       </form>
     </>
   );
