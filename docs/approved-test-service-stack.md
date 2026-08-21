@@ -10,6 +10,8 @@
 
 当前机器没有 Docker，因此 Supabase CLI 本地数据库启动、SQL 实际执行、RLS 越权查询和 Storage／Realtime policy 实测均为 **NOT RUN**。单元测试中的 SQL 检查只叫“静态迁移审计”；并发、幂等、迟到支付和权限可见字段由独立领域模型做本地行为测试，不能替代 PostgreSQL 集成测试。
 
+成员与聊天修正迁移位于 `202608210003_vehicle_group_membership_and_chat.sql`。RLS 不再直接依赖可能被下层 RLS 阻断的关联查询，而通过固定 `search_path`、撤销 public/anon execute、仅授予 authenticated 的 membership helpers 判断。普通本车乘客可以接收私有群内容；Trip Room 只有 `open` 时，成员或本车工作人员才能发送普通聊天，`frozen` 与 `closed` 均拒绝。该规则已通过独立领域行为测试；真实 PostgreSQL 策略递归、Realtime 授权和写入测试仍为 **NOT RUN**。
+
 浏览器只使用项目 URL 与 publishable/anon key；service role key 只进入服务端秘密管理器。私密辅助需求使用独立表和加密载荷；普通 Vehicle Group 查询不连接该表。位置只允许本人、运营和本车工作人员读取。
 
 库存由 `reserve_inventory` 在锁定 departure 行后计算有效 hold；订单幂等键和库存锁幂等键均唯一。`release_expired_inventory` 过期释放，`cancel_pending_order` 取消待支付订单并释放，`apply_payment_event` 去重支付事件并提交库存。车辆分配继续读取已确认订单和履约需求，Sequential Fill 算法保持先填满 Vehicle 1，已满车辆不重排。

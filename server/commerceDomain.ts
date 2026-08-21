@@ -13,3 +13,5 @@ export class CommerceDomain{
 
 export type AccessRole='owner'|'operations'|'assigned_staff'|'group_passenger'|'anonymous';
 export const visibleAssistanceFields=(role:AccessRole)=>role==='owner'||role==='operations'?['privatePayload','staffProjection']:role==='assigned_staff'?['staffProjection']:[];
+export const canReceiveVehicleGroup=(role:AccessRole)=>role==='owner'||role==='operations'||role==='assigned_staff'||role==='group_passenger';
+export const canSendVehicleGroupChat=(role:AccessRole,roomStatus:'frozen'|'open'|'closed')=>roomStatus==='open'&&canReceiveVehicleGroup(role);
