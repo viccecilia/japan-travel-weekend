@@ -7,11 +7,12 @@
 - 四个虚构角色登录及订单本人／无关乘客／司机／运营 RLS 读取矩阵：PASS。
 - 冻结群拒绝订单本人写入、临时开放允许本车订单本人写入、开放群仍拒绝无关乘客：PASS。
 - 私有 Storage 新文件上传和读取隔离：PASS；同名对象 upsert 因无 UPDATE policy 按预期失败。
-- 库存 RPC 远程阶段门：FAIL（发现 42702 裸列歧义）；004 修复迁移及回滚式回归脚本待远程执行。
-- Realtime WebSocket 收发、库存远程并发、库存锁过期支付补偿和 Stripe Webhook 远程联调：NOT RUN。
+- 库存 004 修复迁移与单事务回滚式回归：PASS。
+- 两个独立 SQL 会话的最后一席并发：PASS；第二事务等待行锁后被余量检查拒绝，无超卖。
+- Realtime WebSocket 收发、支付/补偿函数回归和 Stripe Webhook 远程联调：NOT RUN。
 
 - Supabase 迁移按顺序执行一次；只读验收脚本可重复执行。
-- 并发最后一席和重复 idempotency key 当前仅本地域模型 PASS，远程数据库行为 NOT RUN。
+- 并发最后一席、容量边界和重复 idempotency key 远程数据库行为：PASS。
 - Stripe 测试 Webhook 的伪造签名、去重和乱序当前仅本地 PASS，远程 NOT RUN；禁止 live key。
 - Google Maps 浏览器 key 已限制网站来源和 API；无 key/坐标时明确显示不可用。
 - 远程行为测试只使用虚构角色和测试文件；完成阶段验收后按测试数据保留策略清理。

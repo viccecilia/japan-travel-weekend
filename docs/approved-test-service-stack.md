@@ -16,7 +16,7 @@
 
 库存由 `reserve_inventory` 在锁定 departure 行后计算有效 hold；订单幂等键和库存锁幂等键均唯一。`release_expired_inventory` 过期释放，`cancel_pending_order` 取消待支付订单并释放，`apply_payment_event` 去重支付事件并提交库存。车辆分配继续读取已确认订单和履约需求，Sequential Fill 算法保持先填满 Vehicle 1，已满车辆不重排。
 
-远程库存验证发现旧函数幂等分支存在 42702 列名歧义。004 迁移以全限定别名替换函数；部署前库存数据库阶段门为 FAIL，不能使用旧函数承接测试订单。部署后必须运行 `supabase/verification/reserve_inventory_regression.sql` 并取得 PASS。
+远程库存验证曾发现旧函数幂等分支存在 42702 列名歧义。004 迁移已远程执行，回滚式容量/幂等回归与两个独立 SQL 会话的最后一席竞争均为 PASS，没有超卖；库存数据库阶段门现为 PASS。
 
 ## Stripe 测试模式
 
