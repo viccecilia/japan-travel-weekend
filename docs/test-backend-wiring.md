@@ -13,6 +13,8 @@ AppContext 接受可选 production services；没有公开配置时为 `null`，
 - 卡支付：仅 Stripe Standard 测试模式 gateway 可用时创建 Payment Intent；响应只返回客户端确认所需 client secret，不返回服务端 key。创建失败会取消待支付订单并释放 hold。
 - 银行转账：不调用 Stripe，订单进入 `pending_manual_review`。005 迁移只允许 service-role 调用状态函数；人工核账前不得标记已支付。状态写入失败会取消订单并释放 hold。
 
+005 已远程执行，首次/重复转换、状态和数据库 execute 权限六项回滚验收为 PASS。HTTPS 测试 API 尚未部署，因此浏览器到服务端的银行转账链路仍为 NOT RUN。
+
 本实现不支持 Stripe Express/Connect 账户，也不读取商户数据或发起真实扣款。
 
 ## 外部凭证门

@@ -58,3 +58,7 @@
 ## 支付事件与补偿函数
 
 `supabase/verification/payment_and_compensation_regression.sql` 已在远程测试项目成功执行并回滚。event ID 幂等、旧事件不回退新状态、有效 hold 成功后 committed + paid、过期或已释放 hold 的成功支付进入 `payment_review`、退款、`release_expired_inventory` 以及 `cancel_pending_order` 首次/重复调用边界均为 **PASS**。这只证明数据库函数行为；Stripe 签名、HTTP Webhook、事件对象提取和供应商投递仍为 **NOT RUN**。
+
+## 银行转账人工审核
+
+005 迁移已在远程测试项目执行成功。回滚式验收六项全部 **PASS**：首次转换成功、重复转换拒绝、订单状态为 `pending_manual_review`、anon 无 execute、authenticated 无 execute、service_role 有 execute。该状态只表示等待人工核账，不表示到账或支付成功；测试后端远程 API 仍未部署。
