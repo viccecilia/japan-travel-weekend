@@ -1,20 +1,8 @@
 import type {VehicleAssignment,VehicleCapacityConfig} from '../types';
-import {vehicleCapacityConfig} from '../config/businessRules';
-
-export function sequentialFill(totalSeats:number,config:VehicleCapacityConfig[]=[vehicleCapacityConfig[0]]):VehicleAssignment[]{
-  if(!Number.isInteger(totalSeats)||totalSeats<0)throw new RangeError('totalSeats must be a non-negative integer');
-  if(!config.length||config.some(v=>!Number.isInteger(v.capacity)||v.capacity<=0))throw new RangeError('vehicle capacities must be positive integers');
-  if(totalSeats===0)return [];
-  const assignments:VehicleAssignment[]=[];
-  let remaining=totalSeats;
-  while(remaining>0){
-    const vehicle=config.find(v=>v.capacity>=remaining)??config[config.length-1];
-    const booked=Math.min(remaining,vehicle.capacity);
-    const sequence=assignments.length+1;
-    assignments.push({id:`vehicle-${sequence}`,departureId:'demo-departure',sequence,vehicleType:vehicle.type,capacity:vehicle.capacity,booked,groupId:`vehicle-group-${sequence}`});
-    remaining-=booked;
-  }
-  return assignments;
+import {appConfig} from '../config/businessRules';
+export function sequentialFill(totalSeats:number,config:VehicleCapacityConfig[]=appConfig.vehicleCapacities,departureId='departure'):{assignments:VehicleAssignment[];unassigned:number}{
+ if(!Number.isInteger(totalSeats)||totalSeats<0)throw new RangeError('座位数必须为非负整数');if(!config.length||config.some(v=>!Number.isInteger(v.capacity)||v.capacity<=0))throw new RangeError('车辆客席必须为正整数');if(totalSeats===0)return {assignments:[],unassigned:0};
+ const assignments:VehicleAssignment[]=[];let remaining=totalSeats;for(const vehicle of config){if(!remaining)break;const booked=Math.min(remaining,vehicle.capacity);const sequence=assignments.length+1;assignments.push({id:`${departureId}-vehicle-${sequence}`,departureId,sequence,vehicleType:vehicle.type,capacity:vehicle.capacity,booked,groupId:`${departureId}-group-${sequence}`});remaining-=booked}return {assignments,unassigned:remaining};
 }
-
+export function appendSeats(existing:VehicleAssignment[],additionalSeats:number,config:VehicleCapacityConfig[]=appConfig.vehicleCapacities){if(additionalSeats<0||!Number.isInteger(additionalSeats))throw new RangeError('新增座位数必须为非负整数');const result=existing.map(x=>({...x}));let remaining=additionalSeats;for(const item of result){const add=Math.min(item.capacity-item.booked,remaining);item.booked+=add;remaining-=add;if(!remaining)return {assignments:result,unassigned:0}}const dep=result[0]?.departureId??'departure';const created=sequentialFill(remaining,config,dep);const offset=result.length;result.push(...created.assignments.map((x,i)=>({...x,id:`${dep}-vehicle-${offset+i+1}`,sequence:offset+i+1,groupId:`${dep}-group-${offset+i+1}`})));return {assignments:result,unassigned:created.unassigned}}
 export const loadFactor=(assignment:VehicleAssignment)=>Math.round(assignment.booked/assignment.capacity*100);

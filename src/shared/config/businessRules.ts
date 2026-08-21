@@ -1,11 +1,8 @@
-import type {VehicleCapacityConfig} from '../types';
-export const vehicleCapacityConfig:VehicleCapacityConfig[]=[
-  {type:'alphard-6',label:'Alphard',capacity:6,demo:true},
-  {type:'hiace-9',label:'Hiace 9',capacity:9,demo:true},
-  {type:'hiace-13',label:'Hiace 13',capacity:13,demo:true},
-  {type:'vehicle-25',label:'25-seat vehicle',capacity:25,demo:true},
-];
-export const operationsConfig={tripRoomOpens:'Previous evening · Demo configuration',locationShareMinutes:[15,30] as const,driverLocationVisibleDuringTrip:true,passengerLocationDefault:false};
-export const businessRules={firstValidOrderDiscountPercent:5,referrerCreditPercent:5,creditValidityDays:180,creditPerOrderCapYen:1000,ambassadorCommissionPercent:5,loadFactorTargetPercent:80,allocationPrinciple:'sequential-fill' as const,tiers:[{name:'Explorer',trips:0},{name:'Traveller',trips:2},{name:'Insider',trips:3},{name:'VIP Traveller',trips:5}] as const};
+import type {RuntimeMode,VehicleCapacityConfig} from '../types';
+const requestedMode=(import.meta.env.VITE_RUNTIME_MODE||import.meta.env.MODE) as string;
+export const runtimeMode:RuntimeMode=requestedMode==='demo'?'demo':requestedMode==='development'?'development':'production';
+export const isSeedEnabled=runtimeMode!=='production'&&import.meta.env.VITE_ENABLE_SEED_DATA!=='false';
+export const appConfig={locale:'zh-CN',supportedLocales:['zh-CN'] as const,runtimeMode,isSeedEnabled,vehicleCapacities:[{type:'alphard-6',label:'Alphard（6客席）',capacity:6},{type:'hiace-9',label:'Hiace（9客席）',capacity:9},{type:'hiace-13',label:'Hiace（13客席）',capacity:13},{type:'vehicle-25',label:'25座车辆（25客席）',capacity:25}] satisfies VehicleCapacityConfig[],tripRoom:{opens:'出发前一晚（具体时间由运营确认）',locationShareMinutes:[15,30] as const,passengerLocationDefault:false,locationVisibleTo:['driver','guide'] as const},loadFactorTargetPercent:80,externalCapabilities:{api:false,authentication:false,payment:false,inventory:false,maps:false,gps:false,chat:false,notifications:false},features:{booking:true,privateGroups:true,rewards:true,tripRoom:true,staffView:true}} as const;
+export const businessRules={firstValidOrderDiscountPercent:5,referrerCreditPercent:5,creditValidityDays:180,creditPerOrderCapYen:1000,ambassadorCommissionPercent:5,loadFactorTargetPercent:appConfig.loadFactorTargetPercent,allocationPrinciple:'sequential-fill' as const,tiers:[{name:'探索者',trips:0},{name:'旅行者',trips:2},{name:'达人',trips:3},{name:'VIP 旅行者',trips:5}] as const};
 export function tierFor(completed:number){return [...businessRules.tiers].reverse().find(t=>completed>=t.trips)??businessRules.tiers[0]}
 export function nextTier(completed:number){return businessRules.tiers.find(t=>t.trips>completed)}

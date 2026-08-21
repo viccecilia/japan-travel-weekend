@@ -1,24 +1,7 @@
-# Future data model
+# 数据模型
 
-- `users`: identity, language, consent, status and referral ownership.
-- `trips`: stable route content and publication state.
-- `departures`: trip, date/time, meeting point and operational status; the public seat-selling unit.
-- `seat_bookings`: order, departure, passenger count and allocation status; initially no vehicle.
-- `vehicle_capacity_config`: centrally managed business-sale capacity per Demo vehicle type.
-- `vehicle_assignments`: departure, sequence, vehicle type, booked/capacity and operational status.
-- `vehicle_groups`: one private room per vehicle assignment, with membership derived from passenger and staff assignments.
-- `staff_assignments`: vehicle, staff role and supported languages (EN/JA/ZH now; VI/NE reserved).
-- `trip_rooms`: open/closed lifecycle, meeting points, messages, important original/translation fields and media references.
-- `location_shares`: subject, authorized viewer scope, consent/start/expiry/stop timestamps; no public passenger visibility.
-- `boarding_status`: passenger, vehicle assignment and returned/away/boarded/completed timestamps.
-- `passengers`: order-scoped traveller and assistance information with retention controls.
-- `orders`: buyer, departure, server-calculated totals, currency and lifecycle state.
-- `payments`: provider references, attempts, amount, status and webhook audit metadata; never full card data.
-- `boarding_passes`: opaque signed token, order, validity window and scan state; no personal details in the QR payload.
-- `referrals`: direct referrer/referred relationship, attribution and fraud-review state.
-- `travel_credits`: append-only earn/use/reversal ledger, expiry and source.
-- `ambassador_commissions`: direct eligible order, provisional amount, approval and settlement state.
+正式业务链路为：Trip（行程）→ Departure（出发班次）→ Seat Booking（座位预订）→ Passenger（乘客）→ Order（订单）→ Vehicle Assignment（车辆分配）→ Vehicle Group（车辆群组）→ Staff Assignment（工作人员分配）→ Trip Room（行程房间）→ Boarding（登车）→ Completed（已完成）。
 
-Use immutable identifiers, timestamps, least-privilege access, encrypted sensitive fields, explicit retention rules and auditable state transitions.
+Trip 是可浏览产品；Departure 才包含日期、库存和价格。座位预订记录人数，乘客资料与订单分开。订单支付确认后进入运营分车。每个 Vehicle Assignment 唯一对应一个 Vehicle Group；司机与司导通过 Staff Assignment 进入该组；Trip Room 必须以 groupId 做读写隔离。登车完成并不等于行程完成，只有运营确认 Completed 才触发完成类奖励。
 
-Core relationship: `Trip → Departure → Seat Bookings → Vehicle Assignments → Vehicle Groups → Trip Room → Boarding / Completed`. Private Group enquiries remain a separate future aggregate and never enter the public Departure seat pool.
+当前 `TravelRepository` 为内存实现。后端接入时保持接口稳定，并在服务端完成身份、车辆群组、字段级权限和审计校验。

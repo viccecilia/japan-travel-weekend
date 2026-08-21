@@ -1,9 +1,7 @@
-# Vehicle Trip Room — Demo 2.0
+# 行程房间（Trip Room）
 
-Each real Vehicle Assignment creates one Vehicle Group. Membership is limited to that vehicle's passengers, driver and assigned guide/driver-guide. A Departure can therefore have several separate rooms. Private phone numbers and LINE, WhatsApp or WeChat identities are never exposed.
+行程房间是履约主页：地图／集合区优先，消息区次之。房间只属于一个 Vehicle Group；本车乘客与被分配的司机／司导可进入，其他车辆成员无权读取消息或位置。
 
-The room opens on the previous evening according to centralized Demo configuration. Operational content leads: next meeting, countdown, meeting point, vehicle and driver, return count, map, actions, chat and boarding pass.
+系统不展示手机号、LINE、WhatsApp、微信等私人联系方式。乘客位置默认关闭；主动授权时记录 subjectId、vehicleGroupId、startedAt、expiresAt、visibleTo，仅本车司机与司导可见，普通乘客不可见；停止时写入 stoppedAt 并立即禁用。过期后即使客户端仍显示开启，服务端也必须拒绝读取。
 
-Driver location is intended to be visible to this vehicle's passengers during the trip. Passenger location is off by default, starts only with explicit consent, is visible only to the vehicle's assigned driver/guide, and stops on user request, expiry, return to vehicle or trip completion. Other passengers do not see it.
-
-This release uses browser-only messages and photo placeholders. It has no GPS, Google Maps, upload, WebSocket or translation connection. A production design would send consent-scoped coordinates to an authenticated realtime service, render Google Maps in-app, and generate a Google Maps walking-navigation URL using the current authorized driver coordinate. Important messages retain the original text; a separate translation field is reserved.
+地图、GPS、聊天、照片和通知未连接时必须显示明确不可用状态，不得模拟距离、司机移动或倒计时。

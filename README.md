@@ -1,23 +1,14 @@
-# Japan Travel Weekend — Demo 2.0
+# Japan Travel Weekend
 
-An installable website and PWA/Web App prototype for weekend seat commerce and trip fulfilment from Osaka, operated by 株式会社大寅 / Daitora Group. Travellers buy seats on a Departure; operations later create sequentially filled Vehicle Assignments and private Vehicle Groups. This repository is independent from `japan-travel.info`.
+面向关西国际居民的周末拼席旅行产品基础工程，由株式会社大寅／大寅集团运营。本仓库独立于 `japan-travel.info`。
 
-## Stack
+## 本地运行
 
-React, TypeScript, Vite, React Router, Vite PWA, Vitest and ESLint. Website, app and shared route data are separated under `src/website`, `src/app` and `src/shared`.
-
-## Run locally
+需要 Node.js 24。`npm run dev` 使用 development 模式并加载集中开发种子；正式构建 `npm run build` 使用 production 模式，绝不自动加载出发班次、订单、司机、倒计时、聊天或位置等假数据。
 
 ```bash
-npm install
+npm ci
 npm run dev
-```
-
-Open `http://localhost:5173/` for the website or `http://localhost:5173/app-demo` for the app.
-
-## Quality commands
-
-```bash
 npm run typecheck
 npm run lint
 npm test
@@ -25,20 +16,14 @@ npm run check:content
 npm run build
 ```
 
-## Routes
+显式演示模式：`VITE_RUNTIME_MODE=demo npm run dev`。关闭开发种子：`VITE_ENABLE_SEED_DATA=false npm run dev`。
 
-Website: `/`, `/trips`, `/trips/:slug`, `/private-groups`, `/how-it-works`, `/rewards`, `/safety`, `/about`, `/app`.
+## 产品边界
 
-App Demo adds `/app-demo/my-trip`, `/app-demo/my-trip/room` and `/app-demo/private-groups` to the existing browse, booking, order, boarding, rewards and profile routes.
+- 网站与应用当前完整使用简体中文，语言入口保留但其他语言不可选；`html lang` 固定为 `zh-CN`。
+- 业务读取经过 repository/service，可在后续替换为安全后端 API。
+- `localStorage` 只保存界面偏好；订单、乘客隐私、消息和位置授权仅在会话内存中存在。
+- 正式环境不编造价格、余位、距离或实时状态，缺少数据时展示正式空状态。
+- 保留 `noindex,nofollow` 和阻止抓取的 `robots.txt`，直到产品具备公开上线条件。
 
-## Demo data
-
-The app stores its fake user, draft booking, demo orders, Trip Room interactions, language, rewards progress, travel credit, referral code and UI preference under `jtw-demo-state-v1` in browser `localStorage`. Use **Profile → Reset Demo Data** to remove it.
-
-## Limits
-
-No real authentication, inventory, GPS, maps, chat, photo upload, departure, price, payment, booking, boarding validation, translation service, database or API is connected. Map, countdown, driver location, messages and group data are labelled simulations. All unconfirmed commercial and operational fields are `null`, `TBD`, `sample` or `preview`. `noindex,nofollow` and a blocking `robots.txt` are intentional.
-
-## Next phase
-
-Confirm schedules, prices, capacities, inclusions and policies; obtain an image/licensing sign-off; commission professional translations; connect a secure backend and payment provider; add admin operations, transactional messaging and real QR verification; then perform legal, accessibility and pilot-trip reviews before removing Preview/noindex.
+详细说明见 `docs/production-foundation.md`、`docs/runtime-modes.md`、`docs/data-model.md`、`docs/vehicle-allocation.md` 与 `docs/trip-room.md`。
