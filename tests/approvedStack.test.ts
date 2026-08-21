@@ -210,7 +210,7 @@ describe("已批准测试服务栈", () => {
     ).toBeNull();
     const maps = new GoogleMapsAdapter(undefined);
     expect(maps.connected).toBe(false);
-    expect(maps.navigationUrl({ lat: 35, lng: 135 })).toBeNull();
+    expect(maps.navigationUrl({ lat: 35, lng: 135 })).toContain("travelmode=walking");
   });
   it("Supabase auth/data/storage repositories 缺客户端时 fail closed", async () => {
     expect(new SupabaseAuthRepository(null).available).toBe(false);

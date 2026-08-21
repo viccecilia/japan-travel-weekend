@@ -18,6 +18,7 @@ import {
   reviewStatusFor,
 } from "../shared/services/passengerAssistance";
 import type { ChildSeatChoice } from "../shared/types";
+import { GoogleMapsAdapter } from "../shared/integrations/googleMaps";
 import { useApp } from "./store";
 const trips = travelRepository.listTrips();
 const Empty = ({
@@ -1025,6 +1026,9 @@ export function OrderDetail() {
   const dep = travelRepository.getDeparture(o.departureId);
   const pending = "待确认；确认后将在本订单详情和行程房间更新";
   const assistance = describeAssistance(o.assistance);
+  const navigationUrl = new GoogleMapsAdapter(undefined).navigationUrl(
+    dep?.meetingCoordinates ?? null,
+  );
   return (
     <>
       <AppTitle
@@ -1147,12 +1151,20 @@ export function OrderDetail() {
         ) : (
           <p>{pending}</p>
         )}
-        <div className="demo-map" role="img" aria-label="地图位置待确认">
-          <span className="map-label">地图位置待确认 · 地图服务未连接</span>
+        <div className="demo-map" role="img" aria-label="集合地点导航状态">
+          <span className="map-label">
+            {navigationUrl
+              ? "集合点坐标已确认，可使用外部步行导航"
+              : "集合点坐标待确认；不显示虚构地图"}
+          </span>
         </div>
-        <button className="button secondary full" disabled>
-          打开导航（地图未连接）
-        </button>
+        {navigationUrl ? (
+          <a className="button secondary full" href={navigationUrl} target="_blank" rel="noreferrer">
+            打开 Google Maps 步行导航
+          </a>
+        ) : (
+          <button className="button secondary full" disabled>步行导航待集合点确认</button>
+        )}
       </section>
       {state.tripRoom ? (
         <Link className="button full room-link" to="/app-demo/my-trip/room">
@@ -1171,8 +1183,9 @@ export function BoardingPass() {
   return o ? (
     <div className="pass">
       <h1>登车凭证</h1>
-      <p>订单：{o.id}</p>
       <p>状态：{o.status}</p>
+      <p>{appConfig.runtimeMode === "production" ? "安全登车凭证尚未由服务端签发。" : "当前为本地测试订单，不生成可用于正式登车的二维码。"}</p>
+      <p className="privacy">正式二维码仅包含可撤销的不透明令牌，不包含订单号、邮箱、电话或乘客资料。</p>
     </div>
   ) : (
     <Empty
