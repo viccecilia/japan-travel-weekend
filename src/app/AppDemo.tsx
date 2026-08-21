@@ -139,7 +139,9 @@ export function Login() {
         title="从关西周末出发"
         text={
           services
-            ? "登录测试账户"
+            ? production
+              ? "登录账户"
+              : "登录测试账户"
             : backend.connected
               ? "创建仅限当前会话的本地开发账户"
               : "正式账户服务尚未连接"
@@ -181,17 +183,21 @@ export function Login() {
         )}
         <button className="button full" disabled={!connected}>
           {services
-            ? "登录测试账户"
+            ? production
+              ? "登录账户"
+              : "登录测试账户"
             : backend.connected
               ? "创建本地开发账户"
               : "账户服务未连接"}
         </button>
         <p className="privacy">
           {services
-            ? "登录令牌由 Supabase 会话管理；订单读取受本人 RLS 限制。"
-          : production
-            ? "正式账户服务未配置，不会创建本地账户或加载演示订单。"
-            : "本地开发账户和会话只存在于内存，不写入 localStorage。"}
+            ? production
+              ? "使用安全账户会话；您只能查看本人有权访问的订单与行程。"
+              : "测试账户会话由 Supabase 管理；订单读取受本人 RLS 限制。"
+            : production
+              ? "正式账户服务未配置，不会创建本地账户或加载演示订单。"
+              : "本地开发账户和会话只存在于内存，不写入 localStorage。"}
         </p>
       </form>
     </>
@@ -779,6 +785,7 @@ export function Payment() {
   const availableMethods = services ? ["信用卡", "银行转账"] : methods;
   const [method, setMethod] = useState(availableMethods[0]);
   const [remoteStatus, setRemoteStatus] = useState("");
+  const production = appConfig.runtimeMode === "production";
   const nav = useNavigate();
   const simulate = () => {
     const id = `DEV-${Date.now().toString().slice(-6)}`;
@@ -813,8 +820,12 @@ export function Payment() {
       result?.status === "pending_manual_review"
         ? "银行转账已进入人工审核，尚未确认到账。"
         : result?.status === "requires_payment_action"
-          ? "测试支付会话已创建，尚未完成支付确认。"
-          : "测试结账服务暂时不可用。",
+          ? production
+            ? "在线支付会话已创建，尚未完成支付确认。"
+            : "测试支付会话已创建，尚未完成支付确认。"
+          : production
+            ? "在线结账暂时不可用，请稍后再试。"
+            : "测试结账服务暂时不可用。",
     );
   };
   const enabled = appConfig.runtimeMode !== "production";
@@ -824,8 +835,12 @@ export function Payment() {
       <div className="notice">
         {services
           ? services.checkoutAvailable
-            ? "仅连接测试后端；不会使用生产商户或真实扣款。"
-            : "账户服务可用，但结账服务尚未连接，当前不会创建订单或扣款。"
+            ? production
+              ? "在线结账入口已开放；支付结果以服务端确认状态为准。"
+              : "仅连接测试后端；不会使用生产商户或真实扣款。"
+            : production
+              ? "在线支付暂未开放；银行转账请等待开放通知。"
+              : "账户服务可用，但结账服务尚未连接，当前不会创建订单或扣款。"
           : "支付能力尚未连接，当前不会真实扣款。"}
       </div>
       <div className="payment-methods">
@@ -839,8 +854,12 @@ export function Payment() {
             <small>
               {services
                 ? services.checkoutAvailable
-                  ? "测试模式"
-                  : "结账未连接"
+                  ? production
+                    ? "以提交结果为准"
+                    : "测试模式"
+                  : production
+                    ? "暂未开放"
+                    : "结账未连接"
                 : enabled
                   ? "开发模拟"
                   : "尚未连接"}
@@ -860,8 +879,12 @@ export function Payment() {
       >
         {services
           ? services.checkoutAvailable
-            ? "提交测试结账"
-            : "结账服务未连接"
+            ? production
+              ? "继续在线结账"
+              : "提交测试结账"
+            : production
+              ? "在线支付暂未开放"
+              : "结账服务未连接"
           : enabled
             ? "模拟支付并创建开发订单"
             : "支付服务未开放"}
