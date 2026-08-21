@@ -13,6 +13,7 @@
 - 005 银行转账人工审核迁移与六项权限/状态回滚验收：PASS。
 - 正式中文账户登录/退出、本人订单四态与 Trip Room 冻结/开放/断线前端状态门：本地自动测试 PASS；缺公开配置时不回退假订单。
 - Realtime WebSocket 真实收发、虚构账户浏览器登录/远程订单读取和 Stripe 签名 Webhook 端到端联调：NOT RUN。
+- Realtime 006 权限对齐迁移与只读策略验收：本地静态检查 PASS，远程执行及 WebSocket 角色矩阵 NOT RUN。
 
 - Supabase 迁移按顺序执行一次；只读验收脚本可重复执行。
 - 并发最后一席、容量边界和重复 idempotency key 远程数据库行为：PASS。

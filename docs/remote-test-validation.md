@@ -7,6 +7,7 @@
 - `202608210001_test_stack_foundation.sql`：远程 SQL Editor 首次执行成功。
 - `202608210002_security_and_compensation.sql`：完整文件执行成功。此前一次失败是网页 CodeMirror 只替换了可见尾部、与旧 SQL 拼接导致的事务语法错误；不是迁移文件自身语法错误。
 - `202608210003_vehicle_group_membership_and_chat.sql`：远程 SQL Editor 执行成功。
+- `202608210006_align_realtime_vehicle_group_chat.sql`：待远程执行。该迁移不修改 003 helper；它严格解析 vehicle group topic 后直接调用 helper，避免 Realtime policy 再查询受 RLS 保护的业务表。
 
 三份迁移在该远程测试项目的结构执行结果为 **PASS**。它们是顺序、一次性迁移，不应重复粘贴执行。网页 SQL Editor 不作为仓库迁移账本；本次人工执行由本记录保存证据。新建 fresh project 时应按文件名顺序执行一次，之后运行只读验收脚本。未来自动化环境应改用 Supabase CLI migration ledger，避免人工重复执行。
 
@@ -44,6 +45,8 @@
 当前策略仅允许新对象 INSERT，没有 UPDATE 权限；对已有同名对象使用 `upsert` 会失败，这是当前预期限制。正式产品应优先使用不可变唯一文件名；若确需覆盖，必须另行设计受限 UPDATE policy、所有权校验和审计，不得直接放宽现有策略。
 
 以下仍为 **NOT RUN**：Realtime WebSocket 实际收发，以及 Stripe 签名 Webhook 端到端联调。
+
+006 远程执行后，先运行只读且可重复的 `supabase/verification/realtime_vehicle_group_policy_acceptance.sql`。随后用虚构角色验证 WebSocket：开放房间的本车订单本人、已分配工作人员及运营可发送；无关乘客不可收发；冻结或关闭房间的本车成员仍可订阅接收状态，但不可发送 broadcast。置顶履约信息继续从数据库读取，不依赖冻结期间 broadcast。
 
 ## 库存阶段门
 

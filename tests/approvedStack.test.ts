@@ -45,6 +45,14 @@ const membershipSql = readFileSync(
   ),
   "utf8",
 );
+const realtimeAlignmentSql = readFileSync(
+  join(process.cwd(), "supabase", "migrations", "202608210006_align_realtime_vehicle_group_chat.sql"),
+  "utf8",
+);
+const realtimeAcceptanceSql = readFileSync(
+  join(process.cwd(), "supabase", "verification", "realtime_vehicle_group_policy_acceptance.sql"),
+  "utf8",
+);
 const acceptanceSql = readFileSync(
   join(
     process.cwd(),
@@ -127,6 +135,16 @@ describe("已批准测试服务栈", () => {
     expect(membershipSql).toContain("to authenticated");
     expect(membershipSql).toContain("r.status='open'");
     expect(membershipSql).toContain("messages_open_room_insert");
+  });
+  it("006 Realtime 策略复用成员 helper、严格绑定 topic 且不直接查询 RLS 业务表", () => {
+    expect(realtimeAlignmentSql).toContain("public.can_receive_vehicle_group(split_part(realtime.topic(), ':', 3)::uuid)");
+    expect(realtimeAlignmentSql).toContain("public.can_send_vehicle_group_chat(split_part(realtime.topic(), ':', 3)::uuid)");
+    expect(realtimeAlignmentSql).toContain("to authenticated");
+    expect(realtimeAlignmentSql).toContain("for select");
+    expect(realtimeAlignmentSql).toContain("for insert");
+    expect(realtimeAlignmentSql).not.toMatch(/from public\.(vehicle_groups|orders|staff_assignments)/);
+    expect(realtimeAcceptanceSql).toContain("FAIL receive policy membership boundary");
+    expect(realtimeAcceptanceSql).toContain("FAIL send policy open-room boundary");
   });
   it("远程结构验收脚本只读并为每项不足提供清晰失败", () => {
     expect(acceptanceSql).not.toMatch(
