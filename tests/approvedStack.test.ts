@@ -89,6 +89,14 @@ const paymentRegressionSql = readFileSync(
   ),
   "utf8",
 );
+const boardingCredentialSql = readFileSync(
+  join(process.cwd(),"supabase","migrations","202608210007_secure_boarding_credentials.sql"),
+  "utf8",
+);
+const boardingRegressionSql = readFileSync(
+  join(process.cwd(),"supabase","verification","boarding_credential_regression.sql"),
+  "utf8",
+);
 describe("已批准测试服务栈", () => {
   it("静态迁移审计覆盖对象；此测试不代表数据库执行或 RLS 行为通过", () => {
     for (const name of [
@@ -203,6 +211,21 @@ describe("已批准测试服务栈", () => {
       expect(paymentRegressionSql).toContain(message);
     expect(paymentRegressionSql).toContain("payment_review");
     expect(paymentRegressionSql.trimEnd().endsWith("rollback;")).toBe(true);
+  });
+  it("007 登车凭证只保存摘要并通过可信原子 RPC 核验",()=>{
+    expect(boardingCredentialSql).toContain("token_digest bytea not null unique check(octet_length(token_digest)=32)");
+    expect(boardingCredentialSql).toContain("request_fingerprint_digest bytea not null check(octet_length(request_fingerprint_digest)=32)");
+    expect(boardingCredentialSql).toContain("for update");
+    expect(boardingCredentialSql).toContain("pg_advisory_xact_lock");
+    expect(boardingCredentialSql).toContain("current_user not in ('service_role','postgres')");
+    expect(boardingCredentialSql).toContain("set search_path=public,pg_temp");
+    expect(boardingCredentialSql).toContain("boarding_status_for_passenger");
+    expect(boardingCredentialSql).toContain("from public,anon,authenticated");
+    expect(boardingCredentialSql).not.toMatch(/raw_token|token_plaintext|email|phone/);
+  });
+  it("登车回归 SQL 覆盖角色、状态、幂等和重复核验并强制回滚",()=>{
+    for(const message of ['FAIL passenger scanner','FAIL first driver scan','FAIL idempotent retry','FAIL idempotency mismatch','FAIL second scan','FAIL guide scan','FAIL operations scan','FAIL expired scan','FAIL revoked scan','FAIL wrong vehicle scan','FAIL boarding was not atomically completed','FAIL private table grants','FAIL verify execute grants'])expect(boardingRegressionSql).toContain(message);
+    expect(boardingRegressionSql.trimEnd().endsWith('rollback;')).toBe(true);
   });
   it("Supabase 与 Maps 缺配置 fail closed", () => {
     expect(

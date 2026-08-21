@@ -8,6 +8,7 @@
 - `202608210002_security_and_compensation.sql`：完整文件执行成功。此前一次失败是网页 CodeMirror 只替换了可见尾部、与旧 SQL 拼接导致的事务语法错误；不是迁移文件自身语法错误。
 - `202608210003_vehicle_group_membership_and_chat.sql`：远程 SQL Editor 执行成功。
 - `202608210006_align_realtime_vehicle_group_chat.sql`：待远程执行。该迁移不修改 003 helper；它严格解析 vehicle group topic 后直接调用 helper，避免 Realtime policy 再查询受 RLS 保护的业务表。
+- `202608210007_secure_boarding_credentials.sql`：待远程执行。仅保存 SHA-256 digest 的凭证、核验审计和 trusted RPC 已完成本地静态验证；远程回滚回归及双会话并发均为 NOT RUN。
 
 三份迁移在该远程测试项目的结构执行结果为 **PASS**。它们是顺序、一次性迁移，不应重复粘贴执行。网页 SQL Editor 不作为仓库迁移账本；本次人工执行由本记录保存证据。新建 fresh project 时应按文件名顺序执行一次，之后运行只读验收脚本。未来自动化环境应改用 Supabase CLI migration ledger，避免人工重复执行。
 
