@@ -1,0 +1,17 @@
+import {readFileSync} from 'node:fs';
+import {join} from 'node:path';
+import {describe,expect,it} from 'vitest';
+import Stripe from 'stripe';
+import {acceptPaymentTransition,StripeTestAdapter,mapStripeEvent,type PaymentEventStore} from '../server/stripe';
+import {GoogleMapsAdapter} from '../src/shared/integrations/googleMaps';
+import {createSupabaseBrowserClient} from '../src/shared/integrations/supabaseClient';
+
+const sql=readFileSync(join(process.cwd(),'supabase','migrations','202608210001_test_stack_foundation.sql'),'utf8');
+describe('已批准测试服务栈',()=>{
+  it('迁移覆盖数据边界、RLS、原子库存和支付幂等',()=>{for(const name of ['profiles','trips','departures','orders','passengers','passenger_assistance','inventory_locks','vehicle_assignments','vehicle_groups','staff_assignments','trip_rooms','trip_room_messages','location_shares','boardings','payment_events'])expect(sql).toContain(`table public.${name}`);expect(sql).toContain('for update');expect(sql).toContain('unique(account_id,idempotency_key)');expect(sql).toContain('enable row level security');expect(sql).toContain('locations_subject_or_staff_ops');expect(sql).toContain('provider_event_id text not null unique')});
+  it('Supabase 与 Maps 缺配置 fail closed',()=>{expect(createSupabaseBrowserClient({url:'',publishableKey:''})).toBeNull();const maps=new GoogleMapsAdapter(undefined);expect(maps.connected).toBe(false);expect(maps.navigationUrl({lat:35,lng:135})).toBeNull()});
+  it('Maps 只生成步行导航入口且不包含 key',()=>{const maps=new GoogleMapsAdapter('restricted-browser-key');const url=maps.navigationUrl({lat:35.1,lng:135.2});expect(url).toContain('travelmode=walking');expect(url).not.toContain('restricted-browser-key')});
+  it('Stripe 仅接受测试密钥且映射失败、取消和退款',()=>{expect(new StripeTestAdapter({secretKey:'sk_live_forbidden',webhookSecret:'whsec_test'}).available).toBe(false);expect(mapStripeEvent('payment_intent.payment_failed')).toBe('failed');expect(mapStripeEvent('payment_intent.canceled')).toBe('cancelled');expect(mapStripeEvent('charge.refunded')).toBe('refunded')});
+  it('Stripe 乱序事件不能回退已成功或已退款状态',()=>{expect(acceptPaymentTransition({status:'succeeded',eventCreatedAt:'2026-08-21T02:00:00Z'},{status:'failed',eventCreatedAt:'2026-08-21T01:00:00Z'})).toBe(false);expect(acceptPaymentTransition({status:'refunded',eventCreatedAt:'2026-08-21T03:00:00Z'},{status:'succeeded',eventCreatedAt:'2026-08-21T04:00:00Z'})).toBe(false);expect(acceptPaymentTransition({status:'succeeded',eventCreatedAt:'2026-08-21T02:00:00Z'},{status:'refunded',eventCreatedAt:'2026-08-21T03:00:00Z'})).toBe(true)});
+  it('Stripe Webhook 拒绝伪造签名并去重合法事件',async()=>{const secret='whsec_local_only';const adapter=new StripeTestAdapter({secretKey:'sk_test_local_placeholder',webhookSecret:secret});const payload=JSON.stringify({id:'evt_local_1',object:'event',api_version:'2025-07-30.basil',created:1700000000,type:'payment_intent.succeeded',data:{object:{id:'pi_local',object:'payment_intent',metadata:{order_id:'order-local'}}}});const applied:string[]=[];const store:PaymentEventStore={has:async id=>applied.includes(id),apply:async event=>{applied.push(event.providerEventId);return true}};expect((await adapter.handleWebhook(Buffer.from(payload),'bad',store)).accepted).toBe(false);const signature=Stripe.webhooks.generateTestHeaderString({payload,secret});expect((await adapter.handleWebhook(Buffer.from(payload),signature,store)).accepted).toBe(true);expect((await adapter.handleWebhook(Buffer.from(payload),signature,store)).duplicate).toBe(true);expect(applied).toEqual(['evt_local_1'])});
+});

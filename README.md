@@ -1,5 +1,7 @@
 # Japan Travel Weekend
 
+测试服务栈已批准为 Supabase + Stripe + Google Maps Platform，当前仅包含本地可验证的迁移和适配器基础，未连接远程项目。配置变量见 `.env.example`，操作与安全边界见 `docs/approved-test-service-stack.md`。
+
 面向关西国际居民的周末拼席旅行产品基础工程，由株式会社大寅／大寅集团运营。本仓库独立于 `japan-travel.info`。
 
 ## 本地运行

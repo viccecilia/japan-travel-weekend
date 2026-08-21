@@ -1,5 +1,7 @@
 # 真实服务接入准备
 
+已批准的测试栈为 Supabase、Stripe 测试模式和 Google Maps Platform；生产供应商与生产账户仍未批准。具体迁移、测试模式限制和最小凭证见 `approved-test-service-stack.md`。
+
 ## 现状与缺口
 
 现有端口覆盖 TravelRepository、AccountRepository、SessionRepository、AuthProvider、InventoryProvider、PaymentProvider、MapProvider、BoardingProvider、NotificationProvider；本准备包新增 RealtimeProvider 和统一生产配置校验。仍需真实实现：服务端 API 路由、数据库驱动与迁移执行器、安全 Cookie／CSRF、邮箱验证和密码恢复、支付签名回调、地图坐标解析、Vehicle Group 私有 realtime 鉴权、通知回执／退订、对象存储、审计日志、监控与备份恢复。
