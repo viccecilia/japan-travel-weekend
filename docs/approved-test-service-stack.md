@@ -6,13 +6,17 @@
 
 迁移位于 `supabase/migrations/202608210001_test_stack_foundation.sql`。应用顺序为：测试项目创建 → CLI 链接测试项目 → dry-run／差异审阅 → 执行迁移 → RLS 负面测试 → 导入无个人信息的测试目录数据。严禁先导入订单、乘客或位置数据。
 
+安全修正迁移位于 `202608210002_security_and_compensation.sql`：auth.users trigger 只创建 passenger profile；客户端只有读权限和受控的本人显示名 RPC，不能更新 role 或直接写业务表。服务端事务 RPC 只授予 service_role，accountId 必须来自服务端已验证 session。原始辅助需求与工作人员履约投影分表，司机／司导不能读取儿童年龄或完整说明。私有 Realtime 通过 `realtime.messages` topic 策略授权；订单文件 bucket 为 private，路径首段必须是 auth.uid。
+
+当前机器没有 Docker，因此 Supabase CLI 本地数据库启动、SQL 实际执行、RLS 越权查询和 Storage／Realtime policy 实测均为 **NOT RUN**。单元测试中的 SQL 检查只叫“静态迁移审计”；并发、幂等、迟到支付和权限可见字段由独立领域模型做本地行为测试，不能替代 PostgreSQL 集成测试。
+
 浏览器只使用项目 URL 与 publishable/anon key；service role key 只进入服务端秘密管理器。私密辅助需求使用独立表和加密载荷；普通 Vehicle Group 查询不连接该表。位置只允许本人、运营和本车工作人员读取。
 
 库存由 `reserve_inventory` 在锁定 departure 行后计算有效 hold；订单幂等键和库存锁幂等键均唯一。`release_expired_inventory` 过期释放，`cancel_pending_order` 取消待支付订单并释放，`apply_payment_event` 去重支付事件并提交库存。车辆分配继续读取已确认订单和履约需求，Sequential Fill 算法保持先填满 Vehicle 1，已满车辆不重排。
 
 ## Stripe 测试模式
 
-只接受 `sk_test_` 前缀。Payment Intent 由服务端按订单金额创建，客户端状态不推进订单。Webhook 端点必须取得原始请求体，先调用 Stripe 官方验签，再以 event ID 去重并写入 `payment_events`。失败、取消、成功、退款分别映射；乱序事件按供应商事件时间和不可逆业务状态处理。
+只接受 `sk_test_` 前缀。Payment Intent 由服务端按订单金额创建，客户端状态不推进订单。Webhook 端点必须取得原始请求体，先调用 Stripe 官方验签，再以 event ID 去重并写入 `payment_events`。`payment_intent.*` 从 PaymentIntent metadata 取内部订单；`charge.refunded` 的对象是 Charge，必须用其 `payment_intent` 在服务端订单库反查，不能信任 Charge／Refund metadata。失败、取消、成功、退款分别映射；乱序事件按供应商事件时间和不可逆业务状态处理。
 
 本地单元测试使用 Stripe 官方测试签名生成器，不发网络请求、不收费。测试 key 缺失或误填 live key 时适配器不可用。
 

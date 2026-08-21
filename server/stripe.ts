@@ -2,7 +2,7 @@ import Stripe from 'stripe';
 import {createHash} from 'node:crypto';
 
 export type StripeTestConfig={secretKey:string;webhookSecret:string};
-export type PaymentEventStore={has(providerEventId:string):Promise<boolean>;apply(input:{providerEventId:string;orderId:string;status:'succeeded'|'failed'|'cancelled'|'refunded';createdAt:string;payloadDigest:string}):Promise<boolean>};
+export type PaymentEventStore={has(providerEventId:string):Promise<boolean>;findOrderIdByPaymentIntent(paymentIntentId:string):Promise<string|null>;apply(input:{providerEventId:string;orderId:string;status:'succeeded'|'failed'|'cancelled'|'refunded';createdAt:string;payloadDigest:string}):Promise<boolean>};
 export class StripeTestAdapter{
   private readonly stripe:Stripe|null;
   constructor(private readonly config:StripeTestConfig){this.stripe=config.secretKey.startsWith('sk_test_')?new Stripe(config.secretKey):null}
@@ -16,13 +16,17 @@ export class StripeTestAdapter{
     let event:Stripe.Event;
     try{event=this.stripe.webhooks.constructEvent(rawBody,signature,this.config.webhookSecret)}catch{return {accepted:false,reason:'invalid-signature'} as const}
     if(await store.has(event.id))return {accepted:true,duplicate:true} as const;
-    const object=event.data.object as Stripe.PaymentIntent|Stripe.Refund;
-    const orderId='metadata' in object?object.metadata?.order_id:undefined;
+    const orderId=await extractOrderId(event,store);
     if(!orderId)return {accepted:false,reason:'missing-order'} as const;
     const status=mapStripeEvent(event.type);if(!status)return {accepted:true,ignored:true} as const;
     const applied=await store.apply({providerEventId:event.id,orderId,status,createdAt:new Date(event.created*1000).toISOString(),payloadDigest:createHash('sha256').update(rawBody).digest('hex')});
     return {accepted:applied,duplicate:false} as const;
   }
+}
+export async function extractOrderId(event:Stripe.Event,store:Pick<PaymentEventStore,'findOrderIdByPaymentIntent'>){
+  if(event.type.startsWith('payment_intent.'))return (event.data.object as Stripe.PaymentIntent).metadata?.order_id||null;
+  if(event.type==='charge.refunded'){const charge=event.data.object as Stripe.Charge;const paymentIntentId=typeof charge.payment_intent==='string'?charge.payment_intent:charge.payment_intent?.id;if(!paymentIntentId)return null;return store.findOrderIdByPaymentIntent(paymentIntentId)}
+  return null;
 }
 export function mapStripeEvent(type:string){if(type==='payment_intent.succeeded')return 'succeeded' as const;if(type==='payment_intent.payment_failed')return 'failed' as const;if(type==='payment_intent.canceled')return 'cancelled' as const;if(type==='charge.refunded')return 'refunded' as const;return null}
 export function acceptPaymentTransition(current:{status:'created'|'processing'|'succeeded'|'failed'|'cancelled'|'refunded';eventCreatedAt:string}|null,next:{status:'succeeded'|'failed'|'cancelled'|'refunded';eventCreatedAt:string}){
