@@ -7,6 +7,7 @@
 - 四个虚构角色登录及订单本人／无关乘客／司机／运营 RLS 读取矩阵：PASS。
 - 冻结群拒绝订单本人写入、临时开放允许本车订单本人写入、开放群仍拒绝无关乘客：PASS。
 - 私有 Storage 新文件上传和读取隔离：PASS；同名对象 upsert 因无 UPDATE policy 按预期失败。
+- 库存 RPC 远程阶段门：FAIL（发现 42702 裸列歧义）；004 修复迁移及回滚式回归脚本待远程执行。
 - Realtime WebSocket 收发、库存远程并发、库存锁过期支付补偿和 Stripe Webhook 远程联调：NOT RUN。
 
 - Supabase 迁移按顺序执行一次；只读验收脚本可重复执行。

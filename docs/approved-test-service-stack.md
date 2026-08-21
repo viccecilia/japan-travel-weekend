@@ -16,6 +16,8 @@
 
 库存由 `reserve_inventory` 在锁定 departure 行后计算有效 hold；订单幂等键和库存锁幂等键均唯一。`release_expired_inventory` 过期释放，`cancel_pending_order` 取消待支付订单并释放，`apply_payment_event` 去重支付事件并提交库存。车辆分配继续读取已确认订单和履约需求，Sequential Fill 算法保持先填满 Vehicle 1，已满车辆不重排。
 
+远程库存验证发现旧函数幂等分支存在 42702 列名歧义。004 迁移以全限定别名替换函数；部署前库存数据库阶段门为 FAIL，不能使用旧函数承接测试订单。部署后必须运行 `supabase/verification/reserve_inventory_regression.sql` 并取得 PASS。
+
 ## Stripe 测试模式
 
 只接受 `sk_test_` 前缀。Payment Intent 由服务端按订单金额创建，客户端状态不推进订单。Webhook 端点必须取得原始请求体，先调用 Stripe 官方验签，再以 event ID 去重并写入 `payment_events`。`payment_intent.*` 从 PaymentIntent metadata 取内部订单；`charge.refunded` 的对象是 Charge，必须用其 `payment_intent` 在服务端订单库反查，不能信任 Charge／Refund metadata。失败、取消、成功、退款分别映射；乱序事件按供应商事件时间和不可逆业务状态处理。

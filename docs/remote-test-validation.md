@@ -44,3 +44,11 @@
 当前策略仅允许新对象 INSERT，没有 UPDATE 权限；对已有同名对象使用 `upsert` 会失败，这是当前预期限制。正式产品应优先使用不可变唯一文件名；若确需覆盖，必须另行设计受限 UPDATE policy、所有权校验和审计，不得直接放宽现有策略。
 
 以下仍为 **NOT RUN**：Realtime WebSocket 实际收发、库存并发最后一席、库存锁过期支付补偿，以及 Stripe Webhook 远程联调。
+
+## 库存阶段门缺陷与待部署修复
+
+远程库存验证发现 `reserve_inventory` 的幂等重试查询存在 PostgreSQL 42702：`RETURNS TABLE` 输出变量 `order_id` 与 `inventory_locks.order_id` 裸列引用冲突。库存远程阶段门当前为 **FAIL／待部署修复**，此前的本地域模型 PASS 不等于数据库函数 PASS。
+
+修复迁移为 `202608210004_fix_reserve_inventory_ambiguity.sql`，未修改已经执行的旧迁移。函数内订单、库存锁、Departure 和聚合列全部使用明确表别名，同时保留 trusted-service 限制、参数一致性、Departure 行锁、过期 hold、容量计算和幂等返回。
+
+部署 004 后运行 `supabase/verification/reserve_inventory_regression.sql`。脚本要求测试项目已有至少一个虚构 profile；它在单一事务中验证第 1–6 席、精确满 6、第 7 席拒绝、相同参数返回相同订单/hold ID、同 key 参数不一致拒绝、零席、过期时间和关闭 Departure 边界，最后 `ROLLBACK`。在远程实际执行 004 和该脚本前，修复状态保持 **NOT RUN／待部署**。
