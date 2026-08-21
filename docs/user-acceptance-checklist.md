@@ -11,7 +11,8 @@
 - 两个独立 SQL 会话的最后一席并发：PASS；第二事务等待行锁后被余量检查拒绝，无超卖。
 - 数据库支付事件与补偿函数回滚式远程回归：PASS。
 - 005 银行转账人工审核迁移与六项权限/状态回滚验收：PASS。
-- Realtime WebSocket 收发和 Stripe 签名 Webhook 端到端联调：NOT RUN。
+- 正式中文账户登录/退出、本人订单四态与 Trip Room 冻结/开放/断线前端状态门：本地自动测试 PASS；缺公开配置时不回退假订单。
+- Realtime WebSocket 真实收发、虚构账户浏览器登录/远程订单读取和 Stripe 签名 Webhook 端到端联调：NOT RUN。
 
 - Supabase 迁移按顺序执行一次；只读验收脚本可重复执行。
 - 并发最后一席、容量边界和重复 idempotency key 远程数据库行为：PASS。

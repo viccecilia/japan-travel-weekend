@@ -1,32 +1,331 @@
-import {readFileSync} from 'node:fs';
-import {join} from 'node:path';
-import {describe,expect,it} from 'vitest';
-import Stripe from 'stripe';
-import {acceptPaymentTransition,extractOrderId,StripeTestAdapter,mapStripeEvent,type PaymentEventStore} from '../server/stripe';
-import {GoogleMapsAdapter} from '../src/shared/integrations/googleMaps';
-import {createSupabaseBrowserClient} from '../src/shared/integrations/supabaseClient';
-import {SupabaseAuthRepository,SupabaseOrderRepository,SupabasePrivateStorageAdapter} from '../src/shared/integrations/supabaseProduction';
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+import Stripe from "stripe";
+import {
+  acceptPaymentTransition,
+  extractOrderId,
+  StripeTestAdapter,
+  mapStripeEvent,
+  type PaymentEventStore,
+} from "../server/stripe";
+import { GoogleMapsAdapter } from "../src/shared/integrations/googleMaps";
+import { createSupabaseBrowserClient } from "../src/shared/integrations/supabaseClient";
+import {
+  SupabaseAuthRepository,
+  SupabaseOrderRepository,
+  SupabasePrivateStorageAdapter,
+  SupabaseTripRoomRepository,
+} from "../src/shared/integrations/supabaseProduction";
 
-const sql=readFileSync(join(process.cwd(),'supabase','migrations','202608210001_test_stack_foundation.sql'),'utf8');
-const securitySql=readFileSync(join(process.cwd(),'supabase','migrations','202608210002_security_and_compensation.sql'),'utf8');
-const membershipSql=readFileSync(join(process.cwd(),'supabase','migrations','202608210003_vehicle_group_membership_and_chat.sql'),'utf8');
-const acceptanceSql=readFileSync(join(process.cwd(),'supabase','verification','remote_structure_acceptance.sql'),'utf8');
-const inventoryFixSql=readFileSync(join(process.cwd(),'supabase','migrations','202608210004_fix_reserve_inventory_ambiguity.sql'),'utf8');
-const inventoryRegressionSql=readFileSync(join(process.cwd(),'supabase','verification','reserve_inventory_regression.sql'),'utf8');
-const paymentRegressionSql=readFileSync(join(process.cwd(),'supabase','verification','payment_and_compensation_regression.sql'),'utf8');
-describe('已批准测试服务栈',()=>{
-  it('静态迁移审计覆盖对象；此测试不代表数据库执行或 RLS 行为通过',()=>{for(const name of ['profiles','trips','departures','orders','passengers','passenger_assistance','inventory_locks','vehicle_assignments','vehicle_groups','staff_assignments','trip_rooms','trip_room_messages','location_shares','boardings','payment_events'])expect(sql).toContain(`table public.${name}`);expect(sql).toContain('for update');expect(sql).toContain('unique(account_id,idempotency_key)');expect(sql).toContain('enable row level security');expect(sql).toContain('locations_subject_or_staff_ops');expect(sql).toContain('provider_event_id text not null unique')});
-  it('安全修正迁移静态审计包含 auth trigger、写权限收口、投影、Realtime 和 Storage',()=>{expect(securitySql).toContain('on_auth_user_created');expect(securitySql).toContain('revoke all on all tables in schema public from anon,authenticated');expect(securitySql).toContain('passenger_assistance_staff_projection');expect(securitySql).toContain('on realtime.messages');expect(securitySql).toContain("'private-order-files'");expect(securitySql).toContain("current_user not in ('service_role','postgres')")});
-  it('成员 helper 静态审计固定 search_path、收回 public execute 并要求开放房间',()=>{expect(membershipSql).toContain('security definer set search_path=public,pg_temp');expect(membershipSql).toContain('from public,anon');expect(membershipSql).toContain('to authenticated');expect(membershipSql).toContain("r.status='open'");expect(membershipSql).toContain('messages_open_room_insert')});
-  it('远程结构验收脚本只读并为每项不足提供清晰失败',()=>{expect(acceptanceSql).not.toMatch(/\b(insert|update|delete|alter|create|drop|grant|revoke)\b/i);for(const name of ['public_tables','rls_tables','public_policies','realtime_policies','storage_policies','security_functions','auth_triggers','private_buckets'])expect(acceptanceSql).toContain(`FAIL ${name}`);expect(acceptanceSql).not.toMatch(/https?:\/\/|sb_(publishable|secret)_|eyJ[A-Za-z0-9_-]+\./)});
-  it('004 库存函数对冲突列使用明确别名并保留安全与锁边界',()=>{expect(inventoryFixSql).toContain('il.order_id=v_existing_order.id');expect(inventoryFixSql).toContain('ord.account_id=p_account');expect(inventoryFixSql).toContain('dep.id=p_departure');expect(inventoryFixSql).toContain('il.departure_id=p_departure');expect(inventoryFixSql).toContain('for update');expect(inventoryFixSql).toContain("current_user not in ('service_role','postgres')");expect(inventoryFixSql).not.toMatch(/where\s+order_id\s*=/i)});
-  it('库存回归 SQL 覆盖容量、幂等冲突和无效输入并强制回滚',()=>{for(const message of ['FAIL exact capacity','FAIL seventh seat','FAIL idempotent retry','FAIL mismatched idempotency','FAIL zero seats','FAIL expired hold','FAIL closed departure'])expect(inventoryRegressionSql).toContain(message);expect(inventoryRegressionSql.trimEnd().endsWith('rollback;')).toBe(true)});
-  it('支付补偿回归 SQL 覆盖幂等、乱序、库存状态、退款和取消并强制回滚',()=>{for(const message of ['FAIL duplicate event id','FAIL older event','FAIL valid success','FAIL expired hold success','FAIL released hold success','FAIL refund','FAIL release_expired_inventory','FAIL repeated cancellation'])expect(paymentRegressionSql).toContain(message);expect(paymentRegressionSql).toContain('payment_review');expect(paymentRegressionSql.trimEnd().endsWith('rollback;')).toBe(true)});
-  it('Supabase 与 Maps 缺配置 fail closed',()=>{expect(createSupabaseBrowserClient({url:'',publishableKey:''})).toBeNull();const maps=new GoogleMapsAdapter(undefined);expect(maps.connected).toBe(false);expect(maps.navigationUrl({lat:35,lng:135})).toBeNull()});
-  it('Supabase auth/data/storage repositories 缺客户端时 fail closed',async()=>{expect(new SupabaseAuthRepository(null).available).toBe(false);expect(await new SupabaseAuthRepository(null).currentUser()).toBeNull();expect(await new SupabaseOrderRepository(null).listOwnOrders()).toEqual([]);expect(await new SupabasePrivateStorageAdapter(null).uploadOrderFile('a','o','x.jpg',new Blob())).toBeNull()});
-  it('Maps 只生成步行导航入口且不包含 key',()=>{const maps=new GoogleMapsAdapter('restricted-browser-key');const url=maps.navigationUrl({lat:35.1,lng:135.2});expect(url).toContain('travelmode=walking');expect(url).not.toContain('restricted-browser-key')});
-  it('Stripe 仅接受测试密钥且映射失败、取消和退款',()=>{expect(new StripeTestAdapter({secretKey:'sk_live_forbidden',webhookSecret:'whsec_test'}).available).toBe(false);expect(mapStripeEvent('payment_intent.payment_failed')).toBe('failed');expect(mapStripeEvent('payment_intent.canceled')).toBe('cancelled');expect(mapStripeEvent('charge.refunded')).toBe('refunded')});
-  it('Stripe 乱序事件不能回退已成功或已退款状态',()=>{expect(acceptPaymentTransition({status:'succeeded',eventCreatedAt:'2026-08-21T02:00:00Z'},{status:'failed',eventCreatedAt:'2026-08-21T01:00:00Z'})).toBe(false);expect(acceptPaymentTransition({status:'refunded',eventCreatedAt:'2026-08-21T03:00:00Z'},{status:'succeeded',eventCreatedAt:'2026-08-21T04:00:00Z'})).toBe(false);expect(acceptPaymentTransition({status:'succeeded',eventCreatedAt:'2026-08-21T02:00:00Z'},{status:'refunded',eventCreatedAt:'2026-08-21T03:00:00Z'})).toBe(true)});
-  it('Stripe Webhook 拒绝伪造签名并去重合法事件',async()=>{const secret='whsec_local_only';const adapter=new StripeTestAdapter({secretKey:'sk_test_local_placeholder',webhookSecret:secret});const payload=JSON.stringify({id:'evt_local_1',object:'event',api_version:'2025-07-30.basil',created:1700000000,type:'payment_intent.succeeded',data:{object:{id:'pi_local',object:'payment_intent',metadata:{order_id:'order-local'}}}});const applied:string[]=[];const store:PaymentEventStore={has:async id=>applied.includes(id),findOrderIdByPaymentIntent:async()=>null,apply:async event=>{applied.push(event.providerEventId);return true}};expect((await adapter.handleWebhook(Buffer.from(payload),'bad',store)).accepted).toBe(false);const signature=Stripe.webhooks.generateTestHeaderString({payload,secret});expect((await adapter.handleWebhook(Buffer.from(payload),signature,store)).accepted).toBe(true);expect((await adapter.handleWebhook(Buffer.from(payload),signature,store)).duplicate).toBe(true);expect(applied).toEqual(['evt_local_1'])});
-  it('charge.refunded 通过 PaymentIntent 关联订单而非假设 Charge metadata',async()=>{const event={type:'charge.refunded',data:{object:{payment_intent:'pi_refunded',metadata:{order_id:'wrong'}}}} as unknown as Stripe.Event;expect(await extractOrderId(event,{findOrderIdByPaymentIntent:async id=>id==='pi_refunded'?'order-correct':null})).toBe('order-correct')});
+const sql = readFileSync(
+  join(
+    process.cwd(),
+    "supabase",
+    "migrations",
+    "202608210001_test_stack_foundation.sql",
+  ),
+  "utf8",
+);
+const securitySql = readFileSync(
+  join(
+    process.cwd(),
+    "supabase",
+    "migrations",
+    "202608210002_security_and_compensation.sql",
+  ),
+  "utf8",
+);
+const membershipSql = readFileSync(
+  join(
+    process.cwd(),
+    "supabase",
+    "migrations",
+    "202608210003_vehicle_group_membership_and_chat.sql",
+  ),
+  "utf8",
+);
+const acceptanceSql = readFileSync(
+  join(
+    process.cwd(),
+    "supabase",
+    "verification",
+    "remote_structure_acceptance.sql",
+  ),
+  "utf8",
+);
+const inventoryFixSql = readFileSync(
+  join(
+    process.cwd(),
+    "supabase",
+    "migrations",
+    "202608210004_fix_reserve_inventory_ambiguity.sql",
+  ),
+  "utf8",
+);
+const inventoryRegressionSql = readFileSync(
+  join(
+    process.cwd(),
+    "supabase",
+    "verification",
+    "reserve_inventory_regression.sql",
+  ),
+  "utf8",
+);
+const paymentRegressionSql = readFileSync(
+  join(
+    process.cwd(),
+    "supabase",
+    "verification",
+    "payment_and_compensation_regression.sql",
+  ),
+  "utf8",
+);
+describe("已批准测试服务栈", () => {
+  it("静态迁移审计覆盖对象；此测试不代表数据库执行或 RLS 行为通过", () => {
+    for (const name of [
+      "profiles",
+      "trips",
+      "departures",
+      "orders",
+      "passengers",
+      "passenger_assistance",
+      "inventory_locks",
+      "vehicle_assignments",
+      "vehicle_groups",
+      "staff_assignments",
+      "trip_rooms",
+      "trip_room_messages",
+      "location_shares",
+      "boardings",
+      "payment_events",
+    ])
+      expect(sql).toContain(`table public.${name}`);
+    expect(sql).toContain("for update");
+    expect(sql).toContain("unique(account_id,idempotency_key)");
+    expect(sql).toContain("enable row level security");
+    expect(sql).toContain("locations_subject_or_staff_ops");
+    expect(sql).toContain("provider_event_id text not null unique");
+  });
+  it("安全修正迁移静态审计包含 auth trigger、写权限收口、投影、Realtime 和 Storage", () => {
+    expect(securitySql).toContain("on_auth_user_created");
+    expect(securitySql).toContain(
+      "revoke all on all tables in schema public from anon,authenticated",
+    );
+    expect(securitySql).toContain("passenger_assistance_staff_projection");
+    expect(securitySql).toContain("on realtime.messages");
+    expect(securitySql).toContain("'private-order-files'");
+    expect(securitySql).toContain(
+      "current_user not in ('service_role','postgres')",
+    );
+  });
+  it("成员 helper 静态审计固定 search_path、收回 public execute 并要求开放房间", () => {
+    expect(membershipSql).toContain(
+      "security definer set search_path=public,pg_temp",
+    );
+    expect(membershipSql).toContain("from public,anon");
+    expect(membershipSql).toContain("to authenticated");
+    expect(membershipSql).toContain("r.status='open'");
+    expect(membershipSql).toContain("messages_open_room_insert");
+  });
+  it("远程结构验收脚本只读并为每项不足提供清晰失败", () => {
+    expect(acceptanceSql).not.toMatch(
+      /\b(insert|update|delete|alter|create|drop|grant|revoke)\b/i,
+    );
+    for (const name of [
+      "public_tables",
+      "rls_tables",
+      "public_policies",
+      "realtime_policies",
+      "storage_policies",
+      "security_functions",
+      "auth_triggers",
+      "private_buckets",
+    ])
+      expect(acceptanceSql).toContain(`FAIL ${name}`);
+    expect(acceptanceSql).not.toMatch(
+      /https?:\/\/|sb_(publishable|secret)_|eyJ[A-Za-z0-9_-]+\./,
+    );
+  });
+  it("004 库存函数对冲突列使用明确别名并保留安全与锁边界", () => {
+    expect(inventoryFixSql).toContain("il.order_id=v_existing_order.id");
+    expect(inventoryFixSql).toContain("ord.account_id=p_account");
+    expect(inventoryFixSql).toContain("dep.id=p_departure");
+    expect(inventoryFixSql).toContain("il.departure_id=p_departure");
+    expect(inventoryFixSql).toContain("for update");
+    expect(inventoryFixSql).toContain(
+      "current_user not in ('service_role','postgres')",
+    );
+    expect(inventoryFixSql).not.toMatch(/where\s+order_id\s*=/i);
+  });
+  it("库存回归 SQL 覆盖容量、幂等冲突和无效输入并强制回滚", () => {
+    for (const message of [
+      "FAIL exact capacity",
+      "FAIL seventh seat",
+      "FAIL idempotent retry",
+      "FAIL mismatched idempotency",
+      "FAIL zero seats",
+      "FAIL expired hold",
+      "FAIL closed departure",
+    ])
+      expect(inventoryRegressionSql).toContain(message);
+    expect(inventoryRegressionSql.trimEnd().endsWith("rollback;")).toBe(true);
+  });
+  it("支付补偿回归 SQL 覆盖幂等、乱序、库存状态、退款和取消并强制回滚", () => {
+    for (const message of [
+      "FAIL duplicate event id",
+      "FAIL older event",
+      "FAIL valid success",
+      "FAIL expired hold success",
+      "FAIL released hold success",
+      "FAIL refund",
+      "FAIL release_expired_inventory",
+      "FAIL repeated cancellation",
+    ])
+      expect(paymentRegressionSql).toContain(message);
+    expect(paymentRegressionSql).toContain("payment_review");
+    expect(paymentRegressionSql.trimEnd().endsWith("rollback;")).toBe(true);
+  });
+  it("Supabase 与 Maps 缺配置 fail closed", () => {
+    expect(
+      createSupabaseBrowserClient({ url: "", publishableKey: "" }),
+    ).toBeNull();
+    const maps = new GoogleMapsAdapter(undefined);
+    expect(maps.connected).toBe(false);
+    expect(maps.navigationUrl({ lat: 35, lng: 135 })).toBeNull();
+  });
+  it("Supabase auth/data/storage repositories 缺客户端时 fail closed", async () => {
+    expect(new SupabaseAuthRepository(null).available).toBe(false);
+    expect(await new SupabaseAuthRepository(null).currentUser()).toBeNull();
+    expect(await new SupabaseOrderRepository(null).listOwnOrders()).toEqual([]);
+    expect(
+      await new SupabasePrivateStorageAdapter(null).uploadOrderFile(
+        "a",
+        "o",
+        "x.jpg",
+        new Blob(),
+      ),
+    ).toBeNull();
+  });
+  it("账户退出、订单状态和 Trip Room 缺配置时不回退假数据", async () => {
+    expect(await new SupabaseAuthRepository(null).signOut()).toBe(false);
+    expect(await new SupabaseOrderRepository(null).loadOwnOrders()).toEqual({
+      data: [],
+      error: "账户服务未配置",
+    });
+    expect(
+      await new SupabaseTripRoomRepository(null).loadAccessibleRoom(),
+    ).toEqual({ data: null, error: "行程房间服务未配置" });
+    expect(
+      await new SupabaseTripRoomRepository(null).loadMessages("room"),
+    ).toEqual([]);
+    expect(
+      await new SupabaseTripRoomRepository(null).sendMessage(
+        "room",
+        "user",
+        "message",
+      ),
+    ).toBe(false);
+  });
+  it("Maps 只生成步行导航入口且不包含 key", () => {
+    const maps = new GoogleMapsAdapter("restricted-browser-key");
+    const url = maps.navigationUrl({ lat: 35.1, lng: 135.2 });
+    expect(url).toContain("travelmode=walking");
+    expect(url).not.toContain("restricted-browser-key");
+  });
+  it("Stripe 仅接受测试密钥且映射失败、取消和退款", () => {
+    expect(
+      new StripeTestAdapter({
+        secretKey: "sk_live_forbidden",
+        webhookSecret: "whsec_test",
+      }).available,
+    ).toBe(false);
+    expect(mapStripeEvent("payment_intent.payment_failed")).toBe("failed");
+    expect(mapStripeEvent("payment_intent.canceled")).toBe("cancelled");
+    expect(mapStripeEvent("charge.refunded")).toBe("refunded");
+  });
+  it("Stripe 乱序事件不能回退已成功或已退款状态", () => {
+    expect(
+      acceptPaymentTransition(
+        { status: "succeeded", eventCreatedAt: "2026-08-21T02:00:00Z" },
+        { status: "failed", eventCreatedAt: "2026-08-21T01:00:00Z" },
+      ),
+    ).toBe(false);
+    expect(
+      acceptPaymentTransition(
+        { status: "refunded", eventCreatedAt: "2026-08-21T03:00:00Z" },
+        { status: "succeeded", eventCreatedAt: "2026-08-21T04:00:00Z" },
+      ),
+    ).toBe(false);
+    expect(
+      acceptPaymentTransition(
+        { status: "succeeded", eventCreatedAt: "2026-08-21T02:00:00Z" },
+        { status: "refunded", eventCreatedAt: "2026-08-21T03:00:00Z" },
+      ),
+    ).toBe(true);
+  });
+  it("Stripe Webhook 拒绝伪造签名并去重合法事件", async () => {
+    const secret = "whsec_local_only";
+    const adapter = new StripeTestAdapter({
+      secretKey: "sk_test_local_placeholder",
+      webhookSecret: secret,
+    });
+    const payload = JSON.stringify({
+      id: "evt_local_1",
+      object: "event",
+      api_version: "2025-07-30.basil",
+      created: 1700000000,
+      type: "payment_intent.succeeded",
+      data: {
+        object: {
+          id: "pi_local",
+          object: "payment_intent",
+          metadata: { order_id: "order-local" },
+        },
+      },
+    });
+    const applied: string[] = [];
+    const store: PaymentEventStore = {
+      has: async (id) => applied.includes(id),
+      findOrderIdByPaymentIntent: async () => null,
+      apply: async (event) => {
+        applied.push(event.providerEventId);
+        return true;
+      },
+    };
+    expect(
+      (await adapter.handleWebhook(Buffer.from(payload), "bad", store))
+        .accepted,
+    ).toBe(false);
+    const signature = Stripe.webhooks.generateTestHeaderString({
+      payload,
+      secret,
+    });
+    expect(
+      (await adapter.handleWebhook(Buffer.from(payload), signature, store))
+        .accepted,
+    ).toBe(true);
+    expect(
+      (await adapter.handleWebhook(Buffer.from(payload), signature, store))
+        .duplicate,
+    ).toBe(true);
+    expect(applied).toEqual(["evt_local_1"]);
+  });
+  it("charge.refunded 通过 PaymentIntent 关联订单而非假设 Charge metadata", async () => {
+    const event = {
+      type: "charge.refunded",
+      data: {
+        object: {
+          payment_intent: "pi_refunded",
+          metadata: { order_id: "wrong" },
+        },
+      },
+    } as unknown as Stripe.Event;
+    expect(
+      await extractOrderId(event, {
+        findOrderIdByPaymentIntent: async (id) =>
+          id === "pi_refunded" ? "order-correct" : null,
+      }),
+    ).toBe("order-correct");
+  });
 });

@@ -17,6 +17,14 @@ AppContext 接受可选 production services；没有公开配置时为 `null`，
 
 本实现不支持 Stripe Express/Connect 账户，也不读取商户数据或发起真实扣款。
 
+## 公开客户端账户与 Trip Room
+
+配置 Supabase URL 与 publishable key 后，正式中文界面通过公开客户端完成账户登录、会话恢复、当前角色读取、退出和本人订单读取。订单查询依赖 RLS；加载中、读取失败、无订单和有订单均有独立状态。公开配置缺失时界面明确显示服务不可用，绝不回退到开发种子或本地演示订单。
+
+Trip Room 先读取当前账户可访问的房间与历史消息，再订阅该车辆群的私有 Realtime channel。发送入口同时要求数据库房间状态为 `open` 且实时连接为已连接；`frozen`、`closed`、连接中或断线均禁用并显示中文原因。成员资格和实际消息写入仍由数据库 RLS 终审。司机、司导和运营只读取工作人员履约投影，不读取乘客私密原始协助数据。
+
+以上前端状态门、缺配置 fail closed 和适配器边界已通过本地自动测试。使用真实虚构账户进行浏览器登录、远程订单读取、WebSocket 收发、断线重连及角色入口验收仍为 **NOT RUN**，不能据此声称远程 Realtime 已连接。
+
 ## 外部凭证门
 
 远程启动测试 API 仍需要由服务端秘密管理器提供 Supabase server secret/service-role 和 Stripe Standard test secret；这些值不得使用 `VITE_` 前缀。还需部署受控 HTTPS API runtime、执行 005 迁移、配置 Stripe 测试 Webhook secret，并完成 CORS、速率限制、审计和错误监控。以上均为 **NOT RUN**，当前自动测试使用依赖替身，不代表远程 API 已连接。
