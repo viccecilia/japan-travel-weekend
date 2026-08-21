@@ -224,7 +224,16 @@ describe("已批准测试服务栈", () => {
     expect(boardingCredentialSql).not.toMatch(/raw_token|token_plaintext|email|phone/);
   });
   it("登车回归 SQL 覆盖角色、状态、幂等和重复核验并强制回滚",()=>{
-    for(const message of ['FAIL passenger scanner','FAIL first driver scan','FAIL idempotent retry','FAIL idempotency mismatch','FAIL second scan','FAIL guide scan','FAIL operations scan','FAIL expired scan','FAIL revoked scan','FAIL wrong vehicle scan','FAIL boarding was not atomically completed','FAIL private table grants','FAIL verify execute grants'])expect(boardingRegressionSql).toContain(message);
+    for(const message of ['FAIL issue vehicle mismatch','FAIL short issue digest','FAIL passenger scanner','FAIL short verify digest','FAIL first driver scan','FAIL idempotent retry','FAIL idempotency mismatch','FAIL second scan','FAIL guide scan','FAIL operations scan','FAIL expired scan','FAIL revoked scan','FAIL wrong vehicle scan','FAIL unknown digest','FAIL boarding was not atomically completed','FAIL private table grants','FAIL verify execute grants'])expect(boardingRegressionSql).toContain(message);
+    expect(boardingRegressionSql).toContain("set role='guide'");
+    expect(boardingRegressionSql).toContain("sqlerrm<>'scanner not authorized for vehicle group'");
+    expect(boardingRegressionSql).toContain("sqlerrm<>'idempotency parameter mismatch'");
+    const boardingExceptionBlocks=boardingRegressionSql.match(/exception when others then[\s\S]*?end if;/g)??[];
+    expect(boardingExceptionBlocks).toHaveLength(5);
+    for(const block of boardingExceptionBlocks)expect(block).toMatch(/if sqlerrm<>'[^']+' then raise;/);
+    const inventoryExceptionBlocks=inventoryRegressionSql.match(/exception when others then[\s\S]*?end if;/g)??[];
+    expect(inventoryExceptionBlocks.length).toBeGreaterThan(0);
+    for(const block of inventoryExceptionBlocks)expect(block).toContain('else raise;');
     expect(boardingRegressionSql.trimEnd().endsWith('rollback;')).toBe(true);
   });
   it("Supabase 与 Maps 缺配置 fail closed", () => {

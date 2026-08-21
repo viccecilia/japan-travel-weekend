@@ -6,7 +6,7 @@
 
 007 数据库迁移新增私有凭证表和核验审计表。凭证表只保存 32 字节 token digest 与版本；审计表只保存请求指纹 digest、扫描者、车辆群组、结果、核验时间和 90 天保留期限。`verify_boarding_credential` 仅允许 service role/Postgres 调用，使用幂等 advisory lock 与凭证行锁：同一幂等请求返回原结果，不同参数拒绝；不同幂等键并发扫描同一凭证时只有首笔为 valid。乘客仅通过安全视图读取本人登车状态，看不到 digest 或核验审计。
 
-远程执行 007 后运行 `supabase/verification/boarding_credential_regression.sql`，验证 driver、guide、operations、无权乘客、五种结果、幂等冲突、重复扫描和 grants。脚本在末尾回滚。真实并发门还需两个独立 SQL 会话同时核验同一未使用凭证，预期一个 valid、一个 used；007 尚未远程执行，该并发验证为 **NOT RUN**。
+远程执行 007 后运行 `supabase/verification/boarding_credential_regression.sql`，验证 driver、guide、operations、无权乘客、五种结果、幂等冲突、重复扫描、签发车辆不匹配、短摘要和 grants。测试项目无需新增 guide 账户：脚本在事务内把第二个虚构 passenger 临时改为 guide，且与订单 owner 不同，末尾整体回滚。未知但长度有效的 digest 统一返回 revoked 且不返回 boarding ID，以免泄露凭证是否存在。真实并发门还需两个独立 SQL 会话同时核验同一未使用凭证，预期一个 valid、一个 used；007 尚未远程执行，该并发验证为 **NOT RUN**。
 
 通知契约覆盖订单确认、待转账、集合信息变更、Trip Room 开放、发车前提醒、延误和登车完成。必要履约通知与可选通知偏好分离；provider 不可用时 fail closed，事件 ID 防止重复投递。本轮不连接任何外部通知供应商。
 
