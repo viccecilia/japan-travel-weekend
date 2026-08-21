@@ -44,6 +44,7 @@ export class SupabaseAuthRepository {
 }
 export class SupabaseOrderRepository {
   constructor(private readonly client: SupabaseClient | null) {}
+  get available() { return this.client !== null; }
   async listOwnOrders() {
     if (!this.client) return [];
     const { data, error } = await this.client
@@ -74,6 +75,7 @@ export class SupabaseOrderRepository {
 }
 export class SupabaseTripRoomRepository {
   constructor(private readonly client: SupabaseClient | null) {}
+  get available() { return this.client !== null; }
   async loadAccessibleRoom() {
     if (!this.client) return { data: null, error: "行程房间服务未配置" };
     const { data, error } = await this.client

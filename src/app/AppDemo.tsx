@@ -105,7 +105,7 @@ export function Login() {
   const { state, setState, services } = useApp();
   const nav = useNavigate();
   const [error, setError] = useState("");
-  const connected = backend.connected || services?.available === true;
+  const connected = backend.connected || services?.authAvailable === true;
   const production = appConfig.runtimeMode === "production";
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -823,7 +823,9 @@ export function Payment() {
       <AppTitle eyebrow="第 4 步，共 4 步" title="支付" />
       <div className="notice">
         {services
-          ? "仅连接测试后端；不会使用生产商户或真实扣款。"
+          ? services.checkoutAvailable
+            ? "仅连接测试后端；不会使用生产商户或真实扣款。"
+            : "账户服务可用，但结账服务尚未连接，当前不会创建订单或扣款。"
           : "支付能力尚未连接，当前不会真实扣款。"}
       </div>
       <div className="payment-methods">
@@ -835,7 +837,13 @@ export function Payment() {
           >
             <span>{m}</span>
             <small>
-              {services ? "测试模式" : enabled ? "开发模拟" : "尚未连接"}
+              {services
+                ? services.checkoutAvailable
+                  ? "测试模式"
+                  : "结账未连接"
+                : enabled
+                  ? "开发模拟"
+                  : "尚未连接"}
             </small>
           </button>
         ))}
@@ -847,11 +855,13 @@ export function Payment() {
       )}
       <button
         className="button full"
-        disabled={services ? !state.booking?.departureId : !enabled}
+        disabled={services ? !services.checkoutAvailable || !state.booking?.departureId : !enabled}
         onClick={services ? createTestCheckout : simulate}
       >
         {services
-          ? "提交测试结账"
+          ? services.checkoutAvailable
+            ? "提交测试结账"
+            : "结账服务未连接"
           : enabled
             ? "模拟支付并创建开发订单"
             : "支付服务未开放"}

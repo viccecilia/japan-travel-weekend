@@ -31,9 +31,11 @@ export class ProductionBrowserServices {
       fetcher,
     );
   }
-  get available() {
-    return this.auth.available && this.checkout.available;
-  }
+  get authAvailable() { return this.auth.available; }
+  get ordersAvailable() { return this.orders.available; }
+  get checkoutAvailable() { return this.checkout.available; }
+  get tripRoomAvailable() { return this.tripRoom.available; }
+  get realtimeAvailable() { return this.realtime.connected; }
   signIn(email: string, password: string) {
     return this.auth.signIn(email, password);
   }

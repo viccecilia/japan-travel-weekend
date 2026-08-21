@@ -4,6 +4,8 @@
 
 浏览器只允许 Supabase URL、publishable key 和 HTTPS API base URL。`ProductionBrowserServices` 提供登录、当前用户、本人订单读取和结账调用；Supabase RLS 继续约束直接读取。浏览器结账只向 `/v1/checkout` 发送 access token 与业务参数，不接触 service-role、Stripe secret 或数据库连接。
 
+各能力独立启用：`authAvailable`、`ordersAvailable`、`tripRoomAvailable` 和 `realtimeAvailable` 由 Supabase 公开客户端决定，`checkoutAvailable` 仅由 HTTPS API base URL 决定。只配置 Supabase URL/publishable key 时，用户仍可登录和按 RLS 读取本人订单；结账按钮明确禁用并显示服务未连接，不会让整个 App 一并失效。
+
 AppContext 接受可选 production services；没有公开配置时为 `null`，正式模式保持 fail closed。development/demo 继续使用本地 provider，不混入远程测试数据。
 
 ## 服务端结账边界
