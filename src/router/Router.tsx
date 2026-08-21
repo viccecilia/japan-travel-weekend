@@ -1,2 +1,174 @@
-import {Route,Routes} from 'react-router-dom';import {WebsiteLayout,Home,TripsPage,TripDetail,HowItWorks,RewardsPage,Safety,About,AppLanding,PrivateGroups} from '../website/Website';import {AppShell,AppHome,Login,AppTrips,AppTrip,BookingPage,Passengers,Checkout,Payment,PaymentResult,Orders,OrderDetail,BoardingPass,AppRewards,Referral,Profile,NotFound} from '../app/AppDemo';import {AppPrivateGroups,MyTrip,TripRoom} from '../app/TripRoom';
-export function Router(){return <Routes><Route element={<WebsiteLayout/>}><Route path="/" element={<Home/>}/><Route path="/trips" element={<TripsPage/>}/><Route path="/trips/:slug" element={<TripDetail/>}/><Route path="/private-groups" element={<PrivateGroups/>}/><Route path="/how-it-works" element={<HowItWorks/>}/><Route path="/rewards" element={<RewardsPage/>}/><Route path="/safety" element={<Safety/>}/><Route path="/about" element={<About/>}/><Route path="/app" element={<AppLanding/>}/></Route><Route path="/app-demo/login" element={<AppShell><Login/></AppShell>}/><Route path="/app-demo" element={<AppShell nav><AppHome/></AppShell>}/><Route path="/app-demo/trips" element={<AppShell nav><AppTrips/></AppShell>}/><Route path="/app-demo/trips/:slug" element={<AppShell nav><AppTrip/></AppShell>}/><Route path="/app-demo/booking/:slug" element={<AppShell><BookingPage/></AppShell>}/><Route path="/app-demo/passengers" element={<AppShell><Passengers/></AppShell>}/><Route path="/app-demo/checkout" element={<AppShell><Checkout/></AppShell>}/><Route path="/app-demo/payment" element={<AppShell><Payment/></AppShell>}/><Route path="/app-demo/payment-result" element={<AppShell><PaymentResult/></AppShell>}/><Route path="/app-demo/orders" element={<AppShell nav><Orders/></AppShell>}/><Route path="/app-demo/orders/:id" element={<AppShell><OrderDetail/></AppShell>}/><Route path="/app-demo/my-trip" element={<AppShell nav><MyTrip/></AppShell>}/><Route path="/app-demo/my-trip/room" element={<AppShell><TripRoom/></AppShell>}/><Route path="/app-demo/private-groups" element={<AppShell><AppPrivateGroups/></AppShell>}/><Route path="/app-demo/boarding-pass/:id" element={<AppShell><BoardingPass/></AppShell>}/><Route path="/app-demo/rewards" element={<AppShell nav><AppRewards/></AppShell>}/><Route path="/app-demo/referral" element={<AppShell><Referral/></AppShell>}/><Route path="/app-demo/profile" element={<AppShell nav><Profile/></AppShell>}/><Route path="*" element={<NotFound/>}/></Routes>}
+import { Route, Routes } from "react-router-dom";
+import {
+  WebsiteLayout,
+  Home,
+  TripsPage,
+  TripDetail,
+  HowItWorks,
+  RewardsPage,
+  Safety,
+  About,
+  AppLanding,
+  PrivateGroups,
+} from "../website/Website";
+import {
+  AppShell,
+  AppHome,
+  Login,
+  AppTrips,
+  AppTrip,
+  BookingPage,
+  Passengers,
+  Checkout,
+  Payment,
+  PaymentResult,
+  Orders,
+  OrderDetail,
+  BoardingPass,
+  AppRewards,
+  Referral,
+  Profile,
+  NotFound,
+} from "../app/App";
+import { AppPrivateGroups, MyTrip, TripRoom } from "../app/TripRoom";
+import { LegacyAppRedirect, RequireAccount } from "../app/auth";
+export function Router() {
+  return (
+    <Routes>
+      <Route element={<WebsiteLayout />}>
+        <Route path="/" element={<Home />} />
+        <Route path="/trips" element={<TripsPage />} />
+        <Route path="/trips/:slug" element={<TripDetail />} />
+        <Route path="/private-groups" element={<PrivateGroups />} />
+        <Route path="/how-it-works" element={<HowItWorks />} />
+        <Route path="/rewards" element={<RewardsPage />} />
+        <Route path="/safety" element={<Safety />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/app-info" element={<AppLanding />} />
+      </Route>
+      <Route
+        path="/app/login"
+        element={
+          <AppShell>
+            <Login />
+          </AppShell>
+        }
+      />
+      <Route
+        path="/app"
+        element={
+          <AppShell nav>
+            <AppHome />
+          </AppShell>
+        }
+      />
+      <Route
+        path="/app/trips"
+        element={
+          <AppShell nav>
+            <AppTrips />
+          </AppShell>
+        }
+      />
+      <Route
+        path="/app/trips/:slug"
+        element={
+          <AppShell nav>
+            <AppTrip />
+          </AppShell>
+        }
+      />
+      <Route
+        path="/app/booking/:slug"
+        element={
+          <AppShell>
+            <BookingPage />
+          </AppShell>
+        }
+      />
+      <Route
+        path="/app/passengers"
+        element={
+          <RequireAccount><AppShell><Passengers /></AppShell></RequireAccount>
+        }
+      />
+      <Route
+        path="/app/checkout"
+        element={
+          <RequireAccount><AppShell><Checkout /></AppShell></RequireAccount>
+        }
+      />
+      <Route
+        path="/app/payment"
+        element={
+          <RequireAccount><AppShell><Payment /></AppShell></RequireAccount>
+        }
+      />
+      <Route
+        path="/app/payment-result"
+        element={
+          <RequireAccount><AppShell><PaymentResult /></AppShell></RequireAccount>
+        }
+      />
+      <Route
+        path="/app/orders"
+        element={
+          <RequireAccount><AppShell nav><Orders /></AppShell></RequireAccount>
+        }
+      />
+      <Route
+        path="/app/orders/:id"
+        element={
+          <RequireAccount><AppShell><OrderDetail /></AppShell></RequireAccount>
+        }
+      />
+      <Route
+        path="/app/my-trip"
+        element={
+          <RequireAccount><AppShell nav><MyTrip /></AppShell></RequireAccount>
+        }
+      />
+      <Route
+        path="/app/my-trip/room"
+        element={
+          <RequireAccount><AppShell><TripRoom /></AppShell></RequireAccount>
+        }
+      />
+      <Route
+        path="/app/private-groups"
+        element={
+          <AppShell>
+            <AppPrivateGroups />
+          </AppShell>
+        }
+      />
+      <Route
+        path="/app/boarding-pass/:id"
+        element={
+          <RequireAccount><AppShell><BoardingPass /></AppShell></RequireAccount>
+        }
+      />
+      <Route
+        path="/app/rewards"
+        element={
+          <RequireAccount><AppShell nav><AppRewards /></AppShell></RequireAccount>
+        }
+      />
+      <Route
+        path="/app/referral"
+        element={
+          <RequireAccount><AppShell><Referral /></AppShell></RequireAccount>
+        }
+      />
+      <Route
+        path="/app/profile"
+        element={
+          <RequireAccount><AppShell nav><Profile /></AppShell></RequireAccount>
+        }
+      />
+      <Route path="/app-demo/*" element={<LegacyAppRedirect />} />
+      <Route path="/app-demo" element={<LegacyAppRedirect />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+}

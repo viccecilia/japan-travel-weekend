@@ -12,7 +12,7 @@ const Empty = () => (
   <div className="empty-card">
     <b>暂无进行中的行程</b>
     <p>正式环境不会自动生成车辆、司机、倒计时、聊天或位置数据。</p>
-    <Link to="/app-demo/trips">浏览路线 →</Link>
+    <Link to="/app/trips">浏览路线 →</Link>
   </div>
 );
 export function MyTrip() {
@@ -57,7 +57,7 @@ export function MyTrip() {
           </div>
           <Link
             className="button secondary full"
-            to={`/app-demo/orders/${order.id}`}
+            to={`/app/orders/${order.id}`}
           >
             查看订单详情
           </Link>
@@ -74,7 +74,7 @@ export function MyTrip() {
             <b>集合时间：{state.tripRoom.meeting.time}</b>
             <small>{state.tripRoom.meeting.name}</small>
           </div>
-          <Link className="button full" to="/app-demo/my-trip/room">
+          <Link className="button full" to="/app/my-trip/room">
             查看本车行程房间
           </Link>
           <p className="privacy">开放规则：{appConfig.tripRoom.opens}</p>

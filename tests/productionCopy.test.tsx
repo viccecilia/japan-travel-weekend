@@ -2,7 +2,7 @@ import {cleanup,render,screen} from '@testing-library/react';
 import {afterEach,describe,expect,it} from 'vitest';
 import type {SupabaseClient} from '@supabase/supabase-js';
 import {MemoryRouter,Route,Routes} from 'react-router-dom';
-import {AppHome,BoardingPass,Login,Orders,Payment,PaymentResult} from '../src/app/AppDemo';
+import {AppHome,BoardingPass,Login,Orders,Payment,PaymentResult} from '../src/app/App';
 import {TripRoom} from '../src/app/TripRoom';
 import {AppProvider} from '../src/app/store';
 import {appConfig} from '../src/shared/config/businessRules';
@@ -11,12 +11,12 @@ import {ProductionBrowserServices} from '../src/shared/backend/productionService
 afterEach(cleanup);
 
 const cases=[
-  ['/app-demo',<AppHome/>],
-  ['/app-demo/login',<Login/>],
-  ['/app-demo/orders',<Orders/>],
-  ['/app-demo/my-trip/room',<TripRoom/>],
-  ['/app-demo/payment-result',<PaymentResult/>],
-  ['/app-demo/boarding-pass/missing',<BoardingPass/>],
+  ['/app',<AppHome/>],
+  ['/app/login',<Login/>],
+  ['/app/orders',<Orders/>],
+  ['/app/my-trip/room',<TripRoom/>],
+  ['/app/payment-result',<PaymentResult/>],
+  ['/app/boarding-pass/missing',<BoardingPass/>],
 ] as const;
 
 describe('production 用户可见文案',()=>{
@@ -33,11 +33,11 @@ describe('production 用户可见文案',()=>{
     expect(screen.getByRole('button',{name:'在线支付暂未开放'})).toBeDisabled();
     expect(document.body.textContent).not.toMatch(/测试|开发|Demo/);
   });
-  it('Supabase 登录在 production 使用正式账户文案',()=>{
+  it('Supabase 登录在 production 使用正式账户文案',async()=>{
     const client={auth:{getSession:async()=>({data:{session:null}}),getUser:async()=>({data:{user:null},error:null})}} as unknown as SupabaseClient;
     const services=new ProductionBrowserServices(client,undefined);
     render(<MemoryRouter><AppProvider services={services}><Login/></AppProvider></MemoryRouter>);
-    expect(screen.getByRole('button',{name:'登录账户'})).toBeEnabled();
+    expect(await screen.findByRole('button',{name:'登录账户'})).toBeEnabled();
     expect(screen.getByText('使用安全账户会话；您只能查看本人有权访问的订单与行程。')).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/测试|开发|Demo/);
   });

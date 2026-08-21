@@ -20,6 +20,7 @@ import {
 import type { ChildSeatChoice } from "../shared/types";
 import { GoogleMapsAdapter } from "../shared/integrations/googleMaps";
 import { useApp } from "./store";
+import { safeReturnTo } from "./auth";
 const trips = travelRepository.listTrips();
 const Empty = ({
   title = "暂无内容",
@@ -65,19 +66,19 @@ export function AppShell({
         <main className="app-content">{children}</main>
         {nav && (
           <nav className="bottom-nav" aria-label="应用导航">
-            <NavLink end to="/app-demo">
+            <NavLink end to="/app">
               ⌂<span>首页</span>
             </NavLink>
-            <NavLink to="/app-demo/trips">
+            <NavLink to="/app/trips">
               ◇<span>行程</span>
             </NavLink>
-            <NavLink to="/app-demo/orders">
+            <NavLink to="/app/orders">
               ▤<span>订单</span>
             </NavLink>
-            <NavLink to="/app-demo/rewards">
+            <NavLink to="/app/rewards">
               ☆<span>奖励</span>
             </NavLink>
-            <NavLink to="/app-demo/profile">
+            <NavLink to="/app/profile">
               ○<span>我的</span>
             </NavLink>
           </nav>
@@ -102,11 +103,16 @@ const AppTitle = ({
   </div>
 );
 export function Login() {
-  const { state, setState, services } = useApp();
+  const { state, setState, services, authResolved } = useApp();
   const nav = useNavigate();
+  const location = useLocation();
+  const returnTo = safeReturnTo(new URLSearchParams(location.search).get("returnTo"));
   const [error, setError] = useState("");
   const connected = backend.connected || services?.authAvailable === true;
   const production = appConfig.runtimeMode === "production";
+  useEffect(() => {
+    if (authResolved && state.user) nav(returnTo, { replace: true });
+  }, [authResolved, state.user, nav, returnTo]);
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
@@ -127,11 +133,13 @@ export function Login() {
         );
         setState({ ...state, user: { email: result.account.email } });
       }
-      nav("/app-demo");
+      nav(returnTo, { replace: true });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "账户服务暂时不可用");
     }
   };
+  if (!authResolved)
+    return <div className="empty-card" role="status"><b>正在恢复账户会话</b><p>请稍候，正在安全确认登录状态。</p></div>;
   return (
     <>
       <AppTitle
@@ -228,7 +236,7 @@ export function AppHome() {
         </article>
       </div>
       {state.tripRoom && (
-        <Link className="my-trip-banner" to="/app-demo/my-trip">
+        <Link className="my-trip-banner" to="/app/my-trip">
           <span>开发种子行程</span>
           <b>京都与奈良</b>
           <small>查看车辆与集合信息 →</small>
@@ -247,7 +255,7 @@ export function AppHome() {
           text="正式环境不会自动生成日期、价格、余位或即将出发的行程。"
         />
       )}
-      <Link className="private-app-link" to="/app-demo/private-groups">
+      <Link className="private-app-link" to="/app/private-groups">
         <b>需要私人团体出行？</b>
         <span>企业、学校、社团、亲友团体 →</span>
       </Link>
@@ -297,7 +305,7 @@ export function AppTrip() {
           <li key={x}>{x}</li>
         ))}
       </ul>
-      <Link className="button full" to={`/app-demo/booking/${t.slug}`}>
+      <Link className="button full" to={`/app/booking/${t.slug}`}>
         查看出发班次
       </Link>
     </>
@@ -319,7 +327,7 @@ export function BookingPage() {
       adults: Number(f.get("adults")),
       children: Number(f.get("children")),
     });
-    nav("/app-demo/passengers");
+    nav("/app/passengers");
   };
   return (
     <>
@@ -439,7 +447,7 @@ export function Passengers() {
       },
       assistance,
     });
-    nav("/app-demo/checkout");
+    nav("/app/checkout");
   };
   return (
     <>
@@ -709,7 +717,7 @@ export function Checkout() {
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     updateBooking({ acceptedCancellation: true, acceptedTerms: true });
-    nav("/app-demo/payment");
+    nav("/app/payment");
   };
   return (
     <>
@@ -805,7 +813,7 @@ export function Payment() {
       paymentStatus: "开发模拟完成",
       amount: null,
     });
-    nav("/app-demo/payment-result", { state: { id } });
+    nav("/app/payment-result", { state: { id } });
   };
   const createTestCheckout = async () => {
     if (!services || !state.booking?.departureId) return;
@@ -905,7 +913,7 @@ export function PaymentResult() {
   useEffect(() => {
     if (!id) return;
     const redirect = window.setTimeout(
-      () => nav(`/app-demo/orders/${id}`, { replace: true }),
+      () => nav(`/app/orders/${id}`, { replace: true }),
       3000,
     );
     const tick = window.setInterval(
@@ -949,7 +957,7 @@ export function PaymentResult() {
       <p className="countdown" aria-live="polite">
         将在 {seconds} 秒后自动前往本订单详情
       </p>
-      <Link className="button full" to={`/app-demo/orders/${id}`}>
+      <Link className="button full" to={`/app/orders/${id}`}>
         立即查看我的行程
       </Link>
     </div>
@@ -960,7 +968,7 @@ export function PaymentResult() {
         title="暂时无法确认支付"
         text="支付服务尚未连接，未创建订单，也未扣款。"
       />
-      <Link className="button full" to="/app-demo/orders">
+      <Link className="button full" to="/app/orders">
         返回我的账户
       </Link>
     </>
@@ -999,7 +1007,7 @@ export function Orders() {
     <>
       <AppTitle eyebrow="行程与座位订单" title="我的行程" />
       {state.tripRoom && (
-        <Link className="my-trip-banner" to="/app-demo/my-trip">
+        <Link className="my-trip-banner" to="/app/my-trip">
           <span>开发种子行程</span>
           <b>京都与奈良</b>
           <small>打开本车行程房间 →</small>
@@ -1034,7 +1042,7 @@ export function Orders() {
           <Link
             className="order-card"
             key={o.id}
-            to={`/app-demo/orders/${o.id}`}
+            to={`/app/orders/${o.id}`}
           >
             <b>{travelRepository.getTrip(o.tripSlug)?.shortTitle}</b>
             <span>
@@ -1200,7 +1208,7 @@ export function OrderDetail() {
         )}
       </section>
       {state.tripRoom ? (
-        <Link className="button full room-link" to="/app-demo/my-trip/room">
+        <Link className="button full room-link" to="/app/my-trip/room">
           查看 Trip Room／Vehicle Group 只读预览
         </Link>
       ) : (
@@ -1269,7 +1277,7 @@ export function Profile() {
   const logout = async () => {
     if (services) await services.signOut();
     reset();
-    nav("/app-demo/login");
+    nav("/app/login");
   };
   return (
     <>
@@ -1324,7 +1332,7 @@ export function Profile() {
           className="button danger-button full"
           onClick={() => {
             reset();
-            nav("/app-demo/login");
+            nav("/app/login");
           }}
         >
           重置界面偏好

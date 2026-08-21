@@ -1,6 +1,6 @@
 # Future payment architecture
 
-This document is design intent only; the Demo contains no payment integration.
+This document is design intent only; the current product foundation contains no production payment integration.
 
 1. The app creates an internal order without trusting client totals.
 2. The backend calculates price, discount, travel-credit use and final payable amount.
