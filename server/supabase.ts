@@ -27,3 +27,26 @@ export class SupabaseManualPaymentGateway{
   constructor(private readonly client:SupabaseClient|null){}
   async markPending(orderId:string){if(!this.client)return false;const {data,error}=await this.client.rpc('mark_bank_transfer_pending',{p_order:orderId});return !error&&data===true}
 }
+
+export class SupabaseServerPricingGateway{
+  constructor(private readonly client:SupabaseClient|null){}
+  async quote(departureId:string,seats:number){
+    if(!this.client||!Number.isInteger(seats)||seats<1)return null;
+    const {data,error}=await this.client.from('departures').select('seat_price_jpy,status').eq('id',departureId).maybeSingle();
+    const unit=Number(data?.seat_price_jpy);
+    if(error||data?.status!=='open'||!Number.isSafeInteger(unit)||unit<1)return null;
+    const amount=unit*seats;return Number.isSafeInteger(amount)?{amount,currency:'JPY' as const}:null;
+  }
+}
+
+export class SupabasePaymentIntentRecorder{
+  constructor(private readonly client:SupabaseClient|null){}
+  async record(input:{orderId:string;paymentIntentId:string;amount:number}){if(!this.client)return false;const {data,error}=await this.client.rpc('record_stripe_payment_intent',{p_order:input.orderId,p_payment_intent:input.paymentIntentId,p_amount:input.amount});return !error&&data===true}
+}
+
+export class SupabasePaymentEventStore{
+  constructor(private readonly client:SupabaseClient|null){}
+  async has(providerEventId:string){if(!this.client)return false;const {count,error}=await this.client.from('payment_events').select('id',{count:'exact',head:true}).eq('provider_event_id',providerEventId);if(error)throw error;return (count??0)>0}
+  async findOrderIdByPaymentIntent(paymentIntentId:string){if(!this.client)return null;const {data,error}=await this.client.from('orders').select('id').eq('payment_intent_id',paymentIntentId).maybeSingle();if(error)throw error;return data?.id??null}
+  async apply(input:{providerEventId:string;orderId:string;status:'succeeded'|'failed'|'cancelled'|'refunded';createdAt:string;payloadDigest:string}){if(!this.client)return false;const {data,error}=await this.client.rpc('apply_payment_event',{p_event_id:input.providerEventId,p_order:input.orderId,p_status:input.status,p_created:input.createdAt,p_digest:input.payloadDigest});if(error)throw error;return data===true}
+}

@@ -1,6 +1,6 @@
 # Future payment architecture
 
-This document is design intent only; the current product foundation contains no production payment integration.
+The repository now contains a test-only Stripe/Supabase server runtime. It accepts only `sk_test_` credentials and remains fail-closed until a signed test Webhook and server-side departure price are configured. It is not a production payment integration.
 
 1. The app creates an internal order without trusting client totals.
 2. The backend calculates price, discount, travel-credit use and final payable amount.

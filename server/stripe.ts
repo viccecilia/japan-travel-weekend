@@ -11,6 +11,7 @@ export class StripeTestAdapter{
     if(!this.stripe||input.amount<=0)return null;
     return this.stripe.paymentIntents.create({amount:input.amount,currency:'jpy',metadata:{order_id:input.orderId}},{idempotencyKey:input.idempotencyKey});
   }
+  async cancelPaymentIntent(id:string){if(!this.stripe)return false;await this.stripe.paymentIntents.cancel(id);return true}
   async handleWebhook(rawBody:Buffer,signature:string,store:PaymentEventStore){
     if(!this.available||!this.stripe)return {accepted:false,reason:'unavailable'} as const;
     let event:Stripe.Event;
@@ -24,9 +25,9 @@ export class StripeTestAdapter{
   }
 }
 export class StripeCardPaymentSessionGateway{
-  constructor(private readonly adapter:StripeTestAdapter){}
+  constructor(private readonly adapter:StripeTestAdapter,private readonly recorder?:{record(input:{orderId:string;paymentIntentId:string;amount:number}):Promise<boolean>}){}
   get available(){return this.adapter.available}
-  async create(input:{orderId:string;amount:number;idempotencyKey:string}){const intent=await this.adapter.createPaymentIntent(input);return intent?.client_secret?{clientSecret:intent.client_secret}:null}
+  async create(input:{orderId:string;amount:number;idempotencyKey:string}){const intent=await this.adapter.createPaymentIntent(input);if(!intent?.client_secret)return null;if(this.recorder&&!await this.recorder.record({orderId:input.orderId,paymentIntentId:intent.id,amount:input.amount})){await this.adapter.cancelPaymentIntent(intent.id);return null}return {clientSecret:intent.client_secret}}
 }
 export async function extractOrderId(event:Stripe.Event,store:Pick<PaymentEventStore,'findOrderIdByPaymentIntent'>){
   if(event.type.startsWith('payment_intent.'))return (event.data.object as Stripe.PaymentIntent).metadata?.order_id||null;

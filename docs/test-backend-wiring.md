@@ -17,6 +17,8 @@ AppContext 接受可选 production services；没有公开配置时为 `null`，
 
 005 已远程执行，首次/重复转换、状态和数据库 execute 权限六项回滚验收为 PASS。HTTPS 测试 API 尚未部署，因此浏览器到服务端的银行转账链路仍为 NOT RUN。
 
+本地测试 API 现提供 `/health`、`/v1/checkout` 与 `/v1/webhooks/stripe`。服务只绑定 `127.0.0.1`，执行严格 Origin 检查，Webhook 使用原始请求体验签。009 迁移增加 `seat_price_jpy` 和受 service-role 限制的 Payment Intent 记录函数；未配置服务端票价或 Webhook 签名密钥时，卡支付保持关闭。
+
 本实现不支持 Stripe Express/Connect 账户，也不读取商户数据或发起真实扣款。
 
 ## 公开客户端账户与 Trip Room
@@ -29,4 +31,4 @@ Trip Room 先读取当前账户可访问的房间与历史消息，再订阅该�
 
 ## 外部凭证门
 
-远程启动测试 API 仍需要由服务端秘密管理器提供 Supabase server secret/service-role 和 Stripe Standard test secret；这些值不得使用 `VITE_` 前缀。还需部署受控 HTTPS API runtime、执行 005 迁移、配置 Stripe 测试 Webhook secret，并完成 CORS、速率限制、审计和错误监控。以上均为 **NOT RUN**，当前自动测试使用依赖替身，不代表远程 API 已连接。
+本机未跟踪配置已连接 Supabase service-role 与 Stripe Standard test secret，且 Stripe 只读检查确认 `livemode=false`。仍需部署受控 HTTPS API runtime、配置 Stripe 测试 Webhook secret，并完成速率限制、审计和错误监控；在此之前不得声称浏览器支付链路已完成。
