@@ -7,7 +7,7 @@
 - `202608210001_test_stack_foundation.sql`：远程 SQL Editor 首次执行成功。
 - `202608210002_security_and_compensation.sql`：完整文件执行成功。此前一次失败是网页 CodeMirror 只替换了可见尾部、与旧 SQL 拼接导致的事务语法错误；不是迁移文件自身语法错误。
 - `202608210003_vehicle_group_membership_and_chat.sql`：远程 SQL Editor 执行成功。
-- `202608210006_align_realtime_vehicle_group_chat.sql`：待远程执行。该迁移不修改 003 helper；它严格解析 vehicle group topic 后直接调用 helper，避免 Realtime policy 再查询受 RLS 保护的业务表。
+- `202608210006_align_realtime_vehicle_group_chat.sql`：远程执行成功。该迁移不修改 003 helper；它严格解析 vehicle group topic 后直接调用 helper，避免 Realtime policy 再查询受 RLS 保护的业务表。只读策略验收返回 `SELECT authenticated` 接收策略与 `INSERT authenticated` 发送策略，helper 与 topic 解析边界均为 **PASS**。
 - `202608210007_secure_boarding_credentials.sql`：待远程执行。仅保存 SHA-256 digest 的凭证、核验审计和 trusted RPC 已完成本地静态验证；远程回滚回归及双会话并发均为 NOT RUN。
 
 三份迁移在该远程测试项目的结构执行结果为 **PASS**。它们是顺序、一次性迁移，不应重复粘贴执行。网页 SQL Editor 不作为仓库迁移账本；本次人工执行由本记录保存证据。新建 fresh project 时应按文件名顺序执行一次，之后运行只读验收脚本。未来自动化环境应改用 Supabase CLI migration ledger，避免人工重复执行。
@@ -45,9 +45,11 @@
 
 当前策略仅允许新对象 INSERT，没有 UPDATE 权限；对已有同名对象使用 `upsert` 会失败，这是当前预期限制。正式产品应优先使用不可变唯一文件名；若确需覆盖，必须另行设计受限 UPDATE policy、所有权校验和审计，不得直接放宽现有策略。
 
-以下仍为 **NOT RUN**：Realtime WebSocket 实际收发，以及 Stripe 签名 Webhook 端到端联调。
+Realtime 私有 WebSocket 已使用四个虚构角色完成远程验收：订单本人、本车司机和运营在开放房间重新加入频道后均订阅成功并收到广播；无关乘客加入被拒绝且未收到广播；冻结房间中本车三个授权角色可以订阅，但普通消息发送超时拒绝。测试结束后唯一测试 Trip Room 已恢复为 `frozen`，结果为 **PASS**。
 
-006 远程执行后，先运行只读且可重复的 `supabase/verification/realtime_vehicle_group_policy_acceptance.sql`。随后用虚构角色验证 WebSocket：开放房间的本车订单本人、已分配工作人员及运营可发送；无关乘客不可收发；冻结或关闭房间的本车成员仍可订阅接收状态，但不可发送 broadcast。置顶履约信息继续从数据库读取，不依赖冻结期间 broadcast。
+Supabase Realtime 在频道加入时缓存私有频道授权。房间由 `frozen` 变为 `open` 后，旧连接仍保持冻结时的发送权限；客户端必须离开并重新加入频道，不能仅依据数据库状态启用旧频道发送。Stripe 签名 Webhook 端到端联调仍为 **NOT RUN**。
+
+006 已运行只读且可重复的 `supabase/verification/realtime_vehicle_group_policy_acceptance.sql`，并完成上述虚构角色 WebSocket 验收。置顶履约信息继续从数据库读取，不依赖冻结期间 broadcast。
 
 ## 库存阶段门
 

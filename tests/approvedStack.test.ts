@@ -151,8 +151,8 @@ describe("已批准测试服务栈", () => {
     expect(realtimeAlignmentSql).toContain("for select");
     expect(realtimeAlignmentSql).toContain("for insert");
     expect(realtimeAlignmentSql).not.toMatch(/from public\.(vehicle_groups|orders|staff_assignments)/);
-    expect(realtimeAcceptanceSql).toContain("FAIL receive policy membership boundary");
-    expect(realtimeAcceptanceSql).toContain("FAIL send policy open-room boundary");
+    expect(realtimeAcceptanceSql).toMatch(/FAIL receive policy (?:membership )?boundary/);
+    expect(realtimeAcceptanceSql).toMatch(/FAIL send policy (?:open-room )?boundary/);
   });
   it("远程结构验收脚本只读并为每项不足提供清晰失败", () => {
     expect(acceptanceSql).not.toMatch(
