@@ -8,9 +8,10 @@
 - `202608210002_security_and_compensation.sql`：完整文件执行成功。此前一次失败是网页 CodeMirror 只替换了可见尾部、与旧 SQL 拼接导致的事务语法错误；不是迁移文件自身语法错误。
 - `202608210003_vehicle_group_membership_and_chat.sql`：远程 SQL Editor 执行成功。
 - `202608210006_align_realtime_vehicle_group_chat.sql`：远程执行成功。该迁移不修改 003 helper；它严格解析 vehicle group topic 后直接调用 helper，避免 Realtime policy 再查询受 RLS 保护的业务表。只读策略验收返回 `SELECT authenticated` 接收策略与 `INSERT authenticated` 发送策略，helper 与 topic 解析边界均为 **PASS**。
-- `202608210007_secure_boarding_credentials.sql`：待远程执行。仅保存 SHA-256 digest 的凭证、核验审计和 trusted RPC 已完成本地静态验证；远程回滚回归及双会话并发均为 NOT RUN。
+- `202608210007_secure_boarding_credentials.sql`：远程执行成功。首次回归发现受限 `search_path` 下未限定 schema 的 `digest()` 无法解析；没有绕过安全边界。
+- `202608210008_fix_boarding_digest_search_path.sql`：远程执行成功，以 `extensions.digest()` 修复 trusted verifier，同时保持受限 `search_path` 和原有最小执行权限。
 
-三份迁移在该远程测试项目的结构执行结果为 **PASS**。它们是顺序、一次性迁移，不应重复粘贴执行。网页 SQL Editor 不作为仓库迁移账本；本次人工执行由本记录保存证据。新建 fresh project 时应按文件名顺序执行一次，之后运行只读验收脚本。未来自动化环境应改用 Supabase CLI migration ledger，避免人工重复执行。
+001–008 在该远程测试项目的适用迁移均已执行。它们是顺序、一次性迁移，不应重复粘贴执行。网页 SQL Editor 不作为仓库迁移账本；本次人工执行由本记录保存证据。新建 fresh project 时应按文件名顺序执行一次，之后运行验收脚本。未来自动化环境应改用 Supabase CLI migration ledger，避免人工重复执行。
 
 ## 只读结构验收
 
@@ -37,7 +38,7 @@
 - 在事务内临时改为 `open` 时，订单本人可以写入；测试事务随后回滚：PASS。
 - 无关乘客即使房间临时为 `open` 仍被拒绝；测试事务随后回滚：PASS。
 
-以上验证的是数据库消息写入策略。Supabase Realtime WebSocket 实际广播、接收、断线重连仍为 **NOT RUN**。
+以上数据库消息写入策略与后述 Realtime WebSocket 角色矩阵均已远程验证。
 
 ### 私有 Storage
 
@@ -50,6 +51,10 @@ Realtime 私有 WebSocket 已使用四个虚构角色完成远程验收：订单
 Supabase Realtime 在频道加入时缓存私有频道授权。房间由 `frozen` 变为 `open` 后，旧连接仍保持冻结时的发送权限；客户端必须离开并重新加入频道，不能仅依据数据库状态启用旧频道发送。Stripe 签名 Webhook 端到端联调仍为 **NOT RUN**。
 
 006 已运行只读且可重复的 `supabase/verification/realtime_vehicle_group_policy_acceptance.sql`，并完成上述虚构角色 WebSocket 验收。置顶履约信息继续从数据库读取，不依赖冻结期间 broadcast。
+
+### 安全登车凭证
+
+007 与 008 已在远程测试项目执行。`supabase/verification/boarding_credential_regression.sql` 使用现有虚构角色并在单一事务末尾回滚，验证签发边界、短摘要拒绝、乘客扫描拒绝、司机／导游／运营权限、首次有效扫码、幂等重试、幂等参数冲突、重复扫码、过期、撤销、错车、未知凭证隐私、原子更新和私有表／函数授权，结果为 **PASS**。数据库只保存 32-byte SHA-256 digest，不保存二维码明文。
 
 ## 库存阶段门
 

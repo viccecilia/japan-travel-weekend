@@ -93,6 +93,10 @@ const boardingCredentialSql = readFileSync(
   join(process.cwd(),"supabase","migrations","202608210007_secure_boarding_credentials.sql"),
   "utf8",
 );
+const boardingDigestFixSql = readFileSync(
+  join(process.cwd(),"supabase","migrations","202608210008_fix_boarding_digest_search_path.sql"),
+  "utf8",
+);
 const boardingRegressionSql = readFileSync(
   join(process.cwd(),"supabase","verification","boarding_credential_regression.sql"),
   "utf8",
@@ -222,6 +226,14 @@ describe("已批准测试服务栈", () => {
     expect(boardingCredentialSql).toContain("boarding_status_for_passenger");
     expect(boardingCredentialSql).toContain("from public,anon,authenticated");
     expect(boardingCredentialSql).not.toMatch(/raw_token|token_plaintext|email|phone/);
+  });
+  it("008 在受限 search_path 下显式调用 pgcrypto 且不放宽执行权限",()=>{
+    expect(boardingDigestFixSql).toContain("create or replace function public.verify_boarding_credential");
+    expect(boardingDigestFixSql).toContain("security definer set search_path=public,pg_temp");
+    expect(boardingDigestFixSql).toContain("extensions.digest(");
+    expect(boardingDigestFixSql).toContain("from public,anon,authenticated");
+    expect(boardingDigestFixSql).toContain("to service_role");
+    expect(boardingDigestFixSql).not.toMatch(/grant execute[\s\S]*to (?:public|anon|authenticated)/i);
   });
   it("登车回归 SQL 覆盖角色、状态、幂等和重复核验并强制回滚",()=>{
     for(const message of ['FAIL issue vehicle mismatch','FAIL short issue digest','FAIL passenger scanner','FAIL short verify digest','FAIL first driver scan','FAIL idempotent retry','FAIL idempotency mismatch','FAIL second scan','FAIL guide scan','FAIL operations scan','FAIL expired scan','FAIL revoked scan','FAIL wrong vehicle scan','FAIL unknown digest','FAIL boarding was not atomically completed','FAIL private table grants','FAIL verify execute grants'])expect(boardingRegressionSql).toContain(message);
