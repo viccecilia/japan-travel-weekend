@@ -108,15 +108,13 @@ export class SupabaseTripRoomRepository {
   get available() { return this.client !== null; }
   async loadAccessibleRoom() {
     if (!this.client) return { data: null, error: "行程房间服务未配置" };
-    const { data, error } = await this.client
-      .from("trip_rooms")
-      .select("id,vehicle_group_id,status,opens_at")
-      .limit(1)
-      .maybeSingle();
+    const { data, error } = await this.client.rpc("get_accessible_trip_room").maybeSingle();
     return error
       ? { data: null, error: "无法读取本车行程房间" }
       : { data, error: null };
   }
+  async startOwnLocationShare(vehicleGroupId:string,minutes:15|30){if(!this.client)return false;const {error}=await this.client.rpc('start_own_location_share',{p_vehicle_group:vehicleGroupId,p_minutes:minutes});return !error}
+  async stopOwnLocationShare(vehicleGroupId:string){if(!this.client)return false;const {error}=await this.client.rpc('stop_own_location_share',{p_vehicle_group:vehicleGroupId});return !error}
   async loadMessages(roomId: string) {
     if (!this.client) return [];
     const { data, error } = await this.client
@@ -146,6 +144,9 @@ export class SupabaseTripRoomRepository {
       );
     return error ? [] : (data ?? []);
   }
+  async loadBoardingStatus(vehicleGroupId:string){if(!this.client)return [];const {data,error}=await this.client.rpc('get_vehicle_group_boarding_status',{p_vehicle_group:vehicleGroupId});return error?[]:(data??[])}
+  async sendStaffTemplate(roomId:string,templateKey:string){if(!this.client)return false;const {error}=await this.client.rpc('send_staff_trip_room_template',{p_room:roomId,p_template_key:templateKey});return !error}
+  async markOrderBoarded(vehicleGroupId:string,orderId:string){if(!this.client)return false;const {error}=await this.client.rpc('mark_vehicle_group_order_boarded',{p_vehicle_group:vehicleGroupId,p_order:orderId});return !error}
 }
 export class SupabasePrivateStorageAdapter {
   constructor(private readonly client: SupabaseClient | null) {}

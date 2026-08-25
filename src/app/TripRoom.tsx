@@ -244,20 +244,24 @@ export function TripRoom() {
 }
 
 type RemoteMessage = { id: string; content: string; author_id?: string };
+type RemoteBoarding={order_id:string;passenger_label:string;seat_count:number;boarding_status:string;boarded_at:string|null;location_shared:boolean};
+const staffTemplates=[['introduce','自我介绍'],['confirm_meeting','确认明日集合'],['vehicle_arrived','车辆已到达'],['departing_10','10 分钟后出发'],['departing_5','5 分钟后出发'],['return_vehicle','请返回车辆'],['traffic_delay','交通延误'],['meeting_changed','集合点变更']] as const;
+type RemoteRoom = {
+  room_id:string;vehicle_group_id:string;room_status:"frozen"|"open"|"closed";opens_at:string|null;
+  departure_id:string;departs_at:string|null;meeting_name:string|null;meeting_address:string|null;map_lat:number|null;map_lng:number|null;
+  vehicle_sequence:number;vehicle_type:string;vehicle_label:string|null;vehicle_capacity:number;booked_seats:number;boarded_orders:number;total_orders:number;
+};
 function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [room, setRoom] = useState<{
-    id: string;
-    vehicle_group_id: string;
-    status: "frozen" | "open" | "closed";
-  } | null>(null);
+  const [room, setRoom] = useState<RemoteRoom | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [messages, setMessages] = useState<RemoteMessage[]>([]);
   const [projections, setProjections] = useState<
     Array<Record<string, unknown>>
   >([]);
+  const [boardings,setBoardings]=useState<RemoteBoarding[]>([]);
   const [connection, setConnection] = useState<
     "connecting" | "connected" | "disconnected"
   >("connecting");
@@ -291,25 +295,21 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
         setLoading(false);
         return;
       }
-      const nextRoom = result.data as {
-        id: string;
-        vehicle_group_id: string;
-        status: "frozen" | "open" | "closed";
-      };
+      const nextRoom = result.data as RemoteRoom;
       setRoom(nextRoom);
       setMessages(
-        (await services.tripRoom.loadMessages(nextRoom.id)) as RemoteMessage[],
+        (await services.tripRoom.loadMessages(nextRoom.room_id)) as RemoteMessage[],
       );
       if (
         currentRole === "driver" ||
         currentRole === "guide" ||
         currentRole === "operations"
       )
-        setProjections(
+        {setProjections(
           (await services.tripRoom.loadStaffProjection()) as Array<
             Record<string, unknown>
           >,
-        );
+        );setBoardings((await services.tripRoom.loadBoardingStatus(nextRoom.vehicle_group_id)) as RemoteBoarding[]);}
       const live = await services.realtime.subscribePrivateVehicleGroup(
         nextRoom.vehicle_group_id,
         (payload) => {
@@ -348,14 +348,14 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
   const send = async () => {
     if (
       !room ||
-      !remoteChatAvailability(room.status, connection).enabled ||
+      !remoteChatAvailability(room.room_status, connection).enabled ||
       !currentUserId ||
       !draft.trim()
     )
       return;
     const content = draft.trim();
     const stored = await services.tripRoom.sendMessage(
-      room.id,
+      room.room_id,
       currentUserId,
       content,
     );
@@ -390,15 +390,20 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
       </div>
     );
   if (!room) return <Empty />;
-  const access = remoteChatAvailability(room.status, connection);
+  const access = remoteChatAvailability(room.room_status, connection);
   const staff = role === "driver" || role === "guide" || role === "operations";
+  const passenger = role === "passenger";
+  const shareLocation=async(minutes:15|30)=>{const ok=await services.tripRoom.startOwnLocationShare(room.vehicle_group_id,minutes);setNotice(ok?`已授权共享 ${minutes} 分钟，仅本车司机和司导可见。`:"位置共享未能开启，请检查本车成员权限。");};
+  const stopLocation=async()=>{const ok=await services.tripRoom.stopOwnLocationShare(room.vehicle_group_id);setNotice(ok?"位置共享已停止。":"没有可停止的位置共享或权限不足。");};
+  const sendTemplate=async(key:string)=>{const ok=await services.tripRoom.sendStaffTemplate(room.room_id,key);if(!ok){setNotice("模板通知未发送：请确认房间已开放且您属于本车工作人员。");return}setMessages((await services.tripRoom.loadMessages(room.room_id)) as RemoteMessage[]);setNotice("重要模板通知已发送并保留原文。");};
+  const markBoarded=async(orderId:string)=>{const ok=await services.tripRoom.markOrderBoarded(room.vehicle_group_id,orderId);if(!ok){setNotice("登车状态更新失败或订单不属于本车。");return}setBoardings((await services.tripRoom.loadBoardingStatus(room.vehicle_group_id)) as RemoteBoarding[]);setNotice("登车状态已更新。");};
   return (
     <div className="trip-room">
       <div className="frozen-banner" role="status">
         <b>
-          {room.status === "open"
+          {room.room_status === "open"
             ? "群组已开放"
-            : room.status === "frozen"
+            : room.room_status === "frozen"
               ? "群组只读预览"
               : "群组已关闭"}
         </b>
@@ -413,8 +418,8 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
       </div>
       <div className="room-head">
         <div>
-          <span>本车群组</span>
-          <h1>行程房间</h1>
+          <span>本车群组 · 第 {room.vehicle_sequence} 辆车</span>
+          <h1>{room.vehicle_label??room.vehicle_type}</h1>
           <p>
             当前角色：
             {role === "operations"
@@ -427,9 +432,32 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
           </p>
         </div>
       </div>
+      <section className="fulfilment-summary">
+        <h2>置顶履约信息</h2>
+        <div className="receipt">
+          <div><span>出发时间</span><b>{room.departs_at?new Date(room.departs_at).toLocaleString('zh-CN',{timeZone:'Asia/Tokyo'}):'待确认'}</b></div>
+          <div><span>集合地点</span><b>{room.meeting_name??'待确认'}</b></div>
+          <div><span>集合地址</span><b>{room.meeting_address??'待确认'}</b></div>
+          <div><span>车辆人数</span><b>{room.booked_seats} / {room.vehicle_capacity} 席</b></div>
+          <div><span>订单返回／登车</span><b>{room.boarded_orders} / {room.total_orders}</b></div>
+        </div>
+        {room.map_lat!=null&&room.map_lng!=null?<a className="button secondary full" href={`https://www.google.com/maps/dir/?api=1&destination=${room.map_lat},${room.map_lng}&travelmode=walking`} target="_blank" rel="noreferrer">打开集合点步行导航</a>:<button className="button secondary full" disabled>地图坐标待确认</button>}
+        <p className="privacy">司机实时位置尚未连接；不会显示虚假距离或移动轨迹。</p>
+      </section>
+      {passenger&&room.room_status==='open'&&<section className="room-actions" aria-label="位置共享">
+        <button className="room-action" onClick={()=>void shareLocation(15)}>共享位置 15 分钟</button>
+        <button className="room-action" onClick={()=>void shareLocation(30)}>共享位置 30 分钟</button>
+        <button className="room-action" onClick={()=>void stopLocation()}>停止共享</button>
+      </section>}
       {staff && (
         <section className="staff-panel">
           <h2>工作人员履约信息</h2>
+          <div className="member-list">
+            {boardings.map(item=><div key={item.order_id}><span><b>{item.passenger_label}</b> · {item.seat_count} 席 {item.location_shared?'· 已主动共享位置':''}</span><button type="button" disabled={room.room_status!=='open'||item.boarding_status==='boarded'} onClick={()=>void markBoarded(item.order_id)}>{item.boarding_status==='boarded'?'已登车':room.room_status==='open'?'标记已登车':'开放后可登车'}</button></div>)}
+          </div>
+          <h3>模板广播</h3>
+          <div className="room-actions">{staffTemplates.map(([key,label])=><button className="room-action" type="button" key={key} disabled={room.room_status!=='open'} onClick={()=>void sendTemplate(key)}>{label}</button>)}</div>
+          <p className="privacy">重要通知保存 Original 原文；Translation 字段已预留，当前不生成机器翻译。</p>
           {projections.length ? (
             projections.map((item, index) => (
               <div className="receipt" key={String(item.order_id ?? index)}>
