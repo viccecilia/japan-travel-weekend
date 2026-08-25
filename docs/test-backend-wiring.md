@@ -17,7 +17,7 @@ AppContext 接受可选 production services；没有公开配置时为 `null`，
 
 005 已远程执行，首次/重复转换、状态和数据库 execute 权限六项回滚验收为 PASS。HTTPS 测试 API 已部署，但浏览器到服务端的银行转账链路仍为 NOT RUN。
 
-测试 API 在 `https://api-test.japan-travel.info` 提供 `/health`、`/v1/checkout` 与 `/v1/webhooks/stripe`。Node 服务只绑定 VPS 的 `127.0.0.1:18773`，由 Nginx 提供 HTTPS 并执行严格 Origin 检查；Webhook 使用原始请求体验签。009 迁移增加 `seat_price_jpy` 和受 service-role 限制的 Payment Intent 记录函数；未配置服务端票价时，卡支付保持关闭。
+测试 API 在 `https://api-test.japan-travel.info` 提供 `/health`、`/v1/checkout`、`/v1/boarding/issue`、`/v1/boarding/verify` 与 `/v1/webhooks/stripe`。Node 服务只绑定 VPS 的 `127.0.0.1:18773`，由 Nginx 提供 HTTPS 并执行严格 Origin 检查；Webhook 使用原始请求体验签。登车接口先验证 Bearer 会话，签发只返回一次原始 token，核验要求工作人员权限与幂等键。009 迁移增加 `seat_price_jpy` 和受 service-role 限制的 Payment Intent 记录函数；未配置服务端票价时，卡支付保持关闭。
 
 `scripts/verify-stripe-webhook.mjs` 使用虚构测试资料生成签名事件，验证 HTTPS、Stripe 验签、订单 paid、库存 committed、事件落库和重复投递幂等。该验收已在测试环境通过，不创建真实 Stripe 付款。
 

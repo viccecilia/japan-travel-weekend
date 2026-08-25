@@ -67,4 +67,6 @@ export class ProductionBrowserServices {
   createCheckout(input: CheckoutRequest) {
     return this.checkout.checkout(input);
   }
+  issueBoardingCredential(orderId:string){return this.checkout.issueBoardingCredential(orderId)}
+  verifyBoardingCredential(input:{token:string;vehicleGroupId:string;idempotencyKey:string}){return this.checkout.verifyBoardingCredential(input)}
 }

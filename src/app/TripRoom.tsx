@@ -267,6 +267,8 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
   >("connecting");
   const [draft, setDraft] = useState("");
   const [notice, setNotice] = useState("");
+  const [boardingToken,setBoardingToken]=useState("");const [boardingResult,setBoardingResult]=useState("");
+  const [localPhoto,setLocalPhoto]=useState<{name:string;url:string}|null>(null);
   const subscription = useRef<{
     send(payload: unknown): Promise<boolean>;
     close(): void;
@@ -397,6 +399,8 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
   const stopLocation=async()=>{const ok=await services.tripRoom.stopOwnLocationShare(room.vehicle_group_id);setNotice(ok?"位置共享已停止。":"没有可停止的位置共享或权限不足。");};
   const sendTemplate=async(key:string)=>{const ok=await services.tripRoom.sendStaffTemplate(room.room_id,key);if(!ok){setNotice("模板通知未发送：请确认房间已开放且您属于本车工作人员。");return}setMessages((await services.tripRoom.loadMessages(room.room_id)) as RemoteMessage[]);setNotice("重要模板通知已发送并保留原文。");};
   const markBoarded=async(orderId:string)=>{const ok=await services.tripRoom.markOrderBoarded(room.vehicle_group_id,orderId);if(!ok){setNotice("登车状态更新失败或订单不属于本车。");return}setBoardings((await services.tripRoom.loadBoardingStatus(room.vehicle_group_id)) as RemoteBoarding[]);setNotice("登车状态已更新。");};
+  const verifyBoarding=async()=>{if(!boardingToken.trim())return;const result=await services.verifyBoardingCredential({token:boardingToken.trim(),vehicleGroupId:room.vehicle_group_id,idempotencyKey:crypto.randomUUID()});if(!result){setBoardingResult('核验被拒绝：凭证格式、工作人员权限或本车归属不正确。');return}const labels:Record<string,string>={valid:'核验成功，已登记登车。',used:'该凭证已经使用。',expired:'该凭证已经过期。',revoked:'该凭证无效或已撤销。','wrong-vehicle':'该凭证不属于本车。'};setBoardingResult(labels[result.status]??`核验结果：${result.status}`);setBoardingToken('');setBoardings((await services.tripRoom.loadBoardingStatus(room.vehicle_group_id)) as RemoteBoarding[]);};
+  const previewPhoto=(file:File|undefined)=>{if(!file)return;if(!file.type.startsWith('image/')||file.size>5*1024*1024){setNotice('请选择不超过 5 MB 的图片文件。');return}const reader=new FileReader();reader.onload=()=>typeof reader.result==='string'&&setLocalPhoto({name:file.name,url:reader.result});reader.readAsDataURL(file);};
   return (
     <div className="trip-room">
       <div className="frozen-banner" role="status">
@@ -442,6 +446,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
           <div><span>订单返回／登车</span><b>{room.boarded_orders} / {room.total_orders}</b></div>
         </div>
         {room.map_lat!=null&&room.map_lng!=null?<a className="button secondary full" href={`https://www.google.com/maps/dir/?api=1&destination=${room.map_lat},${room.map_lng}&travelmode=walking`} target="_blank" rel="noreferrer">打开集合点步行导航</a>:<button className="button secondary full" disabled>地图坐标待确认</button>}
+        <button className="button secondary full" type="button" disabled>步行寻找司机（实时位置未连接）</button>
         <p className="privacy">司机实时位置尚未连接；不会显示虚假距离或移动轨迹。</p>
       </section>
       {passenger&&room.room_status==='open'&&<section className="room-actions" aria-label="位置共享">
@@ -449,6 +454,12 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
         <button className="room-action" onClick={()=>void shareLocation(30)}>共享位置 30 分钟</button>
         <button className="room-action" onClick={()=>void stopLocation()}>停止共享</button>
       </section>}
+      <section className="photo-preview">
+        <h2>发送周围照片</h2>
+        <label>拍摄或选择图片<input type="file" accept="image/*" capture="environment" disabled={room.room_status!=='open'} onChange={event=>previewPhoto(event.target.files?.[0])}/></label>
+        {localPhoto&&<><img src={localPhoto.url} alt="仅保存在当前浏览器会话的照片预览"/><p>{localPhoto.name}</p><button type="button" className="button secondary full" onClick={()=>setLocalPhoto(null)}>移除本地预览</button></>}
+        <p className="privacy">当前仅在本机内存中预览，不上传外部服务，也不会假装已发送到群组。安全存储与内容审核接通后才开放正式发送。</p>
+      </section>
       {staff && (
         <section className="staff-panel">
           <h2>工作人员履约信息</h2>
@@ -458,6 +469,10 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
           <h3>模板广播</h3>
           <div className="room-actions">{staffTemplates.map(([key,label])=><button className="room-action" type="button" key={key} disabled={room.room_status!=='open'} onClick={()=>void sendTemplate(key)}>{label}</button>)}</div>
           <p className="privacy">重要通知保存 Original 原文；Translation 字段已预留，当前不生成机器翻译。</p>
+          <h3>核验登车凭证</h3>
+          <label>扫描或粘贴凭证<input value={boardingToken} disabled={room.room_status!=='open'} onChange={event=>setBoardingToken(event.target.value)} placeholder={room.room_status==='open'?'bp_…':'行程房间开放后可核验'}/></label>
+          <button className="button full" type="button" disabled={room.room_status!=='open'||!boardingToken.trim()} onClick={()=>void verifyBoarding()}>核验并登记登车</button>
+          {boardingResult&&<p className="notice" role="status">{boardingResult}</p>}
           {projections.length ? (
             projections.map((item, index) => (
               <div className="receipt" key={String(item.order_id ?? index)}>

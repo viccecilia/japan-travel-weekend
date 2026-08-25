@@ -1250,7 +1250,7 @@ export function OrderDetail() {
     const dep=departures.find(item=>item.id===remoteOrder.departure_id);const trip=travelRepository.getTrip(dep?.tripSlug??'');
     const departureLabel=remoteFulfilment?.departs_at?new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Tokyo',dateStyle:'medium',timeStyle:'short'}).format(new Date(remoteFulfilment.departs_at)):dep?.dateLabel??'待确认';
     const lat=remoteFulfilment?.map_lat==null?null:Number(remoteFulfilment.map_lat);const lng=remoteFulfilment?.map_lng==null?null:Number(remoteFulfilment.map_lng);const navigationUrl=Number.isFinite(lat)&&Number.isFinite(lng)?new GoogleMapsAdapter(undefined).navigationUrl({lat:lat!,lng:lng!}):null;
-    return <><AppTitle eyebrow="我的账户／我的行程" title={trip?.shortTitle??'行程订单'}/><div className="status">订单状态：{remoteOrder.status}</div><div className="receipt"><div><span>订单编号</span><b>{remoteOrder.id}</b></div><div><span>出发时间</span><b>{departureLabel}</b></div><div><span>集合地点</span><b>{remoteFulfilment?.meeting_name??'待确认'}</b></div><div><span>集合地址</span><b>{remoteFulfilment?.meeting_address??'待确认'}</b></div><div><span>座位数量</span><b>{remoteOrder.seat_count} 席</b></div><div><span>支付金额</span><b>{remoteOrder.amount==null?'待确认':`¥${remoteOrder.amount}`}</b></div></div>{navigationUrl?<a className="button full" href={navigationUrl} target="_blank" rel="noreferrer">打开地图导航</a>:<p className="notice">地图位置确认后，将在此提供导航入口。</p>}<Link className="button secondary full" to="/app/orders">返回我的账户</Link></>;
+    return <><AppTitle eyebrow="我的账户／我的行程" title={trip?.shortTitle??'行程订单'}/><div className="status">订单状态：{remoteOrder.status}</div><div className="receipt"><div><span>订单编号</span><b>{remoteOrder.id}</b></div><div><span>出发时间</span><b>{departureLabel}</b></div><div><span>集合地点</span><b>{remoteFulfilment?.meeting_name??'待确认'}</b></div><div><span>集合地址</span><b>{remoteFulfilment?.meeting_address??'待确认'}</b></div><div><span>座位数量</span><b>{remoteOrder.seat_count} 席</b></div><div><span>支付金额</span><b>{remoteOrder.amount==null?'待确认':`¥${remoteOrder.amount}`}</b></div></div>{navigationUrl?<a className="button full" href={navigationUrl} target="_blank" rel="noreferrer">打开地图导航</a>:<p className="notice">地图位置确认后，将在此提供导航入口。</p>}<Link className="button full" to={`/app/boarding-pass/${remoteOrder.id}`}>查看登车凭证</Link><Link className="button secondary full" to="/app/orders">返回我的账户</Link></>;
   }
   const o = state.orders.find((x) => x.id === id);
   if (!o)
@@ -1410,8 +1410,10 @@ export function OrderDetail() {
   );
 }
 export function BoardingPass() {
-  const { state } = useApp();
+  const { state,services } = useApp();
   const { id } = useParams();
+  const [credential,setCredential]=useState<{token:string;expiresAt:string;vehicleGroupId:string}|null>(null);const [loading,setLoading]=useState(false);const [notice,setNotice]=useState('');
+  if(services&&id){const issue=async()=>{setLoading(true);const result=await services.issueBoardingCredential(id);setLoading(false);if(!result){setNotice('登车凭证尚不可签发：请确认订单已支付、本车已分配且行程房间已开放。');return}setCredential(result);setNotice('新凭证已签发；此前未使用的凭证已经撤销。');};return <div className="pass"><h1>安全登车凭证</h1>{credential?<><div className="boarding-code" role="img" aria-label="安全登车代码"><b>JT BOARDING</b><code>{credential.token}</code></div><p>有效至：{new Date(credential.expiresAt).toLocaleString('zh-CN',{timeZone:'Asia/Tokyo'})}</p><p className="privacy">该不透明凭证不包含订单号、邮箱、电话或乘客资料。只向本车工作人员出示，不要发送到公开群组。</p></>:<p>行程房间开放后，可生成一次性安全凭证供本车工作人员核验。</p>}<button className="button full" type="button" disabled={loading} onClick={()=>void issue()}>{loading?'正在安全签发…':credential?'重新签发并撤销旧凭证':'生成登车凭证'}</button>{notice&&<p className="notice" role="status">{notice}</p>}</div>}
   const o = state.orders.find((x) => x.id === id);
   return o ? (
     <div className="pass">

@@ -11,7 +11,7 @@
 - `202608210007_secure_boarding_credentials.sql`：远程执行成功。首次回归发现受限 `search_path` 下未限定 schema 的 `digest()` 无法解析；没有绕过安全边界。
 - `202608210008_fix_boarding_digest_search_path.sql`：远程执行成功，以 `extensions.digest()` 修复 trusted verifier，同时保持受限 `search_path` 和原有最小执行权限。
 
-001–013 在该远程测试项目的适用迁移均已执行。它们是顺序、一次性迁移，不应重复粘贴执行。网页 SQL Editor 不作为仓库迁移账本；本次人工执行由本记录保存证据。新建 fresh project 时应按文件名顺序执行一次，之后运行验收脚本。未来自动化环境应改用 Supabase CLI migration ledger，避免人工重复执行。
+001–016 在该远程测试项目的适用迁移均已执行。它们是顺序、一次性迁移，不应重复粘贴执行。网页 SQL Editor 不作为仓库迁移账本；本次人工执行由本记录保存证据。新建 fresh project 时应按文件名顺序执行一次，之后运行验收脚本。未来自动化环境应改用 Supabase CLI migration ledger，避免人工重复执行。
 
 ## 只读结构验收
 
@@ -61,6 +61,10 @@ Supabase Realtime 在频道加入时缓存私有频道授权。房间由 `frozen
 ### 安全登车凭证
 
 007 与 008 已在远程测试项目执行。`supabase/verification/boarding_credential_regression.sql` 使用现有虚构角色并在单一事务末尾回滚，验证签发边界、短摘要拒绝、乘客扫描拒绝、司机／导游／运营权限、首次有效扫码、幂等重试、幂等参数冲突、重复扫码、过期、撤销、错车、未知凭证隐私、原子更新和私有表／函数授权，结果为 **PASS**。数据库只保存 32-byte SHA-256 digest，不保存二维码明文。
+
+014–016 已远程执行。浏览器使用虚构乘客签发一次性不透明凭证，再由本车虚构司机完成核验，结果为 **PASS**；数据库一度显示 boarded、1 次核验和 1 条 pending 通知。验收后已定向删除凭证、核验与通知测试记录，并把登车恢复为 not_issued、房间恢复为 frozen；只读复核为 credential 0、attempt 0、notification 0。该流程没有真实通知投递。
+
+测试 API 当前通过 HTTPS 健康检查，但因远程 systemd 启动需要交互式 sudo，本次更新后由普通用户手动进程临时承载；systemd unit 仍为 inactive。恢复受监督运行前不得把该状态视为正式部署完成。
 
 ## 库存阶段门
 
