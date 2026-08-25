@@ -21,6 +21,8 @@ AppContext 接受可选 production services；没有公开配置时为 `null`，
 
 `scripts/verify-stripe-webhook.mjs` 使用虚构测试资料生成签名事件，验证 HTTPS、Stripe 验签、订单 paid、库存 committed、事件落库和重复投递幂等。该验收已在测试环境通过，不创建真实 Stripe 付款。
 
+`scripts/verify-stripe-test-payment.mjs` 只接受 `sk_test_` 密钥，使用虚构 Supabase 账户和 Stripe 测试卡完成公开 HTTPS Checkout、100 日元测试 PaymentIntent、Stripe Webhook、订单 paid、库存 committed 与支付事件落库的完整验收。100 日元仅写入 `JTW RLS Test Trip` 技术测试班次，不代表正式商品定价；其他班次及正式路线仍保持待定价状态。
+
 本实现不支持 Stripe Express/Connect 账户，也不读取商户数据或发起真实扣款。
 
 ## 公开客户端账户与 Trip Room
