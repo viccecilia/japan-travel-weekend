@@ -6,6 +6,7 @@ import { describeAssistance } from "../shared/services/passengerAssistance";
 import { remoteChatAvailability } from "../shared/services/realtimeAccess";
 import { travelRepository } from "../shared/data/repository";
 import type { ProductionBrowserServices } from "../shared/backend/productionServices";
+import { driverLocationNavigationUrl } from "../shared/capabilities/locationLinks";
 import {attendanceSummary} from "../shared/services/attendance";
 import { useApp } from "./store";
 const service = new TravelService(travelRepository);
@@ -246,6 +247,7 @@ export function TripRoom() {
 
 type RemoteMessage = { id: string; content: string; author_id?: string };
 type RemoteBoarding={order_id:string;passenger_label:string;seat_count:number;boarding_status:string;boarded_at:string|null;location_shared:boolean};
+type RemoteDriverLocation={latitude:number;longitude:number;accuracy_meters:number|null;updated_at:string;expires_at:string};
 type RemoteAttendance={passenger_id:string;passenger_label:string;order_id:string;status:'pending'|'confirmed_departure'|'at_meeting_point'|'boarded'|'needs_assistance'|'contacting'|'unreachable'|'no_show_confirmed';status_at:string|null;contact_status:string|null};
 const staffTemplates=[['introduce','自我介绍'],['confirm_meeting','确认明日集合'],['vehicle_arrived','车辆已到达'],['departing_10','10 分钟后出发'],['departing_5','5 分钟后出发'],['return_vehicle','请返回车辆'],['traffic_delay','交通延误'],['meeting_changed','集合点变更']] as const;
 type RemoteRoom = {
@@ -272,6 +274,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
   const [notice, setNotice] = useState("");
   const [boardingToken,setBoardingToken]=useState("");const [boardingResult,setBoardingResult]=useState("");
   const [localPhoto,setLocalPhoto]=useState<{name:string;url:string}|null>(null);
+  const [driverLocation,setDriverLocation]=useState<RemoteDriverLocation|null>(null);const [locatingDriver,setLocatingDriver]=useState(false);
   const subscription = useRef<{
     close(): void;
   } | null>(null);
@@ -301,6 +304,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
       }
       const nextRoom = result.data as RemoteRoom;
       setRoom(nextRoom);
+      setDriverLocation(await services.tripRoom.loadDriverLocation(nextRoom.vehicle_group_id) as RemoteDriverLocation|null);
       setMessages(
         (await services.tripRoom.loadMessages(nextRoom.room_id)) as RemoteMessage[],
       );
@@ -344,6 +348,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
       subscription.current?.close();
     };
   }, [services]);
+  useEffect(()=>{if(!room||room.room_status!=='open')return;const timer=window.setInterval(()=>void services.tripRoom.loadDriverLocation(room.vehicle_group_id).then(value=>setDriverLocation(value as RemoteDriverLocation|null)),15000);return()=>window.clearInterval(timer)},[room,services]);
   const send = async () => {
     if (
       !room ||
@@ -379,6 +384,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
   if (!room) return <Empty />;
   const access = remoteChatAvailability(room.room_status, connection);
   const staff = role === "driver" || role === "guide" || role === "operations";
+  const driverPublisher=role==='driver'||role==='guide';
   const passenger = role === "passenger";
   const attendanceLabels:Record<RemoteAttendance['status'],string>={pending:'待签到',confirmed_departure:'已确认出发',at_meeting_point:'已到集合点',boarded:'已登车',needs_assistance:'需要协助',contacting:'联系中',unreachable:'暂未联系上',no_show_confirmed:'运营已确认未到'};
   const attendanceTotals=attendanceSummary(attendance.map(item=>item.status));
@@ -387,6 +393,8 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
   const requestContact=async(passengerId:string)=>{const ok=await services.tripRoom.recordContact(room.vehicle_group_id,passengerId,'contact_requested');if(!ok){setNotice('尚未到人工联系时间，或电话联系服务未授权。请由运营协助处理。');return}setAttendance(await services.tripRoom.loadAttendance(room.vehicle_group_id) as RemoteAttendance[]);setNotice('已向运营提交电话联系请求；当前不会显示乘客电话号码。')};
   const shareLocation=async(minutes:15|30)=>{const ok=await services.tripRoom.startOwnLocationShare(room.vehicle_group_id,minutes);setNotice(ok?`已授权共享 ${minutes} 分钟，仅本车司机和司导可见。`:"位置共享未能开启，请检查本车成员权限。");};
   const stopLocation=async()=>{const ok=await services.tripRoom.stopOwnLocationShare(room.vehicle_group_id);setNotice(ok?"位置共享已停止。":"没有可停止的位置共享或权限不足。");};
+  const publishDriverLocation=()=>{if(!navigator.geolocation){setNotice('此设备不支持定位。');return}setLocatingDriver(true);navigator.geolocation.getCurrentPosition(async position=>{const ok=await services.tripRoom.publishDriverLocation(room.vehicle_group_id,{latitude:position.coords.latitude,longitude:position.coords.longitude,accuracy:Number.isFinite(position.coords.accuracy)?position.coords.accuracy:null},15);setLocatingDriver(false);if(!ok){setNotice('司机位置未能共享：请确认房间开放、定位精度和本车工作人员权限。');return}setDriverLocation(await services.tripRoom.loadDriverLocation(room.vehicle_group_id) as RemoteDriverLocation|null);setNotice('司机位置已共享 15 分钟；可随时停止。')},()=>{setLocatingDriver(false);setNotice('未取得定位授权，司机位置保持关闭。')},{enableHighAccuracy:true,timeout:10000,maximumAge:15000})};
+  const stopDriverLocation=async()=>{const ok=await services.tripRoom.stopDriverLocation(room.vehicle_group_id);setDriverLocation(null);setNotice(ok?'司机位置共享已停止。':'没有可停止的位置共享或权限不足。')};
   const sendTemplate=async(key:string)=>{const ok=await services.tripRoom.sendStaffTemplate(room.room_id,key);if(!ok){setNotice("模板通知未发送：请确认房间已开放且您属于本车工作人员。");return}setMessages((await services.tripRoom.loadMessages(room.room_id)) as RemoteMessage[]);setNotice("重要模板通知已发送并保留原文。");};
   const markBoarded=async(orderId:string)=>{const ok=await services.tripRoom.markOrderBoarded(room.vehicle_group_id,orderId);if(!ok){setNotice("登车状态更新失败或订单不属于本车。");return}setBoardings((await services.tripRoom.loadBoardingStatus(room.vehicle_group_id)) as RemoteBoarding[]);setNotice("登车状态已更新。");};
   const verifyBoarding=async()=>{if(!boardingToken.trim())return;const result=await services.verifyBoardingCredential({token:boardingToken.trim(),vehicleGroupId:room.vehicle_group_id,idempotencyKey:crypto.randomUUID()});if(!result){setBoardingResult('核验被拒绝：凭证格式、工作人员权限或本车归属不正确。');return}const labels:Record<string,string>={valid:'核验成功，已登记登车。',used:'该凭证已经使用。',expired:'该凭证已经过期。',revoked:'该凭证无效或已撤销。','wrong-vehicle':'该凭证不属于本车。'};setBoardingResult(labels[result.status]??`核验结果：${result.status}`);setBoardingToken('');setBoardings((await services.tripRoom.loadBoardingStatus(room.vehicle_group_id)) as RemoteBoarding[]);};
@@ -436,9 +444,9 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
           <div><span>订单返回／登车</span><b>{room.boarded_orders} / {room.total_orders}</b></div>
         </div>
         {room.map_lat!=null&&room.map_lng!=null?<a className="button secondary full" href={`https://www.google.com/maps/dir/?api=1&destination=${room.map_lat},${room.map_lng}&travelmode=walking`} target="_blank" rel="noreferrer">打开集合点步行导航</a>:<button className="button secondary full" disabled>地图坐标待确认</button>}
-        <button className="button secondary full" type="button" disabled>步行寻找司机（实时位置未连接）</button>
-        <p className="privacy">司机实时位置尚未连接；不会显示虚假距离或移动轨迹。</p>
+        {(()=>{const url=driverLocationNavigationUrl({coordinates:driverLocation?{lat:Number(driverLocation.latitude),lng:Number(driverLocation.longitude)}:null,tripActive:room.room_status==='open',sameVehicleGroup:true,viewerRole:(role==='passenger'||role==='driver'||role==='guide'||role==='operations')?role:'passenger'});return url?<><a className="button secondary full" href={url} target="_blank" rel="noreferrer">步行寻找司机</a><p className="privacy">司机位置更新于 {new Date(driverLocation!.updated_at).toLocaleTimeString('zh-CN',{timeZone:'Asia/Tokyo'})}，精度约 {driverLocation!.accuracy_meters==null?'未知':`${Math.round(Number(driverLocation!.accuracy_meters))} 米`}；到期后自动隐藏。</p></>:<><button className="button secondary full" type="button" disabled>步行寻找司机（位置未共享）</button><p className="privacy">司机位置默认关闭；仅在本车工作人员主动共享且房间开放时显示，不生成虚假距离或移动轨迹。</p></>})()}
       </section>
+      {driverPublisher&&<section className="room-actions" aria-label="司机位置共享"><button className="room-action" type="button" disabled={room.room_status!=='open'||locatingDriver} onClick={publishDriverLocation}>{locatingDriver?'正在获取定位…':'共享司机位置 15 分钟'}</button><button className="room-action" type="button" disabled={room.room_status!=='open'} onClick={()=>void stopDriverLocation()}>停止司机位置共享</button></section>}
       {passenger&&room.room_status==='open'&&<section className="room-actions" aria-label="位置共享">
         <button className="room-action" onClick={()=>void shareLocation(15)}>共享位置 15 分钟</button>
         <button className="room-action" onClick={()=>void shareLocation(30)}>共享位置 30 分钟</button>

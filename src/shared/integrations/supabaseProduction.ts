@@ -115,6 +115,9 @@ export class SupabaseTripRoomRepository {
   }
   async startOwnLocationShare(vehicleGroupId:string,minutes:15|30){if(!this.client)return false;const {error}=await this.client.rpc('start_own_location_share',{p_vehicle_group:vehicleGroupId,p_minutes:minutes});return !error}
   async stopOwnLocationShare(vehicleGroupId:string){if(!this.client)return false;const {error}=await this.client.rpc('stop_own_location_share',{p_vehicle_group:vehicleGroupId});return !error}
+  async publishDriverLocation(vehicleGroupId:string,coordinates:{latitude:number;longitude:number;accuracy:number|null},minutes=15){if(!this.client)return false;const {error}=await this.client.rpc('publish_driver_location',{p_vehicle_group:vehicleGroupId,p_latitude:coordinates.latitude,p_longitude:coordinates.longitude,p_accuracy_meters:coordinates.accuracy,p_minutes:minutes});return !error}
+  async stopDriverLocation(vehicleGroupId:string){if(!this.client)return false;const {error}=await this.client.rpc('stop_driver_location',{p_vehicle_group:vehicleGroupId});return !error}
+  async loadDriverLocation(vehicleGroupId:string){if(!this.client)return null;const {data,error}=await this.client.rpc('get_active_driver_location',{p_vehicle_group:vehicleGroupId}).maybeSingle();return error?null:data}
   async loadMessages(roomId: string) {
     if (!this.client) return [];
     const { data, error } = await this.client

@@ -18,6 +18,8 @@
 - Realtime/签到 019 持久连接迁移与只读结构验收：远程 PASS；同一连接跨 frozen/open/frozen、开放发送、本车乘客/司机/运营接收、再次冻结拒发与订单本人签到均 PASS，测试夹具已恢复 frozen。
 - 当前第二乘客账户已属于同一 Vehicle Group，不能作为“无关乘客”WebSocket 夹具；随机 authenticated 身份的数据库 membership helper 拒绝回滚验收 PASS，真实无关已登录账户 WebSocket 拒收复测 NOT RUN。
 - Boarding 007 摘要凭证与 008 `search_path` 修复：远程迁移及回滚式完整行为回归 PASS；二维码原始凭证不落库。真实扫描设备和离线并发仍为 NOT RUN。
+- Driver location 017：远程迁移、虚构司机测试坐标、本车乘客浏览器导航、事务内非成员拒绝、停止隐藏与清理恢复均 PASS；真实设备 GPS 与道路实测仍需用户验收。
+- Notification lifecycle 018：远程迁移、领取锁、delivered、retry、锁释放和回滚清理 PASS；外部邮件／短信／推送供应商仍未批准或连接。
 
 - Supabase 迁移按顺序执行一次；只读验收脚本可重复执行。
 - 并发最后一席、容量边界和重复 idempotency key 远程数据库行为：PASS。

@@ -12,7 +12,7 @@
 - `202608210008_fix_boarding_digest_search_path.sql`：远程执行成功，以 `extensions.digest()` 修复 trusted verifier，同时保持受限 `search_path` 和原有最小执行权限。
 - `202608250019_persistent_chat_attendance.sql`：远程执行成功。聊天发送改为每次请求重新检查房间状态与本车成员资格的 durable RPC；客户端改订阅 Postgres Changes，房间 frozen/open 切换不再要求离开并重新加入频道。新增乘客签到、工作人员点名、联系升级审计与集中时限配置。
 
-001–016 在该远程测试项目的适用迁移均已执行。它们是顺序、一次性迁移，不应重复粘贴执行。网页 SQL Editor 不作为仓库迁移账本；本次人工执行由本记录保存证据。新建 fresh project 时应按文件名顺序执行一次，之后运行验收脚本。未来自动化环境应改用 Supabase CLI migration ledger，避免人工重复执行。
+001–019 在该远程测试项目的适用迁移均已执行。它们是顺序、一次性迁移，不应重复粘贴执行。网页 SQL Editor 不作为仓库迁移账本；本次人工执行由本记录保存证据。新建 fresh project 时应按文件名顺序执行一次，之后运行验收脚本。未来自动化环境应改用 Supabase CLI migration ledger，避免人工重复执行。
 
 ## 只读结构验收
 
@@ -70,6 +70,12 @@ Realtime 私有 WebSocket 已使用四个虚构角色完成远程验收：订单
 014–016 已远程执行。浏览器使用虚构乘客签发一次性不透明凭证，再由本车虚构司机完成核验，结果为 **PASS**；数据库一度显示 boarded、1 次核验和 1 条 pending 通知。验收后已定向删除凭证、核验与通知测试记录，并把登车恢复为 not_issued、房间恢复为 frozen；只读复核为 credential 0、attempt 0、notification 0。该流程没有真实通知投递。
 
 测试 API 已恢复为 systemd 受监督运行。`japan-travel-weekend-api.service` 为 enabled + active，由 systemd 管理的 Node 进程只监听 `127.0.0.1:18773`；Nginx HTTPS 健康检查返回测试模式、Supabase 与 Stripe 测试配置均正常。最近服务日志显示本次启动成功，无新的启动错误。
+
+### 司机位置与通知生命周期
+
+017、018 已在远程测试项目执行，结构验收返回司机位置表 1、位置函数 3、通知函数 2、authenticated 底层位置表授权 0、通知生命周期字段 5。虚构司机使用测试坐标发布 15 分钟位置，本车虚构乘客在正式中文 Trip Room 看到“步行寻找司机”和约 25 米测试精度；停止后入口立即隐藏。原“无关乘客”账户因后续测试订单已成为本车成员，因此负面测试改用事务内随机 authenticated 身份，读取结果为 0 行并整体回滚。
+
+通知生命周期在事务内验证两条虚构事件：成功项为 delivered／attempts 1／锁释放，失败项为 pending／attempts 1／`provider-error`／锁释放，随后整体回滚。最终清理复核为 driver location 0 行、通知测试事件 0 行、Trip Room frozen；浏览器控制台错误 0。未连接外部通知供应商，未产生真实投递或费用。
 
 ## 库存阶段门
 
