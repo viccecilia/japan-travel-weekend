@@ -47,3 +47,5 @@
 - 监控、备份、恢复、容量、渗透测试和最终移除 noindex 的发布批准。
 
 机器可检查的当前状态以 `launch-gate-status.json` 为准；运行 `npm run check:launch`。只要有 `test_pending`／`external_pending` 或 `noindex=true`，产品就不得标为生产就绪。
+
+真实手机的逐步验收使用 `final-user-acceptance.md`；监控、备份恢复、容量、安全、法律和生产批准的证据格式使用 `operations-drill-runbook.md`。

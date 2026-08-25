@@ -33,3 +33,5 @@ npm run build
 - 保留 `noindex,nofollow` 和阻止抓取的 `robots.txt`，直到产品具备公开上线条件。
 
 详细说明见 `docs/production-foundation.md`、`docs/runtime-modes.md`、`docs/data-model.md`、`docs/vehicle-allocation.md`、`docs/trip-room.md` 与 `docs/account-authentication.md`。
+
+测试环境工程验收完成后，由真实用户按 `docs/final-user-acceptance.md` 使用虚构资料进行手机验收；外部运维和正式批准按 `docs/operations-drill-runbook.md` 留存证据。两者都不会自动授权生产收费、push、正式部署或移除 noindex。
