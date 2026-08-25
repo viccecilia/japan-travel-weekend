@@ -18,6 +18,7 @@ npm run lint
 npm test
 npm run check:content
 npm run check:launch
+npm run probe:test-api
 npm run build
 ```
 

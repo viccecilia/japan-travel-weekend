@@ -4,6 +4,7 @@ import {createSupabaseServerClient,SupabaseAccessTokenVerifier,SupabaseManualPay
 import {StripeCardPaymentSessionGateway,StripeTestAdapter} from './stripe.js';
 import {allowedCorsOrigin,parseAllowedOrigins} from './cors.js';
 import {SupabaseBoardingGateway} from './boarding.js';
+import {checkTestApiReadiness} from './readiness.js';
 
 const port=Number(process.env.PORT||8787);const allowedOrigins=parseAllowedOrigins(process.env.ALLOWED_ORIGIN||'');
 const supabase=createSupabaseServerClient({url:process.env.SUPABASE_URL||'',serviceRoleKey:process.env.SUPABASE_SERVICE_ROLE_KEY||''});
@@ -15,7 +16,8 @@ const boarding=new SupabaseBoardingGateway(supabase);const sessions=new Supabase
 function send(res:ServerResponse,status:number,body:unknown,corsOrigin:string|null=null){res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...(corsOrigin?{'access-control-allow-origin':corsOrigin,'vary':'Origin'}:{})});res.end(JSON.stringify(body))}
 async function raw(req:IncomingMessage,limit=1_000_000){const chunks:Buffer[]=[];let size=0;for await(const chunk of req){const value=Buffer.from(chunk);size+=value.length;if(size>limit)throw new Error('body_too_large');chunks.push(value)}return Buffer.concat(chunks)}
 const server=createServer(async(req,res)=>{const corsOrigin=allowedCorsOrigin(req.headers.origin,allowedOrigins);try{
-  if(req.method==='GET'&&req.url==='/health')return send(res,200,{ok:true,mode:'test',supabase:Boolean(supabase),stripeConfigured:Boolean(process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_')),webhookConfigured:Boolean(process.env.STRIPE_WEBHOOK_SECRET?.startsWith('whsec_'))},corsOrigin);
+  if(req.method==='GET'&&req.url==='/health')return send(res,200,{ok:true,mode:'test'},corsOrigin);
+  if(req.method==='GET'&&req.url==='/ready'){const readiness=await checkTestApiReadiness(supabase,{STRIPE_SECRET_KEY:process.env.STRIPE_SECRET_KEY,STRIPE_WEBHOOK_SECRET:process.env.STRIPE_WEBHOOK_SECRET});return send(res,readiness.ok?200:503,readiness,corsOrigin)}
   if(req.method==='OPTIONS'){if(req.headers.origin&&!corsOrigin)return send(res,403,{error:'origin_not_allowed'});res.writeHead(204,{...(corsOrigin?{'access-control-allow-origin':corsOrigin}:{ }),'access-control-allow-methods':'POST,OPTIONS','access-control-allow-headers':'authorization,content-type,stripe-signature','vary':'Origin'});return res.end()}
   if(req.headers.origin&&!corsOrigin)return send(res,403,{error:'origin_not_allowed'});
   if(req.method==='POST'&&req.url==='/v1/checkout'){const body=JSON.parse((await raw(req)).toString('utf8'));const result=await checkout.post(req.headers.authorization,body);return send(res,result.status,result.body,corsOrigin)}
