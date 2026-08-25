@@ -15,9 +15,11 @@ AppContext 接受可选 production services；没有公开配置时为 `null`，
 - 卡支付：仅 Stripe Standard 测试模式 gateway 可用时创建 Payment Intent；响应只返回客户端确认所需 client secret，不返回服务端 key。创建失败会取消待支付订单并释放 hold。
 - 银行转账：不调用 Stripe，订单进入 `pending_manual_review`。005 迁移只允许 service-role 调用状态函数；人工核账前不得标记已支付。状态写入失败会取消订单并释放 hold。
 
-005 已远程执行，首次/重复转换、状态和数据库 execute 权限六项回滚验收为 PASS。HTTPS 测试 API 尚未部署，因此浏览器到服务端的银行转账链路仍为 NOT RUN。
+005 已远程执行，首次/重复转换、状态和数据库 execute 权限六项回滚验收为 PASS。HTTPS 测试 API 已部署，但浏览器到服务端的银行转账链路仍为 NOT RUN。
 
-本地测试 API 现提供 `/health`、`/v1/checkout` 与 `/v1/webhooks/stripe`。服务只绑定 `127.0.0.1`，执行严格 Origin 检查，Webhook 使用原始请求体验签。009 迁移增加 `seat_price_jpy` 和受 service-role 限制的 Payment Intent 记录函数；未配置服务端票价或 Webhook 签名密钥时，卡支付保持关闭。
+测试 API 在 `https://api-test.japan-travel.info` 提供 `/health`、`/v1/checkout` 与 `/v1/webhooks/stripe`。Node 服务只绑定 VPS 的 `127.0.0.1:18773`，由 Nginx 提供 HTTPS 并执行严格 Origin 检查；Webhook 使用原始请求体验签。009 迁移增加 `seat_price_jpy` 和受 service-role 限制的 Payment Intent 记录函数；未配置服务端票价时，卡支付保持关闭。
+
+`scripts/verify-stripe-webhook.mjs` 使用虚构测试资料生成签名事件，验证 HTTPS、Stripe 验签、订单 paid、库存 committed、事件落库和重复投递幂等。该验收已在测试环境通过，不创建真实 Stripe 付款。
 
 本实现不支持 Stripe Express/Connect 账户，也不读取商户数据或发起真实扣款。
 
@@ -31,4 +33,4 @@ Trip Room 先读取当前账户可访问的房间与历史消息，再订阅该�
 
 ## 外部凭证门
 
-本机未跟踪配置已连接 Supabase service-role 与 Stripe Standard test secret，且 Stripe 只读检查确认 `livemode=false`。仍需部署受控 HTTPS API runtime、配置 Stripe 测试 Webhook secret，并完成速率限制、审计和错误监控；在此之前不得声称浏览器支付链路已完成。
+本机与 VPS 私密配置已连接 Supabase service-role、Stripe Standard test secret 和测试 Webhook secret；Stripe 只读检查确认 `livemode=false`，签名 Webhook 端到端验收为 PASS。仍需配置经业务确认的服务端票价，并完成浏览器 Checkout、速率限制、审计和错误监控；在此之前不得声称用户支付链路已完成。
