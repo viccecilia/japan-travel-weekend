@@ -1,4 +1,18 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Departure, SeatStatus } from "../types";
+
+type SellableDepartureRow={id:string;trip_slug:string;trip_title:string;departs_at:string;capacity:number;available_seats:number;seat_price_jpy:number};
+const seatStatus=(available:number,capacity:number):SeatStatus=>available<=0?'已售罄':available<=2?'余位较少':available/capacity<=.25?'即将满员':'可预订';
+const weekendBucket=(date:Date,now=new Date()):Departure['weekend']=>{const days=(date.getTime()-now.getTime())/86400000;return days<=7?'本周末':days<=14?'下周末':'稍后'};
+export function mapSellableDeparture(row:SellableDepartureRow,now=new Date()):Departure{
+  const departsAt=new Date(row.departs_at);
+  return {id:row.id,tripSlug:row.trip_slug,dateLabel:new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Tokyo',month:'long',day:'numeric',weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(departsAt),weekend:weekendBucket(departsAt,now),status:seatStatus(row.available_seats,row.capacity),departureTime:departsAt.toISOString(),meetingPointName:null,meetingAddress:null,meetingCoordinates:null,arrivalInstructions:{transit:null,walking:null,driving:null},meetingPhoto:null,meetingPhotoStatus:'待确认',mapStatus:'未连接',price:row.seat_price_jpy,availableSeats:row.available_seats,isSeed:false};
+}
+export class SupabaseDepartureRepository{
+  constructor(private readonly client:SupabaseClient|null){}
+  get available(){return this.client!==null}
+  async listSellable(){if(!this.client)return {data:[] as Departure[],error:'班次服务未配置'};try{const {data,error}=await this.client.rpc('list_sellable_departures');return error?{data:[] as Departure[],error:'无法读取可售班次'}:{data:((data??[]) as SellableDepartureRow[]).map(row=>mapSellableDeparture(row)),error:null}}catch{return {data:[] as Departure[],error:'无法读取可售班次'}}}
+}
 export class SupabaseAuthRepository {
   constructor(private readonly client: SupabaseClient | null,private readonly appOrigin:string=typeof window==='undefined'?'http://localhost':window.location.origin) {}
   get available() {
@@ -87,6 +101,7 @@ export class SupabaseOrderRepository {
       .maybeSingle();
     return error ? null : data;
   }
+  async ownFulfilment(orderId:string){if(!this.client)return null;try{const {data,error}=await this.client.rpc('get_own_order_fulfilment',{p_order:orderId}).maybeSingle();return error?null:data}catch{return null}}
 }
 export class SupabaseTripRoomRepository {
   constructor(private readonly client: SupabaseClient | null) {}

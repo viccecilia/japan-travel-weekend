@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { TestBackendApi, type CheckoutRequest } from "./testApi";
 import {
   SupabaseAuthRepository,
+  SupabaseDepartureRepository,
   SupabaseOrderRepository,
   SupabaseTripRoomRepository,
 } from "../integrations/supabaseProduction";
@@ -9,6 +10,7 @@ import { SupabaseRealtimeAdapter } from "../integrations/supabaseClient";
 export class ProductionBrowserServices {
   readonly auth;
   readonly orders;
+  readonly departures;
   readonly checkout;
   readonly tripRoom;
   readonly realtime;
@@ -19,6 +21,7 @@ export class ProductionBrowserServices {
   ) {
     this.auth = new SupabaseAuthRepository(client);
     this.orders = new SupabaseOrderRepository(client);
+    this.departures = new SupabaseDepartureRepository(client);
     this.tripRoom = new SupabaseTripRoomRepository(client);
     this.realtime = new SupabaseRealtimeAdapter(client);
     this.checkout = new TestBackendApi(
@@ -33,6 +36,7 @@ export class ProductionBrowserServices {
   }
   get authAvailable() { return this.auth.available; }
   get ordersAvailable() { return this.orders.available; }
+  get departuresAvailable(){return this.departures.available}
   get checkoutAvailable() { return this.checkout.available; }
   get tripRoomAvailable() { return this.tripRoom.available; }
   get realtimeAvailable() { return this.realtime.connected; }
@@ -58,6 +62,8 @@ export class ProductionBrowserServices {
   loadOwnOrders() {
     return this.orders.loadOwnOrders();
   }
+  loadOwnOrderFulfilment(orderId:string){return this.orders.ownFulfilment(orderId)}
+  loadSellableDepartures(){return this.departures.listSellable()}
   createCheckout(input: CheckoutRequest) {
     return this.checkout.checkout(input);
   }

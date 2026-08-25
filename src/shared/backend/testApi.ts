@@ -5,7 +5,8 @@ export class TestBackendApi{
   get available(){return Boolean(this.baseUrl?.startsWith('https://'))}
   async checkout(input:CheckoutRequest):Promise<CheckoutResponse|null>{
     const token=await this.accessToken();if(!this.available||!token)return null;
-    const response=await this.fetcher(`${this.baseUrl}/v1/checkout`,{method:'POST',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},body:JSON.stringify(input)});
-    if(!response.ok)return null;return response.json() as Promise<CheckoutResponse>;
+    try{const response=await this.fetcher(`${this.baseUrl}/v1/checkout`,{method:'POST',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},body:JSON.stringify(input)});
+      if(!response.ok)return null;return await response.json() as CheckoutResponse;
+    }catch{return null}
   }
 }

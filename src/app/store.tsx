@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { AppState, Booking, Order, UiPreferences } from "../shared/types";
+import type { AppState, Booking, Departure, Order, UiPreferences } from "../shared/types";
 import { isSeedEnabled } from "../shared/config/businessRules";
 import { createMemoryRepository } from "../shared/data/repository";
 import type { ProductionBrowserServices } from "../shared/backend/productionServices";
@@ -40,6 +40,9 @@ type Ctx = {
   setState: (s: AppState) => void;
   services: ProductionBrowserServices | null;
   authResolved: boolean;
+  departures: Departure[];
+  departuresResolved: boolean;
+  departuresError: string | null;
   updateBooking: (b: Partial<Booking>) => void;
   addOrder: (o: Order) => void;
   setUi: (ui: UiPreferences) => void;
@@ -55,6 +58,10 @@ export function AppProvider({
 }) {
   const [state, setState] = useState(initialState);
   const [authResolved, setAuthResolved] = useState(!services);
+  const [departures,setDepartures]=useState<Departure[]>(()=>services?[]:repo.listDepartures());
+  const [departuresResolved,setDeparturesResolved]=useState(!services);
+  const [departuresError,setDeparturesError]=useState<string|null>(null);
+  useEffect(()=>{let active=true;if(!services)return()=>{active=false};void services.loadSellableDepartures().then(result=>{if(!active)return;setDepartures(result.data);setDeparturesError(result.error);setDeparturesResolved(true)});return()=>{active=false}},[services]);
   useEffect(() => {
     let active = true;
     if (!services) return () => { active = false; };
@@ -84,6 +91,9 @@ export function AppProvider({
       setState,
       services,
       authResolved,
+      departures,
+      departuresResolved,
+      departuresError,
       updateBooking: (b: Partial<Booking>) =>
         setState((s) => ({
           ...s,
@@ -106,7 +116,7 @@ export function AppProvider({
         setState(initialState());
       },
     }),
-    [state, services, authResolved],
+    [state, services, authResolved, departures, departuresResolved, departuresError],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

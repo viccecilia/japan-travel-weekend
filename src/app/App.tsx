@@ -22,6 +22,10 @@ import { GoogleMapsAdapter } from "../shared/integrations/googleMaps";
 import { useApp } from "./store";
 import { safeReturnTo } from "./auth";
 import { passwordRules, passwordRuleText } from "../shared/config/authConfig";
+import { Elements } from "@stripe/react-stripe-js";
+import { stripeTestClient } from "../shared/integrations/stripeClient";
+import { StripePaymentForm } from "./StripePaymentForm";
+import { seatOrderTotal } from "../shared/services/pricing";
 const trips = travelRepository.listTrips();
 const Empty = ({
   title = "暂无内容",
@@ -219,8 +223,12 @@ export function Login() {
   );
 }
 export function AppHome() {
-  const { state } = useApp();
-  const deps = travelRepository.listDepartures();
+  const {
+    state,
+    departures: deps,
+    departuresResolved,
+    departuresError,
+  } = useApp();
   return (
     <>
       <AppTitle
@@ -250,7 +258,11 @@ export function AppHome() {
         </Link>
       )}
       <h2>可选出发班次</h2>
-      {deps.length ? (
+      {!departuresResolved ? (
+        <Empty title="正在读取可售班次" text="请稍候，正在同步最新出发信息。" />
+      ) : departuresError ? (
+        <Empty title="暂时无法读取班次" text="请稍后刷新页面重试。" />
+      ) : deps.length ? (
         <div className="app-list">
           {trips.slice(0, 2).map((t) => (
             <TripCard key={t.id} trip={t} app />
@@ -320,10 +332,8 @@ export function AppTrip() {
 }
 export function BookingPage() {
   const t = travelRepository.getTrip(useParams().slug || "") ?? trips[0];
-  const deps = travelRepository
-    .listDepartures()
-    .filter((d) => d.tripSlug === t.slug);
-  const { state, updateBooking } = useApp();
+  const { state, updateBooking, departures } = useApp();
+  const deps = departures.filter((d) => d.tripSlug === t.slug);
   const nav = useNavigate();
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -717,9 +727,11 @@ export function Passengers() {
   );
 }
 export function Checkout() {
-  const { state, updateBooking } = useApp();
+  const { state, updateBooking, departures } = useApp();
   const nav = useNavigate();
-  const dep = travelRepository.getDeparture(state.booking?.departureId || "");
+  const dep = departures.find((item) => item.id === state.booking?.departureId);
+  const guests = (state.booking?.adults ?? 0) + (state.booking?.children ?? 0);
+  const total = seatOrderTotal(dep?.price, guests);
   const summaries = describeAssistance(state.booking?.assistance);
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -765,8 +777,12 @@ export function Checkout() {
           </b>
         </div>
         <div>
-          <span>应付金额</span>
+          <span>每席价格</span>
           <b>{dep?.price == null ? "待公布" : `¥${dep.price}`}</b>
+        </div>
+        <div>
+          <span>应付总额</span>
+          <b>{total == null ? "待公布" : `¥${total}`}</b>
         </div>
       </div>
       {state.booking?.assistance?.operationalReviewStatus !== "未提出" && (
@@ -796,11 +812,18 @@ const methods = [
   "PayPal",
 ];
 export function Payment() {
-  const { state, addOrder, services } = useApp();
+  const { state, addOrder, services, departures } = useApp();
   const availableMethods = services ? ["信用卡", "银行转账"] : methods;
   const [method, setMethod] = useState(availableMethods[0]);
   const [remoteStatus, setRemoteStatus] = useState("");
+  const [remoteCheckout, setRemoteCheckout] = useState<{
+    orderId: string;
+    clientSecret: string;
+  } | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const production = appConfig.runtimeMode === "production";
+  const selectedDeparture=departures.find(item=>item.id===state.booking?.departureId);
+  const payableTotal=seatOrderTotal(selectedDeparture?.price,(state.booking?.adults??0)+(state.booking?.children??0));
   const nav = useNavigate();
   const simulate = () => {
     const id = `DEV-${Date.now().toString().slice(-6)}`;
@@ -824,29 +847,54 @@ export function Payment() {
   };
   const createTestCheckout = async () => {
     if (!services || !state.booking?.departureId) return;
+    if (method !== "银行转账" && !stripeTestClient) {
+      setRemoteStatus(
+        production
+          ? "在线支付配置尚未完成，请稍后再试。"
+          : "Stripe 测试支付配置尚未完成。",
+      );
+      return;
+    }
+    setSubmitting(true);
     setRemoteStatus("正在提交测试订单…");
-    const result = await services.createCheckout({
-      departureId: state.booking.departureId,
-      seats: (state.booking.adults ?? 0) + (state.booking.children ?? 0),
-      idempotencyKey: crypto.randomUUID(),
-      paymentMethod: method === "银行转账" ? "bank_transfer" : "card",
-    });
+    let result;
+    try {
+      result = await services.createCheckout({
+        departureId: state.booking.departureId,
+        seats: (state.booking.adults ?? 0) + (state.booking.children ?? 0),
+        idempotencyKey: crypto.randomUUID(),
+        paymentMethod: method === "银行转账" ? "bank_transfer" : "card",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+    if (result?.status === "pending_manual_review") {
+      nav(
+        `/app/payment-result?order_id=${encodeURIComponent(result.orderId)}&manual=1`,
+      );
+      return;
+    }
+    if (result?.status === "requires_payment_action") {
+      setRemoteCheckout({
+        orderId: result.orderId,
+        clientSecret: result.clientSecret,
+      });
+    }
     setRemoteStatus(
-      result?.status === "pending_manual_review"
-        ? "银行转账已进入人工审核，尚未确认到账。"
-        : result?.status === "requires_payment_action"
-          ? production
-            ? "在线支付会话已创建，尚未完成支付确认。"
-            : "测试支付会话已创建，尚未完成支付确认。"
-          : production
-            ? "在线结账暂时不可用，请稍后再试。"
-            : "测试结账服务暂时不可用。",
+      result?.status === "requires_payment_action"
+        ? production
+          ? "在线支付会话已创建，请填写付款信息。"
+          : "测试支付会话已创建，请填写测试付款信息。"
+        : production
+          ? "在线结账暂时不可用，请稍后再试。"
+          : "测试结账服务暂时不可用。",
     );
   };
   const enabled = appConfig.runtimeMode !== "production";
   return (
     <>
       <AppTitle eyebrow="第 4 步，共 4 步" title="支付" />
+      <div className="receipt"><div><span>订单金额</span><b>{payableTotal==null?'待确认':`¥${payableTotal}`}</b></div></div>
       <div className="notice">
         {services
           ? services.checkoutAvailable
@@ -882,6 +930,21 @@ export function Payment() {
           </button>
         ))}
       </div>
+      {remoteCheckout && stripeTestClient && method !== "银行转账" && (
+        <Elements
+          stripe={stripeTestClient}
+          options={{ clientSecret: remoteCheckout.clientSecret, locale: "zh" }}
+        >
+          <StripePaymentForm
+            orderId={remoteCheckout.orderId}
+            onComplete={(orderId, status) =>
+              nav(
+                `/app/payment-result?order_id=${encodeURIComponent(orderId)}&payment_status=${status}`,
+              )
+            }
+          />
+        </Elements>
+      )}
       {remoteStatus && (
         <p className="notice" role="status">
           {remoteStatus}
@@ -889,14 +952,25 @@ export function Payment() {
       )}
       <button
         className="button full"
-        disabled={services ? !services.checkoutAvailable || !state.booking?.departureId : !enabled}
+        disabled={
+          services
+            ? !services.checkoutAvailable ||
+              !state.booking?.departureId ||
+              submitting ||
+              Boolean(remoteCheckout)
+            : !enabled
+        }
         onClick={services ? createTestCheckout : simulate}
       >
         {services
           ? services.checkoutAvailable
             ? production
               ? "继续在线结账"
-              : "提交测试结账"
+              : submitting
+                ? "正在创建测试结账…"
+                : remoteCheckout
+                  ? "请在上方完成测试支付"
+                  : "提交测试结账"
             : production
               ? "在线支付暂未开放"
               : "结账服务未连接"
@@ -913,12 +987,47 @@ export function Payment() {
 export function PaymentResult() {
   const location = useLocation();
   const nav = useNavigate();
-  const { state } = useApp();
-  const id = (location.state as null | { id?: string })?.id;
+  const { state, services } = useApp();
+  const query = new URLSearchParams(location.search);
+  const id =
+    (location.state as null | { id?: string })?.id ??
+    query.get("order_id") ??
+    undefined;
   const order = state.orders.find((item) => item.id === id);
   const [seconds, setSeconds] = useState(3);
+  const [remoteOrder, setRemoteOrder] = useState<{
+    id: string;
+    status: string;
+  } | null>(null);
+  const manual = query.get("manual") === "1";
   useEffect(() => {
-    if (!id) return;
+    if (!services || !id) return;
+    let active = true;
+    let attempts = 0;
+    const check = async () => {
+      const result = await services.loadOwnOrders();
+      const found = (
+        result.data as Array<{ id: string; status: string }>
+      ).find((item) => item.id === id) ?? null;
+      if (active) setRemoteOrder(found);
+      attempts += 1;
+      if (
+        active &&
+        found &&
+        !["paid", "payment_review", "refunded", "cancelled"].includes(
+          found.status,
+        ) &&
+        attempts < 10
+      )
+        window.setTimeout(check, 1000);
+    };
+    void check();
+    return () => {
+      active = false;
+    };
+  }, [services, id]);
+  useEffect(() => {
+    if (!id || services) return;
     const redirect = window.setTimeout(
       () => nav(`/app/orders/${id}`, { replace: true }),
       3000,
@@ -931,7 +1040,45 @@ export function PaymentResult() {
       window.clearTimeout(redirect);
       window.clearInterval(tick);
     };
-  }, [id, nav]);
+  }, [id, nav, services]);
+  if (id && services) {
+    const paid = remoteOrder?.status === "paid";
+    const pending =
+      manual ||
+      remoteOrder?.status === "pending_manual_review" ||
+      remoteOrder?.status === "pending_payment";
+    return (
+      <div className="result">
+        <div className="result-icon" aria-hidden="true">
+          {paid ? "✓" : "…"}
+        </div>
+        <AppTitle
+          eyebrow="支付状态"
+          title={paid ? "支付成功" : pending ? "等待付款确认" : "正在确认订单"}
+          text={
+            paid
+              ? "订单已支付，并已加入“我的账户／我的行程”。"
+              : manual
+                ? "银行转账申请已记录，到账后由工作人员确认。"
+                : "正在等待服务端确认支付结果，请勿重复付款。"
+          }
+        />
+        <div className="receipt">
+          <div>
+            <span>订单编号</span>
+            <b>{id}</b>
+          </div>
+          <div>
+            <span>订单状态</span>
+            <b>{paid ? "已支付" : pending ? "待确认" : "确认中"}</b>
+          </div>
+        </div>
+        <Link className="button full" to={`/app/orders/${id}`}>
+          查看我的订单
+        </Link>
+      </div>
+    );
+  }
   return id ? (
     <div className="result">
       <div className="result-icon" aria-hidden="true">
@@ -1065,13 +1212,25 @@ export function Orders() {
   );
 }
 export function OrderDetail() {
-  const { state } = useApp();
+  const { state, services, departures } = useApp();
   const { id } = useParams();
+  const [remoteOrder,setRemoteOrder]=useState<{id:string;departure_id:string;seat_count:number;status:string;amount:number|null;currency:string}|null>(null);
+  const [remoteFulfilment,setRemoteFulfilment]=useState<{departs_at:string|null;meeting_name:string|null;meeting_address:string|null;map_lat:number|string|null;map_lng:number|string|null}|null>(null);
+  const [remoteResolved,setRemoteResolved]=useState(!services);
+  useEffect(()=>{if(!services||!id)return;let active=true;void Promise.all([services.loadOwnOrders(),services.loadOwnOrderFulfilment(id)]).then(([result,fulfilment])=>{if(!active)return;setRemoteOrder((result.data as Array<{id:string;departure_id:string;seat_count:number;status:string;amount:number|null;currency:string}>).find(item=>item.id===id)??null);setRemoteFulfilment(fulfilment as typeof remoteFulfilment);setRemoteResolved(true)});return()=>{active=false}},[services,id]);
+  if(services){
+    if(!remoteResolved)return <Empty title="正在读取订单" text="请稍候，正在安全读取本人订单。"/>;
+    if(!remoteOrder)return <Empty title="未找到订单" text="该订单不存在，或当前账户无权查看。"/>;
+    const dep=departures.find(item=>item.id===remoteOrder.departure_id);const trip=travelRepository.getTrip(dep?.tripSlug??'');
+    const departureLabel=remoteFulfilment?.departs_at?new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Tokyo',dateStyle:'medium',timeStyle:'short'}).format(new Date(remoteFulfilment.departs_at)):dep?.dateLabel??'待确认';
+    const lat=remoteFulfilment?.map_lat==null?null:Number(remoteFulfilment.map_lat);const lng=remoteFulfilment?.map_lng==null?null:Number(remoteFulfilment.map_lng);const navigationUrl=Number.isFinite(lat)&&Number.isFinite(lng)?new GoogleMapsAdapter(undefined).navigationUrl({lat:lat!,lng:lng!}):null;
+    return <><AppTitle eyebrow="我的账户／我的行程" title={trip?.shortTitle??'行程订单'}/><div className="status">订单状态：{remoteOrder.status}</div><div className="receipt"><div><span>订单编号</span><b>{remoteOrder.id}</b></div><div><span>出发时间</span><b>{departureLabel}</b></div><div><span>集合地点</span><b>{remoteFulfilment?.meeting_name??'待确认'}</b></div><div><span>集合地址</span><b>{remoteFulfilment?.meeting_address??'待确认'}</b></div><div><span>座位数量</span><b>{remoteOrder.seat_count} 席</b></div><div><span>支付金额</span><b>{remoteOrder.amount==null?'待确认':`¥${remoteOrder.amount}`}</b></div></div>{navigationUrl?<a className="button full" href={navigationUrl} target="_blank" rel="noreferrer">打开地图导航</a>:<p className="notice">地图位置确认后，将在此提供导航入口。</p>}<Link className="button secondary full" to="/app/orders">返回我的账户</Link></>;
+  }
   const o = state.orders.find((x) => x.id === id);
   if (!o)
     return <Empty title="未找到订单" text="该订单不存在或未保存在当前会话。" />;
   const trip = travelRepository.getTrip(o.tripSlug);
-  const dep = travelRepository.getDeparture(o.departureId);
+  const dep = departures.find((item) => item.id === o.departureId);
   const pending = "待确认；确认后将在本订单详情和行程房间更新";
   const assistance = describeAssistance(o.assistance);
   const navigationUrl = new GoogleMapsAdapter(undefined).navigationUrl(
