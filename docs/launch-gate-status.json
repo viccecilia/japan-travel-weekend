@@ -1,0 +1,20 @@
+{
+  "environment": "test",
+  "reviewedAt": "2026-08-25",
+  "productionReady": false,
+  "noindex": true,
+  "gates": [
+    {"id":"passenger_needs","status":"pass","owner":"engineering","evidence":"Automated passenger and assistance flows plus Chinese browser flow passed with fictional data.","nextAction":"User verifies final wording and real operational fulfilment choices."},
+    {"id":"accounts_and_access","status":"pass","owner":"engineering","evidence":"Supabase fictional accounts, RLS matrix and private Realtime/Storage tests passed in the test project.","nextAction":"Configure and verify production SMTP, rate limits and deletion workflow before launch."},
+    {"id":"inventory_orders_payments","status":"pass","owner":"engineering","evidence":"Concurrent inventory, compensation, Stripe test webhook and 100 JPY test-card checkout passed without live charging.","nextAction":"Merchant approval, formal prices, reconciliation and refund operations require business authorization."},
+    {"id":"vehicle_allocation_trip_room","status":"pass","owner":"engineering","evidence":"Sequential Fill, per-vehicle group, persistent chat and attendance passed automated and remote fictional-account tests.","nextAction":"Operations approves real departures, vehicles, staff and meeting details."},
+    {"id":"maps_boarding_notifications","status":"pass","owner":"engineering","evidence":"Restricted Maps setup, short-lived driver location, digest-only boarding and notification retry lifecycle passed in test mode.","nextAction":"Complete real-device GPS/scanner test and select an external notification provider."},
+    {"id":"monitoring_and_alerting","status":"test_pending","owner":"operations","evidence":"Test API health endpoint exists; production error aggregation, alert routing and on-call acknowledgement are not proven.","nextAction":"Configure alerts and run a synthetic failure/acknowledgement drill."},
+    {"id":"backup_restore_drill","status":"test_pending","owner":"operations","evidence":"Migrations and verification SQL are versioned; an isolated restore drill with measured recovery is not recorded.","nextAction":"Restore a test backup into an isolated project and run read-only structure and behavior checks."},
+    {"id":"capacity_and_security_review","status":"test_pending","owner":"security","evidence":"Unit, integration, RLS and negative tests pass; load test and independent security review are not recorded.","nextAction":"Approve targets, run capacity tests and complete a security assessment."},
+    {"id":"legal_and_operations_approval","status":"external_pending","owner":"business","evidence":"Draft product behavior exists; final terms, privacy, transport/insurance statements and operating contacts are not approved.","nextAction":"Business and legal owners approve the final documents and operating data."},
+    {"id":"production_payment_authorization","status":"external_pending","owner":"business","evidence":"Only Stripe test mode is connected; no live key or real charge has been used.","nextAction":"Approve the production merchant, payment methods, fees, refund and dispute process."},
+    {"id":"real_device_acceptance","status":"external_pending","owner":"user","evidence":"Browser simulations passed; real phone GPS, camera, QR scanner and poor-network field tests remain.","nextAction":"Run the signed real-user device checklist without real customer data."},
+    {"id":"remove_noindex_approval","status":"external_pending","owner":"user","evidence":"robots and meta noindex remain intentionally enabled.","nextAction":"Remove noindex only after every other gate passes and the user explicitly approves public launch."}
+  ]
+}

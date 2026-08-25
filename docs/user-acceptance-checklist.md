@@ -13,7 +13,7 @@
 - 005 银行转账人工审核迁移与六项权限/状态回滚验收：PASS。
 - 正式中文账户登录/退出、本人订单四态与 Trip Room 冻结/开放/断线前端状态门：本地自动测试 PASS；缺公开配置时不回退假订单。
 - 正式中文注册、邮箱待验证提示、忘记/重置密码、固定同源回调、受控 `returnTo`、会话失效和退出：本地自动测试 PASS；真实邮件发送、SMTP、远程确认链接与重置链接 NOT RUN。
-- 虚构账户真实登录、远程本人订单读取和 Realtime WebSocket 角色矩阵：PASS；Stripe 签名 Webhook 端到端联调 NOT RUN。
+- 虚构账户真实登录、远程本人订单读取和 Realtime WebSocket 角色矩阵：PASS；Stripe 测试签名 Webhook、幂等重放及浏览器 100 日元测试卡端到端联调 PASS。
 - Realtime 006 权限对齐迁移、只读策略验收、冻结拒发、开放房间重新加入后的本车三角色收发及无关乘客拒绝：远程 PASS；测试夹具已恢复冻结。
 - Realtime/签到 019 持久连接迁移与只读结构验收：远程 PASS；同一连接跨 frozen/open/frozen、开放发送、本车乘客/司机/运营接收、再次冻结拒发与订单本人签到均 PASS，测试夹具已恢复 frozen。
 - 当前第二乘客账户已属于同一 Vehicle Group，不能作为“无关乘客”WebSocket 夹具；随机 authenticated 身份的数据库 membership helper 拒绝回滚验收 PASS，真实无关已登录账户 WebSocket 拒收复测 NOT RUN。
@@ -23,7 +23,7 @@
 
 - Supabase 迁移按顺序执行一次；只读验收脚本可重复执行。
 - 并发最后一席、容量边界和重复 idempotency key 远程数据库行为：PASS。
-- Stripe 测试 Webhook 的伪造签名、去重和乱序当前仅本地 PASS，远程 NOT RUN；禁止 live key。
+- Stripe 测试 Webhook 的有效签名、去重、订单确认和浏览器测试付款远程 PASS；伪造签名与乱序保护由本地自动测试覆盖，禁止 live key。
 - Google Maps 浏览器 key 已限制网站来源和 API；无 key/坐标时明确显示不可用。
 - 远程行为测试只使用虚构角色和测试文件；完成阶段验收后按测试数据保留策略清理。
 
@@ -45,3 +45,5 @@
 - 邮件／短信／推送供应商、模板、退订、失败重试和费用批准。
 - 法律文本、保险／许可陈述、无障碍承诺、图片授权、安全与隐私评估。
 - 监控、备份、恢复、容量、渗透测试和最终移除 noindex 的发布批准。
+
+机器可检查的当前状态以 `launch-gate-status.json` 为准；运行 `npm run check:launch`。只要有 `test_pending`／`external_pending` 或 `noindex=true`，产品就不得标为生产就绪。

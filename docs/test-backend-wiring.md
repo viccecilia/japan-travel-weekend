@@ -33,7 +33,7 @@ AppContext 接受可选 production services；没有公开配置时为 `null`，
 
 Trip Room 先读取当前账户可访问的房间与历史消息，再订阅该车辆群的私有 Realtime channel。发送入口同时要求数据库房间状态为 `open` 且实时连接为已连接；`frozen`、`closed`、连接中或断线均禁用并显示中文原因。成员资格和实际消息写入仍由数据库 RLS 终审。司机、司导和运营只读取工作人员履约投影，不读取乘客私密原始协助数据。
 
-以上前端状态门、缺配置 fail closed 和适配器边界已通过本地自动测试。使用真实虚构账户进行浏览器登录、远程订单读取、WebSocket 收发、断线重连及角色入口验收仍为 **NOT RUN**，不能据此声称远程 Realtime 已连接。
+以上前端状态门、缺配置 fail closed 和适配器边界已通过本地自动测试。四个虚构账户的浏览器登录、远程订单读取、WebSocket 收发、房间状态切换及角色入口已经远程验收；019 的持久聊天和签到结果见 `remote-test-validation.md`。真正无关且已登录的第五账户 WebSocket 负面复测仍未执行，现有随机 authenticated 身份数据库负面测试不能替代它。
 
 ## 外部凭证门
 
