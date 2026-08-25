@@ -64,7 +64,7 @@ Supabase Realtime 在频道加入时缓存私有频道授权。房间由 `frozen
 
 014–016 已远程执行。浏览器使用虚构乘客签发一次性不透明凭证，再由本车虚构司机完成核验，结果为 **PASS**；数据库一度显示 boarded、1 次核验和 1 条 pending 通知。验收后已定向删除凭证、核验与通知测试记录，并把登车恢复为 not_issued、房间恢复为 frozen；只读复核为 credential 0、attempt 0、notification 0。该流程没有真实通知投递。
 
-测试 API 当前通过 HTTPS 健康检查，但因远程 systemd 启动需要交互式 sudo，本次更新后由普通用户手动进程临时承载；systemd unit 仍为 inactive。恢复受监督运行前不得把该状态视为正式部署完成。
+测试 API 已恢复为 systemd 受监督运行。`japan-travel-weekend-api.service` 为 enabled + active，由 systemd 管理的 Node 进程只监听 `127.0.0.1:18773`；Nginx HTTPS 健康检查返回测试模式、Supabase 与 Stripe 测试配置均正常。最近服务日志显示本次启动成功，无新的启动错误。
 
 ## 库存阶段门
 
