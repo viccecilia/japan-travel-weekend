@@ -264,9 +264,33 @@ export function AppHome() {
         <Empty title="暂时无法读取班次" text="请稍后刷新页面重试。" />
       ) : deps.length ? (
         <div className="app-list">
-          {trips.slice(0, 2).map((t) => (
-            <TripCard key={t.id} trip={t} app />
-          ))}
+          {deps.map((departure) => {
+            const trip = travelRepository.getTrip(departure.tripSlug);
+            if (!trip) return null;
+            return (
+              <article className="departure-card" key={departure.id}>
+                <img src={trip.heroImage} alt={`${trip.shortTitle}路线风景`} />
+                <div>
+                  <small>{departure.weekend}</small>
+                  <h3>{trip.shortTitle}</h3>
+                  <b>{departure.dateLabel}</b>
+                  <span>{departure.status}</span>
+                  <p>
+                    每席 ¥{departure.price}
+                    {departure.availableSeats == null
+                      ? ""
+                      : ` · 可售 ${departure.availableSeats} 席`}
+                  </p>
+                  <Link
+                    className="text-link"
+                    to={`/app/booking/${trip.slug}`}
+                  >
+                    选择座位 →
+                  </Link>
+                </div>
+              </article>
+            );
+          })}
         </div>
       ) : (
         <Empty
@@ -360,7 +384,7 @@ export function BookingPage() {
             <select required name="departure">
               {deps.map((d) => (
                 <option value={d.id} key={d.id}>
-                  {d.dateLabel}
+                  {d.dateLabel} · 每席 ¥{d.price} · {d.status}
                 </option>
               ))}
             </select>
@@ -811,6 +835,7 @@ const methods = [
   "银行转账",
   "PayPal",
 ];
+const checkoutFailureMessage=(code:string)=>({unauthorized:'账户会话已过期，请重新登录。',invalid_request:'订单资料不完整，请返回检查。',inventory_unavailable:'当前余位不足，请返回重新选择座位。',price_unavailable:'该班次价格尚未开放，暂时不能付款。',card_payment_unavailable:'信用卡支付服务暂时不可用。',manual_payment_unavailable:'银行转账申请暂时不可用。',origin_not_allowed:'当前页面来源未获授权。',network_error:'无法连接结账服务，请检查网络后重试。'}[code]??`结账失败（${code}），请稍后重试。`);
 export function Payment() {
   const { state, addOrder, services, departures } = useApp();
   const availableMethods = services ? ["信用卡", "银行转账"] : methods;
@@ -880,6 +905,7 @@ export function Payment() {
         clientSecret: result.clientSecret,
       });
     }
+    if(result?.status==='failed'){setRemoteStatus(checkoutFailureMessage(result.error));return}
     setRemoteStatus(
       result?.status === "requires_payment_action"
         ? production

@@ -11,7 +11,7 @@
 - `202608210007_secure_boarding_credentials.sql`：远程执行成功。首次回归发现受限 `search_path` 下未限定 schema 的 `digest()` 无法解析；没有绕过安全边界。
 - `202608210008_fix_boarding_digest_search_path.sql`：远程执行成功，以 `extensions.digest()` 修复 trusted verifier，同时保持受限 `search_path` 和原有最小执行权限。
 
-001–008 在该远程测试项目的适用迁移均已执行。它们是顺序、一次性迁移，不应重复粘贴执行。网页 SQL Editor 不作为仓库迁移账本；本次人工执行由本记录保存证据。新建 fresh project 时应按文件名顺序执行一次，之后运行验收脚本。未来自动化环境应改用 Supabase CLI migration ledger，避免人工重复执行。
+001–010 在该远程测试项目的适用迁移均已执行。它们是顺序、一次性迁移，不应重复粘贴执行。网页 SQL Editor 不作为仓库迁移账本；本次人工执行由本记录保存证据。新建 fresh project 时应按文件名顺序执行一次，之后运行验收脚本。未来自动化环境应改用 Supabase CLI migration ledger，避免人工重复执行。
 
 ## 只读结构验收
 
@@ -48,7 +48,9 @@
 
 Realtime 私有 WebSocket 已使用四个虚构角色完成远程验收：订单本人、本车司机和运营在开放房间重新加入频道后均订阅成功并收到广播；无关乘客加入被拒绝且未收到广播；冻结房间中本车三个授权角色可以订阅，但普通消息发送超时拒绝。测试结束后唯一测试 Trip Room 已恢复为 `frozen`，结果为 **PASS**。
 
-Supabase Realtime 在频道加入时缓存私有频道授权。房间由 `frozen` 变为 `open` 后，旧连接仍保持冻结时的发送权限；客户端必须离开并重新加入频道，不能仅依据数据库状态启用旧频道发送。Stripe 签名 Webhook 端到端联调仍为 **NOT RUN**。
+Supabase Realtime 在频道加入时缓存私有频道授权。房间由 `frozen` 变为 `open` 后，旧连接仍保持冻结时的发送权限；客户端必须离开并重新加入频道，不能仅依据数据库状态启用旧频道发送。
+
+2026-08-25 浏览器测试卡验收为 **PASS**：虚构乘客从可售班次进入 Checkout，支付 100 JPY 后页面显示成功；数据库订单为 `paid`、库存锁为 `committed`，并记录 1 条成功 Stripe Webhook 事件。全程为 Stripe 测试模式，不产生真实费用。
 
 006 已运行只读且可重复的 `supabase/verification/realtime_vehicle_group_policy_acceptance.sql`，并完成上述虚构角色 WebSocket 验收。置顶履约信息继续从数据库读取，不依赖冻结期间 broadcast。
 

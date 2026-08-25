@@ -2,7 +2,7 @@
 
 ## 浏览器边界
 
-浏览器只允许 Supabase URL、publishable key 和 HTTPS API base URL。`ProductionBrowserServices` 提供登录、当前用户、本人订单读取和结账调用；Supabase RLS 继续约束直接读取。浏览器结账只向 `/v1/checkout` 发送 access token 与业务参数，不接触 service-role、Stripe secret 或数据库连接。
+浏览器只允许 Supabase URL、publishable key，以及 HTTPS API base URL 或本地开发同源代理路径。`ProductionBrowserServices` 提供登录、当前用户、本人订单读取和结账调用；Supabase RLS 继续约束直接读取。浏览器结账只向 `/v1/checkout` 发送 access token 与业务参数，不接触 service-role、Stripe secret 或数据库连接。本地验收使用 Vite `/api-test` 反向代理，代理固定指向测试 API 并重写为已批准的测试来源；正式构建不依赖该开发服务器代理。
 
 各能力独立启用：`authAvailable`、`ordersAvailable`、`tripRoomAvailable` 和 `realtimeAvailable` 由 Supabase 公开客户端决定，`checkoutAvailable` 仅由 HTTPS API base URL 决定。只配置 Supabase URL/publishable key 时，用户仍可登录和按 RLS 读取本人订单；结账按钮明确禁用并显示服务未连接，不会让整个 App 一并失效。
 
@@ -37,4 +37,4 @@ Trip Room 先读取当前账户可访问的房间与历史消息，再订阅该�
 
 ## 外部凭证门
 
-本机与 VPS 私密配置已连接 Supabase service-role、Stripe Standard test secret 和测试 Webhook secret；Stripe 只读检查确认 `livemode=false`，签名 Webhook 端到端验收为 PASS。仍需配置经业务确认的服务端票价，并完成浏览器 Checkout、速率限制、审计和错误监控；在此之前不得声称用户支付链路已完成。
+本机与 VPS 私密配置已连接 Supabase service-role、Stripe Standard test secret 和测试 Webhook secret；Stripe 只读检查确认 `livemode=false`。2026-08-25 已用虚构乘客和 Stripe 官方测试卡完成浏览器 100 日元支付：支付结果页、本人订单详情、Webhook 事件、订单 `paid` 与库存 `committed` 均为 PASS。该结论仅适用于测试环境；正式票价、速率限制、审计、错误监控和生产支付批准仍未完成。
