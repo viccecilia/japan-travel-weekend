@@ -192,6 +192,8 @@ describe("通知契约", () => {
       "departure-reminder",
       "departure-delayed",
       "boarding-completed",
+      "checkin-reminder",
+      "passenger-contact-escalation",
     ]);
   });
   it("provider 缺失 fail closed、尊重偏好且成功投递幂等", async () => {

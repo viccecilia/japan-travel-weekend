@@ -10,6 +10,7 @@
 - `202608210006_align_realtime_vehicle_group_chat.sql`：远程执行成功。该迁移不修改 003 helper；它严格解析 vehicle group topic 后直接调用 helper，避免 Realtime policy 再查询受 RLS 保护的业务表。只读策略验收返回 `SELECT authenticated` 接收策略与 `INSERT authenticated` 发送策略，helper 与 topic 解析边界均为 **PASS**。
 - `202608210007_secure_boarding_credentials.sql`：远程执行成功。首次回归发现受限 `search_path` 下未限定 schema 的 `digest()` 无法解析；没有绕过安全边界。
 - `202608210008_fix_boarding_digest_search_path.sql`：远程执行成功，以 `extensions.digest()` 修复 trusted verifier，同时保持受限 `search_path` 和原有最小执行权限。
+- `202608250019_persistent_chat_attendance.sql`：远程执行成功。聊天发送改为每次请求重新检查房间状态与本车成员资格的 durable RPC；客户端改订阅 Postgres Changes，房间 frozen/open 切换不再要求离开并重新加入频道。新增乘客签到、工作人员点名、联系升级审计与集中时限配置。
 
 001–016 在该远程测试项目的适用迁移均已执行。它们是顺序、一次性迁移，不应重复粘贴执行。网页 SQL Editor 不作为仓库迁移账本；本次人工执行由本记录保存证据。新建 fresh project 时应按文件名顺序执行一次，之后运行验收脚本。未来自动化环境应改用 Supabase CLI migration ledger，避免人工重复执行。
 
@@ -48,7 +49,11 @@
 
 Realtime 私有 WebSocket 已使用四个虚构角色完成远程验收：订单本人、本车司机和运营在开放房间重新加入频道后均订阅成功并收到广播；无关乘客加入被拒绝且未收到广播；冻结房间中本车三个授权角色可以订阅，但普通消息发送超时拒绝。测试结束后唯一测试 Trip Room 已恢复为 `frozen`，结果为 **PASS**。
 
-Supabase Realtime 在频道加入时缓存私有频道授权。房间由 `frozen` 变为 `open` 后，旧连接仍保持冻结时的发送权限；客户端必须离开并重新加入频道，不能仅依据数据库状态启用旧频道发送。
+019 已替代上述依赖频道加入时发送授权的旧实现。`supabase/verification/persistent_chat_attendance_acceptance.sql` 远程返回 **PASS**：客户端 Broadcast send policy 已移除，durable message RPC、签到 RLS、集中配置以及三张 Postgres Changes publication 表均存在。
+
+四个虚构账户在同一批 WebSocket 连接上完成 frozen → open → frozen 验收：冻结时订单本人发送被拒；开放状态更新由原连接收到，订单本人 durable RPC 发送成功；同车乘客、司机和运营均在未重连情况下收到持久消息；再次冻结的状态更新仍由原连接收到，随后发送立即被拒。订单本人签到写入成功，订单本人仅见本单 1 名乘客，司机与运营见本车 1 名乘客，结果为 **PASS**。测试结束后 Trip Room 已恢复 `frozen`。
+
+夹具审计发现原“无关乘客”账户当前已被分配进同一 Vehicle Group，membership helper 返回 true，因此它收到消息属于正确的同车权限，不能继续充当无关账户 WebSocket 夹具。使用事务内随机 authenticated 身份执行 `can_receive_vehicle_group` 拒绝验证并回滚，结果为 **PASS**；真正无关、已登录账户的 WebSocket 拒收复测为 **NOT RUN**，需要独立测试账户或解除现有测试关联后再执行。未擅自创建第五个云账户。
 
 2026-08-25 浏览器测试卡验收为 **PASS**：虚构乘客从可售班次进入 Checkout，支付 100 JPY 后页面显示成功；数据库订单为 `paid`、库存锁为 `committed`，并记录 1 条成功 Stripe Webhook 事件。全程为 Stripe 测试模式，不产生真实费用。
 

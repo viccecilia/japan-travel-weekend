@@ -284,8 +284,8 @@ describe("已批准测试服务栈", () => {
     expect(
       await new SupabaseTripRoomRepository(null).sendMessage(
         "room",
-        "user",
         "message",
+        "message-key",
       ),
     ).toBe(false);
   });

@@ -1,4 +1,4 @@
-export type NotificationEvent='order-confirmed'|'bank-transfer-pending'|'meeting-updated'|'trip-room-opened'|'departure-reminder'|'departure-delayed'|'boarding-completed';
+export type NotificationEvent='order-confirmed'|'bank-transfer-pending'|'meeting-updated'|'trip-room-opened'|'departure-reminder'|'departure-delayed'|'boarding-completed'|'checkin-reminder'|'passenger-contact-escalation';
 export type NotificationChannel='email'|'sms'|'push';
 export type NotificationPreference={marketing:boolean;channels:NotificationChannel[]};
 export type NotificationRequest={eventId:string;event:NotificationEvent;recipientId:string;data:Record<string,string>;necessaryForFulfilment:boolean;preference:NotificationPreference};
@@ -13,6 +13,8 @@ export const notificationTemplates:Record<NotificationEvent,{title:string;requir
   'departure-reminder':{title:'发车前提醒',required:['departureId']},
   'departure-delayed':{title:'行程延误通知',required:['departureId']},
   'boarding-completed':{title:'登车已完成',required:['boardingId']},
+  'checkin-reminder':{title:'请确认集合签到状态',required:['departureId']},
+  'passenger-contact-escalation':{title:'有乘客尚未签到，请安排联系',required:['departureId']},
 };
 
 export class NotificationDispatcher{

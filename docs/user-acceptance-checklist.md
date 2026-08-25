@@ -15,6 +15,8 @@
 - 正式中文注册、邮箱待验证提示、忘记/重置密码、固定同源回调、受控 `returnTo`、会话失效和退出：本地自动测试 PASS；真实邮件发送、SMTP、远程确认链接与重置链接 NOT RUN。
 - 虚构账户真实登录、远程本人订单读取和 Realtime WebSocket 角色矩阵：PASS；Stripe 签名 Webhook 端到端联调 NOT RUN。
 - Realtime 006 权限对齐迁移、只读策略验收、冻结拒发、开放房间重新加入后的本车三角色收发及无关乘客拒绝：远程 PASS；测试夹具已恢复冻结。
+- Realtime/签到 019 持久连接迁移与只读结构验收：远程 PASS；同一连接跨 frozen/open/frozen、开放发送、本车乘客/司机/运营接收、再次冻结拒发与订单本人签到均 PASS，测试夹具已恢复 frozen。
+- 当前第二乘客账户已属于同一 Vehicle Group，不能作为“无关乘客”WebSocket 夹具；随机 authenticated 身份的数据库 membership helper 拒绝回滚验收 PASS，真实无关已登录账户 WebSocket 拒收复测 NOT RUN。
 - Boarding 007 摘要凭证与 008 `search_path` 修复：远程迁移及回滚式完整行为回归 PASS；二维码原始凭证不落库。真实扫描设备和离线并发仍为 NOT RUN。
 
 - Supabase 迁移按顺序执行一次；只读验收脚本可重复执行。

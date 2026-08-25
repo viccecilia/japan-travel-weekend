@@ -51,4 +51,22 @@ export class SupabaseRealtimeAdapter {
       },
     };
   }
+  async subscribeTripRoom(
+    roomId:string,
+    onMessage:()=>void,
+    onRoomStatus:(status:"frozen"|"open"|"closed")=>void,
+    onAttendance:()=>void,
+    onStatus?:(status:string)=>void,
+  ){
+    if(!this.client)return {subscribed:false,close(){}};
+    const channel=this.client.channel(`trip-room-durable:${roomId}`)
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'trip_room_messages',filter:`trip_room_id=eq.${roomId}`},()=>onMessage())
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'trip_rooms',filter:`id=eq.${roomId}`},payload=>{
+        const status=(payload.new as {status?:string}).status;
+        if(status==='frozen'||status==='open'||status==='closed')onRoomStatus(status);
+      })
+      .on('postgres_changes',{event:'*',schema:'public',table:'passenger_checkins'},()=>onAttendance());
+    const subscribed=await new Promise<boolean>(resolve=>channel.subscribe(status=>{onStatus?.(status);if(status==='SUBSCRIBED'||status==='CHANNEL_ERROR'||status==='TIMED_OUT')resolve(status==='SUBSCRIBED')}));
+    return {subscribed,close:()=>{void this.client?.removeChannel(channel)}};
+  }
 }

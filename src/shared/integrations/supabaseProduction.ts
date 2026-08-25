@@ -124,15 +124,9 @@ export class SupabaseTripRoomRepository {
       .order("created_at");
     return error ? [] : (data ?? []);
   }
-  async sendMessage(roomId: string, authorId: string, content: string) {
+  async sendMessage(roomId: string, content: string, idempotencyKey:string=crypto.randomUUID()) {
     if (!this.client || !content.trim()) return false;
-    const { error } = await this.client
-      .from("trip_room_messages")
-      .insert({
-        trip_room_id: roomId,
-        author_id: authorId,
-        content: content.trim(),
-      });
+    const { error } = await this.client.rpc('send_trip_room_message',{p_room:roomId,p_content:content.trim(),p_idempotency_key:idempotencyKey});
     return !error;
   }
   async loadStaffProjection() {
@@ -147,6 +141,10 @@ export class SupabaseTripRoomRepository {
   async loadBoardingStatus(vehicleGroupId:string){if(!this.client)return [];const {data,error}=await this.client.rpc('get_vehicle_group_boarding_status',{p_vehicle_group:vehicleGroupId});return error?[]:(data??[])}
   async sendStaffTemplate(roomId:string,templateKey:string){if(!this.client)return false;const {error}=await this.client.rpc('send_staff_trip_room_template',{p_room:roomId,p_template_key:templateKey});return !error}
   async markOrderBoarded(vehicleGroupId:string,orderId:string){if(!this.client)return false;const {error}=await this.client.rpc('mark_vehicle_group_order_boarded',{p_vehicle_group:vehicleGroupId,p_order:orderId});return !error}
+  async loadAttendance(vehicleGroupId:string){if(!this.client)return [];const {data,error}=await this.client.rpc('get_vehicle_group_attendance',{p_vehicle_group:vehicleGroupId});return error?[]:(data??[])}
+  async setOwnCheckin(passengerId:string,status:'confirmed_departure'|'at_meeting_point'|'needs_assistance'){if(!this.client)return false;const {error}=await this.client.rpc('set_own_passenger_checkin',{p_passenger:passengerId,p_status:status,p_idempotency_key:crypto.randomUUID()});return !error}
+  async setStaffCheckin(vehicleGroupId:string,passengerId:string,status:'at_meeting_point'|'boarded'|'needs_assistance'|'contacting'|'unreachable'){if(!this.client)return false;const {error}=await this.client.rpc('set_staff_passenger_checkin',{p_vehicle_group:vehicleGroupId,p_passenger:passengerId,p_status:status,p_idempotency_key:crypto.randomUUID()});return !error}
+  async recordContact(vehicleGroupId:string,passengerId:string,action:'contact_requested'|'contacting'|'reached'|'unreachable'|'escalated_to_operations'|'resolved'){if(!this.client)return false;const {error}=await this.client.rpc('record_passenger_contact_action',{p_vehicle_group:vehicleGroupId,p_passenger:passengerId,p_action:action,p_idempotency_key:crypto.randomUUID(),p_note:null});return !error}
 }
 export class SupabasePrivateStorageAdapter {
   constructor(private readonly client: SupabaseClient | null) {}

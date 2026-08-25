@@ -6,6 +6,7 @@ import { describeAssistance } from "../shared/services/passengerAssistance";
 import { remoteChatAvailability } from "../shared/services/realtimeAccess";
 import { travelRepository } from "../shared/data/repository";
 import type { ProductionBrowserServices } from "../shared/backend/productionServices";
+import {attendanceSummary} from "../shared/services/attendance";
 import { useApp } from "./store";
 const service = new TravelService(travelRepository);
 const Empty = () => (
@@ -245,6 +246,7 @@ export function TripRoom() {
 
 type RemoteMessage = { id: string; content: string; author_id?: string };
 type RemoteBoarding={order_id:string;passenger_label:string;seat_count:number;boarding_status:string;boarded_at:string|null;location_shared:boolean};
+type RemoteAttendance={passenger_id:string;passenger_label:string;order_id:string;status:'pending'|'confirmed_departure'|'at_meeting_point'|'boarded'|'needs_assistance'|'contacting'|'unreachable'|'no_show_confirmed';status_at:string|null;contact_status:string|null};
 const staffTemplates=[['introduce','自我介绍'],['confirm_meeting','确认明日集合'],['vehicle_arrived','车辆已到达'],['departing_10','10 分钟后出发'],['departing_5','5 分钟后出发'],['return_vehicle','请返回车辆'],['traffic_delay','交通延误'],['meeting_changed','集合点变更']] as const;
 type RemoteRoom = {
   room_id:string;vehicle_group_id:string;room_status:"frozen"|"open"|"closed";opens_at:string|null;
@@ -262,6 +264,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
     Array<Record<string, unknown>>
   >([]);
   const [boardings,setBoardings]=useState<RemoteBoarding[]>([]);
+  const [attendance,setAttendance]=useState<RemoteAttendance[]>([]);
   const [connection, setConnection] = useState<
     "connecting" | "connected" | "disconnected"
   >("connecting");
@@ -270,7 +273,6 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
   const [boardingToken,setBoardingToken]=useState("");const [boardingResult,setBoardingResult]=useState("");
   const [localPhoto,setLocalPhoto]=useState<{name:string;url:string}|null>(null);
   const subscription = useRef<{
-    send(payload: unknown): Promise<boolean>;
     close(): void;
   } | null>(null);
   useEffect(() => {
@@ -302,6 +304,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
       setMessages(
         (await services.tripRoom.loadMessages(nextRoom.room_id)) as RemoteMessage[],
       );
+      setAttendance((await services.tripRoom.loadAttendance(nextRoom.vehicle_group_id)) as RemoteAttendance[]);
       if (
         currentRole === "driver" ||
         currentRole === "guide" ||
@@ -312,17 +315,11 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
             Record<string, unknown>
           >,
         );setBoardings((await services.tripRoom.loadBoardingStatus(nextRoom.vehicle_group_id)) as RemoteBoarding[]);}
-      const live = await services.realtime.subscribePrivateVehicleGroup(
-        nextRoom.vehicle_group_id,
-        (payload) => {
-          const content = (payload as { payload?: { content?: string } })
-            .payload?.content;
-          if (content)
-            setMessages((rows) => [
-              ...rows,
-              { id: crypto.randomUUID(), content },
-            ]);
-        },
+      const live = await services.realtime.subscribeTripRoom(
+        nextRoom.room_id,
+        ()=>void services.tripRoom.loadMessages(nextRoom.room_id).then(value=>setMessages(value as RemoteMessage[])),
+        roomStatus=>setRoom(value=>value?{...value,room_status:roomStatus}:value),
+        ()=>void services.tripRoom.loadAttendance(nextRoom.vehicle_group_id).then(value=>setAttendance(value as RemoteAttendance[])),
         (status) =>
           setConnection(
             status === "SUBSCRIBED"
@@ -356,24 +353,12 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
     )
       return;
     const content = draft.trim();
-    const stored = await services.tripRoom.sendMessage(
-      room.room_id,
-      currentUserId,
-      content,
-    );
+    const stored = await services.tripRoom.sendMessage(room.room_id,content);
     if (!stored) {
       setNotice("消息发送被权限策略拒绝或连接不可用。");
       return;
     }
-    const broadcast = await subscription.current?.send({ content });
-    if (!broadcast) {
-      setNotice("消息已保存，但实时广播失败；其他成员刷新后可见。");
-      return;
-    }
-    setMessages((rows) => [
-      ...rows,
-      { id: crypto.randomUUID(), content, author_id: currentUserId },
-    ]);
+    setMessages((await services.tripRoom.loadMessages(room.room_id)) as RemoteMessage[]);
     setDraft("");
     setNotice("消息已发送。");
   };
@@ -395,6 +380,11 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
   const access = remoteChatAvailability(room.room_status, connection);
   const staff = role === "driver" || role === "guide" || role === "operations";
   const passenger = role === "passenger";
+  const attendanceLabels:Record<RemoteAttendance['status'],string>={pending:'待签到',confirmed_departure:'已确认出发',at_meeting_point:'已到集合点',boarded:'已登车',needs_assistance:'需要协助',contacting:'联系中',unreachable:'暂未联系上',no_show_confirmed:'运营已确认未到'};
+  const attendanceTotals=attendanceSummary(attendance.map(item=>item.status));
+  const updateOwnAttendance=async(passengerId:string,status:'confirmed_departure'|'at_meeting_point'|'needs_assistance')=>{const ok=await services.tripRoom.setOwnCheckin(passengerId,status);if(!ok){setNotice('签到未能保存，请确认本车成员资格和当前账户。');return}setAttendance(await services.tripRoom.loadAttendance(room.vehicle_group_id) as RemoteAttendance[]);setNotice('签到状态已保存，司机端会同步更新。')};
+  const updateStaffAttendance=async(passengerId:string,status:'at_meeting_point'|'boarded'|'needs_assistance'|'contacting'|'unreachable')=>{const ok=await services.tripRoom.setStaffCheckin(room.vehicle_group_id,passengerId,status);if(!ok){setNotice('乘客状态更新失败或您不属于本车工作人员。');return}setAttendance(await services.tripRoom.loadAttendance(room.vehicle_group_id) as RemoteAttendance[]);setNotice('乘客签到状态已更新。')};
+  const requestContact=async(passengerId:string)=>{const ok=await services.tripRoom.recordContact(room.vehicle_group_id,passengerId,'contact_requested');if(!ok){setNotice('尚未到人工联系时间，或电话联系服务未授权。请由运营协助处理。');return}setAttendance(await services.tripRoom.loadAttendance(room.vehicle_group_id) as RemoteAttendance[]);setNotice('已向运营提交电话联系请求；当前不会显示乘客电话号码。')};
   const shareLocation=async(minutes:15|30)=>{const ok=await services.tripRoom.startOwnLocationShare(room.vehicle_group_id,minutes);setNotice(ok?`已授权共享 ${minutes} 分钟，仅本车司机和司导可见。`:"位置共享未能开启，请检查本车成员权限。");};
   const stopLocation=async()=>{const ok=await services.tripRoom.stopOwnLocationShare(room.vehicle_group_id);setNotice(ok?"位置共享已停止。":"没有可停止的位置共享或权限不足。");};
   const sendTemplate=async(key:string)=>{const ok=await services.tripRoom.sendStaffTemplate(room.room_id,key);if(!ok){setNotice("模板通知未发送：请确认房间已开放且您属于本车工作人员。");return}setMessages((await services.tripRoom.loadMessages(room.room_id)) as RemoteMessage[]);setNotice("重要模板通知已发送并保留原文。");};
@@ -454,6 +444,12 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
         <button className="room-action" onClick={()=>void shareLocation(30)}>共享位置 30 分钟</button>
         <button className="room-action" onClick={()=>void stopLocation()}>停止共享</button>
       </section>}
+      <section className="fulfilment-summary" aria-label="集合签到">
+        <h2>{staff?'全员签到看板':'我的同行乘客签到'}</h2>
+        <p className="notice">已到集合点或已登车：{attendanceTotals.arrived} / {attendanceTotals.total}{attendanceTotals.allPresent?' · 全员已到齐':''}</p>
+        <div className="member-list">{attendance.map(item=><div key={item.passenger_id}><span><b>{item.passenger_label}</b> · {attendanceLabels[item.status]}</span>{passenger?<div className="room-actions"><button type="button" className="room-action" onClick={()=>void updateOwnAttendance(item.passenger_id,'confirmed_departure')}>确认出发</button><button type="button" className="room-action" onClick={()=>void updateOwnAttendance(item.passenger_id,'at_meeting_point')}>已到集合点</button><button type="button" className="room-action" onClick={()=>void updateOwnAttendance(item.passenger_id,'needs_assistance')}>需要协助</button></div>:<div className="room-actions"><button type="button" className="room-action" onClick={()=>void updateStaffAttendance(item.passenger_id,'at_meeting_point')}>确认已到</button><button type="button" className="room-action" onClick={()=>void updateStaffAttendance(item.passenger_id,'boarded')}>确认登车</button>{item.status!=='at_meeting_point'&&item.status!=='boarded'&&<button type="button" className="room-action" onClick={()=>void requestContact(item.passenger_id)}>请求电话联系</button>}</div>}</div>)}</div>
+        {staff&&<p className="privacy">电话号码不会展示在群组或看板中。超过集中配置的等待时间后，可请求运营通过受控电话能力联系；电话中继尚未连接时不会伪装已拨打。</p>}
+      </section>
       <section className="photo-preview">
         <h2>发送周围照片</h2>
         <label>拍摄或选择图片<input type="file" accept="image/*" capture="environment" disabled={room.room_status!=='open'} onChange={event=>previewPhoto(event.target.files?.[0])}/></label>

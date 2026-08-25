@@ -1,0 +1,5 @@
+export type AttendanceStatus='pending'|'confirmed_departure'|'at_meeting_point'|'boarded'|'needs_assistance'|'contacting'|'unreachable'|'no_show_confirmed';
+export function attendanceSummary(statuses:AttendanceStatus[]){const arrived=statuses.filter(status=>status==='at_meeting_point'||status==='boarded').length;return {arrived,total:statuses.length,allPresent:statuses.length>0&&arrived===statuses.length}}
+export function contactEscalationAvailable(departsAt:string|null,minutesAfter:number,now=new Date()){if(!departsAt||minutesAfter<0)return false;const departure=new Date(departsAt);return Number.isFinite(departure.getTime())&&now.getTime()>=departure.getTime()+minutesAfter*60_000}
+export function passengerMaySet(status:AttendanceStatus){return status==='confirmed_departure'||status==='at_meeting_point'||status==='needs_assistance'}
+export function staffMaySet(status:AttendanceStatus){return status==='at_meeting_point'||status==='boarded'||status==='needs_assistance'||status==='contacting'||status==='unreachable'}
