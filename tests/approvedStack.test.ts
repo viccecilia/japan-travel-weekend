@@ -148,7 +148,7 @@ describe("已批准测试服务栈", () => {
     expect(membershipSql).toContain("r.status='open'");
     expect(membershipSql).toContain("messages_open_room_insert");
   });
-  it("006 Realtime 策略复用成员 helper、严格绑定 topic 且不直接查询 RLS 业务表", () => {
+  it("006 建立严格 topic 边界，最终验收要求 019 移除客户端直发", () => {
     expect(realtimeAlignmentSql).toContain("public.can_receive_vehicle_group(split_part(realtime.topic(), ':', 3)::uuid)");
     expect(realtimeAlignmentSql).toContain("public.can_send_vehicle_group_chat(split_part(realtime.topic(), ':', 3)::uuid)");
     expect(realtimeAlignmentSql).toContain("to authenticated");
@@ -156,7 +156,8 @@ describe("已批准测试服务栈", () => {
     expect(realtimeAlignmentSql).toContain("for insert");
     expect(realtimeAlignmentSql).not.toMatch(/from public\.(vehicle_groups|orders|staff_assignments)/);
     expect(realtimeAcceptanceSql).toMatch(/FAIL receive policy (?:membership )?boundary/);
-    expect(realtimeAcceptanceSql).toMatch(/FAIL send policy (?:open-room )?boundary/);
+    expect(realtimeAcceptanceSql).toContain("FAIL direct client send policy remains");
+    expect(realtimeAcceptanceSql).toContain("FAIL durable message RPC missing");
   });
   it("远程结构验收脚本只读并为每项不足提供清晰失败", () => {
     expect(acceptanceSql).not.toMatch(

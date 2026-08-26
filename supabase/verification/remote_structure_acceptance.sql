@@ -28,7 +28,8 @@ begin
   if c.public_tables < 17 then raise exception 'FAIL public_tables: expected >=17, actual %',c.public_tables; end if;
   if c.rls_tables < 17 then raise exception 'FAIL rls_tables: expected >=17, actual %',c.rls_tables; end if;
   if c.public_policies < 15 then raise exception 'FAIL public_policies: expected >=15, actual %',c.public_policies; end if;
-  if c.realtime_policies < 2 then raise exception 'FAIL realtime_policies: expected >=2, actual %',c.realtime_policies; end if;
+  -- 019 removes direct client Broadcast send; only the private receive policy remains.
+  if c.realtime_policies < 1 then raise exception 'FAIL realtime_policies: expected >=1, actual %',c.realtime_policies; end if;
   if c.storage_policies < 3 then raise exception 'FAIL storage_policies: expected >=3, actual %',c.storage_policies; end if;
   if c.security_functions <> 4 then raise exception 'FAIL security_functions: expected 4, actual %',c.security_functions; end if;
   if c.auth_triggers <> 1 then raise exception 'FAIL auth_triggers: expected 1, actual %',c.auth_triggers; end if;
