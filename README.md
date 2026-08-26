@@ -1,6 +1,6 @@
 # Japan Travel Weekend
 
-测试服务栈已批准为 Supabase + Stripe + Google Maps Platform。Supabase 远程测试项目已执行至 019 迁移；虚构账户、RLS、测试 Webhook 与浏览器 100 日元 Stripe 测试卡流程均已验收。配置变量见 `.env.example`，操作与安全边界见 `docs/approved-test-service-stack.md`。
+测试服务栈已批准为 Supabase + Stripe + Google Maps Platform。Supabase 远程测试项目已执行至 020 迁移；虚构账户、RLS、聊天翻译偏好、测试 Webhook 与浏览器 100 日元 Stripe 测试卡流程均已验收。配置变量见 `.env.example`，操作与安全边界见 `docs/approved-test-service-stack.md`。
 
 Supabase 测试项目迁移必须按文件名顺序且每份只执行一次；使用网页 SQL Editor 时必须先 `Ctrl+A` 全选编辑器内容再粘贴完整文件，避免只覆盖可见区域。执行后运行 `supabase/verification/remote_structure_acceptance.sql`。远程行为联调状态见 `docs/remote-test-validation.md`。
 

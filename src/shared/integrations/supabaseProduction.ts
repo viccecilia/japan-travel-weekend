@@ -122,7 +122,7 @@ export class SupabaseTripRoomRepository {
     if (!this.client) return [];
     const { data, error } = await this.client
       .from("trip_room_messages")
-      .select("id,author_id,content,created_at")
+      .select("id,author_id,content,original_content,source_language,template_key,important,created_at,trip_room_message_translations(target_language,translated_content,provider,quality)")
       .eq("trip_room_id", roomId)
       .order("created_at");
     return error ? [] : (data ?? []);
@@ -132,6 +132,8 @@ export class SupabaseTripRoomRepository {
     const { error } = await this.client.rpc('send_trip_room_message',{p_room:roomId,p_content:content.trim(),p_idempotency_key:idempotencyKey});
     return !error;
   }
+  async loadTranslationPreference(){if(!this.client)return null;const {data,error}=await this.client.from('chat_translation_preferences').select('target_language,auto_translate,follow_device_language').maybeSingle();return error?null:data}
+  async saveTranslationPreference(targetLanguage:'zh-CN'|'ja'|'en'|'vi'|'ne',autoTranslate:boolean,followDeviceLanguage:boolean){if(!this.client)return false;const {error}=await this.client.rpc('update_own_chat_translation_preference',{p_target_language:targetLanguage,p_auto_translate:autoTranslate,p_follow_device_language:followDeviceLanguage});return !error}
   async loadStaffProjection() {
     if (!this.client) return [];
     const { data, error } = await this.client

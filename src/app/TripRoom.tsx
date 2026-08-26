@@ -8,6 +8,7 @@ import { travelRepository } from "../shared/data/repository";
 import type { ProductionBrowserServices } from "../shared/backend/productionServices";
 import { driverLocationNavigationUrl } from "../shared/capabilities/locationLinks";
 import {attendanceSummary} from "../shared/services/attendance";
+import {chatLanguages,preferredChatLanguage,templateTranslation,type ChatLanguage} from "../shared/services/chatTranslation";
 import { useApp } from "./store";
 const service = new TravelService(travelRepository);
 const Empty = () => (
@@ -89,6 +90,9 @@ export function TripRoom() {
   const { state, setState, services } = useApp();
   const [notice, setNotice] = useState("");
   const [staff, setStaff] = useState(false);
+  const [localTranslationLanguage,setLocalTranslationLanguage]=useState<ChatLanguage>(()=>preferredChatLanguage(typeof navigator==='undefined'?[]:navigator.languages));
+  const [localFollowDevice,setLocalFollowDevice]=useState(true);
+  const [localAutoTranslate,setLocalAutoTranslate]=useState(true);
   if (services) return <RemoteTripRoom services={services} />;
   if (appConfig.runtimeMode === "production")
     return (
@@ -215,6 +219,13 @@ export function TripRoom() {
         <p className="privacy">
           仅本车乘客与被分配的工作人员可见，不展示私人联系方式。
         </p>
+        <fieldset className="translation-settings">
+          <legend>聊天翻译</legend>
+          <label><input type="checkbox" checked={localFollowDevice} onChange={event=>{setLocalFollowDevice(event.target.checked);if(event.target.checked)setLocalTranslationLanguage(preferredChatLanguage(navigator.languages))}}/> 跟随手机系统语言</label>
+          <label>翻译成<select value={localTranslationLanguage} disabled={localFollowDevice} onChange={event=>setLocalTranslationLanguage(event.target.value as ChatLanguage)}>{chatLanguages.map(language=><option key={language.code} value={language.code}>{language.label}</option>)}</select></label>
+          <label><input type="checkbox" checked={localAutoTranslate} onChange={event=>setLocalAutoTranslate(event.target.checked)}/> 自动显示译文</label>
+          <p className="privacy">当前目标：{chatLanguages.find(item=>item.code===localTranslationLanguage)?.label}。开发模式仅验证界面，不调用外部翻译服务。</p>
+        </fieldset>
         {room.messages.map((m) => (
           <article key={m.id} className={m.important ? "important" : ""}>
             <header>
@@ -245,7 +256,7 @@ export function TripRoom() {
   );
 }
 
-type RemoteMessage = { id: string; content: string; author_id?: string };
+type RemoteMessage = {id:string;content:string;original_content?:string|null;source_language?:string;template_key?:string|null;important?:boolean;author_id?:string;trip_room_message_translations?:Array<{target_language:string;translated_content:string;provider:string;quality:string}>};
 type RemoteBoarding={order_id:string;passenger_label:string;seat_count:number;boarding_status:string;boarded_at:string|null;location_shared:boolean};
 type RemoteDriverLocation={latitude:number;longitude:number;accuracy_meters:number|null;updated_at:string;expires_at:string};
 type RemoteAttendance={passenger_id:string;passenger_label:string;order_id:string;status:'pending'|'confirmed_departure'|'at_meeting_point'|'boarded'|'needs_assistance'|'contacting'|'unreachable'|'no_show_confirmed';status_at:string|null;contact_status:string|null};
@@ -262,6 +273,9 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
   const [role, setRole] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [messages, setMessages] = useState<RemoteMessage[]>([]);
+  const [translationLanguage,setTranslationLanguage]=useState<ChatLanguage>(()=>preferredChatLanguage(typeof navigator==='undefined'?[]:navigator.languages));
+  const [autoTranslate,setAutoTranslate]=useState(true);
+  const [followDeviceLanguage,setFollowDeviceLanguage]=useState(true);
   const [projections, setProjections] = useState<
     Array<Record<string, unknown>>
   >([]);
@@ -291,6 +305,13 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
       setCurrentUserId(user.id);
       const currentRole = await services.currentRole();
       setRole(currentRole);
+      const preference=await services.tripRoom.loadTranslationPreference();
+      if(preference){
+        const follow=Boolean(preference.follow_device_language);
+        setAutoTranslate(Boolean(preference.auto_translate));
+        setFollowDeviceLanguage(follow);
+        setTranslationLanguage(follow?preferredChatLanguage(navigator.languages):preference.target_language as ChatLanguage);
+      }
       const result = await services.tripRoom.loadAccessibleRoom();
       if (cancelled) return;
       if (result.error) {
@@ -349,6 +370,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
     };
   }, [services]);
   useEffect(()=>{if(!room||room.room_status!=='open')return;const timer=window.setInterval(()=>void services.tripRoom.loadDriverLocation(room.vehicle_group_id).then(value=>setDriverLocation(value as RemoteDriverLocation|null)),15000);return()=>window.clearInterval(timer)},[room,services]);
+  useEffect(()=>{if(!autoTranslate||translationLanguage==='zh-CN'||!room)return;const missing=messages.filter(message=>!message.template_key&&message.source_language!==translationLanguage&&!message.trip_room_message_translations?.some(item=>item.target_language===translationLanguage));if(!missing.length)return;let cancelled=false;void Promise.all(missing.map(message=>services.translateMessage({messageId:message.id,targetLanguage:translationLanguage}))).then(results=>{if(!cancelled&&results.some(Boolean))void services.tripRoom.loadMessages(room.room_id).then(value=>setMessages(value as RemoteMessage[]))});return()=>{cancelled=true}},[autoTranslate,messages,room,services,translationLanguage]);
   const send = async () => {
     if (
       !room ||
@@ -396,6 +418,8 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
   const publishDriverLocation=()=>{if(!navigator.geolocation){setNotice('此设备不支持定位。');return}setLocatingDriver(true);navigator.geolocation.getCurrentPosition(async position=>{const ok=await services.tripRoom.publishDriverLocation(room.vehicle_group_id,{latitude:position.coords.latitude,longitude:position.coords.longitude,accuracy:Number.isFinite(position.coords.accuracy)?position.coords.accuracy:null},15);setLocatingDriver(false);if(!ok){setNotice('司机位置未能共享：请确认房间开放、定位精度和本车工作人员权限。');return}setDriverLocation(await services.tripRoom.loadDriverLocation(room.vehicle_group_id) as RemoteDriverLocation|null);setNotice('司机位置已共享 15 分钟；可随时停止。')},()=>{setLocatingDriver(false);setNotice('未取得定位授权，司机位置保持关闭。')},{enableHighAccuracy:true,timeout:10000,maximumAge:15000})};
   const stopDriverLocation=async()=>{const ok=await services.tripRoom.stopDriverLocation(room.vehicle_group_id);setDriverLocation(null);setNotice(ok?'司机位置共享已停止。':'没有可停止的位置共享或权限不足。')};
   const sendTemplate=async(key:string)=>{const ok=await services.tripRoom.sendStaffTemplate(room.room_id,key);if(!ok){setNotice("模板通知未发送：请确认房间已开放且您属于本车工作人员。");return}setMessages((await services.tripRoom.loadMessages(room.room_id)) as RemoteMessage[]);setNotice("重要模板通知已发送并保留原文。");};
+  const saveTranslationSettings=async(nextLanguage:ChatLanguage,nextAuto=autoTranslate,nextFollow=followDeviceLanguage)=>{const effective=nextFollow?preferredChatLanguage(navigator.languages):nextLanguage;setTranslationLanguage(effective);setAutoTranslate(nextAuto);setFollowDeviceLanguage(nextFollow);const ok=await services.tripRoom.saveTranslationPreference(effective,nextAuto,nextFollow);setNotice(ok?'聊天翻译偏好已保存。':'翻译偏好暂时只在当前页面生效；数据库迁移尚未连接。')};
+  const translatedMessage=(message:RemoteMessage)=>{if(!autoTranslate)return null;const stored=message.trip_room_message_translations?.find(item=>item.target_language===translationLanguage)?.translated_content;if(stored)return stored;return templateTranslation(message.template_key,translationLanguage)};
   const markBoarded=async(orderId:string)=>{const ok=await services.tripRoom.markOrderBoarded(room.vehicle_group_id,orderId);if(!ok){setNotice("登车状态更新失败或订单不属于本车。");return}setBoardings((await services.tripRoom.loadBoardingStatus(room.vehicle_group_id)) as RemoteBoarding[]);setNotice("登车状态已更新。");};
   const verifyBoarding=async()=>{if(!boardingToken.trim())return;const result=await services.verifyBoardingCredential({token:boardingToken.trim(),vehicleGroupId:room.vehicle_group_id,idempotencyKey:crypto.randomUUID()});if(!result){setBoardingResult('核验被拒绝：凭证格式、工作人员权限或本车归属不正确。');return}const labels:Record<string,string>={valid:'核验成功，已登记登车。',used:'该凭证已经使用。',expired:'该凭证已经过期。',revoked:'该凭证无效或已撤销。','wrong-vehicle':'该凭证不属于本车。'};setBoardingResult(labels[result.status]??`核验结果：${result.status}`);setBoardingToken('');setBoardings((await services.tripRoom.loadBoardingStatus(room.vehicle_group_id)) as RemoteBoarding[]);};
   const previewPhoto=(file:File|undefined)=>{if(!file)return;if(!file.type.startsWith('image/')||file.size>5*1024*1024){setNotice('请选择不超过 5 MB 的图片文件。');return}const reader=new FileReader();reader.onload=()=>typeof reader.result==='string'&&setLocalPhoto({name:file.name,url:reader.result});reader.readAsDataURL(file);};
@@ -506,12 +530,20 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
       <section className="vehicle-chat">
         <h2>本车消息</h2>
         <p className="privacy">仅本车成员可见；断线时不会伪装发送成功。</p>
+        <fieldset className="translation-settings">
+          <legend>聊天翻译</legend>
+          <label><input type="checkbox" checked={followDeviceLanguage} onChange={event=>void saveTranslationSettings(translationLanguage,autoTranslate,event.target.checked)}/> 跟随手机系统语言</label>
+          <label>翻译成<select value={translationLanguage} disabled={followDeviceLanguage} onChange={event=>void saveTranslationSettings(event.target.value as ChatLanguage)}>{chatLanguages.map(language=><option key={language.code} value={language.code}>{language.label}</option>)}</select></label>
+          <label><input type="checkbox" checked={autoTranslate} onChange={event=>void saveTranslationSettings(translationLanguage,event.target.checked)}/> 自动显示译文</label>
+          <p className="privacy">当前目标：{chatLanguages.find(item=>item.code===translationLanguage)?.label}。始终保留原文；重要模板使用预置译文，自由聊天需翻译服务连接后才生成译文。</p>
+        </fieldset>
         {messages.map((m) => (
-          <article key={m.id}>
+          <article key={m.id} className={m.important?'important':undefined}>
             <header>
               <b>{m.author_id === currentUserId ? "我" : "本车成员"}</b>
             </header>
-            <p>{m.content}</p>
+            <p><small>原文{m.source_language&&m.source_language!=='und'?` · ${m.source_language}`:''}</small><br/>{m.original_content??m.content}</p>
+            {translatedMessage(m)?<p className="message-translation"><small>{chatLanguages.find(item=>item.code===translationLanguage)?.label}译文</small><br/>{translatedMessage(m)}</p>:autoTranslate&&translationLanguage!=='zh-CN'&&!m.template_key?<p className="translation-unavailable">自由聊天翻译服务尚未连接，当前保留原文。</p>:null}
           </article>
         ))}
         <label>

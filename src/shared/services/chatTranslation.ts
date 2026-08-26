@@ -1,0 +1,91 @@
+export const chatLanguages = [
+  { code: "zh-CN", label: "简体中文" },
+  { code: "ja", label: "日本語" },
+  { code: "en", label: "English" },
+  { code: "vi", label: "Tiếng Việt" },
+  { code: "ne", label: "नेपाली" },
+] as const;
+
+export type ChatLanguage = (typeof chatLanguages)[number]["code"];
+
+const normalizeLanguage = (value: string): ChatLanguage | null => {
+  const code = value.trim().toLowerCase();
+  if (code.startsWith("zh")) return "zh-CN";
+  if (code.startsWith("ja")) return "ja";
+  if (code.startsWith("en")) return "en";
+  if (code.startsWith("vi")) return "vi";
+  if (code.startsWith("ne")) return "ne";
+  return null;
+};
+
+export function preferredChatLanguage(languages: readonly string[]): ChatLanguage {
+  for (const language of languages) {
+    const supported = normalizeLanguage(language);
+    if (supported) return supported;
+  }
+  return "en";
+}
+
+export const staffTemplateTranslations: Record<string, Record<ChatLanguage, string>> = {
+  introduce: {
+    "zh-CN": "大家好，我是本车工作人员。明天我会在群内协助大家集合与乘车。",
+    ja: "皆さま、こんにちは。本車両のスタッフです。明日の集合と乗車をこのグループでサポートします。",
+    en: "Hello, I am the staff member for this vehicle. I will assist with tomorrow's meeting and boarding in this group.",
+    vi: "Xin chào, tôi là nhân viên phụ trách xe này. Tôi sẽ hỗ trợ việc tập trung và lên xe ngày mai trong nhóm này.",
+    ne: "नमस्कार, म यस गाडीको कर्मचारी हुँ। भोलिको भेटघाट र गाडी चढ्ने प्रक्रियामा म यस समूहमा सहयोग गर्नेछु।",
+  },
+  confirm_meeting: {
+    "zh-CN": "请确认明天的集合时间与置顶集合地点，并提前到达。",
+    ja: "明日の集合時刻と固定表示された集合場所をご確認のうえ、早めにお越しください。",
+    en: "Please confirm tomorrow's meeting time and the pinned meeting point, and arrive early.",
+    vi: "Vui lòng xác nhận giờ và địa điểm tập trung được ghim cho ngày mai, đồng thời đến sớm.",
+    ne: "कृपया भोलिको भेट्ने समय र माथि राखिएको भेट्ने स्थान पुष्टि गरी चाँडै आइपुग्नुहोस्।",
+  },
+  vehicle_arrived: {
+    "zh-CN": "车辆已经到达集合点，请按置顶车辆信息寻找本车。",
+    ja: "車両は集合場所に到着しました。固定表示された車両情報を確認してお探しください。",
+    en: "The vehicle has arrived at the meeting point. Please use the pinned vehicle information to find it.",
+    vi: "Xe đã đến điểm tập trung. Vui lòng dựa vào thông tin xe được ghim để tìm đúng xe.",
+    ne: "गाडी भेट्ने स्थानमा आइपुगेको छ। कृपया माथि राखिएको गाडीको विवरण हेरेर गाडी खोज्नुहोस्।",
+  },
+  departing_10: {
+    "zh-CN": "车辆将在 10 分钟后出发，请尽快返回。",
+    ja: "車両は10分後に出発します。お早めにお戻りください。",
+    en: "The vehicle will depart in 10 minutes. Please return as soon as possible.",
+    vi: "Xe sẽ khởi hành sau 10 phút. Vui lòng quay lại sớm nhất có thể.",
+    ne: "गाडी १० मिनेटमा छुट्नेछ। कृपया सकेसम्म चाँडो फर्कनुहोस्।",
+  },
+  departing_5: {
+    "zh-CN": "车辆将在 5 分钟后出发，请立即返回。",
+    ja: "車両は5分後に出発します。すぐにお戻りください。",
+    en: "The vehicle will depart in 5 minutes. Please return immediately.",
+    vi: "Xe sẽ khởi hành sau 5 phút. Vui lòng quay lại ngay.",
+    ne: "गाडी ५ मिनेटमा छुट्नेछ। कृपया तुरुन्त फर्कनुहोस्।",
+  },
+  return_vehicle: {
+    "zh-CN": "请返回车辆；如已走散，可主动临时共享位置。",
+    ja: "車両へお戻りください。はぐれた場合は、一時的に位置情報を共有できます。",
+    en: "Please return to the vehicle. If you are separated, you can temporarily share your location.",
+    vi: "Vui lòng quay lại xe. Nếu bị lạc nhóm, bạn có thể tạm thời chia sẻ vị trí.",
+    ne: "कृपया गाडीमा फर्कनुहोस्। समूहबाट छुट्टिनुभएको छ भने अस्थायी रूपमा आफ्नो स्थान साझा गर्न सक्नुहुन्छ।",
+  },
+  traffic_delay: {
+    "zh-CN": "因交通情况行程有所延误，请关注置顶信息。",
+    ja: "交通事情により行程が遅れています。固定表示された最新情報をご確認ください。",
+    en: "The trip is delayed due to traffic. Please check the pinned information for updates.",
+    vi: "Lịch trình đang bị chậm do giao thông. Vui lòng theo dõi thông tin được ghim.",
+    ne: "ट्राफिकका कारण यात्रा ढिलो भएको छ। कृपया माथि राखिएको जानकारी हेर्नुहोस्।",
+  },
+  meeting_changed: {
+    "zh-CN": "集合地点已经变更，请以最新置顶集合信息为准。",
+    ja: "集合場所が変更されました。最新の固定表示された集合情報をご確認ください。",
+    en: "The meeting point has changed. Please follow the latest pinned meeting information.",
+    vi: "Địa điểm tập trung đã thay đổi. Vui lòng làm theo thông tin tập trung mới nhất được ghim.",
+    ne: "भेट्ने स्थान परिवर्तन भएको छ। कृपया माथि राखिएको पछिल्लो भेट्ने जानकारी पालना गर्नुहोस्।",
+  },
+};
+
+export function templateTranslation(templateKey: string | null | undefined, target: ChatLanguage) {
+  if (!templateKey || target === "zh-CN") return null;
+  return staffTemplateTranslations[templateKey]?.[target] ?? null;
+}

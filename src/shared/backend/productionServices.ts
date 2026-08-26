@@ -69,4 +69,5 @@ export class ProductionBrowserServices {
   }
   issueBoardingCredential(orderId:string){return this.checkout.issueBoardingCredential(orderId)}
   verifyBoardingCredential(input:{token:string;vehicleGroupId:string;idempotencyKey:string}){return this.checkout.verifyBoardingCredential(input)}
+  translateMessage(input:{messageId:string;targetLanguage:'zh-CN'|'ja'|'en'|'vi'|'ne'}){return this.checkout.translateMessage(input)}
 }
