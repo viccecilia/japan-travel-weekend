@@ -4,6 +4,8 @@
 
 Supabase 测试项目迁移必须按文件名顺序且每份只执行一次；使用网页 SQL Editor 时必须先 `Ctrl+A` 全选编辑器内容再粘贴完整文件，避免只覆盖可见区域。执行后运行 `supabase/verification/remote_structure_acceptance.sql`。远程行为联调状态见 `docs/remote-test-validation.md`。
 
+隔离恢复演练开始前必须运行 `npm run check:restore-target`。该检查要求目标项目明确标记为可丢弃、URL 与项目 ref 完全一致，并拒绝当前测试项目及已暂停旧项目；恢复演练不得复用或清空它们。
+
 面向关西国际居民的周末拼席旅行产品基础工程，由株式会社大寅／大寅集团运营。本仓库独立于 `japan-travel.info`。
 
 ## 本地运行
