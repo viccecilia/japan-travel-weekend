@@ -6,6 +6,8 @@ Supabase 测试项目迁移必须按文件名顺序且每份只执行一次；�
 
 隔离恢复演练开始前必须运行 `npm run check:restore-target`。该检查要求目标项目明确标记为可丢弃、URL 与项目 ref 完全一致，并拒绝当前测试项目及已暂停旧项目；恢复演练不得复用或清空它们。
 
+2026-08-26 clean-room 恢复演练已完成，证据见 `docs/supabase-restore-drill-2026-08-26.md`。这证明可从 001–020 重建当前 schema 与关键行为，不等同于 Supabase PITR 或真实业务数据备份恢复。
+
 面向关西国际居民的周末拼席旅行产品基础工程，由株式会社大寅／大寅集团运营。本仓库独立于 `japan-travel.info`。
 
 ## 本地运行

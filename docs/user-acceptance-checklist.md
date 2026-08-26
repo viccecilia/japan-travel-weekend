@@ -3,7 +3,7 @@
 ## 外部测试服务
 
 - Supabase 001／002／003 迁移远程执行：PASS。
-- 只读结构验收：PASS（17 个 public tables、17 个 RLS tables、15 个 public policies、2 个 Realtime policies、3 个 Storage policies、4 个 membership helpers、1 个 auth trigger、1 个 private bucket）。
+- 只读结构验收：PASS（最终 019 状态保留 1 个 Realtime 私有接收策略，客户端直发策略已移除并由 durable RPC 代替；其余 public/RLS/Storage/helper/trigger/bucket 边界均通过）。
 - 四个虚构角色登录及订单本人／无关乘客／司机／运营 RLS 读取矩阵：PASS。
 - 冻结群拒绝订单本人写入、临时开放允许本车订单本人写入、开放群仍拒绝无关乘客：PASS。
 - 私有 Storage 新文件上传和读取隔离：PASS；同名对象 upsert 因无 UPDATE policy 按预期失败。

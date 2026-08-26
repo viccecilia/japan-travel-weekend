@@ -23,7 +23,7 @@
 
 运行 `supabase/verification/remote_structure_acceptance.sql`。脚本只读系统目录和 Storage bucket 元数据，可重复运行；先返回计数，再在关键对象不足时抛出 `FAIL` 异常。
 
-已取得的远程结果：public tables 17、RLS tables 17、public policies 15、Realtime policies 2、Storage policies 3、security functions 4、auth triggers 1、private buckets 1。结构验收为 **PASS**。
+最终 019 状态的结构验收为 **PASS**：Realtime 只保留私有接收策略，客户端 Broadcast 直发策略不存在，`send_trip_room_message` durable RPC 存在；public/RLS/Storage、安全 helper、Auth trigger 与私有 bucket 也满足当前脚本下限。早期 006 阶段曾有两个 Realtime 策略，该历史计数不再代表 019 之后的最终 schema。
 
 ## 行为联调状态
 
