@@ -1,6 +1,6 @@
 {
   "environment": "test",
-  "reviewedAt": "2026-08-25",
+  "reviewedAt": "2026-08-26",
   "productionReady": false,
   "noindex": true,
   "gates": [
@@ -11,7 +11,7 @@
     {"id":"maps_boarding_notifications","status":"pass","owner":"engineering","evidence":"Restricted Maps setup, short-lived driver location, digest-only boarding and notification retry lifecycle passed in test mode.","nextAction":"Complete real-device GPS/scanner test and select an external notification provider."},
     {"id":"monitoring_and_alerting","status":"test_pending","owner":"operations","evidence":"Test API liveness and dependency-aware readiness probes are deployed and a bounded concurrent probe is reproducible; external error aggregation, alert routing and on-call acknowledgement are not proven.","nextAction":"Configure alerts and run a synthetic failure/acknowledgement drill."},
     {"id":"backup_restore_drill","status":"test_pending","owner":"operations","evidence":"Migrations and verification SQL are versioned; an isolated restore drill with measured recovery is not recorded.","nextAction":"Restore a test backup into an isolated project and run read-only structure and behavior checks."},
-    {"id":"capacity_and_security_review","status":"test_pending","owner":"security","evidence":"Unit, integration, RLS and negative tests pass; load test and independent security review are not recorded.","nextAction":"Approve targets, run capacity tests and complete a security assessment."},
+    {"id":"capacity_and_security_review","status":"test_pending","owner":"security","evidence":"Bounded test-API baseline passed at 50 requests / concurrency 5 with zero failures; API limits, timeouts and headers are verified, but business load targets and an independent security review are not approved or recorded.","nextAction":"Approve business capacity targets, run staged load tests and obtain an independent security assessment."},
     {"id":"legal_and_operations_approval","status":"external_pending","owner":"business","evidence":"Draft product behavior exists; final terms, privacy, transport/insurance statements and operating contacts are not approved.","nextAction":"Business and legal owners approve the final documents and operating data."},
     {"id":"production_payment_authorization","status":"external_pending","owner":"business","evidence":"Only Stripe test mode is connected; no live key or real charge has been used.","nextAction":"Approve the production merchant, payment methods, fees, refund and dispute process."},
     {"id":"real_device_acceptance","status":"external_pending","owner":"user","evidence":"Browser simulations passed; real phone GPS, camera, QR scanner and poor-network field tests remain.","nextAction":"Run the signed real-user device checklist without real customer data."},
