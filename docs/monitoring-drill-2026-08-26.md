@@ -10,7 +10,7 @@
 
 2026-08-26 已在 Sakura 新建专用测试发件账户 `alerts@japan-travel.info`，容量 1GB，启用病毒检查和简易垃圾邮件过滤；没有查看或修改其他邮箱账户。随机强密码只保存在本机未跟踪环境文件和 VPS 权限为 `600` 的密钥文件中。
 
-SMTP 使用 Sakura 初始域名、587 端口和 STARTTLS。VPS 受控演练依次返回失败 1、失败 2、失败 3 `alert/delivered`、恢复 `recovery/delivered`；临时演练状态随后删除。收件人已在 Webmail 打开并确认异常告警，发件人、收件人、中文主题、服务名、连续失败次数和时间均正确。恢复邮件已由收件 SMTP 接受；待人工在收件箱中确认恢复邮件后，可将外部送达／确认门禁改为通过。
+SMTP 使用 Sakura 初始域名、587 端口和 STARTTLS。VPS 受控演练依次返回失败 1、失败 2、失败 3 `alert/delivered`、恢复 `recovery/delivered`；临时演练状态随后删除。收件人已在 Webmail 打开并确认异常告警与恢复邮件，发件人、收件人、中文主题、服务名、连续失败次数和时间均正确。外部送达、人工确认与自动恢复关闭门禁判定通过。
 
 真实健康探测恢复后返回 `healthy: true`，测试 API `/ready` 为 200，服务保持 active。用户 crontab 已安装每 5 分钟一次的监控执行项，使用 `flock` 防止重叠，并将无敏感信息的结果写入 `.runtime/test-api-monitor.log`。
 
