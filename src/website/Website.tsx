@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useParams } from "react-router-dom";
 import { travelRepository } from "../shared/data/repository";
 import { TripCard } from "../shared/components/TripCard";
 import { businessRules } from "../shared/config/businessRules";
+import { cancellationPolicy, operatorProfile } from "../shared/config/legalOperations";
 import type { Category } from "../shared/types";
 import { LanguageSelect } from "../app/App";
 const trips = travelRepository.listTrips();
@@ -46,14 +47,14 @@ export function WebsiteLayout() {
       <footer>
         <div>
           <strong>Japan Travel Weekend</strong>
-          <p>株式会社大寅／大寅集团运营</p>
+          <p>{operatorProfile.legalNameJa}／大寅集团运营</p>
         </div>
         <div>
           <Link to="/trips">拼席行程</Link> ·{" "}
           <Link to="/private-groups">私人团体</Link> ·{" "}
           <Link to="/safety">安全运营</Link> · <Link to="/app">应用</Link>
         </div>
-        <p className="muted">预览阶段：日期、价格与政策将在正式开放前公布。</p>
+        <p className="muted">测试阶段：日期与价格尚未开放；取消规则已形成业务版本，正式上线前仍需法律审阅。</p>
       </footer>
     </>
   );
@@ -406,5 +407,5 @@ export function AppLanding() {
     </section>
   );
 }
-export function Terms(){return <section><Meta title="服务条款" description="Japan Travel Weekend 服务条款。"/><div className="page-title"><div className="eyebrow">正式发布前确认</div><h1>服务条款</h1><p>正式法律文本尚待批准。开放真实注册与预订前，将在此公布适用条款、生效日期和运营主体信息。</p></div></section>}
+export function Terms(){return <section><Meta title="服务条款" description="Japan Travel Weekend 服务条款与取消退款规则。"/><div className="page-title"><div className="eyebrow">业务规则已确认 · 法律文本待审阅</div><h1>服务条款与取消退款规则</h1><p>以下内容是当前业务决定，统一按日本时间计算。正式开放真实预订前仍需由日本法律与旅行业务负责人审阅并确定版本和生效日期。</p></div><div className="feature-grid light"><article><h2>取消与退款</h2><ul>{cancellationPolicy.tiers.map(t=><li key={t.label}>{t.label}：退款 {t.refundPercent}%</li>)}</ul><p>取消以系统成功受理时间为准。</p></article><article><h2>补充规则</h2><ul>{cancellationPolicy.rules.map(rule=><li key={rule}>{rule}</li>)}</ul></article><article><h2>运营主体</h2><p><strong>{operatorProfile.legalNameJa}</strong>（{operatorProfile.legalNameEn}）</p><p>{operatorProfile.address}</p><p>{operatorProfile.representative}</p><p>公司联系：{operatorProfile.corporatePhone}／{operatorProfile.corporateEmail}</p><p>营业时间：{operatorProfile.businessHours}</p></article><article><h2>许可信息</h2><ul>{operatorProfile.licences.map(item=><li key={item}>{item}</li>)}</ul><p>旅行资质的正式登记名称与编号将在许可证原文确认后更新。</p></article></div></section>}
 export function Privacy(){return <section><Meta title="隐私政策" description="Japan Travel Weekend 隐私政策。"/><div className="page-title"><div className="eyebrow">隐私与数据保护</div><h1>隐私政策</h1><p>正式法律文本尚待批准。开放真实注册前，将在此说明数据用途、保存期限、权利请求和联系窗口。</p></div></section>}

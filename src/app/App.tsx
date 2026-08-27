@@ -816,7 +816,7 @@ export function Checkout() {
       )}
       <form className="form" onSubmit={submit}>
         <label className="check">
-          <input required type="checkbox" /> 我已阅读取消规则（开放预订前公布）
+          <input required type="checkbox" /> 我已阅读取消规则（日本时间：第3天17:00前全额退款，至第2天17:00前退款50%，之后不退款）
         </label>
         <label className="check">
           <input required type="checkbox" /> 我同意预订条款
