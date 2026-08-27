@@ -4,6 +4,7 @@ import {
   FICTIONAL_ACCOUNT_CHECKS,
   STRUCTURE_CHECKS,
 } from "../scripts/restore-manifest.mjs";
+import {EXPECTED_MIGRATION_COUNT} from '../scripts/restore-preflight.mjs';
 
 describe("restore evidence manifest", () => {
   it("locks the migration and verification sequence to hashed repository files", () => {
@@ -19,7 +20,7 @@ describe("restore evidence manifest", () => {
       "structure_checks",
       "fictional_account_checks",
     ]);
-    expect(manifest.phases[0].files).toHaveLength(20);
+    expect(manifest.phases[0].files).toHaveLength(EXPECTED_MIGRATION_COUNT);
     expect(manifest.phases[1].files.map((file) => file.name)).toEqual(STRUCTURE_CHECKS);
     expect(manifest.phases[2].files.map((file) => file.name)).toEqual(FICTIONAL_ACCOUNT_CHECKS);
     expect(manifest.verificationCount).toBe(6);

@@ -34,7 +34,9 @@ import {
 } from "../app/App";
 import { AppPrivateGroups, MyTrip, TripRoom } from "../app/TripRoom";
 import { LegacyAppRedirect, RequireAccount } from "../app/auth";
+import {RequireOperations} from "../app/auth";
 import {AuthCallback,CreateAccount,ForgotPassword,ResetPassword} from "../app/AuthPages";
+import {OperationsDashboard} from "../app/OperationsDashboard";
 export function Router() {
   return (
     <Routes>
@@ -176,6 +178,7 @@ export function Router() {
         }
       />
       <Route path="/app-demo/*" element={<LegacyAppRedirect />} />
+      <Route path="/app/operations" element={<RequireAccount><RequireOperations><OperationsDashboard/></RequireOperations></RequireAccount>} />
       <Route path="/app-demo" element={<LegacyAppRedirect />} />
       <Route path="*" element={<NotFound />} />
     </Routes>

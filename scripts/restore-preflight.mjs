@@ -9,6 +9,7 @@ export const PROTECTED_PROJECT_REFS = new Set([
 
 const PROJECT_REF_PATTERN = /^[a-z]{20}$/;
 const MIGRATION_PATTERN = /^(\d{8})(\d{4})_.+\.sql$/;
+export const EXPECTED_MIGRATION_COUNT = 21;
 
 export function validateRestoreTarget({ projectRef, projectUrl, disposableConfirmation }) {
   if (!PROJECT_REF_PATTERN.test(projectRef ?? "")) {
@@ -30,8 +31,8 @@ export function inspectMigrations(migrationsDirectory) {
   const names = readdirSync(migrationsDirectory)
     .filter((name) => name.endsWith(".sql"))
     .sort();
-  if (names.length !== 20) {
-    throw new Error(`Expected 20 migrations, found ${names.length}.`);
+  if (names.length !== EXPECTED_MIGRATION_COUNT) {
+    throw new Error(`Expected ${EXPECTED_MIGRATION_COUNT} migrations, found ${names.length}.`);
   }
 
   const serials = names.map((name) => {
@@ -42,9 +43,9 @@ export function inspectMigrations(migrationsDirectory) {
     }
     return Number(match[2]);
   });
-  const expected = Array.from({ length: 20 }, (_, index) => index + 1);
+  const expected = Array.from({ length: EXPECTED_MIGRATION_COUNT }, (_, index) => index + 1);
   if (serials.some((serial, index) => serial !== expected[index])) {
-    throw new Error(`Migration serials must be contiguous 0001-0020; found ${serials.join(",")}.`);
+    throw new Error(`Migration serials must be contiguous 0001-${String(EXPECTED_MIGRATION_COUNT).padStart(4,"0")}; found ${serials.join(",")}.`);
   }
   return names;
 }

@@ -7,6 +7,7 @@ import {
   SupabaseTripRoomRepository,
 } from "../integrations/supabaseProduction";
 import { SupabaseRealtimeAdapter } from "../integrations/supabaseClient";
+import { SupabaseOperationsRepository } from "../integrations/supabaseOperations";
 export class ProductionBrowserServices {
   readonly auth;
   readonly orders;
@@ -14,6 +15,7 @@ export class ProductionBrowserServices {
   readonly checkout;
   readonly tripRoom;
   readonly realtime;
+  readonly operations;
   constructor(
     client: SupabaseClient | null,
     apiBaseUrl: string | undefined,
@@ -24,6 +26,7 @@ export class ProductionBrowserServices {
     this.departures = new SupabaseDepartureRepository(client);
     this.tripRoom = new SupabaseTripRoomRepository(client);
     this.realtime = new SupabaseRealtimeAdapter(client);
+    this.operations = new SupabaseOperationsRepository(client);
     this.checkout = new TestBackendApi(
       apiBaseUrl,
       async () =>

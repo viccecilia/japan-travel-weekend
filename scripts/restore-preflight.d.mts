@@ -11,6 +11,7 @@ export interface RestoreEnvironment {
 }
 
 export const PROTECTED_PROJECT_REFS: Set<string>;
+export const EXPECTED_MIGRATION_COUNT: number;
 
 export function validateRestoreTarget(input: RestoreTargetInput): {
   projectRef: string;

@@ -11,3 +11,5 @@ Trip 是可浏览产品；Departure 才包含日期、库存和价格。座位�
 当前 `TravelRepository` 为内存实现。后端接入时保持接口稳定，并在服务端完成身份、车辆群组、字段级权限和审计校验。
 
 Passenger Assistance（乘客辅助需求）附属于 Booking 和 Order，包括儿童安全座椅、婴儿车、轮椅／转移能力、无障碍车辆、升降设备、工作人员协助、大件行李和其他行动需求。它通过独立运营条件投影供未来配车读取，不进入普通 Vehicle Group 公共数据。详见 `passenger-assistance.md`。
+
+运营资源模型由 Vehicle Type Config → Fleet Vehicle，以及 Driver Resource → Driver Vehicle Qualification / Driver Availability Window 组成。配车冻结前以可用车辆快照生成车辆组合，司机推荐只使用资格与可用时间；运营确认后才创建 Dispatch Task。Dispatch Task以幂等键连接Vehicle Assignment、司机和可选实体车辆，状态变化写入Dispatch Task Audit；柚子外部任务ID不进入乘客侧数据。

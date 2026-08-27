@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   inspectMigrations,
+  EXPECTED_MIGRATION_COUNT,
   runRestorePreflight,
   validateRestoreTarget,
 } from "../scripts/restore-preflight.mjs";
@@ -46,19 +47,19 @@ describe("restore target preflight", () => {
       RESTORE_SUPABASE_URL: safeTarget.projectUrl,
       RESTORE_TARGET_IS_DISPOSABLE: safeTarget.disposableConfirmation,
     }, process.cwd());
-    expect(result.migrationCount).toBe(20);
+    expect(result.migrationCount).toBe(EXPECTED_MIGRATION_COUNT);
   });
 
   it("rejects a migration chain with a gap", () => {
     const directory = mkdtempSync(join(tmpdir(), "jtw-restore-"));
     mkdirSync(join(directory, "migrations"));
-    for (let index = 1; index <= 20; index += 1) {
-      const serial = index === 10 ? 21 : index;
+    for (let index = 1; index <= EXPECTED_MIGRATION_COUNT; index += 1) {
+      const serial = index === 10 ? EXPECTED_MIGRATION_COUNT+1 : index;
       writeFileSync(
         join(directory, "migrations", `20260826${String(serial).padStart(4, "0")}_test.sql`),
         "select 1;",
       );
     }
-    expect(() => inspectMigrations(join(directory, "migrations"))).toThrow("contiguous 0001-0020");
+    expect(() => inspectMigrations(join(directory, "migrations"))).toThrow(`contiguous 0001-${String(EXPECTED_MIGRATION_COUNT).padStart(4,"0")}`);
   });
 });
