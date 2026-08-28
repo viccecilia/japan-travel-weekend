@@ -2,6 +2,8 @@
 
 本记录不包含项目 URL、project ref、账户、密码或 API key。
 
+2026-08-28 测试前端发布到独立 release 目录并通过软链接切换。首次严格 HTTPS 检查发现 443 命中另一站点证书；随后为测试子域部署既有 Let's Encrypt 证书并重新加载 Nginx。最终证书 SAN、前端 200、同源测试 API、noindex、CSP、nosniff、frame deny、PWA manifest、320／375／768／1280 响应式和浏览器控制台检查均为 **PASS**。未修改根域网站，Stripe 仍为 test mode。
+
 ## 迁移结果
 
 - `202608210001_test_stack_foundation.sql`：远程 SQL Editor 首次执行成功。
