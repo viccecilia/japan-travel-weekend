@@ -12,8 +12,11 @@
 - `202608210008_fix_boarding_digest_search_path.sql`：远程执行成功，以 `extensions.digest()` 修复 trusted verifier，同时保持受限 `search_path` 和原有最小执行权限。
 - `202608250019_persistent_chat_attendance.sql`：远程执行成功。聊天发送改为每次请求重新检查房间状态与本车成员资格的 durable RPC；客户端改订阅 Postgres Changes，房间 frozen/open 切换不再要求离开并重新加入频道。新增乘客签到、工作人员点名、联系升级审计与集中时限配置。
 - `202608260020_chat_translation_preferences.sql`：远程执行成功。新增个人翻译偏好、消息按目标语言缓存、原始语言与模板键；普通账户只能读写自己的偏好和本车可见译文，翻译上下文与缓存写入函数只授予 service role。
+- `202608270021_operations_fleet_dispatch.sql`：远程执行成功。新增集中车型配置、车队车辆、司机资源、车型资格、可用时段和预留调度任务／审计表；全部运营资源受 operations-only RLS 保护，真实柚子派单保持禁用。
 
-001–020 在该远程测试项目的适用迁移均已执行。它们是顺序、一次性迁移，不应重复粘贴执行。网页 SQL Editor 不作为仓库迁移账本；本次人工执行由本记录保存证据。新建 fresh project 时应按文件名顺序执行一次，之后运行验收脚本。未来自动化环境应改用 Supabase CLI migration ledger，避免人工重复执行。
+001–021 在该远程测试项目的适用迁移均已执行。它们是顺序、一次性迁移，不应重复粘贴执行。网页 SQL Editor 不作为仓库迁移账本；本次人工执行由本记录保存证据。新建 fresh project 时应按文件名顺序执行一次，之后运行验收脚本。未来自动化环境应改用 Supabase CLI migration ledger，避免人工重复执行。
+
+021 的 `operations_fleet_dispatch_acceptance.sql` 在测试项目返回 **PASS**：operations 虚构身份可通过受控函数创建车辆／司机，资格与可用时段完整；passenger 虚构身份不能调用创建函数或读取车队。回滚式验收后，测试项目另保存 4 辆明确以 `TEST-` 标记的虚构车辆和 3 名“测试司机”，覆盖 Alphard 6、Hiace 13、Coaster 20 与大型巴士 55；外部调度字段仅为 `yuzu-test-*` 占位，不会发送真实任务。
 
 020 结构验收返回 **PASS**：偏好表、译文缓存表、消息模板键、authenticated 偏好 RPC 以及两项 service-role-only 函数权限全部符合预期。虚构乘客账户登录后成功写入并读回日语偏好，RLS 查询只返回本人 1 行；验收结束后已恢复为跟随设备语言。Google Translation 计费适配器保持关闭，未产生翻译调用或费用。
 
