@@ -27,10 +27,10 @@ export function DesignLab(){
       <div className="concept-note"><span>设计关键词</span><strong>{theme==='atelier'?'Editorial · Trust · Curated':theme==='market'?'Fast · Clear · Conversion':theme==='wa'?'Local · Calm · Human':'Live · Safe · Connected'}</strong><p>{theme==='atelier'?'用精选摄影和克制留白建立国际旅行品牌信任。':theme==='market'?'让日期、余位、价格和预订按钮第一眼就能看懂。':theme==='wa'?'以日本在地质感与小团温度建立独有品牌记忆。':'把集合、导航、车辆和群组变成产品最强差异点。'}</p></div>
       <div className="concept-phone">
         <header className="concept-top"><span>JT</span><b>Japan Travel Weekend</b><button className="concept-language" aria-label="当前语言：简体中文"><i>文</i><span>简中</span><em>⌄</em></button></header>
-        {view==='home'&&<HomePreview theme={theme} onBook={()=>setView('booking')}/>} 
-        {view==='booking'&&<BookingPreview onComplete={()=>setView('trip')}/>} 
-        {view==='trip'&&<MyTripPreview onRoom={()=>setView('room')}/>} 
-        {view==='room'&&<RoomPreview/>} 
+        {view==='home'&&<HomePreview theme={theme} onBook={()=>setView('booking')}/>}
+        {view==='booking'&&<BookingPreview onComplete={()=>setView('trip')}/>}
+        {view==='trip'&&<MyTripPreview onRoom={()=>setView('room')}/>}
+        {view==='room'&&<RoomPreview/>}
         <nav className="concept-nav"><button className={view==='home'?'active':''} onClick={()=>setView('home')}>⌂<small>首页</small></button><button className={view==='booking'?'active':''} onClick={()=>setView('booking')}>◇<small>行程</small></button><button className={view==='trip'||view==='room'?'active':''} onClick={()=>setView('trip')}>▤<small>订单</small></button><button>○<small>我的</small></button></nav>
       </div>
     </section>
