@@ -81,8 +81,8 @@ export function AppShell({
             <NavLink to="/app/orders">
               ▤<span>订单</span>
             </NavLink>
-            <NavLink to="/app/rewards">
-              ☆<span>奖励</span>
+            <NavLink to="/app/my-trip/room">
+              ◉<span>消息</span>
             </NavLink>
             <NavLink to="/app/profile">
               ○<span>我的</span>

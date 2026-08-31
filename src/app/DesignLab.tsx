@@ -31,7 +31,7 @@ export function DesignLab(){
         {view==='booking'&&<BookingPreview onComplete={()=>setView('trip')}/>}
         {view==='trip'&&<MyTripPreview onRoom={()=>setView('room')}/>}
         {view==='room'&&<RoomPreview/>}
-        <nav className="concept-nav"><button className={view==='home'?'active':''} onClick={()=>setView('home')}>⌂<small>首页</small></button><button className={view==='booking'?'active':''} onClick={()=>setView('booking')}>◇<small>行程</small></button><button className={view==='trip'||view==='room'?'active':''} onClick={()=>setView('trip')}>▤<small>订单</small></button><button>○<small>我的</small></button></nav>
+        <nav className="concept-nav"><button className={view==='home'?'active':''} onClick={()=>setView('home')}>⌂<small>首页</small></button><button className={view==='booking'?'active':''} onClick={()=>setView('booking')}>◇<small>行程</small></button><button className={view==='trip'?'active':''} onClick={()=>setView('trip')}>▤<small>订单</small></button><button className={view==='room'?'active':''} onClick={()=>setView('room')}>◉<small>消息</small></button><button>○<small>我的</small></button></nav>
       </div>
     </section>
   </main>;
