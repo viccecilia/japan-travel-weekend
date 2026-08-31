@@ -15,6 +15,13 @@
 - `202608250019_persistent_chat_attendance.sql`：远程执行成功。聊天发送改为每次请求重新检查房间状态与本车成员资格的 durable RPC；客户端改订阅 Postgres Changes，房间 frozen/open 切换不再要求离开并重新加入频道。新增乘客签到、工作人员点名、联系升级审计与集中时限配置。
 - `202608260020_chat_translation_preferences.sql`：远程执行成功。新增个人翻译偏好、消息按目标语言缓存、原始语言与模板键；普通账户只能读写自己的偏好和本车可见译文，翻译上下文与缓存写入函数只授予 service role。
 - `202608270021_operations_fleet_dispatch.sql`：远程执行成功。新增集中车型配置、车队车辆、司机资源、车型资格、可用时段和预留调度任务／审计表；全部运营资源受 operations-only RLS 保护，真实柚子派单保持禁用。
+- `202608300022_staff_portal.sql`：在东京隔离恢复项目执行成功。`get_staff_portal_tasks()` 仅授予 authenticated/service_role，anon execute 为 false；函数按 `auth.uid()` 与本车 `staff_assignments` 聚合任务、车辆、登车和付款资格状态，不返回金额或付款凭据。至此001–022均已在该隔离项目执行。
+- `202608310023_dispatch_workflow.sql`：隔离项目执行成功。虚构运营账户完成草稿、确认、模拟发送、取消、审计与车辆释放；普通乘客调用派单函数被拒绝。
+- `202608310024_dispatch_confirmation_guard.sql`：隔离项目执行成功。确认时重新锁定车辆与司机，并拒绝真实班次窗口以外的任务。
+- `202608310025_operations_dashboard_projection.sql`：隔离项目执行成功。运营看板改用安全统计投影，修复浏览器联表查询的字段权限 403，未扩大普通乘客读取集合信息或支付字段的权限。
+- `202608310026_frozen_vehicle_assignment_guard.sql`：隔离项目执行成功。已有 Vehicle Group 的分配不能改变车型或容量。
+
+022 的浏览器角色矩阵亦为 **PASS**：虚构司机与导游分别只看到各自独立 Vehicle Group 的一条 `TEST-` 任务，普通乘客访问工作人员首页和深层任务 URL 均被拒绝；三个页面均未暴露支付金额或付款凭据，控制台错误与警告为0。浏览器仅使用新项目已有 Publishable Key，不创建或读取 Secret Key。
 
 001–021 在该远程测试项目的适用迁移均已执行。它们是顺序、一次性迁移，不应重复粘贴执行。网页 SQL Editor 不作为仓库迁移账本；本次人工执行由本记录保存证据。新建 fresh project 时应按文件名顺序执行一次，之后运行验收脚本。未来自动化环境应改用 Supabase CLI migration ledger，避免人工重复执行。
 

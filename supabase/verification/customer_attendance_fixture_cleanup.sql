@@ -28,6 +28,8 @@ begin
   delete from public.vehicle_groups where departure_id=v_departure;
   delete from public.vehicle_assignments where departure_id=v_departure;
   delete from public.inventory_locks where order_id=v_order;
+  delete from public.passenger_contact_access_audit where order_id=v_order;
+  delete from public.order_contact_private where order_id=v_order;
   delete from public.passenger_assistance where order_id=v_order;
   delete from public.passengers where order_id=v_order;
   delete from public.payment_events where order_id=v_order;

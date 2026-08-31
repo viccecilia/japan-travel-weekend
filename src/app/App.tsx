@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import {
   Link,
+  Navigate,
   NavLink,
   useLocation,
   useNavigate,
@@ -20,7 +21,7 @@ import {
 import type { ChildSeatChoice } from "../shared/types";
 import { GoogleMapsAdapter } from "../shared/integrations/googleMaps";
 import { useApp } from "./store";
-import { safeReturnTo } from "./auth";
+import { referralCodeFromSearch, safeReturnTo } from "./auth";
 import { passwordRules, passwordRuleText } from "../shared/config/authConfig";
 import { Elements } from "@stripe/react-stripe-js";
 import { stripeTestClient } from "../shared/integrations/stripeClient";
@@ -39,12 +40,12 @@ const Empty = ({
     <p>{text}</p>
   </div>
 );
-export function LanguageSelect() {
+export function LanguageSelect({ compact = false }: { compact?: boolean }) {
   return (
-    <label className="language-select">
-      语言
+    <label className={`language-select${compact ? " compact" : ""}`}>
+      {compact ? <span aria-hidden="true">文</span> : "语言"}
       <select aria-label="语言" value="zh-CN" onChange={() => {}}>
-        <option value="zh-CN">简体中文</option>
+        <option value="zh-CN">{compact ? "简中" : "简体中文"}</option>
         <option disabled>English（后续开放）</option>
         <option disabled>日本語（后续开放）</option>
       </select>
@@ -62,11 +63,11 @@ export function AppShell({
     <div className="app-stage">
       <div className="app-frame">
         <header className="app-top">
-          <Link to="/" aria-label="返回网站">
-            ← 网站
+          <Link className="app-back" to="/" aria-label="返回网站">
+            ←<span>网站</span>
           </Link>
-          <b>JT Weekend</b>
-          <LanguageSelect />
+          <b className="app-brand"><i>JT</i><span>Japan Travel Weekend</span></b>
+          <LanguageSelect compact />
         </header>
         <main className="app-content">{children}</main>
         {nav && (
@@ -112,6 +113,7 @@ export function Login() {
   const nav = useNavigate();
   const location = useLocation();
   const returnTo = safeReturnTo(new URLSearchParams(location.search).get("returnTo"));
+  const referralCode = referralCodeFromSearch(location.search);
   const [error, setError] = useState("");
   const connected = backend.connected || services?.authAvailable === true;
   const production = appConfig.runtimeMode === "production";
@@ -186,7 +188,13 @@ export function Login() {
       {!services && !production && (
           <label>
             推荐码 <small>选填</small>
-            <input name="referral" autoComplete="off" />
+            <input
+              name="referral"
+              autoComplete="off"
+              defaultValue={referralCode}
+              aria-describedby={referralCode ? "referral-link-note" : undefined}
+            />
+            {referralCode && <small id="referral-link-note">已从邀请链接自动填写</small>}
           </label>
         )}
         {error && (
@@ -230,7 +238,7 @@ export function AppHome() {
     departuresError,
   } = useApp();
   return (
-    <>
+    <div className="fulfillment-home">
       <AppTitle
         eyebrow="大阪出发 · 按席预订"
         title="探索关西，遇见同行者"
@@ -252,9 +260,9 @@ export function AppHome() {
       </div>
       {state.tripRoom && (
         <Link className="my-trip-banner" to="/app/my-trip">
-          <span>开发种子行程</span>
-          <b>京都与奈良</b>
-          <small>查看车辆与集合信息 →</small>
+          <span>下一项行动 · 行程已确认</span>
+          <b>明天 · 京都与奈良</b>
+          <small>08:00 大阪梅田集合 · 查看车辆与集合信息 →</small>
         </Link>
       )}
       <h2>可选出发班次</h2>
@@ -302,7 +310,7 @@ export function AppHome() {
         <b>需要私人团体出行？</b>
         <span>企业、学校、社团、亲友团体 →</span>
       </Link>
-    </>
+    </div>
   );
 }
 export function AppTrips() {
@@ -359,12 +367,15 @@ export function BookingPage() {
   const { state, updateBooking, departures } = useApp();
   const deps = departures.filter((d) => d.tripSlug === t.slug);
   const nav = useNavigate();
+  const sellable = deps.filter((departure) => departure.price != null && departure.availableSeats !== 0);
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+    const departureId=String(f.get("departure"));
+    if(!sellable.some((departure)=>departure.id===departureId))return;
     updateBooking({
       tripSlug: t.slug,
-      departureId: String(f.get("departure")),
+      departureId,
       adults: Number(f.get("adults")),
       children: Number(f.get("children")),
     });
@@ -381,10 +392,10 @@ export function BookingPage() {
         <form className="form" onSubmit={submit}>
           <label>
             出发班次
-            <select required name="departure">
+            <select required name="departure" disabled={!sellable.length}>
               {deps.map((d) => (
-                <option value={d.id} key={d.id}>
-                  {d.dateLabel} · 每席 ¥{d.price} · {d.status}
+                <option value={d.id} key={d.id} disabled={d.price==null||d.availableSeats===0}>
+                  {d.dateLabel} · {d.price==null?'价格待公布':`每席 ¥${d.price}`} · {d.status}
                 </option>
               ))}
             </select>
@@ -412,7 +423,8 @@ export function BookingPage() {
             </label>
           </div>
           <p>车辆将在运营阶段按顺序装载分配，不在购买时指定。</p>
-          <button className="button full">继续填写乘客信息</button>
+          {!sellable.length&&<p className="notice" role="status">该班次价格或库存尚未开放，目前不能进入结账。开放后将在此显示最终每席价格。</p>}
+          <button className="button full" disabled={!sellable.length}>继续填写乘客信息</button>
         </form>
       ) : (
         <Empty
@@ -424,12 +436,15 @@ export function BookingPage() {
   );
 }
 export function Passengers() {
-  const { state, updateBooking } = useApp();
+  const { state, updateBooking, departures } = useApp();
   const nav = useNavigate();
   const childCount = state.booking?.children ?? 0;
   const [seatChoice, setSeatChoice] = useState<ChildSeatChoice | "">("");
   const [hasStroller, setHasStroller] = useState(false);
   const [needsWheelchair, setNeedsWheelchair] = useState(false);
+  const selectedDeparture=departures.find((departure)=>departure.id===state.booking?.departureId);
+  const bookingReady=Boolean(selectedDeparture&&selectedDeparture.price!=null&&selectedDeparture.availableSeats!==0);
+  if(!bookingReady)return <Navigate replace to={`/app/booking/${state.booking?.tripSlug??'kyoto-nara-classic'}?reason=select-departure`}/>;
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
@@ -762,6 +777,7 @@ export function Checkout() {
     updateBooking({ acceptedCancellation: true, acceptedTerms: true });
     nav("/app/payment");
   };
+  if(!state.booking?.passenger||!dep||total==null||guests<1)return <><AppTitle eyebrow="订单资料不完整" title="请先选择有效班次" text="只有价格、库存和乘客资料均已确认后，才能进入结账。"/><Link className="button full" to={`/app/booking/${state.booking?.tripSlug??'kyoto-nara-classic'}`}>返回选择出发班次</Link></>;
   return (
     <>
       <AppTitle eyebrow="第 3 步，共 4 步" title="核对订单" />
@@ -821,7 +837,7 @@ export function Checkout() {
         <label className="check">
           <input required type="checkbox" /> 我同意预订条款
         </label>
-        <button className="button full" disabled={!dep}>
+        <button className="button full">
           选择支付方式
         </button>
       </form>
@@ -850,7 +866,9 @@ export function Payment() {
   const selectedDeparture=departures.find(item=>item.id===state.booking?.departureId);
   const payableTotal=seatOrderTotal(selectedDeparture?.price,(state.booking?.adults??0)+(state.booking?.children??0));
   const nav = useNavigate();
+  const paymentReady=Boolean(state.booking?.passenger&&selectedDeparture&&payableTotal!=null&&state.booking?.acceptedCancellation&&state.booking?.acceptedTerms);
   const simulate = () => {
+    if(!paymentReady||payableTotal==null)return;
     const id = `DEV-${Date.now().toString().slice(-6)}`;
     const guests =
       (state.booking?.adults ?? 1) + (state.booking?.children ?? 0);
@@ -866,12 +884,12 @@ export function Payment() {
       status: "已确认",
       paymentMethod: `${method}（开发模拟）`,
       paymentStatus: "开发模拟完成",
-      amount: null,
+      amount: payableTotal,
     });
     nav("/app/payment-result", { state: { id } });
   };
   const createTestCheckout = async () => {
-    if (!services || !state.booking?.departureId) return;
+    if (!services || !state.booking?.departureId||!paymentReady) return;
     if (method !== "银行转账" && !stripeTestClient) {
       setRemoteStatus(
         production
@@ -920,6 +938,7 @@ export function Payment() {
   return (
     <>
       <AppTitle eyebrow="第 4 步，共 4 步" title="支付" />
+      {!paymentReady&&<div className="notice" role="alert">订单的班次、价格、乘客资料或条款确认不完整。请返回重新核对，系统不会创建付款。</div>}
       <div className="receipt"><div><span>订单金额</span><b>{payableTotal==null?'待确认':`¥${payableTotal}`}</b></div></div>
       <div className="notice">
         {services
@@ -982,9 +1001,10 @@ export function Payment() {
           services
             ? !services.checkoutAvailable ||
               !state.booking?.departureId ||
+              !paymentReady ||
               submitting ||
               Boolean(remoteCheckout)
-            : !enabled
+            : !enabled||!paymentReady
         }
         onClick={services ? createTestCheckout : simulate}
       >

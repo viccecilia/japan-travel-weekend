@@ -32,7 +32,7 @@ export function MyTrip() {
       </>
     );
   return (
-    <>
+    <div className="my-trip-page">
       <div className="app-title">
         <div className="eyebrow">我的账户／我的行程</div>
         <h1>
@@ -83,13 +83,12 @@ export function MyTrip() {
           <p className="privacy">开放规则：{appConfig.tripRoom.opens}</p>
         </>
       )}
-    </>
+    </div>
   );
 }
 export function TripRoom() {
   const { state, setState, services } = useApp();
   const [notice, setNotice] = useState("");
-  const [staff, setStaff] = useState(false);
   const [localTranslationLanguage,setLocalTranslationLanguage]=useState<ChatLanguage>(()=>preferredChatLanguage(typeof navigator==='undefined'?[]:navigator.languages));
   const [localFollowDevice,setLocalFollowDevice]=useState(true);
   const [localAutoTranslate,setLocalAutoTranslate]=useState(true);
@@ -119,7 +118,7 @@ export function TripRoom() {
     );
   };
   return (
-    <div className="trip-room">
+    <div className="trip-room fulfillment-room">
       <div className="frozen-banner" role="status">
         <b>{frozen ? "群组只读预览" : "群组已开放"}</b>
         <span>
@@ -139,9 +138,6 @@ export function TripRoom() {
             完整地址：{dep?.meetingAddress ?? pending}
           </p>
         </div>
-        <button type="button" onClick={() => setStaff(!staff)}>
-          {staff ? "乘客视图" : "工作人员视图"}
-        </button>
       </div>
       <section className="fulfilment-summary">
         <h2>到达方式</h2>
@@ -194,27 +190,7 @@ export function TripRoom() {
           {notice}
         </div>
       )}
-      {staff && (
-        <section className="staff-panel">
-          <h2>司机／司导工作视图</h2>
-          <p>
-            {frozen
-              ? "群组尚未开放，当前仅可查看成员确认状态。"
-              : "乘客位置仅在主动授权后对本车司机和司导可见。"}
-          </p>
-          <div className="member-list">
-            {room.members
-              .filter((m) => m.role === "passenger")
-              .map((m) => (
-                <div key={m.id}>
-                  <b>{m.displayName}</b>
-                  <span>{m.boarding}</span>
-                </div>
-              ))}
-          </div>
-        </section>
-      )}
-      <section className="vehicle-chat">
+      <section className="vehicle-chat fulfillment-chat">
         <h2>本车消息</h2>
         <p className="privacy">
           仅本车乘客与被分配的工作人员可见，不展示私人联系方式。
@@ -227,7 +203,7 @@ export function TripRoom() {
           <p className="privacy">当前目标：{chatLanguages.find(item=>item.code===localTranslationLanguage)?.label}。开发模式仅验证界面，不调用外部翻译服务。</p>
         </fieldset>
         {room.messages.map((m) => (
-          <article key={m.id} className={m.important ? "important" : ""}>
+          <article key={m.id} className={`${m.important ? "important " : ""}${m.role === "system" ? "system-card" : "member-message"}`}>
             <header>
               <b>{m.author}</b>
               <span>{m.role === "system" ? "系统" : "成员"}</span>
@@ -424,7 +400,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
   const verifyBoarding=async()=>{if(!boardingToken.trim())return;const result=await services.verifyBoardingCredential({token:boardingToken.trim(),vehicleGroupId:room.vehicle_group_id,idempotencyKey:crypto.randomUUID()});if(!result){setBoardingResult('核验被拒绝：凭证格式、工作人员权限或本车归属不正确。');return}const labels:Record<string,string>={valid:'核验成功，已登记登车。',used:'该凭证已经使用。',expired:'该凭证已经过期。',revoked:'该凭证无效或已撤销。','wrong-vehicle':'该凭证不属于本车。'};setBoardingResult(labels[result.status]??`核验结果：${result.status}`);setBoardingToken('');setBoardings((await services.tripRoom.loadBoardingStatus(room.vehicle_group_id)) as RemoteBoarding[]);};
   const previewPhoto=(file:File|undefined)=>{if(!file)return;if(!file.type.startsWith('image/')||file.size>5*1024*1024){setNotice('请选择不超过 5 MB 的图片文件。');return}const reader=new FileReader();reader.onload=()=>typeof reader.result==='string'&&setLocalPhoto({name:file.name,url:reader.result});reader.readAsDataURL(file);};
   return (
-    <div className="trip-room">
+    <div className="trip-room fulfillment-room">
       <div className="frozen-banner" role="status">
         <b>
           {room.room_status === "open"
@@ -458,7 +434,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
           </p>
         </div>
       </div>
-      <section className="fulfilment-summary">
+      <section className="fulfilment-summary fulfillment-pins">
         <h2>置顶履约信息</h2>
         <div className="receipt">
           <div><span>出发时间</span><b>{room.departs_at?new Date(room.departs_at).toLocaleString('zh-CN',{timeZone:'Asia/Tokyo'}):'待确认'}</b></div>
@@ -527,7 +503,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
           )}
         </section>
       )}
-      <section className="vehicle-chat">
+      <section className="vehicle-chat fulfillment-chat">
         <h2>本车消息</h2>
         <p className="privacy">仅本车成员可见；断线时不会伪装发送成功。</p>
         <fieldset className="translation-settings">
@@ -538,7 +514,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
           <p className="privacy">当前目标：{chatLanguages.find(item=>item.code===translationLanguage)?.label}。始终保留原文；重要模板使用预置译文，自由聊天需翻译服务连接后才生成译文。</p>
         </fieldset>
         {messages.map((m) => (
-          <article key={m.id} className={m.important?'important':undefined}>
+          <article key={m.id} className={`${m.important?'important ':''}${!m.author_id?'system-card':m.author_id===currentUserId?'self-message':'member-message'}`}>
             <header>
               <b>{m.author_id === currentUserId ? "我" : "本车成员"}</b>
             </header>

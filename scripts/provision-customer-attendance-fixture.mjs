@@ -41,6 +41,8 @@ const orderValues={account_id:ownerId,departure_id:departure.id,idempotency_key:
 if(order){const {error}=await supabase.from('orders').update(orderValues).eq('id',order.id);fail('reset TEST order',error)}
 else{const {data,error}=await supabase.from('orders').insert(orderValues).select('id');fail('create TEST order',error);order=one(data,'TEST order')}
 
+const {error:contactError}=await supabase.from('order_contact_private').upsert({order_id:order.id,contact_name:'TEST-订单联系人',phone:'000-0000-0000'},{onConflict:'order_id'});fail('upsert TEST contact',contactError);
+
 const {error:lockError}=await supabase.from('inventory_locks').upsert({departure_id:departure.id,order_id:order.id,idempotency_key:'uat-customer-attendance-hold-v1',seats:2,status:'committed',expires_at:new Date(Date.now()+30*86400000).toISOString()},{onConflict:'idempotency_key'});fail('upsert TEST inventory',lockError);
 
 const {data:existingPassengers,error:passengerReadError}=await supabase.from('passengers').select('id,display_name').eq('order_id',order.id);fail('load TEST passengers',passengerReadError);

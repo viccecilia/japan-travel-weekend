@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Departure, SeatStatus } from "../types";
 
 type SellableDepartureRow={id:string;trip_slug:string;trip_title:string;departs_at:string;capacity:number;available_seats:number;seat_price_jpy:number};
+export type StaffTaskRow={staff_assignment_id:string;assignment_role:'driver'|'guide'|'operations';vehicle_group_id:string;room_id:string|null;room_status:string|null;departure_id:string;trip_title:string;departs_at:string|null;meeting_name:string|null;meeting_address:string|null;map_lat:number|null;map_lng:number|null;vehicle_sequence:number;vehicle_type:string;vehicle_label:string|null;vehicle_capacity:number;booked_seats:number;passenger_count:number;boarded_count:number;payment_ready_count:number;payment_review_count:number;payment_blocked_count:number};
 const seatStatus=(available:number,capacity:number):SeatStatus=>available<=0?'已售罄':available<=2?'余位较少':available/capacity<=.25?'即将满员':'可预订';
 const weekendBucket=(date:Date,now=new Date()):Departure['weekend']=>{const days=(date.getTime()-now.getTime())/86400000;return days<=7?'本周末':days<=14?'下周末':'稍后'};
 export function mapSellableDeparture(row:SellableDepartureRow,now=new Date()):Departure{
@@ -103,6 +104,11 @@ export class SupabaseOrderRepository {
   }
   async ownFulfilment(orderId:string){if(!this.client)return null;try{const {data,error}=await this.client.rpc('get_own_order_fulfilment',{p_order:orderId}).maybeSingle();return error?null:data}catch{return null}}
 }
+export class SupabaseStaffRepository{
+  constructor(private readonly client:SupabaseClient|null){}
+  get available(){return this.client!==null}
+  async listTasks(){if(!this.client)return {data:[] as StaffTaskRow[],error:'工作人员任务服务未配置'};try{const {data,error}=await this.client.rpc('get_staff_portal_tasks');return error?{data:[] as StaffTaskRow[],error:'无法读取已分配任务'}:{data:(data??[]) as StaffTaskRow[],error:null}}catch{return {data:[] as StaffTaskRow[],error:'无法读取已分配任务'}}}
+}
 export class SupabaseTripRoomRepository {
   constructor(private readonly client: SupabaseClient | null) {}
   get available() { return this.client !== null; }
@@ -150,6 +156,7 @@ export class SupabaseTripRoomRepository {
   async setOwnCheckin(passengerId:string,status:'confirmed_departure'|'at_meeting_point'|'needs_assistance'){if(!this.client)return false;const {error}=await this.client.rpc('set_own_passenger_checkin',{p_passenger:passengerId,p_status:status,p_idempotency_key:crypto.randomUUID()});return !error}
   async setStaffCheckin(vehicleGroupId:string,passengerId:string,status:'at_meeting_point'|'boarded'|'needs_assistance'|'contacting'|'unreachable'){if(!this.client)return false;const {error}=await this.client.rpc('set_staff_passenger_checkin',{p_vehicle_group:vehicleGroupId,p_passenger:passengerId,p_status:status,p_idempotency_key:crypto.randomUUID()});return !error}
   async recordContact(vehicleGroupId:string,passengerId:string,action:'contact_requested'|'contacting'|'reached'|'unreachable'|'escalated_to_operations'|'resolved'){if(!this.client)return false;const {error}=await this.client.rpc('record_passenger_contact_action',{p_vehicle_group:vehicleGroupId,p_passenger:passengerId,p_action:action,p_idempotency_key:crypto.randomUUID(),p_note:null});return !error}
+  async loadStaffPassengerContact(vehicleGroupId:string,passengerId:string){if(!this.client)return null;const {data,error}=await this.client.rpc('get_staff_passenger_contact',{p_vehicle_group:vehicleGroupId,p_passenger:passengerId});if(error||!data?.[0])return null;return data[0] as {contact_name:string;phone:string}}
 }
 export class SupabasePrivateStorageAdapter {
   constructor(private readonly client: SupabaseClient | null) {}

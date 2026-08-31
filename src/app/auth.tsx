@@ -8,9 +8,16 @@ export function safeReturnTo(value:string|null|undefined){
   try{
     const target=new URL(value,'https://app.local.invalid');
     if(target.origin!=='https://app.local.invalid')return '/app';
-    if(target.pathname==='/app/login'||!(target.pathname==='/app'||target.pathname.startsWith('/app/')))return '/app';
+    const allowed=target.pathname==='/app'||target.pathname.startsWith('/app/')||target.pathname==='/staff'||target.pathname.startsWith('/staff/');
+    if(target.pathname==='/app/login'||!allowed)return '/app';
     return `${target.pathname}${target.search}${target.hash}`;
   }catch{return '/app';}
+}
+
+export function referralCodeFromSearch(search:string){
+  const params=new URLSearchParams(search);
+  const raw=(params.get('ref')??params.get('referral')??'').trim().toUpperCase();
+  return /^[A-Z0-9][A-Z0-9_-]{2,31}$/.test(raw)?raw:'';
 }
 
 export function RequireAccount({children}:{children:ReactNode}){
@@ -27,6 +34,28 @@ export function RequireOperations({children}:{children:ReactNode}){
   if(!authResolved||role==='loading')return <main className="empty-card" role="status"><b>正在验证运营权限</b><p>后台数据只对运营账户开放。</p></main>;
   if(!state.user){const returnTo=safeReturnTo(`${location.pathname}${location.search}`);return <Navigate replace to={`/app/login?returnTo=${encodeURIComponent(returnTo)}`}/>}
   if(role!=='operations')return <main className="empty-card"><b>无权访问运营后台</b><p>当前账户不是运营角色。</p></main>;
+  return children;
+}
+
+export function RequireStaff({children}:{children:ReactNode}){
+  const {state,authResolved,services}=useApp();
+  const location=useLocation();
+  const account=state.user?.email??'';
+  const [access,setAccess]=useState<{account:string;allowed:boolean}|null>(null);
+  useEffect(()=>{
+    let active=true;
+    if(!authResolved||!account||!services)return()=>{active=false};
+    void Promise.all([services.currentRole(),services.loadStaffTasks()]).then(([role,tasks])=>{
+      if(!active)return;
+      setAccess({account,allowed:role==='driver'||role==='guide'||role==='operations'||tasks.data.length>0});
+    }).catch(()=>{if(active)setAccess({account,allowed:false});});
+    return()=>{active=false};
+  },[authResolved,account,services]);
+  if(!authResolved)return <main className="empty-card" role="status"><b>正在恢复账户会话</b><p>请稍候，正在安全确认登录状态。</p></main>;
+  if(!state.user){const returnTo=safeReturnTo(`${location.pathname}${location.search}`);return <Navigate replace to={`/app/login?returnTo=${encodeURIComponent(returnTo)}`}/>;}
+  if(!services)return <main className="empty-card"><b>无权访问工作人员端</b><p>本地乘客账户不能进入工作人员端。请使用由运营分配的工作人员账户登录。</p></main>;
+  if(access?.account!==account)return <main className="empty-card" role="status"><b>正在验证工作人员权限</b><p>只会读取当前账户被分配的车辆与团组。</p></main>;
+  if(!access.allowed)return <main className="empty-card"><b>无权访问工作人员端</b><p>当前账户没有司机、导游或运营任务。请使用由运营分配的工作人员账户登录。</p></main>;
   return children;
 }
 

@@ -59,6 +59,10 @@ begin
     set departure_id=excluded.departure_id,seat_count=2,status='confirmed',currency='JPY',amount=200,updated_at=now()
   returning id into v_order;
 
+  insert into public.order_contact_private(order_id,contact_name,phone)
+  values(v_order,'TEST-订单联系人','000-0000-0000')
+  on conflict(order_id) do update set contact_name=excluded.contact_name,phone=excluded.phone,updated_at=now();
+
   insert into public.inventory_locks(departure_id,order_id,idempotency_key,seats,status,expires_at)
   values(v_departure,v_order,'uat-customer-attendance-hold-v1',2,'committed',now()+interval '30 days')
   on conflict(idempotency_key) do update

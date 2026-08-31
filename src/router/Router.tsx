@@ -1,4 +1,5 @@
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, useLocation } from "react-router-dom";
+import {useEffect} from "react";
 import {
   WebsiteLayout,
   Home,
@@ -33,13 +34,16 @@ import {
   NotFound,
 } from "../app/App";
 import { AppPrivateGroups, MyTrip, TripRoom } from "../app/TripRoom";
-import { LegacyAppRedirect, RequireAccount } from "../app/auth";
+import { LegacyAppRedirect, RequireAccount, RequireStaff } from "../app/auth";
 import {RequireOperations} from "../app/auth";
 import {AuthCallback,CreateAccount,ForgotPassword,ResetPassword} from "../app/AuthPages";
 import {OperationsDashboard} from "../app/OperationsDashboard";
+import {DesignLab} from "../app/DesignLab";
+import {StaffPortal,StaffTaskAction} from "../app/StaffPortal";
+function ScrollToTop(){const {pathname}=useLocation();useEffect(()=>{if(!navigator.userAgent.includes('jsdom'))window.scrollTo({top:0,left:0,behavior:'auto'});},[pathname]);return null;}
 export function Router() {
   return (
-    <Routes>
+    <><ScrollToTop/><Routes>
       <Route element={<WebsiteLayout />}>
         <Route path="/" element={<Home />} />
         <Route path="/trips" element={<TripsPage />} />
@@ -179,8 +183,11 @@ export function Router() {
       />
       <Route path="/app-demo/*" element={<LegacyAppRedirect />} />
       <Route path="/app/operations" element={<RequireAccount><RequireOperations><OperationsDashboard/></RequireOperations></RequireAccount>} />
+      <Route path="/staff" element={<RequireAccount><RequireStaff><StaffPortal/></RequireStaff></RequireAccount>} />
+      <Route path="/staff/tasks/:assignmentId/:action" element={<RequireAccount><RequireStaff><StaffTaskAction/></RequireStaff></RequireAccount>} />
+      <Route path="/design-lab" element={<DesignLab />} />
       <Route path="/app-demo" element={<LegacyAppRedirect />} />
       <Route path="*" element={<NotFound />} />
-    </Routes>
+    </Routes></>
   );
 }

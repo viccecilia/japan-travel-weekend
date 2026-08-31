@@ -4,6 +4,7 @@ import {
   SupabaseAuthRepository,
   SupabaseDepartureRepository,
   SupabaseOrderRepository,
+  SupabaseStaffRepository,
   SupabaseTripRoomRepository,
 } from "../integrations/supabaseProduction";
 import { SupabaseRealtimeAdapter } from "../integrations/supabaseClient";
@@ -16,6 +17,7 @@ export class ProductionBrowserServices {
   readonly tripRoom;
   readonly realtime;
   readonly operations;
+  readonly staff;
   constructor(
     client: SupabaseClient | null,
     apiBaseUrl: string | undefined,
@@ -27,6 +29,7 @@ export class ProductionBrowserServices {
     this.tripRoom = new SupabaseTripRoomRepository(client);
     this.realtime = new SupabaseRealtimeAdapter(client);
     this.operations = new SupabaseOperationsRepository(client);
+    this.staff = new SupabaseStaffRepository(client);
     this.checkout = new TestBackendApi(
       apiBaseUrl,
       async () =>
@@ -67,6 +70,7 @@ export class ProductionBrowserServices {
   }
   loadOwnOrderFulfilment(orderId:string){return this.orders.ownFulfilment(orderId)}
   loadSellableDepartures(){return this.departures.listSellable()}
+  loadStaffTasks(){return this.staff.listTasks()}
   createCheckout(input: CheckoutRequest) {
     return this.checkout.checkout(input);
   }

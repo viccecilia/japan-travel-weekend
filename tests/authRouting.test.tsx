@@ -3,7 +3,7 @@ import {afterEach,describe,expect,it} from 'vitest';
 import type {SupabaseClient} from '@supabase/supabase-js';
 import {MemoryRouter,useLocation} from 'react-router-dom';
 import {AppProvider} from '../src/app/store';
-import {safeReturnTo} from '../src/app/auth';
+import {referralCodeFromSearch,safeReturnTo} from '../src/app/auth';
 import {Router} from '../src/router/Router';
 import {ProductionBrowserServices} from '../src/shared/backend/productionServices';
 
@@ -20,9 +20,36 @@ describe('正式账户路由守卫',()=>{
     await waitFor(()=>expect(screen.getByTestId('location').textContent).toBe('/app/login?returnTo=%2Fapp%2Forders%3Ftab%3Dcurrent'));
     expect(screen.queryByText('暂无订单')).not.toBeInTheDocument();
   });
+  it('本地乘客账户不能进入工作人员端',async()=>{
+    renderRoute('/staff');
+    await waitFor(()=>expect(screen.getByTestId('location').textContent).toContain('/app/login'));
+  });
+  it('已登录但没有工作人员角色或任务时拒绝工作人员端',async()=>{
+    const user={id:'passenger-1',email:'passenger@example.invalid'};
+    const client={
+      auth:{getUser:async()=>({data:{user},error:null}),getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},
+      from:()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:{role:'passenger'},error:null})})})}),
+      rpc:async(name:string)=>name==='get_staff_portal_tasks'?{data:[],error:null}:{data:null,error:null},
+    } as unknown as SupabaseClient;
+    renderRoute('/staff',new ProductionBrowserServices(client,undefined));
+    expect(await screen.findByText('无权访问工作人员端')).toBeInTheDocument();
+    expect(screen.queryByText('今日履约')).not.toBeInTheDocument();
+  });
   it('returnTo 只允许 App 内部路径',()=>{
     expect(safeReturnTo('/app/orders?tab=current')).toBe('/app/orders?tab=current');
+    expect(safeReturnTo('/staff?day=tomorrow')).toBe('/staff?day=tomorrow');
     for(const unsafe of ['https://evil.example/app','//evil.example/app','/trips','/app/login','javascript:alert(1)'])expect(safeReturnTo(unsafe)).toBe('/app');
+  });
+  it('邀请链接只接受规范化的推荐码',()=>{
+    expect(referralCodeFromSearch('?ref=jt_friend-88')).toBe('JT_FRIEND-88');
+    expect(referralCodeFromSearch('?referral=ABC123')).toBe('ABC123');
+    for(const unsafe of ['?ref=<script>','?ref=ab','?ref=has%20space','?ref='])expect(referralCodeFromSearch(unsafe)).toBe('');
+  });
+  it('邀请链接自动填写注册页推荐码',()=>{
+    const services=new ProductionBrowserServices(clientWithUser(null),undefined);
+    renderRoute('/app/create-account?ref=friend_2026',services);
+    expect(screen.getByLabelText(/推荐码/)).toHaveValue('FRIEND_2026');
+    expect(screen.getByText('已从邀请链接自动填写')).toBeInTheDocument();
   });
   it('Supabase 会话恢复期间只显示加载状态，不闪出私有页面',async()=>{
     let resolve!: (value:unknown)=>void;const pending=new Promise<unknown>(done=>{resolve=done});
