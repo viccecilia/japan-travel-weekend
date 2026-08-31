@@ -23,6 +23,9 @@ describe('工作人员端',()=>{
     expect(screen.getByRole('link',{name:'发送通知'})).toHaveAttribute('href','/staff/tasks/assignment-1/notice');
     expect(screen.getByRole('link',{name:'异常上报'})).toHaveAttribute('href','/staff/tasks/assignment-1/incident');
     expect(screen.getByRole('link',{name:'联系运营'})).toHaveAttribute('href','/staff/tasks/assignment-1/support');
+    expect(screen.getByRole('link',{name:'任务'})).toHaveAttribute('href','/staff#tasks');
+    expect(screen.getByRole('link',{name:'乘客'})).toHaveAttribute('href','/staff/tasks/assignment-1/passengers');
+    expect(screen.getByRole('link',{name:'消息'})).toHaveAttribute('href','/staff/tasks/assignment-1/chat');
   });
   it('本车乘客点名仅显示最小必要字段并可保存状态',async()=>{
     const calls:string[]=[];
@@ -42,6 +45,7 @@ describe('工作人员端',()=>{
     expect(await screen.findByRole('link',{name:'000-0000-0000'})).toHaveAttribute('href','tel:000-0000-0000');
     expect(calls).toContain('get_staff_passenger_contact');
     expect(screen.getByRole('status')).toHaveTextContent('本次查看已记录');
+    expect(screen.getByRole('link',{name:'乘客'})).toHaveClass('active');
   });
   it('异常上报只生成未外发草稿并保留调度 API 边界',async()=>{
     const client={auth:{getUser:async()=>({data:{user:null},error:null}),getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},rpc:async(name:string)=>name==='get_staff_portal_tasks'?{data:[task],error:null}:{data:null,error:null}} as unknown as SupabaseClient;
