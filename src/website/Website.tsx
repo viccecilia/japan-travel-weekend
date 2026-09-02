@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Link, NavLink, Outlet, useParams } from "react-router-dom";
 import { travelRepository } from "../shared/data/repository";
 import { TripCard } from "../shared/components/TripCard";
 import { businessRules } from "../shared/config/businessRules";
 import { cancellationPolicy, operatorProfile } from "../shared/config/legalOperations";
-import type { Category } from "../shared/types";
 import { LanguageSelect } from "../app/App";
 const trips = travelRepository.listTrips();
 function Meta({ title, description }: { title: string; description: string }) {
@@ -133,15 +132,6 @@ export function Home() {
   );
 }
 export function TripsPage() {
-  const [filter, setFilter] = useState<"全部" | Category>("全部");
-  const filters: Array<"全部" | Category> = [
-    "全部",
-    "经典人文",
-    "自然风光",
-    "海滨",
-    "亲子",
-    "温泉",
-  ];
   return (
     <section>
       <Meta title="周末行程" description="浏览从大阪出发的五条关西路线。" />
@@ -150,23 +140,8 @@ export function TripsPage() {
         <h1>寻找下一个周末目的地</h1>
         <p>京都奈良已建立标准路线内容；具体日期、价格与库存只在运营正式发布后显示。</p>
       </div>
-      <div className="filters" aria-label="筛选行程">
-        {filters.map((f) => (
-          <button
-            className={filter === f ? "active" : ""}
-            onClick={() => setFilter(f)}
-            key={f}
-          >
-            {f}
-          </button>
-        ))}
-      </div>
       <div className="card-grid">
-        {trips
-          .filter((t) => filter === "全部" || t.categories.includes(filter))
-          .map((t) => (
-            <TripCard trip={t} key={t.id} />
-          ))}
+        {trips.map((t) => <TripCard trip={t} key={t.id} />)}
       </div>
     </section>
   );

@@ -459,6 +459,8 @@ export function Passengers() {
   const [hasStroller, setHasStroller] = useState(false);
   const [needsWheelchair, setNeedsWheelchair] = useState(false);
   const selectedDeparture=departures.find((departure)=>departure.id===state.booking?.departureId);
+  const selectedTrip=travelRepository.getTrip(state.booking?.tripSlug??'');
+  const partySize=(state.booking?.adults??0)+(state.booking?.children??0)+(state.booking?.infants??0);
   const bookingReady=Boolean(selectedDeparture&&selectedDeparture.price!=null&&selectedDeparture.availableSeats!==0);
   if(!bookingReady)return <Navigate replace to={`/app/booking/${state.booking?.tripSlug??'kyoto-nara-classic'}?reason=select-departure`}/>;
   const submit = (e: FormEvent<HTMLFormElement>) => {
@@ -526,32 +528,40 @@ export function Passengers() {
       <BookingSteps current={2}/>
       <AppTitle
         eyebrow="第 2 步，共 4 步"
-        title="乘客资料与特殊乘车需求"
-        text="只收集履约所需信息，不收集无关健康诊断；资料仅保留在当前会话。"
+        title="填写出行联系人"
+        text="用于发送订单确认和行前集合通知，请填写当天能够联系到的信息。"
       />
+      <div className="passenger-trip-summary"><span>{selectedDeparture?.dateLabel}</span><b>{selectedTrip?.shortTitle}</b><small>{partySize} 人出行 · {state.booking?.adults??0} 成人 · {state.booking?.children??0} 儿童 · {state.booking?.infants??0} 婴儿</small></div>
       <form className="form" onSubmit={submit}>
+        <section className="form-section"><header><span>01</span><div><h2>主要联系人</h2><p>订单与紧急联络信息</p></div></header>
         <label>
           主要乘客姓名
-          <input required name="name" />
+          <input required name="name" autoComplete="name" placeholder="请与旅行证件姓名保持一致" />
         </label>
         <label>
           国籍
-          <input required name="nationality" />
+          <input required name="nationality" autoComplete="country-name" placeholder="例如：中国、日本" />
         </label>
         <label>
           首选沟通语言
           <select name="language">
             <option>简体中文</option>
+            <option>日本語</option>
+            <option>English</option>
+            <option>Tiếng Việt</option>
+            <option>नेपाली</option>
           </select>
         </label>
         <label>
-          电话
-          <input required name="phone" type="tel" />
+          手机号码
+          <input required name="phone" type="tel" autoComplete="tel" inputMode="tel" placeholder="包含国家或地区代码" />
         </label>
         <label>
           紧急联系人
-          <input required name="emergency" />
+          <input required name="emergency" placeholder="姓名及联系电话" />
         </label>
+        </section>
+        <div className="form-section-heading"><span>02</span><div><h2>乘车与协助需求</h2><p>没有特殊需求时保持默认即可</p></div></div>
         {childCount > 0 && (
           <fieldset className="assistance-module">
             <legend>儿童乘车需求</legend>
@@ -769,7 +779,7 @@ export function Passengers() {
             />
           </label>
         </fieldset>
-        <label>
+        <section className="form-section optional-notes"><header><span>03</span><div><h2>补充信息</h2><p>均为选填，请只填写本次行程需要的信息</p></div></header><label>
           饮食需求
           <textarea name="dietary" placeholder="选填" />
         </label>
@@ -777,7 +787,9 @@ export function Passengers() {
           订单备注
           <textarea name="notes" placeholder="选填" />
         </label>
+        </section>
         <button className="button full">核对订单</button>
+        <p className="privacy">继续后仍可返回修改。平台只向本次行程必要的工作人员提供最少履约信息。</p>
       </form>
     </>
   );
@@ -789,6 +801,7 @@ export function Checkout() {
   const guests = (state.booking?.adults ?? 0) + (state.booking?.children ?? 0) + (state.booking?.infants ?? 0);
   const total = seatOrderTotal(dep?.price, guests);
   const summaries = describeAssistance(state.booking?.assistance);
+  const trip=travelRepository.getTrip(state.booking?.tripSlug || "");
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     updateBooking({ acceptedCancellation: true, acceptedTerms: true });
@@ -798,8 +811,10 @@ export function Checkout() {
   return (
     <>
       <BookingSteps current={3}/>
-      <AppTitle eyebrow="第 3 步，共 4 步" title="核对订单" />
-      <div className="receipt">
+      <AppTitle eyebrow="第 3 步，共 4 步" title="确认预订信息" text="请特别核对出发日期、人数和联系电话。提交后会先保存订单，不会在本阶段扣款。" />
+      <section className="checkout-hero"><img src={trip?.heroImage} alt=""/><div><span>{dep.dateLabel}</span><h2>{trip?.shortTitle??'行程待确认'}</h2><p>{guests} 人 · {trip?.duration}</p></div></section>
+      <div className="checkout-section-title"><h2>行程与费用</h2><Link to={`/app/booking/${state.booking.tripSlug}`}>修改</Link></div>
+      <div className="receipt checkout-receipt">
         <div>
           <span>行程</span>
           <b>
@@ -840,23 +855,26 @@ export function Checkout() {
         </div>
         <div>
           <span>应付总额</span>
-          <b>{total == null ? "待公布" : `¥${total}`}</b>
+          <b className="checkout-total">{total == null ? "待公布" : `¥${total.toLocaleString('ja-JP')}`}</b>
         </div>
       </div>
+      <div className="checkout-section-title"><h2>主要联系人</h2><Link to="/app/passengers">修改</Link></div>
+      <div className="receipt checkout-contact"><div><span>姓名</span><b>{state.booking.passenger.name}</b></div><div><span>联系电话</span><b>{state.booking.passenger.phone}</b></div><div><span>沟通语言</span><b>{state.booking.passenger.language}</b></div></div>
       {state.booking?.assistance?.operationalReviewStatus !== "未提出" && (
         <p className="notice">
           待确认项会由运营人员审核；提交不代表设备、无障碍车辆、人员协助或费用已经确认。
         </p>
       )}
-      <form className="form" onSubmit={submit}>
+      <section className="cancellation-summary"><header><span>取消规则</span><b>按日本时间计算</b></header><div><span><b>3天前</b><small>退还 100%</small></span><span><b>2～3天</b><small>退还 50%</small></span><span><b>前1天起</b><small>原则不退</small></span></div><p>取消以系统成功受理时间为准；依法应退款、解除或补偿的情形不受排除。</p></section>
+      <form className="form checkout-consent" onSubmit={submit}>
         <label className="check">
-          <input required type="checkbox" /> 我已阅读取消规则（以日本时间系统受理时间为准：出发3天前100%，出发前2～3天50%，出发前1天起原则不退）
+          <input required type="checkbox" /> <span>我已阅读并理解上述取消退款规则</span>
         </label>
         <label className="check">
-          <input required type="checkbox" /> 我同意预订条款
+          <input required type="checkbox" /> <span>我同意预订条款及隐私政策</span>
         </label>
         <button className="button full">
-          选择支付方式
+          确认并进入提交页
         </button>
       </form>
     </>
