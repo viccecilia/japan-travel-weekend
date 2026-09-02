@@ -2,7 +2,7 @@ import {cleanup,render,screen} from '@testing-library/react';
 import {afterEach,describe,expect,it} from 'vitest';
 import type {SupabaseClient} from '@supabase/supabase-js';
 import {MemoryRouter,Route,Routes} from 'react-router-dom';
-import {AppHome,BoardingPass,Login,Orders,Payment,PaymentResult} from '../src/app/App';
+import {AppHome,BoardingPass,Login,Orders,Payment,PaymentResult,Profile} from '../src/app/App';
 import {TripRoom} from '../src/app/TripRoom';
 import {AppProvider} from '../src/app/store';
 import {appConfig} from '../src/shared/config/businessRules';
@@ -50,10 +50,15 @@ describe('production 用户可见文案',()=>{
     expect(document.body.textContent).not.toMatch(/测试|开发|Demo/);
   });
   it('远程本人订单卡片使用正式产品称谓',async()=>{
-    const client={auth:{getSession:async()=>({data:{session:null}}),getUser:async()=>({data:{user:null},error:null})},from:()=>({select:()=>({order:async()=>({data:[{id:'order-1',departure_id:'departure-1',seat_count:2,status:'paid'}],error:null})})})} as unknown as SupabaseClient;
+    const client={auth:{getSession:async()=>({data:{session:null}}),getUser:async()=>({data:{user:null},error:null})},rpc:async()=>({data:0,error:null}),from:(table:string)=>({select:()=>({order:async()=>({data:table==='orders'?[{id:'order-1',departure_id:'departure-1',seat_count:2,status:'paid'}]:[],error:null})})})} as unknown as SupabaseClient;
     const services=new ProductionBrowserServices(client,undefined);
     render(<MemoryRouter><AppProvider services={services}><Orders/></AppProvider></MemoryRouter>);
     expect(await screen.findByText('本人订单')).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/测试环境订单|测试|开发|Demo/);
+  });
+  it('账户中心提供订单辅助需求与行程消息入口',()=>{
+    render(<MemoryRouter><AppProvider><Profile/></AppProvider></MemoryRouter>);
+    expect(screen.getByRole('link',{name:'订单与辅助需求'})).toHaveAttribute('href','/app/orders');
+    expect(screen.getByRole('link',{name:'行程消息'})).toHaveAttribute('href','/app/my-trip/room');
   });
 });

@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { TestBackendApi, type CheckoutRequest } from "./testApi";
 import {
   SupabaseAuthRepository,
+  SupabaseAccountProfileRepository,
   SupabaseDepartureRepository,
   SupabaseOrderRepository,
   SupabaseStaffRepository,
@@ -18,6 +19,7 @@ export class ProductionBrowserServices {
   readonly realtime;
   readonly operations;
   readonly staff;
+  readonly accountProfile;
   constructor(
     client: SupabaseClient | null,
     apiBaseUrl: string | undefined,
@@ -30,6 +32,7 @@ export class ProductionBrowserServices {
     this.realtime = new SupabaseRealtimeAdapter(client);
     this.operations = new SupabaseOperationsRepository(client);
     this.staff = new SupabaseStaffRepository(client);
+    this.accountProfile = new SupabaseAccountProfileRepository(client);
     this.checkout = new TestBackendApi(
       apiBaseUrl,
       async () =>
@@ -69,6 +72,9 @@ export class ProductionBrowserServices {
     return this.orders.loadOwnOrders();
   }
   loadOwnDrafts(){return this.orders.loadOwnDrafts()}
+  abandonOwnDraft(draftId:string){return this.orders.abandonOwnDraft(draftId)}
+  loadOwnAccountProfile(){return this.accountProfile.loadOwn()}
+  updateOwnAccountProfile(input:Parameters<SupabaseAccountProfileRepository['updateOwn']>[0]){return this.accountProfile.updateOwn(input)}
   saveOwnBookingDraft(input:Parameters<SupabaseOrderRepository['saveOwnDraft']>[0]){return this.orders.saveOwnDraft(input)}
   loadOwnOrderFulfilment(orderId:string){return this.orders.ownFulfilment(orderId)}
   loadSellableDepartures(){return this.departures.listSellable()}

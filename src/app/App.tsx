@@ -1051,7 +1051,8 @@ export function Orders() {
       status: string;
     }>;
   }>({ loading: Boolean(services), error: null, rows: [] });
-  const [drafts,setDrafts]=useState<Array<{id:string;departure_id:string;adults:number;children:number;infants:number;seat_impact:number;operational_review_status:string;status:string;created_at:string}>>([]);
+  const [drafts,setDrafts]=useState<Array<{id:string;departure_id:string;adults:number;children:number;infants:number;seat_impact:number;operational_review_status:string;status:string;created_at:string;updated_at:string;expires_at:string}>>([]);
+  const [draftNotice,setDraftNotice]=useState('');
   useEffect(() => {
     if (services)
       void Promise.all([services.loadOwnOrders(),services.loadOwnDrafts()])
@@ -1080,7 +1081,8 @@ export function Orders() {
         </Link>
       )}
       <h2>订单</h2>
-      {services&&drafts.length>0&&<section className="draft-list"><h2>支付前订单草稿</h2>{drafts.map(draft=><article className="order-card" key={draft.id}><b>订单草稿 · 尚未支付</b><span>{draft.adults} 成人／{draft.children} 儿童／{draft.infants} 婴儿 · 配车人数 {draft.seat_impact}</span><small>辅助需求审核：{draft.operational_review_status} · 不占用正式库存</small></article>)}</section>}
+      {services&&drafts.length>0&&<section className="draft-list"><h2>支付前订单草稿</h2>{drafts.map(draft=><article className="order-card" key={draft.id}><b>{draft.status==='expired'?'草稿已过期':draft.status==='cancelled'?'草稿已放弃':'订单草稿 · 尚未支付'}</b><span>{draft.adults} 成人／{draft.children} 儿童／{draft.infants} 婴儿 · 配车人数 {draft.seat_impact}</span><small>最后更新：{new Date(draft.updated_at).toLocaleString('zh-CN')} · 辅助需求审核：{draft.operational_review_status}</small>{draft.status==='payment_not_started'||draft.status==='pending_manual_review'?<div className="inline-actions"><Link className="text-link" to="/app/checkout">继续填写</Link><button type="button" className="text-button" onClick={()=>void services.abandonOwnDraft(draft.id).then(result=>{setDraftNotice(result.error??'草稿已放弃，不再进入结账流程。');if(result.ok)setDrafts(rows=>rows.map(row=>row.id===draft.id?{...row,status:'cancelled'}:row))})}>放弃草稿</button></div>:null}</article>)}</section>}
+      {draftNotice&&<p className="notice" role="status">{draftNotice}</p>}
       {services ? (
         remote.loading ? (
           <Empty title="正在读取订单" text="请稍候。" />
@@ -1355,6 +1357,11 @@ export function Referral() {
 export function Profile() {
   const { state, setUi, reset, services } = useApp();
   const nav = useNavigate();
+  const [profile,setProfile]=useState({displayName:'',phone:'',emergencyName:'',emergencyPhone:''});
+  const [profileState,setProfileState]=useState<'loading'|'ready'|'saving'|'unavailable'>(services?'loading':'unavailable');
+  const [profileNotice,setProfileNotice]=useState('');
+  useEffect(()=>{let active=true;if(!services)return()=>{active=false};void services.loadOwnAccountProfile().then(result=>{if(!active)return;if(result.error){setProfileNotice(result.error);setProfileState('unavailable');return}if(result.data)setProfile({displayName:result.data.display_name,phone:result.data.phone,emergencyName:result.data.emergency_name,emergencyPhone:result.data.emergency_phone});setProfileState('ready')});return()=>{active=false}},[services]);
+  const saveProfile=async(event:FormEvent<HTMLFormElement>)=>{event.preventDefault();if(!services)return;const form=new FormData(event.currentTarget);setProfileState('saving');const result=await services.updateOwnAccountProfile({displayName:String(form.get('displayName')),phone:String(form.get('phone')),emergencyName:String(form.get('emergencyName')),emergencyPhone:String(form.get('emergencyPhone')),acceptedTerms:Boolean(form.get('terms')),acceptedPrivacy:Boolean(form.get('privacy'))});setProfileState('ready');setProfileNotice(result.error??'本人资料已安全保存。');if(result.ok)setProfile({displayName:String(form.get('displayName')),phone:String(form.get('phone')),emergencyName:String(form.get('emergencyName')),emergencyPhone:String(form.get('emergencyPhone'))})};
   const logout = async () => {
     if (services) await services.signOut();
     reset();
@@ -1395,6 +1402,15 @@ export function Profile() {
           </b>
         </div>
       </div>
+      <section className="form" aria-labelledby="account-center-title">
+        <h2 id="account-center-title">账户中心</h2>
+        <p className="privacy">订单草稿、已确认订单、儿童座椅与轮椅审核状态统一在订单中查看；车辆群消息仅在已分配的行程中开放。</p>
+        <div className="inline-actions">
+          <Link className="button" to="/app/orders">订单与辅助需求</Link>
+          <Link className="button secondary" to="/app/my-trip/room">行程消息</Link>
+        </div>
+      </section>
+      {services&&<form className="form" onSubmit={saveProfile}><h2>本人乘客资料</h2><p className="privacy">联系方式和紧急联系人保存在私密资料表，不会显示在公开账户资料、普通乘客群或运营列表中。</p><label>显示名<input required name="displayName" maxLength={80} value={profile.displayName} onChange={event=>setProfile({...profile,displayName:event.target.value})}/></label><label>必要联系电话<input required name="phone" type="tel" maxLength={40} value={profile.phone} onChange={event=>setProfile({...profile,phone:event.target.value})}/></label><label>紧急联系人姓名<input required name="emergencyName" maxLength={80} value={profile.emergencyName} onChange={event=>setProfile({...profile,emergencyName:event.target.value})}/></label><label>紧急联系人电话<input required name="emergencyPhone" type="tel" maxLength={40} value={profile.emergencyPhone} onChange={event=>setProfile({...profile,emergencyPhone:event.target.value})}/></label><label className="check"><input required name="terms" type="checkbox"/> 同意 <Link to="/terms">服务条款</Link></label><label className="check"><input required name="privacy" type="checkbox"/> 同意 <Link to="/privacy">隐私政策</Link></label><button className="button full" disabled={profileState==='loading'||profileState==='saving'}>{profileState==='loading'?'正在读取资料…':profileState==='saving'?'正在安全保存…':'保存本人资料'}</button>{profileNotice&&<p className="notice" role="status">{profileNotice}</p>}</form>}
       <LanguageSelect />
       <label className="check">
         <input
