@@ -133,16 +133,17 @@ export function Home() {
 }
 export function TripsPage() {
   return (
-    <section>
+    <section className="website-trips-page">
       <Meta title="周末行程" description="浏览从大阪出发的五条关西路线。" />
-      <div className="page-title">
-        <div className="eyebrow">从大阪出发</div>
-        <h1>寻找下一个周末目的地</h1>
-        <p>京都奈良已建立标准路线内容；具体日期、价格与库存只在运营正式发布后显示。</p>
+      <header className="route-catalog-hero">
+        <div><span>WEEKEND JOURNEYS · KANSAI</span><h1>五种方式，<br/>重新发现关西</h1><p>从大阪出发，在古都、海岸、湖泊与温泉之间，选一段适合自己的周末旅程。</p><div className="catalog-promises"><b>精选 5 条路线</b><b>中文服务</b><b>一个人也可参加</b></div></div>
+        <figure><img src="/images/kobe.jpg" alt="神户港湾夜景"/><figcaption>兵库 · 神户港湾</figcaption></figure>
+      </header>
+      <div className="route-editorial-heading"><span>CURATED ROUTES</span><h2>这个周末，想看见怎样的关西？</h2><p>每条路线都标明时长、步行强度与主要停靠点。日期和价格以开放班次为准。</p></div>
+      <div className="card-grid route-showcase">
+        {trips.map((t,index) => <TripCard trip={t} showcaseIndex={index+1} key={t.id} />)}
       </div>
-      <div className="card-grid">
-        {trips.map((t) => <TripCard trip={t} key={t.id} />)}
-      </div>
+      <aside className="route-planning-note"><span>还没决定？</span><div><h2>先选风景，再选日期</h2><p>进入路线详情了解停靠点和步行强度；正式班次开放后，再确认日期、余位与最终价格。</p></div><Link className="button secondary" to="/how-it-works">了解预订流程</Link></aside>
     </section>
   );
 }
