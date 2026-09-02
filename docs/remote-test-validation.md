@@ -22,6 +22,7 @@
 - `202608310025_operations_dashboard_projection.sql`：隔离项目执行成功。运营看板改用安全统计投影，修复浏览器联表查询的字段权限 403，未扩大普通乘客读取集合信息或支付字段的权限。
 - `202608310026_frozen_vehicle_assignment_guard.sql`：隔离项目执行成功。已有 Vehicle Group 的分配不能改变车型或容量。
 - `202608310027_staff_direct_contact.sql`：测试项目执行成功。订单联系电话保存在私密表；联系时间前本车司机被拒绝，无关乘客被拒绝，运营可按职责查看，联系时间到达后本车司机可查看虚构 `TEST` 号码且新增访问审计。验收后班次恢复未来时间，未使用真实电话。
+- `202609020031_dispatch_trip_room_bridge.sql` 与 `202609020032_dispatch_bridge_recovery.sql`：通过 Supabase CLI 实际执行到隔离项目。两车两司机、两张已付款虚构订单的远程流程为 **PASS**：首个任务确认后不提前建群；全部确认后生成 2 个 Vehicle Group、2 个冻结 Trip Room，并分配 2 张订单；取消首个任务后对应虚构司机权限被撤销。验收前后 `bridge-%` 旅行、车辆、司机和派单任务计数均为 0。
 
 022 的浏览器角色矩阵亦为 **PASS**：虚构司机与导游分别只看到各自独立 Vehicle Group 的一条 `TEST-` 任务，普通乘客访问工作人员首页和深层任务 URL 均被拒绝；三个页面均未暴露支付金额或付款凭据，控制台错误与警告为0。浏览器仅使用新项目已有 Publishable Key，不创建或读取 Secret Key。
 
