@@ -15,7 +15,7 @@ export function TripCard({ trip, app = false }: { trip: Trip; app?: boolean }) {
             <span key={c}>{c}</span>
           ))}
           <span>价格待公布</span>
-          <span>日期未开放</span>
+          <span>{trip.status==='标准路线'?'标准路线内容':'日期未开放'}</span>
         </div>
         <Link
           className="text-link"

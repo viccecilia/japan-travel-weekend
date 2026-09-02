@@ -1,5 +1,9 @@
 # 数据模型
 
+## 支付前订单草稿
+
+`booking_drafts` 位于正式 `orders` 之前，保存本人已确认的 Departure、成人/儿童/婴儿构成、配车人数、私密联系人及辅助需求。客户端只能通过 `save_own_booking_draft` 写入，账户由 `auth.uid()` 推导；运营端使用不含电话、紧急联系人及自由备注的最小投影。草稿不会占库存，也不会触发付款。路线内容扩展字段和完整边界见 `route-commerce-golden-path.md`。
+
 ## Supabase 测试迁移
 
 可执行迁移位于 `supabase/migrations/`，三份迁移已在 Supabase 远程测试项目顺序执行成功。私密乘客辅助需求与 Vehicle Group 公共数据物理分表；库存锁和支付事件分别使用唯一幂等键。远程结构通过不代表 RLS、并发库存或 Realtime 行为已经联调。

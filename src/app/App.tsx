@@ -23,9 +23,6 @@ import { GoogleMapsAdapter } from "../shared/integrations/googleMaps";
 import { useApp } from "./store";
 import { referralCodeFromSearch, safeReturnTo } from "./auth";
 import { passwordRules, passwordRuleText } from "../shared/config/authConfig";
-import { Elements } from "@stripe/react-stripe-js";
-import { stripeTestClient } from "../shared/integrations/stripeClient";
-import { StripePaymentForm } from "./StripePaymentForm";
 import { seatOrderTotal } from "../shared/services/pricing";
 const trips = travelRepository.listTrips();
 const Empty = ({
@@ -284,7 +281,7 @@ export function AppHome() {
                   <b>{departure.dateLabel}</b>
                   <span>{departure.status}</span>
                   <p>
-                    每席 ¥{departure.price}
+                    {departure.price==null?'价格待确认':`每席 ¥${departure.price}`}
                     {departure.availableSeats == null
                       ? ""
                       : ` · 可售 ${departure.availableSeats} 席`}
@@ -356,6 +353,19 @@ export function AppTrip() {
           <li key={x}>{x}</li>
         ))}
       </ul>
+      <h2>参考行程顺序</h2>
+      <div className="route-timeline">
+        {t.timeline.map((item,index)=><article key={`${item.title}-${index}`}><span>{item.time??'时间以班次为准'}</span><div><h3>{item.title}</h3><b>{item.location}</b><p>{item.detail}</p></div></article>)}
+      </div>
+      <div className="route-detail-grid">
+        <section><h2>适合人群</h2><ul className="check-list">{t.suitableFor.map(item=><li key={item}>{item}</li>)}</ul></section>
+        <section><h2>餐食与步行</h2><p>{t.mealOptions}</p><p>步行强度：{t.walkingLevel}</p></section>
+        <section><h2>包含项目</h2><ul>{t.included.map(item=><li key={item}>{item}</li>)}</ul></section>
+        <section><h2>不包含项目</h2><ul>{t.excluded.map(item=><li key={item}>{item}</li>)}</ul></section>
+      </div>
+      <h2>预订前须知</h2>
+      <ul className="check-list">{t.notices.map(item=><li key={item}>{item}</li>)}</ul>
+      <p className="notice">{t.assistanceStatus}。未确认或无法提供的附加服务不会提前收费。</p>
       <Link className="button full" to={`/app/booking/${t.slug}`}>
         查看出发班次
       </Link>
@@ -378,6 +388,7 @@ export function BookingPage() {
       departureId,
       adults: Number(f.get("adults")),
       children: Number(f.get("children")),
+      infants: Number(f.get("infants")),
     });
     nav("/app/passengers");
   };
@@ -400,7 +411,7 @@ export function BookingPage() {
               ))}
             </select>
           </label>
-          <div className="form-row">
+          <div className="form-row booking-party-grid">
             <label>
               成人座位
               <input
@@ -421,7 +432,18 @@ export function BookingPage() {
                 defaultValue={state.booking?.children ?? 0}
               />
             </label>
+            <label>
+              婴儿
+              <input
+                min="0"
+                max="6"
+                name="infants"
+                type="number"
+                defaultValue={state.booking?.infants ?? 0}
+              />
+            </label>
           </div>
+          <p className="privacy">成人、儿童及婴儿均计入配车人数；婴儿占座与费用规则由运营确认后再进入付款。</p>
           <p>车辆将在运营阶段按顺序装载分配，不在购买时指定。</p>
           {!sellable.length&&<p className="notice" role="status">该班次价格或库存尚未开放，目前不能进入结账。开放后将在此显示最终每席价格。</p>}
           <button className="button full" disabled={!sellable.length}>继续填写乘客信息</button>
@@ -769,7 +791,7 @@ export function Checkout() {
   const { state, updateBooking, departures } = useApp();
   const nav = useNavigate();
   const dep = departures.find((item) => item.id === state.booking?.departureId);
-  const guests = (state.booking?.adults ?? 0) + (state.booking?.children ?? 0);
+  const guests = (state.booking?.adults ?? 0) + (state.booking?.children ?? 0) + (state.booking?.infants ?? 0);
   const total = seatOrderTotal(dep?.price, guests);
   const summaries = describeAssistance(state.booking?.assistance);
   const submit = (e: FormEvent<HTMLFormElement>) => {
@@ -794,10 +816,10 @@ export function Checkout() {
           <b>{dep?.dateLabel ?? "待选择"}</b>
         </div>
         <div>
-          <span>成人／儿童</span>
+          <span>成人／儿童／婴儿</span>
           <b>
             {state.booking?.adults ?? 0} 名成人／{state.booking?.children ?? 0}{" "}
-            名儿童
+            名儿童／{state.booking?.infants ?? 0} 名婴儿
           </b>
         </div>
         <div>
@@ -832,7 +854,7 @@ export function Checkout() {
       )}
       <form className="form" onSubmit={submit}>
         <label className="check">
-          <input required type="checkbox" /> 我已阅读取消规则（日本时间：第3天17:00前全额退款，至第2天17:00前退款50%，之后不退款）
+          <input required type="checkbox" /> 我已阅读取消规则（以日本时间系统受理时间为准：出发3天前100%，出发前2～3天50%，出发前1天起原则不退）
         </label>
         <label className="check">
           <input required type="checkbox" /> 我同意预订条款
@@ -844,186 +866,29 @@ export function Checkout() {
     </>
   );
 }
-const methods = [
-  "信用卡",
-  "Apple Pay / Google Pay",
-  "PayPay",
-  "银行转账",
-  "PayPal",
-];
-const checkoutFailureMessage=(code:string)=>({unauthorized:'账户会话已过期，请重新登录。',invalid_request:'订单资料不完整，请返回检查。',inventory_unavailable:'当前余位不足，请返回重新选择座位。',price_unavailable:'该班次价格尚未开放，暂时不能付款。',card_payment_unavailable:'信用卡支付服务暂时不可用。',manual_payment_unavailable:'银行转账申请暂时不可用。',origin_not_allowed:'当前页面来源未获授权。',network_error:'无法连接结账服务，请检查网络后重试。'}[code]??`结账失败（${code}），请稍后重试。`);
 export function Payment() {
-  const { state, addOrder, services, departures } = useApp();
-  const availableMethods = services ? ["信用卡", "银行转账"] : methods;
-  const [method, setMethod] = useState(availableMethods[0]);
-  const [remoteStatus, setRemoteStatus] = useState("");
-  const [remoteCheckout, setRemoteCheckout] = useState<{
-    orderId: string;
-    clientSecret: string;
-  } | null>(null);
+  const { state, services, departures, updateBooking } = useApp();
   const [submitting, setSubmitting] = useState(false);
-  const production = appConfig.runtimeMode === "production";
+  const [draftStatus,setDraftStatus]=useState('');
+  const [draftKey]=useState(()=>crypto.randomUUID());
+  const production=appConfig.runtimeMode==='production';
   const selectedDeparture=departures.find(item=>item.id===state.booking?.departureId);
-  const payableTotal=seatOrderTotal(selectedDeparture?.price,(state.booking?.adults??0)+(state.booking?.children??0));
+  const seatImpact=(state.booking?.adults??0)+(state.booking?.children??0)+(state.booking?.infants??0);
+  const payableTotal=seatOrderTotal(selectedDeparture?.price,seatImpact);
   const nav = useNavigate();
   const paymentReady=Boolean(state.booking?.passenger&&selectedDeparture&&payableTotal!=null&&state.booking?.acceptedCancellation&&state.booking?.acceptedTerms);
-  const simulate = () => {
-    if(!paymentReady||payableTotal==null)return;
-    const id = `DEV-${Date.now().toString().slice(-6)}`;
-    const guests =
-      (state.booking?.adults ?? 1) + (state.booking?.children ?? 0);
-    addOrder({
-      id,
-      tripSlug: state.booking?.tripSlug ?? trips[0].slug,
-      departureId: state.booking?.departureId ?? "",
-      guests,
-      passengerSummary: state.booking?.passenger?.name
-        ? `${state.booking.passenger.name}等，共 ${guests} 人`
-        : `共 ${guests} 人，乘客资料待补充`,
-      assistance: state.booking?.assistance ?? emptyAssistance(),
-      status: "已确认",
-      paymentMethod: `${method}（开发模拟）`,
-      paymentStatus: "开发模拟完成",
-      amount: payableTotal,
-    });
-    nav("/app/payment-result", { state: { id } });
-  };
-  const createTestCheckout = async () => {
-    if (!services || !state.booking?.departureId||!paymentReady) return;
-    if (method !== "银行转账" && !stripeTestClient) {
-      setRemoteStatus(
-        production
-          ? "在线支付配置尚未完成，请稍后再试。"
-          : "Stripe 测试支付配置尚未完成。",
-      );
-      return;
-    }
-    setSubmitting(true);
-    setRemoteStatus("正在提交测试订单…");
-    let result;
-    try {
-      result = await services.createCheckout({
-        departureId: state.booking.departureId,
-        seats: (state.booking.adults ?? 0) + (state.booking.children ?? 0),
-        idempotencyKey: crypto.randomUUID(),
-        paymentMethod: method === "银行转账" ? "bank_transfer" : "card",
-      });
-    } finally {
-      setSubmitting(false);
-    }
-    if (result?.status === "pending_manual_review") {
-      nav(
-        `/app/payment-result?order_id=${encodeURIComponent(result.orderId)}&manual=1`,
-      );
-      return;
-    }
-    if (result?.status === "requires_payment_action") {
-      setRemoteCheckout({
-        orderId: result.orderId,
-        clientSecret: result.clientSecret,
-      });
-    }
-    if(result?.status==='failed'){setRemoteStatus(checkoutFailureMessage(result.error));return}
-    setRemoteStatus(
-      result?.status === "requires_payment_action"
-        ? production
-          ? "在线支付会话已创建，请填写付款信息。"
-          : "测试支付会话已创建，请填写测试付款信息。"
-        : production
-          ? "在线结账暂时不可用，请稍后再试。"
-          : "测试结账服务暂时不可用。",
-    );
-  };
-  const enabled = appConfig.runtimeMode !== "production";
+  const saveDraft=async()=>{if(!services||!state.booking?.passenger||!state.booking.assistance||!selectedDeparture||!state.booking.acceptedCancellation||!state.booking.acceptedTerms)return;setSubmitting(true);setDraftStatus('正在安全保存订单草稿…');const result=await services.saveOwnBookingDraft({departureId:selectedDeparture.id,adults:state.booking.adults,children:state.booking.children,infants:state.booking.infants,passengerPrivate:state.booking.passenger as unknown as Record<string,unknown>,assistancePrivate:state.booking.assistance as unknown as Record<string,unknown>,reviewStatus:state.booking.assistance.operationalReviewStatus,acceptedCancellation:true,acceptedTerms:true,idempotencyKey:draftKey});setSubmitting(false);if(result.id){updateBooking({draftId:result.id});setDraftStatus(`订单草稿已保存：${result.id}。尚未发起支付，也未占用正式库存。`)}else setDraftStatus(result.error??'订单草稿保存失败')};
   return (
     <>
-      <AppTitle eyebrow="第 4 步，共 4 步" title="支付" />
+      <AppTitle eyebrow="第 4 步，共 4 步" title="支付前确认" text="本阶段停在支付前：先保存可恢复的订单草稿，不会发起扣款。" />
       {!paymentReady&&<div className="notice" role="alert">订单的班次、价格、乘客资料或条款确认不完整。请返回重新核对，系统不会创建付款。</div>}
       <div className="receipt"><div><span>订单金额</span><b>{payableTotal==null?'待确认':`¥${payableTotal}`}</b></div></div>
       <div className="notice">
-        {services
-          ? services.checkoutAvailable
-            ? production
-              ? "在线结账入口已开放；支付结果以服务端确认状态为准。"
-              : "仅连接测试后端；不会使用生产商户或真实扣款。"
-            : production
-              ? "在线支付暂未开放；银行转账请等待开放通知。"
-              : "账户服务可用，但结账服务尚未连接，当前不会创建订单或扣款。"
-          : "支付能力尚未连接，当前不会真实扣款。"}
+        {production?'支付功能尚未开放。本页只安全保存订单草稿；在线支付不会创建付款请求，银行转账也不会生成收款指示。':'支付功能尚未开放。本页只把草稿保存到隔离测试数据库；Stripe 不会创建 Payment Intent，银行转账也不会生成收款指示。'}
       </div>
-      <div className="payment-methods">
-        {availableMethods.map((m) => (
-          <button
-            key={m}
-            className={method === m ? "selected" : ""}
-            onClick={() => setMethod(m)}
-          >
-            <span>{m}</span>
-            <small>
-              {services
-                ? services.checkoutAvailable
-                  ? production
-                    ? "以提交结果为准"
-                    : "测试模式"
-                  : production
-                    ? "暂未开放"
-                    : "结账未连接"
-                : enabled
-                  ? "开发模拟"
-                  : "尚未连接"}
-            </small>
-          </button>
-        ))}
-      </div>
-      {remoteCheckout && stripeTestClient && method !== "银行转账" && (
-        <Elements
-          stripe={stripeTestClient}
-          options={{ clientSecret: remoteCheckout.clientSecret, locale: "zh" }}
-        >
-          <StripePaymentForm
-            orderId={remoteCheckout.orderId}
-            onComplete={(orderId, status) =>
-              nav(
-                `/app/payment-result?order_id=${encodeURIComponent(orderId)}&payment_status=${status}`,
-              )
-            }
-          />
-        </Elements>
-      )}
-      {remoteStatus && (
-        <p className="notice" role="status">
-          {remoteStatus}
-        </p>
-      )}
-      <button
-        className="button full"
-        disabled={
-          services
-            ? !services.checkoutAvailable ||
-              !state.booking?.departureId ||
-              !paymentReady ||
-              submitting ||
-              Boolean(remoteCheckout)
-            : !enabled||!paymentReady
-        }
-        onClick={services ? createTestCheckout : simulate}
-      >
-        {services
-          ? services.checkoutAvailable
-            ? production
-              ? "继续在线结账"
-              : submitting
-                ? "正在创建测试结账…"
-                : remoteCheckout
-                  ? "请在上方完成测试支付"
-                  : "提交测试结账"
-            : production
-              ? "在线支付暂未开放"
-              : "结账服务未连接"
-          : enabled
-            ? "模拟支付并创建开发订单"
-            : "支付服务未开放"}
-      </button>
+      <button className="button full" disabled={!services?.ordersAvailable||!paymentReady||submitting||Boolean(state.booking?.draftId)} onClick={()=>void saveDraft()}>{state.booking?.draftId?'订单草稿已保存':submitting?'正在保存…':'保存订单草稿（不扣款）'}</button>
+      {draftStatus&&<p className="notice" role="status">{draftStatus}</p>}
+      {state.booking?.draftId&&<Link className="button secondary full" to="/app/orders">查看账户中的订单草稿</Link>}
       <button className="text-link" onClick={() => nav(-1)}>
         返回修改
       </button>
@@ -1186,22 +1051,23 @@ export function Orders() {
       status: string;
     }>;
   }>({ loading: Boolean(services), error: null, rows: [] });
+  const [drafts,setDrafts]=useState<Array<{id:string;departure_id:string;adults:number;children:number;infants:number;seat_impact:number;operational_review_status:string;status:string;created_at:string}>>([]);
   useEffect(() => {
     if (services)
-      void services
-        .loadOwnOrders()
-        .then((result) =>
+      void Promise.all([services.loadOwnOrders(),services.loadOwnDrafts()])
+        .then(([result,draftResult]) => {
+          setDrafts(draftResult.data as typeof drafts);
           setRemote({
             loading: false,
-            error: result.error,
+            error: result.error??draftResult.error,
             rows: result.data as Array<{
               id: string;
               departure_id: string;
               seat_count: number;
               status: string;
             }>,
-          }),
-        );
+          });
+        });
   }, [services]);
   return (
     <>
@@ -1214,6 +1080,7 @@ export function Orders() {
         </Link>
       )}
       <h2>订单</h2>
+      {services&&drafts.length>0&&<section className="draft-list"><h2>支付前订单草稿</h2>{drafts.map(draft=><article className="order-card" key={draft.id}><b>订单草稿 · 尚未支付</b><span>{draft.adults} 成人／{draft.children} 儿童／{draft.infants} 婴儿 · 配车人数 {draft.seat_impact}</span><small>辅助需求审核：{draft.operational_review_status} · 不占用正式库存</small></article>)}</section>}
       {services ? (
         remote.loading ? (
           <Empty title="正在读取订单" text="请稍候。" />

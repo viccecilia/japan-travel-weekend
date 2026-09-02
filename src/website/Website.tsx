@@ -148,7 +148,7 @@ export function TripsPage() {
       <div className="page-title">
         <div className="eyebrow">从大阪出发</div>
         <h1>寻找下一个周末目的地</h1>
-        <p>路线处于预告阶段，价格、日期与余位尚未开放。</p>
+        <p>京都奈良已建立标准路线内容；具体日期、价格与库存只在运营正式发布后显示。</p>
       </div>
       <div className="filters" aria-label="筛选行程">
         {filters.map((f) => (
@@ -185,7 +185,7 @@ export function TripDetail() {
       <section className="detail-hero">
         <img src={t.heroImage} alt={`${t.title}路线风景`} />
         <div>
-          <div className="eyebrow">路线预告 · {t.region}</div>
+          <div className="eyebrow">{t.status} · {t.region}</div>
           <h1>{t.title}</h1>
           <p>{t.description}</p>
           <div className="chips">
@@ -213,6 +213,7 @@ export function TripDetail() {
                 <b>{i + 1}</b>
                 <div>
                   <h3>{x.title}</h3>
+                  <b>{x.time??'时间以具体班次为准'} · {x.location}</b>
                   <p>{x.detail}</p>
                 </div>
               </article>
@@ -231,12 +232,17 @@ export function TripDetail() {
             ["行李规则", t.luggagePolicy],
             ["取消规则", t.cancellationPolicy],
             ["天气规则", t.weatherPolicy],
+            ["辅助服务", t.assistanceStatus],
           ].map(([a, b]) => (
             <div className="fact" key={a}>
               <b>{a}</b>
               <p>{b}</p>
             </div>
           ))}
+          <h3>适合人群</h3>
+          <ul>{t.suitableFor.map(item=><li key={item}>{item}</li>)}</ul>
+          <h3>注意事项</h3>
+          <ul>{t.notices.map(item=><li key={item}>{item}</li>)}</ul>
         </aside>
       </section>
     </>

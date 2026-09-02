@@ -68,6 +68,8 @@ export class ProductionBrowserServices {
   loadOwnOrders() {
     return this.orders.loadOwnOrders();
   }
+  loadOwnDrafts(){return this.orders.loadOwnDrafts()}
+  saveOwnBookingDraft(input:Parameters<SupabaseOrderRepository['saveOwnDraft']>[0]){return this.orders.saveOwnDraft(input)}
   loadOwnOrderFulfilment(orderId:string){return this.orders.ownFulfilment(orderId)}
   loadSellableDepartures(){return this.departures.listSellable()}
   loadStaffTasks(){return this.staff.listTasks()}

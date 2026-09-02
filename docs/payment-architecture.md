@@ -1,5 +1,7 @@
 # Future payment architecture
 
+当前黄金路径阶段在 `booking_drafts.payment_not_started` 停止。测试前台不创建 Stripe Payment Intent、不生成银行转账指示；草稿转订单与真实支付仍是后续独立阶段门。
+
 The repository now contains a deployed test-only Stripe/Supabase server runtime. It accepts only `sk_test_` credentials, verifies the configured signed test Webhook, and remains fail-closed until a server-side departure price is configured. It is not a production payment integration.
 
 1. The app creates an internal order without trusting client totals.

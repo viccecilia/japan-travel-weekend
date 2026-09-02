@@ -17,11 +17,11 @@ export const cancellationPolicy={
   timeZone:'Asia/Tokyo',
   cutoffLabel:'日本时间',
   tiers:[
-    {label:'出发日前第3天17:00以前',refundPercent:100},
-    {label:'第3天17:00以后至第2天17:00以前',refundPercent:50},
-    {label:'第2天17:00以后、出发当天、行程开始后',refundPercent:0},
+    {label:'出发日前第3天之前',refundPercent:100},
+    {label:'出发前2～3天',refundPercent:50},
+    {label:'出发前1天、出发当天及行程开始后',refundPercent:0},
   ],
-  summary:'出发日前第3天17:00以前全额退款；此后至第2天17:00以前退款50%；再之后不退款。',
+  summary:'出发日前第3天之前全额退款；出发前2～3天退款50%；出发前1天起原则上不退款。',
   rules:[
     '取消时间以系统成功受理时间为准，统一按日本时间计算。',
     '迟到、未出现或自行中途离团，原则上不退款。',
@@ -31,3 +31,6 @@ export const cancellationPolicy={
     '儿童座椅、轮椅等附加服务须先确认可提供及费用；无法提供时不会收取对应费用。',
   ],
 } as const;
+
+const japanCalendarDay=(value:Date)=>{const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(value);const get=(type:string)=>Number(parts.find(part=>part.type===type)?.value);return Date.UTC(get('year'),get('month')-1,get('day'))};
+export function refundPercentAt(departure:Date,acceptedAt:Date){const days=Math.round((japanCalendarDay(departure)-japanCalendarDay(acceptedAt))/86_400_000);return days>3?100:days>=2?50:0}

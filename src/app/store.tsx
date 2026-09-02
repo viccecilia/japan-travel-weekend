@@ -102,6 +102,7 @@ export function AppProvider({
             departureId: "",
             adults: 1,
             children: 0,
+            infants: 0,
             referralCode: "",
             useCredits: false,
             ...s.booking,

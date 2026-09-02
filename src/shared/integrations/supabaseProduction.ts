@@ -1,13 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Departure, SeatStatus } from "../types";
 
-type SellableDepartureRow={id:string;trip_slug:string;trip_title:string;departs_at:string;capacity:number;available_seats:number;seat_price_jpy:number};
+type SellableDepartureRow={id:string;trip_slug:string;trip_title:string;departs_at:string;ends_at?:string|null;capacity:number;available_seats:number;seat_price_jpy:number;meeting_name?:string|null;meeting_address?:string|null;map_lat?:number|null;map_lng?:number|null;arrival_transit?:string|null;arrival_walking?:string|null;arrival_driving?:string|null;meeting_photo_url?:string|null};
 export type StaffTaskRow={staff_assignment_id:string;assignment_role:'driver'|'guide'|'operations';vehicle_group_id:string;room_id:string|null;room_status:string|null;departure_id:string;trip_title:string;departs_at:string|null;meeting_name:string|null;meeting_address:string|null;map_lat:number|null;map_lng:number|null;vehicle_sequence:number;vehicle_type:string;vehicle_label:string|null;vehicle_capacity:number;booked_seats:number;passenger_count:number;boarded_count:number;payment_ready_count:number;payment_review_count:number;payment_blocked_count:number};
 const seatStatus=(available:number,capacity:number):SeatStatus=>available<=0?'已售罄':available<=2?'余位较少':available/capacity<=.25?'即将满员':'可预订';
 const weekendBucket=(date:Date,now=new Date()):Departure['weekend']=>{const days=(date.getTime()-now.getTime())/86400000;return days<=7?'本周末':days<=14?'下周末':'稍后'};
 export function mapSellableDeparture(row:SellableDepartureRow,now=new Date()):Departure{
   const departsAt=new Date(row.departs_at);
-  return {id:row.id,tripSlug:row.trip_slug,dateLabel:new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Tokyo',month:'long',day:'numeric',weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(departsAt),weekend:weekendBucket(departsAt,now),status:seatStatus(row.available_seats,row.capacity),departureTime:departsAt.toISOString(),meetingPointName:null,meetingAddress:null,meetingCoordinates:null,arrivalInstructions:{transit:null,walking:null,driving:null},meetingPhoto:null,meetingPhotoStatus:'待确认',mapStatus:'未连接',price:row.seat_price_jpy,availableSeats:row.available_seats,isSeed:false};
+  const coordinates=row.map_lat==null||row.map_lng==null?null:{lat:Number(row.map_lat),lng:Number(row.map_lng)};
+  return {id:row.id,tripSlug:row.trip_slug,dateLabel:new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Tokyo',month:'long',day:'numeric',weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(departsAt),weekend:weekendBucket(departsAt,now),status:seatStatus(row.available_seats,row.capacity),departureTime:departsAt.toISOString(),expectedEndTime:row.ends_at??null,meetingPointName:row.meeting_name??null,meetingAddress:row.meeting_address??null,meetingCoordinates:coordinates,arrivalInstructions:{transit:row.arrival_transit??null,walking:row.arrival_walking??null,driving:row.arrival_driving??null},meetingPhoto:row.meeting_photo_url??null,meetingPhotoStatus:row.meeting_photo_url?'已确认':'待确认',mapStatus:coordinates?'已连接':'未连接',price:row.seat_price_jpy,availableSeats:row.available_seats,inventoryStatus:'权威库存',isSeed:false};
 }
 export class SupabaseDepartureRepository{
   constructor(private readonly client:SupabaseClient|null){}
@@ -103,6 +104,11 @@ export class SupabaseOrderRepository {
     return error ? null : data;
   }
   async ownFulfilment(orderId:string){if(!this.client)return null;try{const {data,error}=await this.client.rpc('get_own_order_fulfilment',{p_order:orderId}).maybeSingle();return error?null:data}catch{return null}}
+  async saveOwnDraft(input:{departureId:string;adults:number;children:number;infants:number;passengerPrivate:Record<string,unknown>;assistancePrivate:Record<string,unknown>;reviewStatus:string;acceptedCancellation:boolean;acceptedTerms:boolean;idempotencyKey:string}){
+    if(!this.client)return {id:null,error:'订单草稿服务未配置'};
+    try{const {data,error}=await this.client.rpc('save_own_booking_draft',{p_departure:input.departureId,p_adults:input.adults,p_children:input.children,p_infants:input.infants,p_passenger_private:input.passengerPrivate,p_assistance_private:input.assistancePrivate,p_operational_review_status:({未提出:'not_requested',确认中:'reviewing',需人工联系:'manual_contact',已确认:'confirmed',无法提供:'unavailable'} as Record<string,string>)[input.reviewStatus]??'reviewing',p_accepted_cancellation:input.acceptedCancellation,p_accepted_terms:input.acceptedTerms,p_idempotency_key:input.idempotencyKey});return error?{id:null,error:'订单草稿保存失败，请检查班次与账户状态'}:{id:String(data),error:null}}catch{return {id:null,error:'订单草稿保存失败，请稍后重试'}}
+  }
+  async loadOwnDrafts(){if(!this.client)return {data:[],error:'订单草稿服务未配置'};try{const {data,error}=await this.client.from('booking_drafts').select('id,departure_id,adults,children,infants,seat_impact,assistance_summary,operational_review_status,status,created_at').order('created_at',{ascending:false});return error?{data:[],error:'订单草稿读取失败'}:{data:data??[],error:null}}catch{return {data:[],error:'订单草稿读取失败'}}}
 }
 export class SupabaseStaffRepository{
   constructor(private readonly client:SupabaseClient|null){}

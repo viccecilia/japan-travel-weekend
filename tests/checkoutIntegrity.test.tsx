@@ -21,6 +21,6 @@ describe('结账完整性',()=>{
   it('支付页资料不完整时禁止创建开发订单',()=>{
     render(<MemoryRouter><AppProvider><Payment/></AppProvider></MemoryRouter>);
     expect(screen.getByRole('alert')).toHaveTextContent('不会创建付款');
-    expect(screen.getByRole('button',{name:'支付服务未开放'})).toBeDisabled();
+    expect(screen.getByRole('button',{name:'保存订单草稿（不扣款）'})).toBeDisabled();
   });
 });
