@@ -1,27 +1,417 @@
-import type {SupabaseClient} from '@supabase/supabase-js';
+import type { SupabaseClient } from "@supabase/supabase-js";
 
-export type OperationsVehicleType={type_key:string;label:string;sellable_capacity:number;cost_units:number;active:boolean};
-export type OperationsVehicle={id:string;registration_identifier:string;vehicle_type_key:string;external_dispatch_id:string|null;status:'available'|'assigned'|'in_service'|'maintenance'|'inactive'};
-export type OperationsDriver={id:string;display_name:string;external_dispatch_id:string|null;languages:string[];status:'available'|'unavailable'|'suspended';driver_vehicle_qualifications:{vehicle_type_key:string}[];driver_availability_windows:{starts_at:string;ends_at:string}[]};
-export type OperationsDeparture={id:string;tripTitle:string;departsAt:string|null;capacity:number;status:string;meetingName:string|null;orderCount:number;bookedSeats:number;paidSeats:number;pendingOrders:number;grossAmountJpy:number;loadFactor:number};
-export type OperationsDispatchTask={id:string;status:string;externalTaskId:string|null;lastError:string|null;createdAt:string;driverId:string;fleetVehicleId:string|null;payload:Record<string,unknown>};
-export type OperationsBookingDraft={draftId:string;tripTitle:string;departsAt:string;seatImpact:number;adults:number;children:number;infants:number;assistanceSummary:Record<string,unknown>;operationalReviewStatus:string;draftStatus:string;createdAt:string};
-export type DispatchPlanDraft={sequence:number;vehicleType:string;capacity:number;passengerCount:number;driverId:string;fleetVehicleId:string;startsAt:string;endsAt:string;operationalNotes:string[]};
-export type OperationsSnapshot={vehicleTypes:OperationsVehicleType[];vehicles:OperationsVehicle[];drivers:OperationsDriver[];departures:OperationsDeparture[];bookingDrafts:OperationsBookingDraft[];dispatchTasks:OperationsDispatchTask[];dispatchDrafts:number;loadedAt:string};
-type DepartureRow={id:string;departs_at:string|null;capacity:number;status:string;meeting_name:string|null;trips:{title:string}|{title:string}[]|null;orders:{id:string;seat_count:number;status:string;amount:number|null;currency:string}[]|null};
-type OperationsDepartureRow={id:string;trip_title:string;departs_at:string|null;capacity:number;status:string;meeting_name:string|null;order_count:number;booked_seats:number;pending_orders:number;gross_amount_jpy:number};
-export const summarizeDeparture=(row:DepartureRow):OperationsDeparture=>{const orders=row.orders??[];const committed=orders.filter(order=>order.status==='paid'||order.status==='confirmed');const bookedSeats=committed.reduce((sum,order)=>sum+order.seat_count,0);return {id:row.id,tripTitle:Array.isArray(row.trips)?row.trips[0]?.title??'未命名路线':row.trips?.title??'未命名路线',departsAt:row.departs_at,capacity:row.capacity,status:row.status,meetingName:row.meeting_name,orderCount:orders.length,bookedSeats,paidSeats:bookedSeats,pendingOrders:orders.filter(order=>order.status==='pending_payment').length,grossAmountJpy:committed.reduce((sum,order)=>sum+(order.currency==='JPY'?order.amount??0:0),0),loadFactor:row.capacity>0?Math.round(bookedSeats/row.capacity*1000)/10:0}};
+export type OperationsVehicleType = {
+  type_key: string;
+  label: string;
+  sellable_capacity: number;
+  cost_units: number;
+  active: boolean;
+};
+export type OperationsVehicle = {
+  id: string;
+  registration_identifier: string;
+  vehicle_type_key: string;
+  external_dispatch_id: string | null;
+  status: "available" | "assigned" | "in_service" | "maintenance" | "inactive";
+};
+export type OperationsDriver = {
+  id: string;
+  display_name: string;
+  external_dispatch_id: string | null;
+  languages: string[];
+  status: "available" | "unavailable" | "suspended";
+  driver_vehicle_qualifications: { vehicle_type_key: string }[];
+  driver_availability_windows: { starts_at: string; ends_at: string }[];
+};
+export type OperationsDeparture = {
+  id: string;
+  tripTitle: string;
+  departsAt: string | null;
+  capacity: number;
+  status: string;
+  meetingName: string | null;
+  orderCount: number;
+  bookedSeats: number;
+  paidSeats: number;
+  pendingOrders: number;
+  grossAmountJpy: number;
+  loadFactor: number;
+};
+export type OperationsDispatchTask = {
+  id: string;
+  status: string;
+  externalTaskId: string | null;
+  lastError: string | null;
+  createdAt: string;
+  driverId: string;
+  fleetVehicleId: string | null;
+  payload: Record<string, unknown>;
+};
+export type OperationsBookingDraft = {
+  draftId: string;
+  tripTitle: string;
+  departsAt: string;
+  seatImpact: number;
+  adults: number;
+  children: number;
+  infants: number;
+  assistanceSummary: Record<string, unknown>;
+  operationalReviewStatus: string;
+  draftStatus: string;
+  createdAt: string;
+};
+export type OperationsFulfilmentWorkItem = {
+  id: string;
+  orderId: string;
+  departureId: string;
+  kind: "paid_order_ready" | "payment_review";
+  status: "pending" | "assigned" | "completed" | "cancelled";
+  createdAt: string;
+  updatedAt: string;
+};
+export type DispatchPlanDraft = {
+  sequence: number;
+  vehicleType: string;
+  capacity: number;
+  passengerCount: number;
+  driverId: string;
+  fleetVehicleId: string;
+  startsAt: string;
+  endsAt: string;
+  operationalNotes: string[];
+};
+export type OperationsSnapshot = {
+  vehicleTypes: OperationsVehicleType[];
+  vehicles: OperationsVehicle[];
+  drivers: OperationsDriver[];
+  departures: OperationsDeparture[];
+  bookingDrafts: OperationsBookingDraft[];
+  fulfilmentWorkItems: OperationsFulfilmentWorkItem[];
+  dispatchTasks: OperationsDispatchTask[];
+  dispatchDrafts: number;
+  loadedAt: string;
+};
+type DepartureRow = {
+  id: string;
+  departs_at: string | null;
+  capacity: number;
+  status: string;
+  meeting_name: string | null;
+  trips: { title: string } | { title: string }[] | null;
+  orders:
+    | {
+        id: string;
+        seat_count: number;
+        status: string;
+        amount: number | null;
+        currency: string;
+      }[]
+    | null;
+};
+type OperationsDepartureRow = {
+  id: string;
+  trip_title: string;
+  departs_at: string | null;
+  capacity: number;
+  status: string;
+  meeting_name: string | null;
+  order_count: number;
+  booked_seats: number;
+  pending_orders: number;
+  gross_amount_jpy: number;
+};
+export const summarizeDeparture = (row: DepartureRow): OperationsDeparture => {
+  const orders = row.orders ?? [];
+  const committed = orders.filter(
+    (order) => order.status === "paid" || order.status === "confirmed",
+  );
+  const bookedSeats = committed.reduce(
+    (sum, order) => sum + order.seat_count,
+    0,
+  );
+  return {
+    id: row.id,
+    tripTitle: Array.isArray(row.trips)
+      ? (row.trips[0]?.title ?? "未命名路线")
+      : (row.trips?.title ?? "未命名路线"),
+    departsAt: row.departs_at,
+    capacity: row.capacity,
+    status: row.status,
+    meetingName: row.meeting_name,
+    orderCount: orders.length,
+    bookedSeats,
+    paidSeats: bookedSeats,
+    pendingOrders: orders.filter((order) => order.status === "pending_payment")
+      .length,
+    grossAmountJpy: committed.reduce(
+      (sum, order) =>
+        sum + (order.currency === "JPY" ? (order.amount ?? 0) : 0),
+      0,
+    ),
+    loadFactor:
+      row.capacity > 0
+        ? Math.round((bookedSeats / row.capacity) * 1000) / 10
+        : 0,
+  };
+};
 
-export class SupabaseOperationsRepository{
-  constructor(private readonly client:SupabaseClient|null){}
-  get available(){return this.client!==null}
-  async loadSnapshot():Promise<{data:OperationsSnapshot|null;error:string|null}>{if(!this.client)return {data:null,error:'运营数据服务未配置'};try{const [types,vehicles,drivers,departures,drafts,tasks]=await Promise.all([this.client.from('vehicle_type_configs').select('type_key,label,sellable_capacity,cost_units,active').eq('active',true).order('sellable_capacity'),this.client.from('fleet_vehicles').select('id,registration_identifier,vehicle_type_key,external_dispatch_id,status').order('registration_identifier'),this.client.from('driver_resources').select('id,display_name,external_dispatch_id,languages,status,driver_vehicle_qualifications(vehicle_type_key),driver_availability_windows(starts_at,ends_at)').order('display_name'),this.client.rpc('get_operations_dashboard_departures'),this.client.rpc('get_operations_booking_drafts'),this.client.from('dispatch_tasks').select('id,status,external_task_id,last_error,created_at,driver_id,fleet_vehicle_id,payload').order('created_at',{ascending:false}).limit(20)]);if(types.error||vehicles.error||drivers.error||departures.error||drafts.error||tasks.error)return {data:null,error:'运营数据读取失败，请确认路线草稿与运营迁移已执行'};const dispatchTasks=((tasks.data??[]) as {id:string;status:string;external_task_id:string|null;last_error:string|null;created_at:string;driver_id:string;fleet_vehicle_id:string|null;payload:Record<string,unknown>}[]).map(task=>({id:task.id,status:task.status,externalTaskId:task.external_task_id,lastError:task.last_error,createdAt:task.created_at,driverId:task.driver_id,fleetVehicleId:task.fleet_vehicle_id,payload:task.payload??{}}));const bookingDrafts=((drafts.data??[]) as {draft_id:string;trip_title:string;departs_at:string;seat_impact:number;adults:number;children:number;infants:number;assistance_summary:Record<string,unknown>;operational_review_status:string;draft_status:string;created_at:string}[]).map(row=>({draftId:row.draft_id,tripTitle:row.trip_title,departsAt:row.departs_at,seatImpact:Number(row.seat_impact),adults:Number(row.adults),children:Number(row.children),infants:Number(row.infants),assistanceSummary:row.assistance_summary??{},operationalReviewStatus:row.operational_review_status,draftStatus:row.draft_status,createdAt:row.created_at}));const operationDepartures=((departures.data??[]) as OperationsDepartureRow[]).map(row=>({id:row.id,tripTitle:row.trip_title,departsAt:row.departs_at,capacity:row.capacity,status:row.status,meetingName:row.meeting_name,orderCount:Number(row.order_count),bookedSeats:Number(row.booked_seats),paidSeats:Number(row.booked_seats),pendingOrders:Number(row.pending_orders),grossAmountJpy:Number(row.gross_amount_jpy),loadFactor:row.capacity>0?Math.round(Number(row.booked_seats)/row.capacity*1000)/10:0}));return {data:{vehicleTypes:(types.data??[]) as OperationsVehicleType[],vehicles:(vehicles.data??[]) as OperationsVehicle[],drivers:(drivers.data??[]) as OperationsDriver[],departures:operationDepartures,bookingDrafts,dispatchTasks,dispatchDrafts:dispatchTasks.filter(task=>task.status==='draft'||task.status==='confirmed').length,loadedAt:new Date().toISOString()},error:null}}catch{return {data:null,error:'运营数据读取失败'}}}
-  async createVehicle(input:{registration:string;vehicleType:string;externalDispatchId:string}){if(!this.client)return false;const {error}=await this.client.rpc('operations_create_vehicle',{p_registration:input.registration,p_vehicle_type:input.vehicleType,p_external_dispatch_id:input.externalDispatchId||null});return !error}
-  async saveRouteCatalog(input:{slug:string;title:string;summary:string;walkingLevel:string;mealNotes:string;notices:string[];heroImageUrl:string;status:'draft'|'published'}){if(!this.client)return {ok:false,error:'运营数据服务未配置'};const {error}=await this.client.rpc('operations_update_route_catalog',{p_slug:input.slug,p_title:input.title,p_content:{summary:input.summary,walkingLevel:input.walkingLevel,mealNotes:input.mealNotes,notices:input.notices},p_hero_image_url:input.heroImageUrl||null,p_gallery:input.heroImageUrl?[input.heroImageUrl]:[],p_status:input.status});return {ok:!error,error:error?.message??null}}
-  async createDriver(input:{displayName:string;externalDispatchId:string;vehicleTypes:string[];languages:string[];availableFrom:string;availableUntil:string}){if(!this.client)return false;const {error}=await this.client.rpc('operations_create_driver',{p_display_name:input.displayName,p_external_dispatch_id:input.externalDispatchId||null,p_vehicle_types:input.vehicleTypes,p_languages:input.languages,p_available_from:input.availableFrom,p_available_until:input.availableUntil});return !error}
-  async saveDispatchPlan(departureId:string,tasks:DispatchPlanDraft[]){if(!this.client)return {ok:false,error:'运营数据服务未配置'};const {error}=await this.client.rpc('operations_save_dispatch_plan',{p_departure:departureId,p_tasks:tasks});return {ok:!error,error:error?.message??null}}
-  async confirmDispatchTasks(taskIds:string[]){return this.transition('operations_confirm_dispatch_tasks',{p_task_ids:taskIds})}
-  async simulateDispatchSend(taskIds:string[]){return this.transition('operations_simulate_dispatch_send',{p_task_ids:taskIds})}
-  async cancelDispatchTasks(taskIds:string[],reason:string){return this.transition('operations_cancel_dispatch_tasks',{p_task_ids:taskIds,p_reason:reason})}
-  private async transition(name:string,args:Record<string,unknown>){if(!this.client)return {ok:false,error:'运营数据服务未配置'};const {error}=await this.client.rpc(name,args);return {ok:!error,error:error?.message??null}}
+export class SupabaseOperationsRepository {
+  constructor(private readonly client: SupabaseClient | null) {}
+  get available() {
+    return this.client !== null;
+  }
+  async loadSnapshot(): Promise<{
+    data: OperationsSnapshot | null;
+    error: string | null;
+  }> {
+    if (!this.client) return { data: null, error: "运营数据服务未配置" };
+    try {
+      const [types, vehicles, drivers, departures, drafts, workItems, tasks] =
+        await Promise.all([
+          this.client
+            .from("vehicle_type_configs")
+            .select("type_key,label,sellable_capacity,cost_units,active")
+            .eq("active", true)
+            .order("sellable_capacity"),
+          this.client
+            .from("fleet_vehicles")
+            .select(
+              "id,registration_identifier,vehicle_type_key,external_dispatch_id,status",
+            )
+            .order("registration_identifier"),
+          this.client
+            .from("driver_resources")
+            .select(
+              "id,display_name,external_dispatch_id,languages,status,driver_vehicle_qualifications(vehicle_type_key),driver_availability_windows(starts_at,ends_at)",
+            )
+            .order("display_name"),
+          this.client.rpc("get_operations_dashboard_departures"),
+          this.client.rpc("get_operations_booking_drafts"),
+          this.client
+            .from("fulfilment_work_items")
+            .select(
+              "id,order_id,departure_id,kind,status,created_at,updated_at",
+            )
+            .in("status", ["pending", "assigned"])
+            .order("created_at", { ascending: true })
+            .limit(100),
+          this.client
+            .from("dispatch_tasks")
+            .select(
+              "id,status,external_task_id,last_error,created_at,driver_id,fleet_vehicle_id,payload",
+            )
+            .order("created_at", { ascending: false })
+            .limit(20),
+        ]);
+      if (
+        types.error ||
+        vehicles.error ||
+        drivers.error ||
+        departures.error ||
+        drafts.error ||
+        workItems.error ||
+        tasks.error
+      )
+        return {
+          data: null,
+          error: "运营数据读取失败，请确认履约队列与运营迁移已执行",
+        };
+      const dispatchTasks = (
+        (tasks.data ?? []) as {
+          id: string;
+          status: string;
+          external_task_id: string | null;
+          last_error: string | null;
+          created_at: string;
+          driver_id: string;
+          fleet_vehicle_id: string | null;
+          payload: Record<string, unknown>;
+        }[]
+      ).map((task) => ({
+        id: task.id,
+        status: task.status,
+        externalTaskId: task.external_task_id,
+        lastError: task.last_error,
+        createdAt: task.created_at,
+        driverId: task.driver_id,
+        fleetVehicleId: task.fleet_vehicle_id,
+        payload: task.payload ?? {},
+      }));
+      const bookingDrafts = (
+        (drafts.data ?? []) as {
+          draft_id: string;
+          trip_title: string;
+          departs_at: string;
+          seat_impact: number;
+          adults: number;
+          children: number;
+          infants: number;
+          assistance_summary: Record<string, unknown>;
+          operational_review_status: string;
+          draft_status: string;
+          created_at: string;
+        }[]
+      ).map((row) => ({
+        draftId: row.draft_id,
+        tripTitle: row.trip_title,
+        departsAt: row.departs_at,
+        seatImpact: Number(row.seat_impact),
+        adults: Number(row.adults),
+        children: Number(row.children),
+        infants: Number(row.infants),
+        assistanceSummary: row.assistance_summary ?? {},
+        operationalReviewStatus: row.operational_review_status,
+        draftStatus: row.draft_status,
+        createdAt: row.created_at,
+      }));
+      const fulfilmentWorkItems = (
+        (workItems.data ?? []) as {
+          id: string;
+          order_id: string;
+          departure_id: string;
+          kind: "paid_order_ready" | "payment_review";
+          status: "pending" | "assigned" | "completed" | "cancelled";
+          created_at: string;
+          updated_at: string;
+        }[]
+      ).map((row) => ({
+        id: row.id,
+        orderId: row.order_id,
+        departureId: row.departure_id,
+        kind: row.kind,
+        status: row.status,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      }));
+      const operationDepartures = (
+        (departures.data ?? []) as OperationsDepartureRow[]
+      ).map((row) => ({
+        id: row.id,
+        tripTitle: row.trip_title,
+        departsAt: row.departs_at,
+        capacity: row.capacity,
+        status: row.status,
+        meetingName: row.meeting_name,
+        orderCount: Number(row.order_count),
+        bookedSeats: Number(row.booked_seats),
+        paidSeats: Number(row.booked_seats),
+        pendingOrders: Number(row.pending_orders),
+        grossAmountJpy: Number(row.gross_amount_jpy),
+        loadFactor:
+          row.capacity > 0
+            ? Math.round((Number(row.booked_seats) / row.capacity) * 1000) / 10
+            : 0,
+      }));
+      return {
+        data: {
+          vehicleTypes: (types.data ?? []) as OperationsVehicleType[],
+          vehicles: (vehicles.data ?? []) as OperationsVehicle[],
+          drivers: (drivers.data ?? []) as OperationsDriver[],
+          departures: operationDepartures,
+          bookingDrafts,
+          fulfilmentWorkItems,
+          dispatchTasks,
+          dispatchDrafts: dispatchTasks.filter(
+            (task) => task.status === "draft" || task.status === "confirmed",
+          ).length,
+          loadedAt: new Date().toISOString(),
+        },
+        error: null,
+      };
+    } catch {
+      return { data: null, error: "运营数据读取失败" };
+    }
+  }
+  async createVehicle(input: {
+    registration: string;
+    vehicleType: string;
+    externalDispatchId: string;
+  }) {
+    if (!this.client) return false;
+    const { error } = await this.client.rpc("operations_create_vehicle", {
+      p_registration: input.registration,
+      p_vehicle_type: input.vehicleType,
+      p_external_dispatch_id: input.externalDispatchId || null,
+    });
+    return !error;
+  }
+  async saveRouteCatalog(input: {
+    slug: string;
+    title: string;
+    summary: string;
+    walkingLevel: string;
+    mealNotes: string;
+    notices: string[];
+    heroImageUrl: string;
+    status: "draft" | "published";
+  }) {
+    if (!this.client) return { ok: false, error: "运营数据服务未配置" };
+    const { error } = await this.client.rpc("operations_update_route_catalog", {
+      p_slug: input.slug,
+      p_title: input.title,
+      p_content: {
+        summary: input.summary,
+        walkingLevel: input.walkingLevel,
+        mealNotes: input.mealNotes,
+        notices: input.notices,
+      },
+      p_hero_image_url: input.heroImageUrl || null,
+      p_gallery: input.heroImageUrl ? [input.heroImageUrl] : [],
+      p_status: input.status,
+    });
+    return { ok: !error, error: error?.message ?? null };
+  }
+  async createDriver(input: {
+    displayName: string;
+    externalDispatchId: string;
+    vehicleTypes: string[];
+    languages: string[];
+    availableFrom: string;
+    availableUntil: string;
+  }) {
+    if (!this.client) return false;
+    const { error } = await this.client.rpc("operations_create_driver", {
+      p_display_name: input.displayName,
+      p_external_dispatch_id: input.externalDispatchId || null,
+      p_vehicle_types: input.vehicleTypes,
+      p_languages: input.languages,
+      p_available_from: input.availableFrom,
+      p_available_until: input.availableUntil,
+    });
+    return !error;
+  }
+  async saveDispatchPlan(departureId: string, tasks: DispatchPlanDraft[]) {
+    if (!this.client) return { ok: false, error: "运营数据服务未配置" };
+    const { error } = await this.client.rpc("operations_save_dispatch_plan", {
+      p_departure: departureId,
+      p_tasks: tasks,
+    });
+    return { ok: !error, error: error?.message ?? null };
+  }
+  async confirmDispatchTasks(taskIds: string[]) {
+    return this.transition("operations_confirm_dispatch_tasks", {
+      p_task_ids: taskIds,
+    });
+  }
+  async simulateDispatchSend(taskIds: string[]) {
+    return this.transition("operations_simulate_dispatch_send", {
+      p_task_ids: taskIds,
+    });
+  }
+  async cancelDispatchTasks(taskIds: string[], reason: string) {
+    return this.transition("operations_cancel_dispatch_tasks", {
+      p_task_ids: taskIds,
+      p_reason: reason,
+    });
+  }
+  async retryPaidFulfilment(orderId: string) {
+    return this.transition("operations_retry_paid_fulfilment", {
+      p_order: orderId,
+    });
+  }
+  private async transition(name: string, args: Record<string, unknown>) {
+    if (!this.client) return { ok: false, error: "运营数据服务未配置" };
+    const { error } = await this.client.rpc(name, args);
+    return { ok: !error, error: error?.message ?? null };
+  }
 }
