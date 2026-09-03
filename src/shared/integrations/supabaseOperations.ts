@@ -69,6 +69,16 @@ export type OperationsFulfilmentWorkItem = {
   createdAt: string;
   updatedAt: string;
 };
+export type OperationsNotificationDeliveryIssue = {
+  id: string;
+  eventType: string;
+  orderId: string | null;
+  status: "failed" | "submitted";
+  attempts: number;
+  lastErrorCode: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
 export type DispatchPlanDraft = {
   sequence: number;
   vehicleType: string;
@@ -87,6 +97,7 @@ export type OperationsSnapshot = {
   departures: OperationsDeparture[];
   bookingDrafts: OperationsBookingDraft[];
   fulfilmentWorkItems: OperationsFulfilmentWorkItem[];
+  notificationDeliveryIssues: OperationsNotificationDeliveryIssue[];
   dispatchTasks: OperationsDispatchTask[];
   dispatchDrafts: number;
   loadedAt: string;
@@ -166,7 +177,7 @@ export class SupabaseOperationsRepository {
   }> {
     if (!this.client) return { data: null, error: "运营数据服务未配置" };
     try {
-      const [types, vehicles, drivers, departures, drafts, workItems, tasks] =
+      const [types, vehicles, drivers, departures, drafts, workItems, notificationIssues, tasks] =
         await Promise.all([
           this.client
             .from("vehicle_type_configs")
@@ -195,6 +206,7 @@ export class SupabaseOperationsRepository {
             .in("status", ["pending", "assigned"])
             .order("created_at", { ascending: true })
             .limit(100),
+          this.client.rpc("get_operations_notification_delivery_queue"),
           this.client
             .from("dispatch_tasks")
             .select(
@@ -210,6 +222,7 @@ export class SupabaseOperationsRepository {
         departures.error ||
         drafts.error ||
         workItems.error ||
+        notificationIssues.error ||
         tasks.error
       )
         return {
@@ -283,6 +296,9 @@ export class SupabaseOperationsRepository {
         createdAt: row.created_at,
         updatedAt: row.updated_at,
       }));
+      const notificationDeliveryIssues = ((notificationIssues.data ?? []) as {
+        id:string;event_type:string;order_id:string|null;status:"failed"|"submitted";attempts:number;last_error_code:string|null;created_at:string;updated_at:string;
+      }[]).map(row=>({id:row.id,eventType:row.event_type,orderId:row.order_id,status:row.status,attempts:Number(row.attempts),lastErrorCode:row.last_error_code,createdAt:row.created_at,updatedAt:row.updated_at}));
       const operationDepartures = (
         (departures.data ?? []) as OperationsDepartureRow[]
       ).map((row) => ({
@@ -310,6 +326,7 @@ export class SupabaseOperationsRepository {
           departures: operationDepartures,
           bookingDrafts,
           fulfilmentWorkItems,
+          notificationDeliveryIssues,
           dispatchTasks,
           dispatchDrafts: dispatchTasks.filter(
             (task) => task.status === "draft" || task.status === "confirmed",
@@ -409,6 +426,7 @@ export class SupabaseOperationsRepository {
       p_order: orderId,
     });
   }
+  async retryNotificationDelivery(outboxId:string,reason:string){return this.transition("operations_retry_notification_delivery",{p_outbox:outboxId,p_reason:reason})}
   private async transition(name: string, args: Record<string, unknown>) {
     if (!this.client) return { ok: false, error: "运营数据服务未配置" };
     const { error } = await this.client.rpc(name, args);

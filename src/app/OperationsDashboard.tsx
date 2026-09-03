@@ -311,6 +311,15 @@ export function OperationsDashboard() {
     await reload();
     setBusy(false);
   };
+  const retryNotification = async (outboxId:string) => {
+    if(!services)return;
+    const reason=window.prompt("请输入重新发送原因（至少 5 个字符）","已核对收件渠道，重新发送必要履约通知");
+    if(!reason)return;
+    setBusy(true);
+    const result=await services.operations.retryNotificationDelivery(outboxId,reason);
+    setNotice(result.ok?"通知已重新进入发送队列，送达状态仍以供应商回执为准。":`通知重试失败：${result.error??"请核对状态和运营权限"}`);
+    await reload();setBusy(false);
+  };
   return (
     <main className="operations-dashboard">
       <header className="operations-head">
@@ -351,6 +360,7 @@ export function OperationsDashboard() {
                 }
               />
               <Kpi label="待审核派单" value={snapshot.dispatchDrafts} />
+              <Kpi label="通知异常" value={snapshot.notificationDeliveryIssues.length} />
             </section>
             <p className="operations-freshness">
               更新：
@@ -428,6 +438,17 @@ export function OperationsDashboard() {
                   保存路线内容
                 </button>
               </form>
+            </section>
+            <section className="operations-section">
+              <header><div><span>履约通知</span><h2>发送异常与待回执</h2></div><small>不显示收件地址、通知正文或乘客隐私</small></header>
+              {snapshot.notificationDeliveryIssues.length===0?<p className="operations-empty">暂无通知发送异常。</p>:<div className="operations-dispatch-list">
+                {snapshot.notificationDeliveryIssues.map(item=><article key={item.id}>
+                  <div><b>{item.status==="failed"?"发送失败":"已提交但回执超时"}</b><span>{item.eventType}</span></div>
+                  <span>{item.orderId?`订单尾号 ${item.orderId.slice(-6)}`:"无关联订单"} · 已尝试 {item.attempts} 次</span>
+                  <small>{item.lastErrorCode??"等待供应商最终状态"} · {japanDate(item.updatedAt)}</small>
+                  {item.status==="failed"&&<div className="operations-task-actions"><button disabled={busy} onClick={()=>void retryNotification(item.id)}>核对后重新发送</button></div>}
+                </article>)}
+              </div>}
             </section>
             <section className="operations-section">
               <header>

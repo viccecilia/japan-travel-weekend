@@ -17,7 +17,7 @@ AppContext 接受可选 production services；没有公开配置时为 `null`，
 
 005 已远程执行，首次/重复转换、状态和数据库 execute 权限六项回滚验收为 PASS。HTTPS 测试 API 已部署，但浏览器到服务端的银行转账链路仍为 NOT RUN。
 
-测试 API 在 `https://api-test.japan-travel.info` 提供 `/health`、`/ready`、`/v1/checkout`、`/v1/boarding/issue`、`/v1/boarding/verify` 与 `/v1/webhooks/stripe`。`/health` 只证明进程存活；`/ready` 实际读取 Supabase 配置表，并要求 Stripe 测试密钥和 Webhook secret 格式正确，任一失败即返回 503，响应不包含密钥值。Node 服务只绑定 VPS 的 `127.0.0.1:18773`，由 Nginx 提供 HTTPS并执行严格 Origin 检查；Webhook 使用原始请求体验签。登车接口先验证 Bearer 会话，签发只返回一次原始 token，核验要求工作人员权限与幂等键。009 迁移增加 `seat_price_jpy` 和受 service-role 限制的 Payment Intent 记录函数；未配置服务端票价时，卡支付保持关闭。
+测试 API 在 `https://api-test.japan-travel.info` 提供 `/health`、`/ready`、`/v1/checkout`、`/v1/boarding/issue`、`/v1/boarding/verify`、`/v1/webhooks/stripe` 与 `/v1/webhooks/notifications`。`/health` 只证明进程存活；`/ready` 实际读取 Supabase 配置表，并要求 Stripe 测试密钥、Stripe Webhook secret 和至少 32 字符的通知回执 secret，任一失败即返回 503，响应不包含密钥值。Node 服务只绑定 VPS 的 `127.0.0.1:18773`，由 Nginx 提供 HTTPS并执行严格 Origin 检查；Webhook 使用原始请求体验签。通知供应商接收请求只记为 `submitted`，只有签名回执才能转为 `delivered` 或 `failed`；后台仅展示最小异常投影，人工重试必须填写原因并写入审计。登车接口先验证 Bearer 会话，签发只返回一次原始 token，核验要求工作人员权限与幂等键。009 迁移增加 `seat_price_jpy` 和受 service-role 限制的 Payment Intent 记录函数；未配置服务端票价时，卡支付保持关闭。
 
 `scripts/verify-stripe-webhook.mjs` 使用虚构测试资料生成签名事件，验证 HTTPS、Stripe 验签、订单 paid、库存 committed、事件落库和重复投递幂等。该验收已在测试环境通过，不创建真实 Stripe 付款。
 

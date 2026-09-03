@@ -17,6 +17,7 @@ import type {
 const snapshot: OperationsSnapshot = {
   bookingDrafts: [],
   fulfilmentWorkItems: [],
+  notificationDeliveryIssues: [],
   vehicleTypes: [
     {
       type_key: "alphard-6",
@@ -151,5 +152,11 @@ describe("运营派单界面", () => {
     await waitFor(() => expect(createVehicle).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(registration).toHaveValue(""));
     expect(screen.getByText("车辆已保存")).toBeInTheDocument();
+  });
+  it("只对失败通知提供带原因的人工重试",async()=>{
+    const retryNotificationDelivery=vi.fn(async()=>({ok:true,error:null}));vi.spyOn(window,'prompt').mockReturnValue('已核对渠道后重试');
+    const issueSnapshot={...snapshot,notificationDeliveryIssues:[{id:'40000000-0000-4000-8000-000000000001',eventType:'meeting-updated',orderId:null,status:'failed' as const,attempts:5,lastErrorCode:'provider-delivery-failed',createdAt:'2026-09-03T00:00:00Z',updatedAt:'2026-09-03T00:05:00Z'},{id:'40000000-0000-4000-8000-000000000002',eventType:'departure-reminder',orderId:null,status:'submitted' as const,attempts:1,lastErrorCode:null,createdAt:'2026-09-03T00:00:00Z',updatedAt:'2026-09-03T00:05:00Z'}]};
+    const services={operations:{loadSnapshot:vi.fn(async()=>({data:issueSnapshot,error:null})),retryNotificationDelivery,saveDispatchPlan:vi.fn(),createVehicle:vi.fn(),createDriver:vi.fn(),confirmDispatchTasks:vi.fn(),simulateDispatchSend:vi.fn(),cancelDispatchTasks:vi.fn()},loadSellableDepartures:async()=>({data:[],error:null}),onAuthStateChange:()=>()=>{},currentUser:async()=>null} as unknown as ProductionBrowserServices;
+    render(<AppProvider services={services}><OperationsDashboard/></AppProvider>);fireEvent.click(await screen.findByRole('button',{name:'核对后重新发送'}));await waitFor(()=>expect(retryNotificationDelivery).toHaveBeenCalledWith('40000000-0000-4000-8000-000000000001','已核对渠道后重试'));expect(screen.getByText('已提交但回执超时')).toBeInTheDocument();expect(screen.getAllByRole('button',{name:'核对后重新发送'})).toHaveLength(1);
   });
 });
