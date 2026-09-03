@@ -13,6 +13,12 @@ import {
   PrivateGroups,
   Terms,
   Privacy,
+  CompanyLegal,
+  CommercialTransactions,
+  TravelConditions,
+  CancellationLegal,
+  AccessibilityLegal,
+  CommunityGuidelines,
 } from "../website/Website";
 import {
   AppShell,
@@ -59,6 +65,14 @@ export function Router() {
         <Route path="/app-info" element={<AppLanding />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
+        <Route path="/legal/company" element={<CompanyLegal />} />
+        <Route path="/legal/commercial-transactions" element={<CommercialTransactions />} />
+        <Route path="/legal/privacy" element={<Privacy />} />
+        <Route path="/legal/terms" element={<Terms />} />
+        <Route path="/legal/travel-conditions" element={<TravelConditions />} />
+        <Route path="/legal/cancellation" element={<CancellationLegal />} />
+        <Route path="/legal/accessibility" element={<AccessibilityLegal />} />
+        <Route path="/legal/community-guidelines" element={<CommunityGuidelines />} />
       </Route>
       <Route
         path="/app/login"

@@ -1,9 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Link, NavLink, Outlet, useParams, useSearchParams } from "react-router-dom";
 import { travelRepository } from "../shared/data/repository";
 import { TripCard } from "../shared/components/TripCard";
 import { businessRules } from "../shared/config/businessRules";
-import { cancellationPolicy, operatorProfile } from "../shared/config/legalOperations";
+import { cancellationPolicy, legalPublication, operatorProfile } from "../shared/config/legalOperations";
 import { LanguageSelect } from "../app/App";
 const trips = travelRepository.listTrips();
 function Meta({ title, description }: { title: string; description: string }) {
@@ -53,6 +53,7 @@ export function WebsiteLayout() {
           <Link to="/private-groups">私人团体</Link> ·{" "}
           <Link to="/safety">安全运营</Link> · <Link to="/app">应用</Link>
         </div>
+        <div><Link to="/legal/company">公司信息</Link> · <Link to="/legal/commercial-transactions">特定商取引法</Link> · <Link to="/legal/privacy">隐私政策</Link> · <Link to="/legal/cancellation">取消政策</Link></div>
         <p className="muted">测试阶段：日期与价格尚未开放；取消规则已形成业务版本，正式上线前仍需法律审阅。</p>
       </footer>
     </>
@@ -393,4 +394,13 @@ export function AppLanding() {
   );
 }
 export function Terms(){return <section><Meta title="服务条款" description="Japan Travel Weekend 服务条款与取消退款规则。"/><div className="page-title"><div className="eyebrow">业务规则已确认 · 法律文本待审阅</div><h1>服务条款与取消退款规则</h1><p>以下内容是当前业务决定，统一按日本时间计算。正式开放真实预订前仍需由日本法律与旅行业务负责人审阅并确定版本和生效日期。</p></div><div className="feature-grid light"><article><h2>取消与退款</h2><ul>{cancellationPolicy.tiers.map(t=><li key={t.label}>{t.label}：退款 {t.refundPercent}%</li>)}</ul><p>取消以系统成功受理时间为准。</p></article><article><h2>补充规则</h2><ul>{cancellationPolicy.rules.map(rule=><li key={rule}>{rule}</li>)}</ul></article><article><h2>运营主体</h2><p><strong>{operatorProfile.legalNameJa}</strong>（{operatorProfile.legalNameEn}）</p><p>{operatorProfile.address}</p><p>{operatorProfile.representative}</p><p>公司联系：{operatorProfile.corporatePhone}／{operatorProfile.corporateEmail}</p><p>营业时间：{operatorProfile.businessHours}</p></article><article><h2>许可信息</h2><ul>{operatorProfile.licences.map(item=><li key={item}>{item}</li>)}</ul><p>旅行资质的正式登记名称与编号将在许可证原文确认后更新。</p></article></div></section>}
-export function Privacy(){return <section><Meta title="隐私政策" description="Japan Travel Weekend 隐私政策。"/><div className="page-title"><div className="eyebrow">隐私与数据保护</div><h1>隐私政策</h1><p>正式法律文本尚待批准。开放真实注册前，将在此说明数据用途、保存期限、权利请求和联系窗口。</p></div></section>}
+export function Privacy(){return <LegalShell title="隐私政策" description="正式法律文本尚待专业审核；以下列明产品已识别的数据处理范围，真实注册开放前将补齐保存期限和权利请求流程。"><div className="feature-grid light"><article><h2>处理的数据</h2><p>账户与订单资料、必要乘客信息、辅助需求、群聊、签到，以及游客主动授权的短期位置。</p></article><article><h2>使用目的</h2><p>完成预订与履约、集合协助、客服、安全处理、退款对账和依法保存记录。</p></article><article><h2>访问范围</h2><p>按游客、司机、司导和运营角色实行最小权限；其他乘客不能查看电话、证件、付款、特殊需求或精确位置。</p></article><article><h2>位置与照片</h2><p>位置默认关闭，可随时停止且行程结束后失效。照片和群聊仅向获授权的本车成员及必要运营人员开放。</p></article><article><h2>权利与咨询</h2><p>查阅、更正、删除及隐私咨询：{operatorProfile.corporateEmail}</p></article></div></LegalShell>}
+
+function LegalStatus(){return <div className="legal-status" role="status"><b>文件版本：{legalPublication.version}</b><span>专业审核中 · 真实预订与收款保持关闭</span></div>}
+function LegalShell({title,description,children}:{title:string;description:string;children:ReactNode}){return <section><Meta title={title} description={description}/><div className="page-title"><div className="eyebrow">法律与运营信息</div><h1>{title}</h1><p>{description}</p></div><LegalStatus/>{children}<nav className="legal-nav" aria-label="法律文件"><Link to="/legal/company">公司信息</Link><Link to="/legal/commercial-transactions">特定商取引法</Link><Link to="/legal/privacy">隐私政策</Link><Link to="/legal/terms">服务条款</Link><Link to="/legal/travel-conditions">旅行条件</Link><Link to="/legal/cancellation">取消政策</Link><Link to="/legal/accessibility">无障碍</Link><Link to="/legal/community-guidelines">群聊规范</Link></nav></section>}
+export function CompanyLegal(){return <LegalShell title="公司与运营主体" description="公开已核对的经营主体、联系方式和许可信息；旅行登记内容待许可证原文确认后更新。"><div className="feature-grid light"><article><h2>经营者</h2><p><strong>{operatorProfile.legalNameJa}</strong>（{operatorProfile.legalNameEn}）</p><p>{operatorProfile.representative}</p><p>{operatorProfile.address}</p></article><article><h2>联系窗口</h2><p>{operatorProfile.corporatePhone}</p><p>{operatorProfile.corporateEmail}</p><p>{operatorProfile.businessHours}</p></article><article><h2>已核对许可</h2><ul>{operatorProfile.licences.map(item=><li key={item}>{item}</li>)}</ul></article><article><h2>合同关系</h2><p>旅行组织者、销售方、承运方及退款责任方将在法律与业务审核完成后，于购买前明确展示。</p></article></div></LegalShell>}
+export function CommercialTransactions(){return <LegalShell title="特定商取引法相关标识" description="以下为发布前草案；价格、支付和服务提供条件以具体商品最终确认页为准。"><div className="feature-grid light"><article><h2>销售经营者</h2><p>{operatorProfile.legalNameJa}</p><p>{operatorProfile.representative}</p><p>{operatorProfile.address}</p></article><article><h2>价格与额外费用</h2><p>含税价格将在各班次页面和最终确认页显示。真实价格尚未发布，因此当前不接受付款。</p></article><article><h2>支付与提供时间</h2><p>正式支付方式、扣款时间及服务提供日期将在交易核心通过验收后发布。</p></article><article><h2>取消与退款</h2><p>{cancellationPolicy.summary}</p><Link to="/legal/cancellation">查看完整取消规则</Link></article></div></LegalShell>}
+export function TravelConditions(){return <LegalShell title="旅行条件" description="本页面用于在购买前说明合同主体、服务内容、行程变更、成团和事故处理条件。"><div className="feature-grid light"><article><h2>当前状态</h2><p>合同主体与第二种旅行登记信息仍待原件确认，确认前不得接受真实预订。</p></article><article><h2>行程变更</h2><p>天气、拥堵或安全原因可能调整景点顺序及停留时间；依法应解除、退款或补偿的权利不受排除。</p></article><article><h2>运营方取消</h2><p>由运营方取消时，退还未提供服务对应款项，具体到账时间取决于原支付渠道。</p></article></div></LegalShell>}
+export function CancellationLegal(){return <LegalShell title="取消与退款政策" description={`所有时间统一按${cancellationPolicy.cutoffLabel}计算；取消以系统成功受理时间为准。`}><div className="feature-grid light"><article><h2>游客主动取消</h2><ul>{cancellationPolicy.tiers.map(item=><li key={item.label}>{item.label}：退款 {item.refundPercent}%</li>)}</ul></article><article><h2>其他处理</h2><ul>{cancellationPolicy.rules.map(item=><li key={item}>{item}</li>)}</ul></article></div></LegalShell>}
+export function AccessibilityLegal(){return <LegalShell title="无障碍与合理便利" description="游客可在预订前提出行动、听力、视觉、陪同人员、服务犬及上下车协助需求。"><div className="feature-grid light"><article><h2>确认后提供</h2><p>轮椅空间、升降设备、儿童座椅及人工协助须由运营确认车辆和人员能力后提供，未确认前不会收取附加费用。</p></article><article><h2>联系渠道</h2><p>{operatorProfile.corporateEmail}</p><p>{operatorProfile.businessHours}</p></article></div></LegalShell>}
+export function CommunityGuidelines(){return <LegalShell title="行程群聊与照片规范" description="群聊仅用于本车行程沟通、集合协助和必要的运营通知。"><div className="feature-grid light"><article><h2>隐私</h2><p>不得公开他人电话、证件、付款、精确位置或未经同意的照片。普通乘客只能看到必要的昵称和全团集合进度。</p></article><article><h2>安全</h2><p>禁止骚扰、歧视、广告、诈骗、恶意文件及与行程无关的私人联系方式传播。违规内容可被举报并交由运营处理。</p></article><article><h2>保留期限</h2><p>行程结束后群聊转为只读；正式数据保留和匿名化期限将在隐私政策审核后公布。</p></article></div></LegalShell>}

@@ -13,6 +13,8 @@ export const operatorProfile={
   ],
 } as const;
 
+export const legalPublication={version:'draft-2026-09-03',status:'professional-review-required',effectiveAt:null,realBookingAllowed:false} as const;
+
 export const cancellationPolicy={
   timeZone:'Asia/Tokyo',
   cutoffLabel:'日本时间',
