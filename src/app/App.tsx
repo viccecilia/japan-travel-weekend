@@ -2424,7 +2424,11 @@ export function OrderDetail() {
     meeting_address: string | null;
     map_lat: number | string | null;
     map_lng: number | string | null;
+    vehicle_group_id: string | null;
+    trip_room_id: string | null;
+    boarding_ready: boolean;
   } | null>(null);
+  const [remoteDraft,setRemoteDraft]=useState<{operational_review_status:string;assistance_summary:Record<string,unknown>}|null>(null);
   const [remoteResolved, setRemoteResolved] = useState(!services);
   useEffect(() => {
     if (!services || !id) return;
@@ -2432,7 +2436,8 @@ export function OrderDetail() {
     void Promise.all([
       services.loadOwnOrders(),
       services.loadOwnOrderFulfilment(id),
-    ]).then(([result, fulfilment]) => {
+      services.loadOwnDrafts(),
+    ]).then(([result, fulfilment,draftResult]) => {
       if (!active) return;
       setRemoteOrder(
         (
@@ -2447,6 +2452,8 @@ export function OrderDetail() {
         ).find((item) => item.id === id) ?? null,
       );
       setRemoteFulfilment(fulfilment as typeof remoteFulfilment);
+      const linked=(draftResult.data as Array<{converted_order_id?:string|null;operational_review_status:string;assistance_summary:Record<string,unknown>}>).find(item=>item.converted_order_id===id)??null;
+      setRemoteDraft(linked);
       setRemoteResolved(true);
     });
     return () => {
@@ -2486,13 +2493,18 @@ export function OrderDetail() {
             lng: lng!,
           })
         : null;
+    const orderStatusLabel={pending_payment:'等待在线支付',pending_manual_review:'等待人工确认到账',paid:'已支付',confirmed:'行程已确认',payment_review:'付款需要人工核对',refunded:'退款处理中',cancelled:'已取消',expired:'支付时限已过'}[remoteOrder.status]??remoteOrder.status;
+    const boardingEligible=['paid','confirmed'].includes(remoteOrder.status)&&remoteFulfilment?.boarding_ready===true;
+    const reviewLabel=remoteDraft?({not_requested:'未提出',reviewing:'确认中',manual_contact:'需人工联系',confirmed:'已确认',unavailable:'无法提供'}[remoteDraft.operational_review_status]??remoteDraft.operational_review_status):'未关联特殊需求记录';
+    const assistanceSummary=remoteDraft?.assistance_summary??{};
+    const assistanceItems=[Number(assistanceSummary.childSeatCount)>0?`儿童座椅 ${Number(assistanceSummary.childSeatCount)} 个`:null,assistanceSummary.wheelchair?'轮椅／行动协助':null,assistanceSummary.accessibleVehicle?'需要无障碍车辆':null,assistanceSummary.lift?'需要升降设备':null,assistanceSummary.staffAssistance?'需要工作人员协助':null,Number(assistanceSummary.largeLuggage)>0?`大件行李 ${Number(assistanceSummary.largeLuggage)} 件`:null,assistanceSummary.serviceDog?'服务犬同行':null].filter(Boolean);
     return (
       <>
         <AppTitle
           eyebrow="我的账户／我的行程"
           title={trip?.shortTitle ?? "行程订单"}
         />
-        <div className="status">订单状态：{remoteOrder.status}</div>
+        <div className="status">订单状态：{orderStatusLabel}</div>
         <div className="receipt">
           <div>
             <span>订单编号</span>
@@ -2520,6 +2532,8 @@ export function OrderDetail() {
               {remoteOrder.amount == null ? "待确认" : `¥${remoteOrder.amount}`}
             </b>
           </div>
+          <div><span>特殊需求审核</span><b>{reviewLabel}</b></div>
+          <div><span>履约需求摘要</span><b>{assistanceItems.length?assistanceItems.join('；'):'无已申报项目'}</b></div>
         </div>
         {navigationUrl ? (
           <a
@@ -2533,12 +2547,8 @@ export function OrderDetail() {
         ) : (
           <p className="notice">地图位置确认后，将在此提供导航入口。</p>
         )}
-        <Link
-          className="button full"
-          to={`/app/boarding-pass/${remoteOrder.id}`}
-        >
-          查看登车凭证
-        </Link>
+        {boardingEligible?<Link className="button full" to={`/app/boarding-pass/${remoteOrder.id}`}>查看登车凭证</Link>:<p className="notice">付款确认并完成车辆分配后开放登车凭证；请勿重复付款。</p>}
+        {remoteDraft&&remoteDraft.operational_review_status!=='not_requested'&&remoteDraft.operational_review_status!=='confirmed'?<p className="notice">该需求尚未确认提供，也不会在确认前收取相关附加费用；运营结果会在本页更新。</p>:null}
         <Link className="button secondary full" to="/app/orders">
           返回我的账户
         </Link>
