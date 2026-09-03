@@ -66,7 +66,7 @@ export type OperationsFulfilmentWorkItem = {
   id: string;
   orderId: string;
   departureId: string;
-  kind: "paid_order_ready" | "payment_review";
+  kind: "paid_order_ready" | "payment_review" | "manual_payment_review";
   status: "pending" | "assigned" | "completed" | "cancelled";
   createdAt: string;
   updatedAt: string;
@@ -284,7 +284,7 @@ export class SupabaseOperationsRepository {
           id: string;
           order_id: string;
           departure_id: string;
-          kind: "paid_order_ready" | "payment_review";
+          kind: "paid_order_ready" | "payment_review" | "manual_payment_review";
           status: "pending" | "assigned" | "completed" | "cancelled";
           created_at: string;
           updated_at: string;

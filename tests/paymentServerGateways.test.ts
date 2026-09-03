@@ -1,5 +1,5 @@
 import {describe,expect,it,vi} from 'vitest';
-import {SupabaseOrderInventoryGateway,SupabaseServerPricingGateway} from '../server/supabase';
+import {SupabaseManualPaymentGateway,SupabaseOrderInventoryGateway,SupabaseServerPricingGateway} from '../server/supabase';
 
 describe('服务端支付 gateway',()=>{
   it('只为开放且配置正整数日元单价的班次报价',async()=>{
@@ -23,5 +23,11 @@ describe('服务端支付 gateway',()=>{
     const gateway=new SupabaseOrderInventoryGateway({rpc} as never);
     await expect(gateway.reserve({accountId:'account-1',accessTokenHash:'hash'},{draftId:'draft-1',departureId:'dep-1',seats:3,idempotencyKey:'checkout-1',expiresAt:'2026-09-03T10:00:00Z'})).resolves.toEqual({orderId:'o1',holdId:'h1'});
     expect(rpc).toHaveBeenCalledWith('reserve_inventory_from_draft',expect.objectContaining({p_draft:'draft-1',p_account:'account-1',p_departure:'dep-1',p_seats:3}));
+  });
+  it('银行转账待核对状态同时写入服务端权威金额',async()=>{
+    const rpc=vi.fn(async()=>({data:true,error:null}));
+    const gateway=new SupabaseManualPaymentGateway({rpc} as never);
+    await expect(gateway.markPending('order-1',17000)).resolves.toBe(true);
+    expect(rpc).toHaveBeenCalledWith('mark_bank_transfer_pending',{p_order:'order-1',p_amount:17000});
   });
 });

@@ -15,8 +15,8 @@ begin
   if not public.record_stripe_payment_intent(v_first.order_id,'pi_test_retry',100) then raise exception 'FAIL first payment intent record'; end if;
   if not public.record_stripe_payment_intent(v_first.order_id,'pi_test_retry',100) then raise exception 'FAIL payment intent retry'; end if;
   select * into v_first from public.reserve_inventory(v_departure,v_account,1,v_key||'-bank',now()+interval '15 minutes');
-  if not public.mark_bank_transfer_pending(v_first.order_id) then raise exception 'FAIL first bank transfer transition'; end if;
-  if not public.mark_bank_transfer_pending(v_first.order_id) then raise exception 'FAIL bank transfer retry'; end if;
+  if not public.mark_bank_transfer_pending(v_first.order_id,200) then raise exception 'FAIL first bank transfer transition'; end if;
+  if not public.mark_bank_transfer_pending(v_first.order_id,200) then raise exception 'FAIL bank transfer retry'; end if;
   select * into v_retry from public.reserve_inventory(v_departure,v_account,1,v_key||'-bank',now()+interval '13 minutes');
   if v_first.order_id<>v_retry.order_id then raise exception 'FAIL bank transfer checkout retry'; end if;
   begin

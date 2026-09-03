@@ -470,7 +470,9 @@ export function OperationsDashboard() {
                         <b>
                           {item.kind === "payment_review"
                             ? "付款异常待复核"
-                            : "已付款待入组"}
+                            : item.kind === "manual_payment_review"
+                              ? "银行转账待核对"
+                              : "已付款待入组"}
                         </b>
                         <span>{item.status}</span>
                       </div>

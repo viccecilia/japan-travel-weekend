@@ -14,6 +14,7 @@ AppContext 接受可选 production services；没有公开配置时为 `null`，
 
 - 卡支付：仅 Stripe Standard 测试模式 gateway 可用时创建 Payment Intent；响应只返回客户端确认所需 client secret，不返回服务端 key。创建失败会取消待支付订单并释放 hold。
 - 银行转账：不调用 Stripe，订单进入 `pending_manual_review`。005 迁移只允许 service-role 调用状态函数；人工核账前不得标记已支付。状态写入失败会取消订单并释放 hold。
+- 051 将银行转账升级为独立人工核对队列：服务端先报价，数据库再次按当前每席价格与座位数核对并保存日元总额，同时生成必要通知；价格不一致时拒绝进入待核对。Stripe PaymentIntent 落库也执行同一权威金额复核，不一致时取消测试 PaymentIntent 并释放占位。该队列只表示等待银行到账核对，绝不自动标记已支付。
 
 005 已远程执行，首次/重复转换、状态和数据库 execute 权限六项回滚验收为 PASS。HTTPS 测试 API 已部署，但浏览器到服务端的银行转账链路仍为 NOT RUN。
 
