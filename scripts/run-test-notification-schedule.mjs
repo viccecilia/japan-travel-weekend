@@ -3,7 +3,9 @@ const url=process.env.SUPABASE_URL??'';const key=process.env.SUPABASE_SERVICE_RO
 if(process.env.JTW_RUNTIME_MODE!=='test')throw new Error('notification scheduler is restricted to explicit test mode');
 if(!/^https:\/\/[a-z]{20}\.supabase\.co$/.test(url)||!key)throw new Error('test Supabase scheduler configuration is incomplete');
 const client=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});const now=new Date().toISOString();
+const retention=await client.rpc('purge_expired_ephemeral_data',{p_now:now});
+if(retention.error)throw new Error(`ephemeral retention failed: ${retention.error.code??'database_error'}`);
 const expired=await client.rpc('expire_due_bank_transfers',{p_now:now});
 if(expired.error)throw new Error(`bank transfer expiry failed: ${expired.error.code??'database_error'}`);
 const {data,error}=await client.rpc('enqueue_due_fulfilment_notifications',{p_now:now});
-if(error)throw new Error(`notification scheduler failed: ${error.code??'database_error'}`);console.log(JSON.stringify({ok:true,mode:'test',expiredBankTransfers:expired.data??0,events:data??[]}));
+if(error)throw new Error(`notification scheduler failed: ${error.code??'database_error'}`);console.log(JSON.stringify({ok:true,mode:'test',retention:retention.data??[],expiredBankTransfers:expired.data??0,events:data??[]}));

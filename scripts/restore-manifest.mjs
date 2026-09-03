@@ -8,6 +8,7 @@ export const STRUCTURE_CHECKS = [
   "remote_structure_acceptance.sql",
   "realtime_vehicle_group_policy_acceptance.sql",
   "persistent_chat_attendance_acceptance.sql",
+  "ephemeral_data_retention_acceptance.sql",
 ];
 
 export const FICTIONAL_ACCOUNT_CHECKS = [
