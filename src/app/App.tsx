@@ -239,61 +239,41 @@ export function AppHome() {
     departuresResolved,
     departuresError,
   } = useApp();
+  const featuredTrips = trips.slice(0, 4);
   return (
-    <div className="fulfillment-home">
-      <section className="traveler-hero">
-        <img src="/images/kyoto-nara.jpg" alt="京都与奈良一日游风景" />
-        <div><span>大阪出发 · 周末一日游</span><h1>把关西的一天，<br/>安排得刚刚好</h1><p>清楚的路线、按席预订、中文履约支持。一个人也可以安心参加。</p><Link to="/app/trips">浏览全部路线 <b>→</b></Link></div>
+    <div className="fulfillment-home passenger-home-v2">
+      <section className="passenger-yellow-hero">
+        <div className="passenger-welcome"><div><span>周末，从大阪出发</span><h1>你好，今天想去哪里？</h1></div><Link to="/app/notifications" aria-label="查看通知">●<small>通知</small></Link></div>
+        <div className="next-trip-pass">
+          <div><span>{state.tripRoom ? "下一次行程" : "JAPAN TRAVEL PASS"}</span><h2>{state.tripRoom ? "京都与奈良 · 明日出发" : "把关西周末装进口袋"}</h2><p>{state.tripRoom ? "08:00 大阪梅田集合 · 车辆信息已更新" : "路线、订单、集合与旅行消息集中查看"}</p></div>
+          <Link to={state.tripRoom ? "/app/my-trip" : "/app/trips"}>{state.tripRoom ? "查看行程" : "开始选路线"} →</Link>
+        </div>
       </section>
-      <div className="traveler-promises"><span>✓ 价格确认后再下单</span><span>✓ 行前信息集中查看</span><span>✓ 中文服务支持</span></div>
-      <div className="app-stats">
-        <article>
-          <small>会员等级</small>
-          <b>{tierFor(state.completedTrips).name}</b>
-        </article>
-        <article>
-          <small>已完成行程</small>
-          <b>{state.completedTrips}</b>
-        </article>
-        <article>
-          <small>旅行金</small>
-          <b>¥{state.credits}</b>
-        </article>
+      <section className="passenger-member-strip" aria-label="会员信息"><div><small>旅行金</small><b>¥{state.credits}</b></div><div><small>会员等级</small><b>{tierFor(state.completedTrips).name}</b></div><Link to="/app/rewards">查看权益 →</Link></section>
+      <nav className="passenger-quick-actions" aria-label="常用功能">
+        <Link to="/app/trips"><i>旅</i><span>找路线</span></Link>
+        <Link to="/app/orders"><i>单</i><span>我的订单</span></Link>
+        <Link to="/app/my-trip"><i>行</i><span>集合行程</span></Link>
+        <Link to="/app/notifications"><i>知</i><span>通知</span></Link>
+        <Link to="/app/support"><i>问</i><span>客服</span></Link>
+      </nav>
+      <Link className="passenger-alert-ribbon" to="/app/notifications"><span>出发提醒</span><b>付款、集合与车辆通知集中查看</b><strong>›</strong></Link>
+      <div className="passenger-section-heading"><div><span>WEEKEND PICKS</span><h2>这个周末，去看更远的风景</h2></div><Link to="/app/trips">全部路线</Link></div>
+      <div className="passenger-route-rail">
+        {featuredTrips.map((trip)=><Link to={`/app/trips/${trip.slug}`} key={trip.id}><img src={trip.heroImage} alt=""/><div><small>{trip.region} · {trip.duration}</small><h3>{trip.shortTitle}</h3><p>{trip.stops.slice(0,3).join(' → ')}</p></div></Link>)}
       </div>
-      {state.tripRoom && (
-        <Link className="my-trip-banner" to="/app/my-trip">
-          <span>下一项行动 · 行程已确认</span>
-          <b>明天 · 京都与奈良</b>
-          <small>08:00 大阪梅田集合 · 查看车辆与集合信息 →</small>
-        </Link>
-      )}
-      <div className="app-section-heading"><div><span>近期可订</span><h2>选一个周末出发</h2></div><Link to="/app/trips">查看全部路线</Link></div>
+      <div className="passenger-section-heading compact"><div><span>AVAILABLE</span><h2>近期可订班次</h2></div><Link to="/app/trips">查看全部</Link></div>
       {!departuresResolved ? (
         <Empty title="正在读取可售班次" text="请稍候，正在同步最新出发信息。" />
       ) : departuresError ? (
         <Empty title="暂时无法读取班次" text="请稍后刷新页面重试。" />
       ) : deps.length ? (
-        <div className="app-list">
-          {deps.map((departure) => {
+        <div className="passenger-departure-list">
+          {deps.slice(0,3).map((departure) => {
             const trip = travelRepository.getTrip(departure.tripSlug);
             if (!trip) return null;
             return (
-              <article className="departure-card" key={departure.id}>
-                <img src={trip.heroImage} alt={`${trip.shortTitle}路线风景`} />
-                <div>
-                  <small>{departure.weekend} · {trip.region}</small>
-                  <h3>{trip.shortTitle}</h3>
-                  <b>{departure.dateLabel}</b>
-                  <span>{departure.status}</span>
-                  <p>
-                    {departure.price==null?'价格待确认':`每席 ¥${departure.price}`}
-                    {departure.availableSeats == null
-                      ? ""
-                      : ` · 可售 ${departure.availableSeats} 席`}
-                  </p>
-                  <Link className="departure-cta" to={`/app/booking/${trip.slug}`}>查看班次</Link>
-                </div>
-              </article>
+              <Link className="passenger-departure-row" key={departure.id} to={`/app/booking/${trip.slug}`}><time><b>{departure.weekend}</b><small>{departure.dateLabel}</small></time><div><h3>{trip.shortTitle}</h3><p>{trip.stops.slice(0,3).join(' → ')}</p><span>{departure.price==null?'价格待确认':`每席 ¥${departure.price.toLocaleString('ja-JP')}`} {departure.availableSeats==null?'':` · 余 ${departure.availableSeats} 席`}</span></div><strong>›</strong></Link>
             );
           })}
         </div>
@@ -303,12 +283,31 @@ export function AppHome() {
           text="正式环境不会自动生成日期、价格、余位或即将出发的行程。"
         />
       )}
-      <Link className="private-app-link" to="/app/private-groups">
-        <b>需要私人团体出行？</b>
-        <span>企业、学校、社团、亲友团体 →</span>
-      </Link>
+      <div className="passenger-section-heading compact"><div><span>TRAVEL IDEAS</span><h2>出发前，看一点有用的</h2></div><Link to="/app/guides">全部内容</Link></div>
+      <div className="passenger-guide-grid"><Link to="/app/guides#food"><span>当地餐食</span><b>京都与奈良的一日用餐建议</b><small>6 分钟阅读</small></Link><Link to="/app/guides#meeting"><span>集合指南</span><b>第一次参加巴士一日游怎么准备</b><small>4 分钟阅读</small></Link></div>
+      <Link className="passenger-private-card" to="/app/private-groups"><div><span>PRIVATE GROUPS</span><b>企业、学校或亲友团体出行</b><p>告诉我们人数和日期，获取专属方案。</p></div><strong>咨询 →</strong></Link>
     </div>
   );
+}
+
+export function AppNotifications(){
+  const [filter,setFilter]=useState<'all'|'order'|'trip'|'system'>('all');
+  const items=[
+    {type:'order',label:'订单通知',title:'订单资料已保存',text:'可继续核对乘客资料与取消规则；当前尚未扣款。',time:'刚刚'},
+    {type:'trip',label:'旅行团通知',title:'出发前一天将开放集合提醒',text:'集合地点、车辆和司导信息确认后会显示在“我的行程”。',time:'今天'},
+    {type:'system',label:'系统通知',title:'多语言翻译功能准备中',text:'行程群消息将支持按手机语言查看译文，原文始终保留。',time:'8月30日'},
+  ];
+  return <div className="passenger-page"><AppTitle eyebrow="消息中心" title="通知" text="只保留与订单、出发和账户安全有关的重要信息。"/><div className="notification-filters">{([['all','全部'],['order','订单'],['trip','旅行团'],['system','系统']] as const).map(([key,label])=><button className={filter===key?'active':''} onClick={()=>setFilter(key)} key={key}>{label}</button>)}</div><div className="notification-list">{items.filter(item=>filter==='all'||item.type===filter).map(item=><article key={item.title}><i>{item.type==='order'?'单':item.type==='trip'?'旅':'系'}</i><div><span>{item.label} · {item.time}</span><h2>{item.title}</h2><p>{item.text}</p></div></article>)}</div><p className="passenger-page-note">司机、司导的工作通知不会混入游客通知；营销内容默认不推送。</p></div>
+}
+
+export function AppGuides(){
+  return <div className="passenger-page"><AppTitle eyebrow="旅行灵感" title="关西旅行指南" text="餐食、集合、礼仪和季节提醒，帮助你在出发前做好准备。"/><div className="guide-feature"><img src="/images/kyoto-nara.jpg" alt="京都古街"/><div><span>初次参加指南</span><h2>第一次参加周末一日游</h2><p>从订单确认、集合签到到返程提醒，一次看懂完整流程。</p><Link to="/how-it-works">查看流程 →</Link></div></div><div className="guide-list" id="food"><article><span>餐食推荐</span><h2>京都与奈良的一日用餐建议</h2><p>了解午餐自理、过敏信息申报和行程中的用餐时间安排。</p></article><article id="meeting"><span>集合指南</span><h2>如何快速找到集合车辆</h2><p>出发前确认地标、提前到达，并在行程房间查看最新车辆提示。</p></article><article><span>旅行礼仪</span><h2>神社、温泉与观光巴士礼仪</h2><p>用简单的准备，让自己和同团旅客都更舒适。</p></article></div></div>
+}
+
+export function AppSupport(){
+  const [open,setOpen]=useState('');
+  const faqs=[['booking','怎样确认订单是否成立？','以订单页面显示“已确认”为准。仅保存资料或订单草稿不代表已经付款或占位。'],['meeting','集合地点什么时候显示？','运营确认集合点、车辆和工作人员后，会同步到订单详情与我的行程。'],['cancel','如何申请取消？','请从订单详情发起申请。取消时间统一按日本时间，以系统成功受理时间为准。']];
+  return <div className="passenger-page"><AppTitle eyebrow="帮助与客服" title="需要帮助吗？" text="先查看常见问题；紧急履约问题会在行程房间提供专用入口。"/><div className="support-actions"><Link to="/app/orders"><i>单</i><b>订单问题</b><span>查看订单状态</span></Link><Link to="/app/my-trip/room"><i>行</i><b>出发当天</b><span>进入行程房间</span></Link></div><div className="support-faq"><h2>常见问题</h2>{faqs.map(([key,title,text])=><article key={key}><button onClick={()=>setOpen(open===key?'':key)} aria-expanded={open===key}><b>{title}</b><span>{open===key?'−':'＋'}</span></button>{open===key&&<p>{text}</p>}</article>)}</div><a className="button full" href="mailto:alerts@japan-travel.info?subject=Japan%20Travel%20Weekend%20客服咨询">发送邮件咨询</a><p className="passenger-page-note">邮件不适合处理出发当天的紧急问题；行程开放后请使用行程房间联系运营。</p></div>
 }
 export function AppTrips() {
   return (

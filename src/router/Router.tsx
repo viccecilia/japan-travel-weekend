@@ -19,6 +19,9 @@ import {
   AppHome,
   Login,
   AppTrips,
+  AppNotifications,
+  AppGuides,
+  AppSupport,
   AppTrip,
   BookingPage,
   Passengers,
@@ -85,6 +88,9 @@ export function Router() {
           </AppShell>
         }
       />
+      <Route path="/app/notifications" element={<AppShell nav><AppNotifications /></AppShell>} />
+      <Route path="/app/guides" element={<AppShell nav><AppGuides /></AppShell>} />
+      <Route path="/app/support" element={<AppShell nav><AppSupport /></AppShell>} />
       <Route
         path="/app/trips/:slug"
         element={
