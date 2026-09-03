@@ -43,19 +43,41 @@ export class ProductionBrowserServices {
       fetcher,
     );
   }
-  get authAvailable() { return this.auth.available; }
-  get ordersAvailable() { return this.orders.available; }
-  get departuresAvailable(){return this.departures.available}
-  get checkoutAvailable() { return this.checkout.available; }
-  get tripRoomAvailable() { return this.tripRoom.available; }
-  get realtimeAvailable() { return this.realtime.connected; }
+  get authAvailable() {
+    return this.auth.available;
+  }
+  get ordersAvailable() {
+    return this.orders.available;
+  }
+  get departuresAvailable() {
+    return this.departures.available;
+  }
+  get checkoutAvailable() {
+    return this.checkout.available;
+  }
+  get tripRoomAvailable() {
+    return this.tripRoom.available;
+  }
+  get realtimeAvailable() {
+    return this.realtime.connected;
+  }
   signIn(email: string, password: string) {
     return this.auth.signIn(email, password);
   }
-  signUp(email:string,password:string){return this.auth.signUp(email,password);}
-  requestPasswordReset(email:string){return this.auth.requestPasswordReset(email);}
-  updatePassword(password:string){return this.auth.updatePassword(password);}
-  onAuthStateChange(handler:(event:string,user:{email?:string|null}|null)=>void){return this.auth.onAuthStateChange(handler);}
+  signUp(email: string, password: string) {
+    return this.auth.signUp(email, password);
+  }
+  requestPasswordReset(email: string) {
+    return this.auth.requestPasswordReset(email);
+  }
+  updatePassword(password: string) {
+    return this.auth.updatePassword(password);
+  }
+  onAuthStateChange(
+    handler: (event: string, user: { email?: string | null } | null) => void,
+  ) {
+    return this.auth.onAuthStateChange(handler);
+  }
   currentUser() {
     return this.auth.currentUser();
   }
@@ -71,18 +93,58 @@ export class ProductionBrowserServices {
   loadOwnOrders() {
     return this.orders.loadOwnOrders();
   }
-  loadOwnDrafts(){return this.orders.loadOwnDrafts()}
-  abandonOwnDraft(draftId:string){return this.orders.abandonOwnDraft(draftId)}
-  loadOwnAccountProfile(){return this.accountProfile.loadOwn()}
-  updateOwnAccountProfile(input:Parameters<SupabaseAccountProfileRepository['updateOwn']>[0]){return this.accountProfile.updateOwn(input)}
-  saveOwnBookingDraft(input:Parameters<SupabaseOrderRepository['saveOwnDraft']>[0]){return this.orders.saveOwnDraft(input)}
-  loadOwnOrderFulfilment(orderId:string){return this.orders.ownFulfilment(orderId)}
-  loadSellableDepartures(){return this.departures.listSellable()}
-  loadStaffTasks(){return this.staff.listTasks()}
+  loadOwnDrafts() {
+    return this.orders.loadOwnDrafts();
+  }
+  abandonOwnDraft(draftId: string) {
+    return this.orders.abandonOwnDraft(draftId);
+  }
+  loadOwnAccountProfile() {
+    return this.accountProfile.loadOwn();
+  }
+  updateOwnAccountProfile(
+    input: Parameters<SupabaseAccountProfileRepository["updateOwn"]>[0],
+  ) {
+    return this.accountProfile.updateOwn(input);
+  }
+  saveOwnBookingDraft(
+    input: Parameters<SupabaseOrderRepository["saveOwnDraft"]>[0],
+  ) {
+    return this.orders.saveOwnDraft(input);
+  }
+  loadOwnOrderFulfilment(orderId: string) {
+    return this.orders.ownFulfilment(orderId);
+  }
+  loadSellableDepartures() {
+    return this.departures.listSellable();
+  }
+  loadStaffTasks() {
+    return this.staff.listTasks();
+  }
+  recordStaffExecution(
+    vehicleGroupId: string,
+    eventType: Parameters<SupabaseStaffRepository["recordExecution"]>[1],
+    detail?: Record<string, unknown>,
+  ) {
+    return this.staff.recordExecution(vehicleGroupId, eventType, detail);
+  }
   createCheckout(input: CheckoutRequest) {
     return this.checkout.checkout(input);
   }
-  issueBoardingCredential(orderId:string){return this.checkout.issueBoardingCredential(orderId)}
-  verifyBoardingCredential(input:{token:string;vehicleGroupId:string;idempotencyKey:string}){return this.checkout.verifyBoardingCredential(input)}
-  translateMessage(input:{messageId:string;targetLanguage:'zh-CN'|'ja'|'en'|'vi'|'ne'}){return this.checkout.translateMessage(input)}
+  issueBoardingCredential(orderId: string) {
+    return this.checkout.issueBoardingCredential(orderId);
+  }
+  verifyBoardingCredential(input: {
+    token: string;
+    vehicleGroupId: string;
+    idempotencyKey: string;
+  }) {
+    return this.checkout.verifyBoardingCredential(input);
+  }
+  translateMessage(input: {
+    messageId: string;
+    targetLanguage: "zh-CN" | "ja" | "en" | "vi" | "ne";
+  }) {
+    return this.checkout.translateMessage(input);
+  }
 }

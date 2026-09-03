@@ -1,59 +1,243 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Departure, SeatStatus } from "../types";
 
-type SellableDepartureRow={id:string;trip_slug:string;trip_title:string;departs_at:string;ends_at:string;capacity:number;available_seats:number;minimum_guests:number;seat_price_jpy:number;child_price_jpy?:number|null;infant_price_jpy?:number|null;currency:'JPY';tax_included:boolean;sales_close_at:string;meeting_name:string;meeting_address:string;map_lat:number;map_lng:number;arrival_transit?:string|null;arrival_walking?:string|null;arrival_driving?:string|null;meeting_photo_url?:string|null};
-export type StaffTaskRow={staff_assignment_id:string;assignment_role:'driver'|'guide'|'operations';vehicle_group_id:string;room_id:string|null;room_status:string|null;departure_id:string;trip_title:string;departs_at:string|null;meeting_name:string|null;meeting_address:string|null;map_lat:number|null;map_lng:number|null;vehicle_sequence:number;vehicle_type:string;vehicle_label:string|null;vehicle_capacity:number;booked_seats:number;passenger_count:number;boarded_count:number;payment_ready_count:number;payment_review_count:number;payment_blocked_count:number};
-const seatStatus=(available:number,capacity:number):SeatStatus=>available<=0?'已售罄':available<=2?'余位较少':available/capacity<=.25?'即将满员':'可预订';
-const weekendBucket=(date:Date,now=new Date()):Departure['weekend']=>{const days=(date.getTime()-now.getTime())/86400000;return days<=7?'本周末':days<=14?'下周末':'稍后'};
-export function mapSellableDeparture(row:SellableDepartureRow,now=new Date()):Departure{
-  const departsAt=new Date(row.departs_at);
-  const coordinates=row.map_lat==null||row.map_lng==null?null:{lat:Number(row.map_lat),lng:Number(row.map_lng)};
-  return {id:row.id,tripSlug:row.trip_slug,dateLabel:new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Tokyo',month:'long',day:'numeric',weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(departsAt),weekend:weekendBucket(departsAt,now),status:seatStatus(row.available_seats,row.capacity),departureTime:departsAt.toISOString(),expectedEndTime:row.ends_at,meetingPointName:row.meeting_name,meetingAddress:row.meeting_address,meetingCoordinates:coordinates,arrivalInstructions:{transit:row.arrival_transit??null,walking:row.arrival_walking??null,driving:row.arrival_driving??null},meetingPhoto:row.meeting_photo_url??null,meetingPhotoStatus:row.meeting_photo_url?'已确认':'待确认',mapStatus:coordinates?'已连接':'未连接',price:row.seat_price_jpy,availableSeats:row.available_seats,minimumGuests:row.minimum_guests,salesCloseAt:row.sales_close_at,currency:row.currency,taxIncluded:row.tax_included,inventoryStatus:'权威库存',isSeed:false};
+type SellableDepartureRow = {
+  id: string;
+  trip_slug: string;
+  trip_title: string;
+  departs_at: string;
+  ends_at: string;
+  capacity: number;
+  available_seats: number;
+  minimum_guests: number;
+  seat_price_jpy: number;
+  child_price_jpy?: number | null;
+  infant_price_jpy?: number | null;
+  currency: "JPY";
+  tax_included: boolean;
+  sales_close_at: string;
+  meeting_name: string;
+  meeting_address: string;
+  map_lat: number;
+  map_lng: number;
+  arrival_transit?: string | null;
+  arrival_walking?: string | null;
+  arrival_driving?: string | null;
+  meeting_photo_url?: string | null;
+};
+export type StaffTaskRow = {
+  staff_assignment_id: string;
+  assignment_role: "driver" | "guide" | "operations";
+  vehicle_group_id: string;
+  room_id: string | null;
+  room_status: string | null;
+  departure_id: string;
+  trip_title: string;
+  departs_at: string | null;
+  meeting_name: string | null;
+  meeting_address: string | null;
+  map_lat: number | null;
+  map_lng: number | null;
+  vehicle_sequence: number;
+  vehicle_type: string;
+  vehicle_label: string | null;
+  vehicle_capacity: number;
+  booked_seats: number;
+  passenger_count: number;
+  boarded_count: number;
+  payment_ready_count: number;
+  payment_review_count: number;
+  payment_blocked_count: number;
+};
+const seatStatus = (available: number, capacity: number): SeatStatus =>
+  available <= 0
+    ? "已售罄"
+    : available <= 2
+      ? "余位较少"
+      : available / capacity <= 0.25
+        ? "即将满员"
+        : "可预订";
+const weekendBucket = (date: Date, now = new Date()): Departure["weekend"] => {
+  const days = (date.getTime() - now.getTime()) / 86400000;
+  return days <= 7 ? "本周末" : days <= 14 ? "下周末" : "稍后";
+};
+export function mapSellableDeparture(
+  row: SellableDepartureRow,
+  now = new Date(),
+): Departure {
+  const departsAt = new Date(row.departs_at);
+  const coordinates =
+    row.map_lat == null || row.map_lng == null
+      ? null
+      : { lat: Number(row.map_lat), lng: Number(row.map_lng) };
+  return {
+    id: row.id,
+    tripSlug: row.trip_slug,
+    dateLabel: new Intl.DateTimeFormat("zh-CN", {
+      timeZone: "Asia/Tokyo",
+      month: "long",
+      day: "numeric",
+      weekday: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(departsAt),
+    weekend: weekendBucket(departsAt, now),
+    status: seatStatus(row.available_seats, row.capacity),
+    departureTime: departsAt.toISOString(),
+    expectedEndTime: row.ends_at,
+    meetingPointName: row.meeting_name,
+    meetingAddress: row.meeting_address,
+    meetingCoordinates: coordinates,
+    arrivalInstructions: {
+      transit: row.arrival_transit ?? null,
+      walking: row.arrival_walking ?? null,
+      driving: row.arrival_driving ?? null,
+    },
+    meetingPhoto: row.meeting_photo_url ?? null,
+    meetingPhotoStatus: row.meeting_photo_url ? "已确认" : "待确认",
+    mapStatus: coordinates ? "已连接" : "未连接",
+    price: row.seat_price_jpy,
+    availableSeats: row.available_seats,
+    minimumGuests: row.minimum_guests,
+    salesCloseAt: row.sales_close_at,
+    currency: row.currency,
+    taxIncluded: row.tax_included,
+    inventoryStatus: "权威库存",
+    isSeed: false,
+  };
 }
-export function sellableDepartureIssues(row:SellableDepartureRow,now=new Date()){
-  const issues:string[]=[];const departure=new Date(row.departs_at),end=new Date(row.ends_at),close=new Date(row.sales_close_at);
-  if(!Number.isFinite(departure.getTime())||departure<=now)issues.push('departure');
-  if(!Number.isFinite(end.getTime())||end<=departure)issues.push('return');
-  if(!Number.isFinite(close.getTime())||close<=now||close>=departure)issues.push('sales-close');
-  if(row.capacity<1||row.minimum_guests<1||row.minimum_guests>row.capacity)issues.push('capacity');
-  if(row.available_seats<1||row.available_seats>row.capacity)issues.push('inventory');
-  if(row.seat_price_jpy<1||row.currency!=='JPY'||row.tax_included!==true)issues.push('price');
-  if(!row.meeting_name?.trim()||!row.meeting_address?.trim()||!Number.isFinite(Number(row.map_lat))||!Number.isFinite(Number(row.map_lng)))issues.push('meeting');
+export function sellableDepartureIssues(
+  row: SellableDepartureRow,
+  now = new Date(),
+) {
+  const issues: string[] = [];
+  const departure = new Date(row.departs_at),
+    end = new Date(row.ends_at),
+    close = new Date(row.sales_close_at);
+  if (!Number.isFinite(departure.getTime()) || departure <= now)
+    issues.push("departure");
+  if (!Number.isFinite(end.getTime()) || end <= departure)
+    issues.push("return");
+  if (!Number.isFinite(close.getTime()) || close <= now || close >= departure)
+    issues.push("sales-close");
+  if (
+    row.capacity < 1 ||
+    row.minimum_guests < 1 ||
+    row.minimum_guests > row.capacity
+  )
+    issues.push("capacity");
+  if (row.available_seats < 1 || row.available_seats > row.capacity)
+    issues.push("inventory");
+  if (
+    row.seat_price_jpy < 1 ||
+    row.currency !== "JPY" ||
+    row.tax_included !== true
+  )
+    issues.push("price");
+  if (
+    !row.meeting_name?.trim() ||
+    !row.meeting_address?.trim() ||
+    !Number.isFinite(Number(row.map_lat)) ||
+    !Number.isFinite(Number(row.map_lng))
+  )
+    issues.push("meeting");
   return issues;
 }
-export class SupabaseDepartureRepository{
-  constructor(private readonly client:SupabaseClient|null){}
-  get available(){return this.client!==null}
-  async listSellable(){if(!this.client)return {data:[] as Departure[],error:'班次服务未配置'};try{const {data,error}=await this.client.rpc('list_sellable_departures');return error?{data:[] as Departure[],error:'无法读取可售班次'}:{data:((data??[]) as SellableDepartureRow[]).filter(row=>sellableDepartureIssues(row).length===0).map(row=>mapSellableDeparture(row)),error:null}}catch{return {data:[] as Departure[],error:'无法读取可售班次'}}}
-}
-export class SupabaseAuthRepository {
-  constructor(private readonly client: SupabaseClient | null,private readonly appOrigin:string=typeof window==='undefined'?'http://localhost':window.location.origin) {}
+export class SupabaseDepartureRepository {
+  constructor(private readonly client: SupabaseClient | null) {}
   get available() {
     return this.client !== null;
   }
-  private redirect(path:'/app/auth/callback'|'/app/reset-password'){
-    try{const origin=new URL(this.appOrigin);if(!['http:','https:'].includes(origin.protocol)||origin.pathname!=='/'||origin.search||origin.hash)return null;return new URL(path,origin.origin).toString()}catch{return null}
+  async listSellable() {
+    if (!this.client)
+      return { data: [] as Departure[], error: "班次服务未配置" };
+    try {
+      const { data, error } = await this.client.rpc("list_sellable_departures");
+      return error
+        ? { data: [] as Departure[], error: "无法读取可售班次" }
+        : {
+            data: ((data ?? []) as SellableDepartureRow[])
+              .filter((row) => sellableDepartureIssues(row).length === 0)
+              .map((row) => mapSellableDeparture(row)),
+            error: null,
+          };
+    } catch {
+      return { data: [] as Departure[], error: "无法读取可售班次" };
+    }
+  }
+}
+export class SupabaseAuthRepository {
+  constructor(
+    private readonly client: SupabaseClient | null,
+    private readonly appOrigin: string = typeof window === "undefined"
+      ? "http://localhost"
+      : window.location.origin,
+  ) {}
+  get available() {
+    return this.client !== null;
+  }
+  private redirect(path: "/app/auth/callback" | "/app/reset-password") {
+    try {
+      const origin = new URL(this.appOrigin);
+      if (
+        !["http:", "https:"].includes(origin.protocol) ||
+        origin.pathname !== "/" ||
+        origin.search ||
+        origin.hash
+      )
+        return null;
+      return new URL(path, origin.origin).toString();
+    } catch {
+      return null;
+    }
   }
   async signUp(email: string, password: string) {
     if (!this.client) return null;
-    const emailRedirectTo=this.redirect('/app/auth/callback');if(!emailRedirectTo)return null;
-    try{const { data, error } = await this.client.auth.signUp({
+    const emailRedirectTo = this.redirect("/app/auth/callback");
+    if (!emailRedirectTo) return null;
+    try {
+      const { data, error } = await this.client.auth.signUp({
         email,
         password,
         options: { emailRedirectTo },
       });
       return error ? null : data;
-    }catch{return null}
+    } catch {
+      return null;
+    }
   }
-  async requestPasswordReset(email:string){
-    if(!this.client)return false;const redirectTo=this.redirect('/app/reset-password');if(!redirectTo)return false;
-    try{await this.client.auth.resetPasswordForEmail(email,{redirectTo});}catch{/* 防账户枚举：网络与账户状态使用同一客户端结果。 */}return true;
+  async requestPasswordReset(email: string) {
+    if (!this.client) return false;
+    const redirectTo = this.redirect("/app/reset-password");
+    if (!redirectTo) return false;
+    try {
+      await this.client.auth.resetPasswordForEmail(email, { redirectTo });
+    } catch {
+      /* 防账户枚举：网络与账户状态使用同一客户端结果。 */
+    }
+    return true;
   }
-  async updatePassword(password:string){if(!this.client)return false;try{return !(await this.client.auth.updateUser({password})).error}catch{return false}}
-  onAuthStateChange(handler:(event:string,user:{email?:string|null}|null)=>void){
-    if(!this.client||typeof this.client.auth.onAuthStateChange!=='function')return ()=>{};
-    const {data}=this.client.auth.onAuthStateChange((event,session)=>handler(event,session?.user??null));
-    return ()=>data.subscription.unsubscribe();
+  async updatePassword(password: string) {
+    if (!this.client) return false;
+    try {
+      return !(await this.client.auth.updateUser({ password })).error;
+    } catch {
+      return false;
+    }
+  }
+  onAuthStateChange(
+    handler: (event: string, user: { email?: string | null } | null) => void,
+  ) {
+    if (
+      !this.client ||
+      typeof this.client.auth.onAuthStateChange !== "function"
+    )
+      return () => {};
+    const { data } = this.client.auth.onAuthStateChange((event, session) =>
+      handler(event, session?.user ?? null),
+    );
+    return () => data.subscription.unsubscribe();
   }
   async signIn(email: string, password: string) {
     if (!this.client) return null;
@@ -86,7 +270,9 @@ export class SupabaseAuthRepository {
 }
 export class SupabaseOrderRepository {
   constructor(private readonly client: SupabaseClient | null) {}
-  get available() { return this.client !== null; }
+  get available() {
+    return this.client !== null;
+  }
   async listOwnOrders() {
     if (!this.client) return [];
     const { data, error } = await this.client
@@ -114,57 +300,301 @@ export class SupabaseOrderRepository {
       .maybeSingle();
     return error ? null : data;
   }
-  async ownFulfilment(orderId:string){if(!this.client)return null;try{const {data,error}=await this.client.rpc('get_own_order_fulfilment',{p_order:orderId}).maybeSingle();return error?null:data}catch{return null}}
-  async saveOwnDraft(input:{departureId:string;adults:number;children:number;infants:number;passengerPrivate:Record<string,unknown>;assistancePrivate:Record<string,unknown>;reviewStatus:string;acceptedCancellation:boolean;acceptedTerms:boolean;idempotencyKey:string}){
-    if(!this.client)return {id:null,error:'订单草稿服务未配置'};
-    try{const {data,error}=await this.client.rpc('save_own_booking_draft',{p_departure:input.departureId,p_adults:input.adults,p_children:input.children,p_infants:input.infants,p_passenger_private:input.passengerPrivate,p_assistance_private:input.assistancePrivate,p_operational_review_status:({未提出:'not_requested',确认中:'reviewing',需人工联系:'manual_contact',已确认:'confirmed',无法提供:'unavailable'} as Record<string,string>)[input.reviewStatus]??'reviewing',p_accepted_cancellation:input.acceptedCancellation,p_accepted_terms:input.acceptedTerms,p_idempotency_key:input.idempotencyKey});return error?{id:null,error:'订单草稿保存失败，请检查班次与账户状态'}:{id:String(data),error:null}}catch{return {id:null,error:'订单草稿保存失败，请稍后重试'}}
+  async ownFulfilment(orderId: string) {
+    if (!this.client) return null;
+    try {
+      const { data, error } = await this.client
+        .rpc("get_own_order_fulfilment", { p_order: orderId })
+        .maybeSingle();
+      return error ? null : data;
+    } catch {
+      return null;
+    }
   }
-  async loadOwnDrafts(){if(!this.client)return {data:[],error:'订单草稿服务未配置'};try{const expired=await this.client.rpc('expire_own_booking_drafts');if(expired.error)return {data:[],error:'订单草稿状态更新失败'};const {data,error}=await this.client.from('booking_drafts').select('id,departure_id,adults,children,infants,seat_impact,assistance_summary,operational_review_status,status,created_at,updated_at,expires_at').order('updated_at',{ascending:false});return error?{data:[],error:'订单草稿读取失败'}:{data:data??[],error:null}}catch{return {data:[],error:'订单草稿读取失败'}}}
-  async abandonOwnDraft(draftId:string){if(!this.client)return {ok:false,error:'订单草稿服务未配置'};try{const {data,error}=await this.client.rpc('abandon_own_booking_draft',{p_draft:draftId});return error?{ok:false,error:'无法放弃该草稿'}:{ok:data===true,error:data===true?null:'草稿已处理或无权操作'}}catch{return {ok:false,error:'无法放弃该草稿'}}}
+  async saveOwnDraft(input: {
+    departureId: string;
+    adults: number;
+    children: number;
+    infants: number;
+    passengerPrivate: Record<string, unknown>;
+    assistancePrivate: Record<string, unknown>;
+    reviewStatus: string;
+    acceptedCancellation: boolean;
+    acceptedTerms: boolean;
+    idempotencyKey: string;
+  }) {
+    if (!this.client) return { id: null, error: "订单草稿服务未配置" };
+    try {
+      const { data, error } = await this.client.rpc("save_own_booking_draft", {
+        p_departure: input.departureId,
+        p_adults: input.adults,
+        p_children: input.children,
+        p_infants: input.infants,
+        p_passenger_private: input.passengerPrivate,
+        p_assistance_private: input.assistancePrivate,
+        p_operational_review_status:
+          (
+            {
+              未提出: "not_requested",
+              确认中: "reviewing",
+              需人工联系: "manual_contact",
+              已确认: "confirmed",
+              无法提供: "unavailable",
+            } as Record<string, string>
+          )[input.reviewStatus] ?? "reviewing",
+        p_accepted_cancellation: input.acceptedCancellation,
+        p_accepted_terms: input.acceptedTerms,
+        p_idempotency_key: input.idempotencyKey,
+      });
+      return error
+        ? { id: null, error: "订单草稿保存失败，请检查班次与账户状态" }
+        : { id: String(data), error: null };
+    } catch {
+      return { id: null, error: "订单草稿保存失败，请稍后重试" };
+    }
+  }
+  async loadOwnDrafts() {
+    if (!this.client) return { data: [], error: "订单草稿服务未配置" };
+    try {
+      const expired = await this.client.rpc("expire_own_booking_drafts");
+      if (expired.error) return { data: [], error: "订单草稿状态更新失败" };
+      const { data, error } = await this.client
+        .from("booking_drafts")
+        .select(
+          "id,departure_id,adults,children,infants,seat_impact,assistance_summary,operational_review_status,status,created_at,updated_at,expires_at",
+        )
+        .order("updated_at", { ascending: false });
+      return error
+        ? { data: [], error: "订单草稿读取失败" }
+        : { data: data ?? [], error: null };
+    } catch {
+      return { data: [], error: "订单草稿读取失败" };
+    }
+  }
+  async abandonOwnDraft(draftId: string) {
+    if (!this.client) return { ok: false, error: "订单草稿服务未配置" };
+    try {
+      const { data, error } = await this.client.rpc(
+        "abandon_own_booking_draft",
+        { p_draft: draftId },
+      );
+      return error
+        ? { ok: false, error: "无法放弃该草稿" }
+        : {
+            ok: data === true,
+            error: data === true ? null : "草稿已处理或无权操作",
+          };
+    } catch {
+      return { ok: false, error: "无法放弃该草稿" };
+    }
+  }
 }
-export type OwnAccountProfile={account_id:string;display_name:string;preferred_language:'zh-CN';phone:string;emergency_name:string;emergency_phone:string;accepted_terms_at:string|null;accepted_privacy_at:string|null;updated_at:string};
-export class SupabaseAccountProfileRepository{
-  constructor(private readonly client:SupabaseClient|null){}
-  get available(){return this.client!==null}
-  async loadOwn(){if(!this.client)return {data:null,error:'账户资料服务未配置'};try{const {data,error}=await this.client.rpc('get_own_account_profile').maybeSingle();return error?{data:null,error:'无法读取本人资料'}:{data:(data as OwnAccountProfile|null),error:null}}catch{return {data:null,error:'无法读取本人资料'}}}
-  async updateOwn(input:{displayName:string;phone:string;emergencyName:string;emergencyPhone:string;acceptedTerms:boolean;acceptedPrivacy:boolean}){if(!this.client)return {ok:false,error:'账户资料服务未配置'};try{const {error}=await this.client.rpc('update_own_account_profile',{p_display_name:input.displayName,p_phone:input.phone,p_emergency_name:input.emergencyName,p_emergency_phone:input.emergencyPhone,p_accept_terms:input.acceptedTerms,p_accept_privacy:input.acceptedPrivacy});return error?{ok:false,error:'资料未保存，请检查必填内容'}:{ok:true,error:null}}catch{return {ok:false,error:'资料未保存，请稍后重试'}}}
+export type OwnAccountProfile = {
+  account_id: string;
+  display_name: string;
+  preferred_language: "zh-CN";
+  phone: string;
+  emergency_name: string;
+  emergency_phone: string;
+  accepted_terms_at: string | null;
+  accepted_privacy_at: string | null;
+  updated_at: string;
+};
+export class SupabaseAccountProfileRepository {
+  constructor(private readonly client: SupabaseClient | null) {}
+  get available() {
+    return this.client !== null;
+  }
+  async loadOwn() {
+    if (!this.client) return { data: null, error: "账户资料服务未配置" };
+    try {
+      const { data, error } = await this.client
+        .rpc("get_own_account_profile")
+        .maybeSingle();
+      return error
+        ? { data: null, error: "无法读取本人资料" }
+        : { data: data as OwnAccountProfile | null, error: null };
+    } catch {
+      return { data: null, error: "无法读取本人资料" };
+    }
+  }
+  async updateOwn(input: {
+    displayName: string;
+    phone: string;
+    emergencyName: string;
+    emergencyPhone: string;
+    acceptedTerms: boolean;
+    acceptedPrivacy: boolean;
+  }) {
+    if (!this.client) return { ok: false, error: "账户资料服务未配置" };
+    try {
+      const { error } = await this.client.rpc("update_own_account_profile", {
+        p_display_name: input.displayName,
+        p_phone: input.phone,
+        p_emergency_name: input.emergencyName,
+        p_emergency_phone: input.emergencyPhone,
+        p_accept_terms: input.acceptedTerms,
+        p_accept_privacy: input.acceptedPrivacy,
+      });
+      return error
+        ? { ok: false, error: "资料未保存，请检查必填内容" }
+        : { ok: true, error: null };
+    } catch {
+      return { ok: false, error: "资料未保存，请稍后重试" };
+    }
+  }
 }
-export class SupabaseStaffRepository{
-  constructor(private readonly client:SupabaseClient|null){}
-  get available(){return this.client!==null}
-  async listTasks(){if(!this.client)return {data:[] as StaffTaskRow[],error:'工作人员任务服务未配置'};try{const {data,error}=await this.client.rpc('get_staff_portal_tasks');return error?{data:[] as StaffTaskRow[],error:'无法读取已分配任务'}:{data:(data??[]) as StaffTaskRow[],error:null}}catch{return {data:[] as StaffTaskRow[],error:'无法读取已分配任务'}}}
+export class SupabaseStaffRepository {
+  constructor(private readonly client: SupabaseClient | null) {}
+  get available() {
+    return this.client !== null;
+  }
+  async listTasks() {
+    if (!this.client)
+      return { data: [] as StaffTaskRow[], error: "工作人员任务服务未配置" };
+    try {
+      const { data, error } = await this.client.rpc("get_staff_portal_tasks");
+      return error
+        ? { data: [] as StaffTaskRow[], error: "无法读取已分配任务" }
+        : { data: (data ?? []) as StaffTaskRow[], error: null };
+    } catch {
+      return { data: [] as StaffTaskRow[], error: "无法读取已分配任务" };
+    }
+  }
+  async recordExecution(
+    vehicleGroupId: string,
+    eventType:
+      | "task_accepted"
+      | "meeting_started"
+      | "delay_reported"
+      | "incident_reported"
+      | "support_requested",
+    detail: Record<string, unknown> = {},
+  ) {
+    if (!this.client) return false;
+    try {
+      const { error } = await this.client.rpc("record_staff_execution_event", {
+        p_vehicle_group: vehicleGroupId,
+        p_event_type: eventType,
+        p_detail: detail,
+        p_idempotency_key: crypto.randomUUID(),
+      });
+      return !error;
+    } catch {
+      return false;
+    }
+  }
 }
 export class SupabaseTripRoomRepository {
   constructor(private readonly client: SupabaseClient | null) {}
-  get available() { return this.client !== null; }
+  get available() {
+    return this.client !== null;
+  }
   async loadAccessibleRoom() {
     if (!this.client) return { data: null, error: "行程房间服务未配置" };
-    const { data, error } = await this.client.rpc("get_accessible_trip_room").maybeSingle();
+    const { data, error } = await this.client
+      .rpc("get_accessible_trip_room")
+      .maybeSingle();
     return error
       ? { data: null, error: "无法读取本车行程房间" }
       : { data, error: null };
   }
-  async startOwnLocationShare(vehicleGroupId:string,minutes:15|30){if(!this.client)return false;const {error}=await this.client.rpc('start_own_location_share',{p_vehicle_group:vehicleGroupId,p_minutes:minutes});return !error}
-  async stopOwnLocationShare(vehicleGroupId:string){if(!this.client)return false;const {error}=await this.client.rpc('stop_own_location_share',{p_vehicle_group:vehicleGroupId});return !error}
-  async publishDriverLocation(vehicleGroupId:string,coordinates:{latitude:number;longitude:number;accuracy:number|null},minutes=15){if(!this.client)return false;const {error}=await this.client.rpc('publish_driver_location',{p_vehicle_group:vehicleGroupId,p_latitude:coordinates.latitude,p_longitude:coordinates.longitude,p_accuracy_meters:coordinates.accuracy,p_minutes:minutes});return !error}
-  async stopDriverLocation(vehicleGroupId:string){if(!this.client)return false;const {error}=await this.client.rpc('stop_driver_location',{p_vehicle_group:vehicleGroupId});return !error}
-  async loadDriverLocation(vehicleGroupId:string){if(!this.client)return null;const {data,error}=await this.client.rpc('get_active_driver_location',{p_vehicle_group:vehicleGroupId}).maybeSingle();return error?null:data}
+  async startOwnLocationShare(vehicleGroupId: string, minutes: 15 | 30) {
+    if (!this.client) return false;
+    const { error } = await this.client.rpc("start_own_location_share", {
+      p_vehicle_group: vehicleGroupId,
+      p_minutes: minutes,
+    });
+    return !error;
+  }
+  async stopOwnLocationShare(vehicleGroupId: string) {
+    if (!this.client) return false;
+    const { error } = await this.client.rpc("stop_own_location_share", {
+      p_vehicle_group: vehicleGroupId,
+    });
+    return !error;
+  }
+  async publishDriverLocation(
+    vehicleGroupId: string,
+    coordinates: {
+      latitude: number;
+      longitude: number;
+      accuracy: number | null;
+    },
+    minutes = 15,
+  ) {
+    if (!this.client) return false;
+    const { error } = await this.client.rpc("publish_driver_location", {
+      p_vehicle_group: vehicleGroupId,
+      p_latitude: coordinates.latitude,
+      p_longitude: coordinates.longitude,
+      p_accuracy_meters: coordinates.accuracy,
+      p_minutes: minutes,
+    });
+    return !error;
+  }
+  async stopDriverLocation(vehicleGroupId: string) {
+    if (!this.client) return false;
+    const { error } = await this.client.rpc("stop_driver_location", {
+      p_vehicle_group: vehicleGroupId,
+    });
+    return !error;
+  }
+  async loadDriverLocation(vehicleGroupId: string) {
+    if (!this.client) return null;
+    const { data, error } = await this.client
+      .rpc("get_active_driver_location", { p_vehicle_group: vehicleGroupId })
+      .maybeSingle();
+    return error ? null : data;
+  }
   async loadMessages(roomId: string) {
     if (!this.client) return [];
     const { data, error } = await this.client
       .from("trip_room_messages")
-      .select("id,author_id,content,original_content,source_language,template_key,important,created_at,trip_room_message_translations(target_language,translated_content,provider,quality)")
+      .select(
+        "id,author_id,content,original_content,source_language,template_key,important,created_at,trip_room_message_translations(target_language,translated_content,provider,quality)",
+      )
       .eq("trip_room_id", roomId)
       .order("created_at");
     return error ? [] : (data ?? []);
   }
-  async sendMessage(roomId: string, content: string, idempotencyKey:string=crypto.randomUUID()) {
+  async sendMessage(
+    roomId: string,
+    content: string,
+    idempotencyKey: string = crypto.randomUUID(),
+  ) {
     if (!this.client || !content.trim()) return false;
-    const { error } = await this.client.rpc('send_trip_room_message',{p_room:roomId,p_content:content.trim(),p_idempotency_key:idempotencyKey});
+    const { error } = await this.client.rpc("send_trip_room_message", {
+      p_room: roomId,
+      p_content: content.trim(),
+      p_idempotency_key: idempotencyKey,
+    });
     return !error;
   }
-  async loadTranslationPreference(){if(!this.client)return null;const {data,error}=await this.client.from('chat_translation_preferences').select('target_language,auto_translate,follow_device_language').maybeSingle();return error?null:data}
-  async saveTranslationPreference(targetLanguage:'zh-CN'|'ja'|'en'|'vi'|'ne',autoTranslate:boolean,followDeviceLanguage:boolean){if(!this.client)return false;const {error}=await this.client.rpc('update_own_chat_translation_preference',{p_target_language:targetLanguage,p_auto_translate:autoTranslate,p_follow_device_language:followDeviceLanguage});return !error}
+  async loadTranslationPreference() {
+    if (!this.client) return null;
+    const { data, error } = await this.client
+      .from("chat_translation_preferences")
+      .select("target_language,auto_translate,follow_device_language")
+      .maybeSingle();
+    return error ? null : data;
+  }
+  async saveTranslationPreference(
+    targetLanguage: "zh-CN" | "ja" | "en" | "vi" | "ne",
+    autoTranslate: boolean,
+    followDeviceLanguage: boolean,
+  ) {
+    if (!this.client) return false;
+    const { error } = await this.client.rpc(
+      "update_own_chat_translation_preference",
+      {
+        p_target_language: targetLanguage,
+        p_auto_translate: autoTranslate,
+        p_follow_device_language: followDeviceLanguage,
+      },
+    );
+    return !error;
+  }
   async loadStaffProjection() {
     if (!this.client) return [];
     const { data, error } = await this.client
@@ -174,14 +604,99 @@ export class SupabaseTripRoomRepository {
       );
     return error ? [] : (data ?? []);
   }
-  async loadBoardingStatus(vehicleGroupId:string){if(!this.client)return [];const {data,error}=await this.client.rpc('get_vehicle_group_boarding_status',{p_vehicle_group:vehicleGroupId});return error?[]:(data??[])}
-  async sendStaffTemplate(roomId:string,templateKey:string){if(!this.client)return false;const {error}=await this.client.rpc('send_staff_trip_room_template',{p_room:roomId,p_template_key:templateKey});return !error}
-  async markOrderBoarded(vehicleGroupId:string,orderId:string){if(!this.client)return false;const {error}=await this.client.rpc('mark_vehicle_group_order_boarded',{p_vehicle_group:vehicleGroupId,p_order:orderId});return !error}
-  async loadAttendance(vehicleGroupId:string){if(!this.client)return [];const {data,error}=await this.client.rpc('get_vehicle_group_attendance',{p_vehicle_group:vehicleGroupId});return error?[]:(data??[])}
-  async setOwnCheckin(passengerId:string,status:'confirmed_departure'|'at_meeting_point'|'needs_assistance'){if(!this.client)return false;const {error}=await this.client.rpc('set_own_passenger_checkin',{p_passenger:passengerId,p_status:status,p_idempotency_key:crypto.randomUUID()});return !error}
-  async setStaffCheckin(vehicleGroupId:string,passengerId:string,status:'at_meeting_point'|'boarded'|'needs_assistance'|'contacting'|'unreachable'){if(!this.client)return false;const {error}=await this.client.rpc('set_staff_passenger_checkin',{p_vehicle_group:vehicleGroupId,p_passenger:passengerId,p_status:status,p_idempotency_key:crypto.randomUUID()});return !error}
-  async recordContact(vehicleGroupId:string,passengerId:string,action:'contact_requested'|'contacting'|'reached'|'unreachable'|'escalated_to_operations'|'resolved'){if(!this.client)return false;const {error}=await this.client.rpc('record_passenger_contact_action',{p_vehicle_group:vehicleGroupId,p_passenger:passengerId,p_action:action,p_idempotency_key:crypto.randomUUID(),p_note:null});return !error}
-  async loadStaffPassengerContact(vehicleGroupId:string,passengerId:string){if(!this.client)return null;const {data,error}=await this.client.rpc('get_staff_passenger_contact',{p_vehicle_group:vehicleGroupId,p_passenger:passengerId});if(error||!data?.[0])return null;return data[0] as {contact_name:string;phone:string}}
+  async loadBoardingStatus(vehicleGroupId: string) {
+    if (!this.client) return [];
+    const { data, error } = await this.client.rpc(
+      "get_vehicle_group_boarding_status",
+      { p_vehicle_group: vehicleGroupId },
+    );
+    return error ? [] : (data ?? []);
+  }
+  async sendStaffTemplate(roomId: string, templateKey: string) {
+    if (!this.client) return false;
+    const { error } = await this.client.rpc("send_staff_trip_room_template", {
+      p_room: roomId,
+      p_template_key: templateKey,
+    });
+    return !error;
+  }
+  async markOrderBoarded(vehicleGroupId: string, orderId: string) {
+    if (!this.client) return false;
+    const { error } = await this.client.rpc(
+      "mark_vehicle_group_order_boarded",
+      { p_vehicle_group: vehicleGroupId, p_order: orderId },
+    );
+    return !error;
+  }
+  async loadAttendance(vehicleGroupId: string) {
+    if (!this.client) return [];
+    const { data, error } = await this.client.rpc(
+      "get_vehicle_group_attendance",
+      { p_vehicle_group: vehicleGroupId },
+    );
+    return error ? [] : (data ?? []);
+  }
+  async setOwnCheckin(
+    passengerId: string,
+    status: "confirmed_departure" | "at_meeting_point" | "needs_assistance",
+  ) {
+    if (!this.client) return false;
+    const { error } = await this.client.rpc("set_own_passenger_checkin", {
+      p_passenger: passengerId,
+      p_status: status,
+      p_idempotency_key: crypto.randomUUID(),
+    });
+    return !error;
+  }
+  async setStaffCheckin(
+    vehicleGroupId: string,
+    passengerId: string,
+    status:
+      | "at_meeting_point"
+      | "boarded"
+      | "needs_assistance"
+      | "contacting"
+      | "unreachable",
+  ) {
+    if (!this.client) return false;
+    const { error } = await this.client.rpc("set_staff_passenger_checkin", {
+      p_vehicle_group: vehicleGroupId,
+      p_passenger: passengerId,
+      p_status: status,
+      p_idempotency_key: crypto.randomUUID(),
+    });
+    return !error;
+  }
+  async recordContact(
+    vehicleGroupId: string,
+    passengerId: string,
+    action:
+      | "contact_requested"
+      | "contacting"
+      | "reached"
+      | "unreachable"
+      | "escalated_to_operations"
+      | "resolved",
+  ) {
+    if (!this.client) return false;
+    const { error } = await this.client.rpc("record_passenger_contact_action", {
+      p_vehicle_group: vehicleGroupId,
+      p_passenger: passengerId,
+      p_action: action,
+      p_idempotency_key: crypto.randomUUID(),
+      p_note: null,
+    });
+    return !error;
+  }
+  async loadStaffPassengerContact(vehicleGroupId: string, passengerId: string) {
+    if (!this.client) return null;
+    const { data, error } = await this.client.rpc(
+      "get_staff_passenger_contact",
+      { p_vehicle_group: vehicleGroupId, p_passenger: passengerId },
+    );
+    if (error || !data?.[0]) return null;
+    return data[0] as { contact_name: string; phone: string };
+  }
 }
 export class SupabasePrivateStorageAdapter {
   constructor(private readonly client: SupabaseClient | null) {}
