@@ -25,6 +25,11 @@ describe('production 用户可见文案',()=>{
     const view=render(<MemoryRouter initialEntries={[path]}><AppProvider><Routes><Route path="*" element={component}/></Routes></AppProvider></MemoryRouter>);
     expect(view.container.textContent).not.toMatch(/开发种子|开发模拟|Demo/);
   });
+  it('游客首页不把演示行程伪装成下一次真实行程',()=>{
+    render(<MemoryRouter><AppProvider><AppHome/></AppProvider></MemoryRouter>);
+    expect(screen.getByText('把关西周末装进口袋')).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/明日出发|TEST-本周六|车辆信息已更新/);
+  });
   it('Supabase 可用但结账 API 缺失时支付按钮明确禁用',()=>{
     const client={auth:{getSession:async()=>({data:{session:null}}),getUser:async()=>({data:{user:null},error:null})}} as unknown as SupabaseClient;
     const services=new ProductionBrowserServices(client,undefined);

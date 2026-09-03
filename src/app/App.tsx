@@ -265,6 +265,14 @@ export function AppHome() {
     departuresError,
   } = useApp();
   const featuredTrips = trips.slice(0, 4);
+  const visibleDepartures = deps.filter(
+    (departure) =>
+      !departure.dateLabel.includes("TEST-") &&
+      departure.departureTime !== null &&
+      departure.meetingPointName !== null &&
+      departure.price !== null &&
+      departure.availableSeats !== null,
+  );
   return (
     <div className="fulfillment-home passenger-home-v2">
       <section className="passenger-yellow-hero">
@@ -282,19 +290,11 @@ export function AppHome() {
         </div>
         <div className="next-trip-pass">
           <div>
-            <span>{state.tripRoom ? "下一次行程" : "JAPAN TRAVEL PASS"}</span>
-            <h2>
-              {state.tripRoom ? "京都与奈良 · 明日出发" : "把关西周末装进口袋"}
-            </h2>
-            <p>
-              {state.tripRoom
-                ? "08:00 大阪梅田集合 · 车辆信息已更新"
-                : "路线、订单、集合与旅行消息集中查看"}
-            </p>
+            <span>JAPAN TRAVEL PASS</span>
+            <h2>把关西周末装进口袋</h2>
+            <p>路线、订单、集合与旅行消息集中查看</p>
           </div>
-          <Link to={state.tripRoom ? "/app/my-trip" : "/app/trips"}>
-            {state.tripRoom ? "查看行程" : "开始选路线"} →
-          </Link>
+          <Link to="/app/trips">开始选路线 →</Link>
         </div>
       </section>
       <section className="passenger-member-strip" aria-label="会员信息">
@@ -363,9 +363,9 @@ export function AppHome() {
         <Empty title="正在读取可售班次" text="请稍候，正在同步最新出发信息。" />
       ) : departuresError ? (
         <Empty title="暂时无法读取班次" text="请稍后刷新页面重试。" />
-      ) : deps.length ? (
+      ) : visibleDepartures.length ? (
         <div className="passenger-departure-list">
-          {deps.slice(0, 3).map((departure) => {
+          {visibleDepartures.slice(0, 3).map((departure) => {
             const trip = travelRepository.getTrip(departure.tripSlug);
             if (!trip) return null;
             return (
