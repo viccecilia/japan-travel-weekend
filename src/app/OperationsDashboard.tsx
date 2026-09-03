@@ -161,6 +161,7 @@ export function OperationsDashboard() {
       registration: String(form.get("registration") ?? ""),
       vehicleType: String(form.get("vehicleType") ?? ""),
       externalDispatchId: String(form.get("externalDispatchId") ?? ""),
+      publicColor:String(form.get("publicColor")??""),publicPhotoUrl:String(form.get("publicPhotoUrl")??""),
     });
     setNotice(ok ? "车辆已保存" : "车辆保存失败，请检查重复车牌与运营权限");
     if (ok) {
@@ -210,6 +211,7 @@ export function OperationsDashboard() {
       availableUntil: new Date(
         String(form.get("availableUntil")),
       ).toISOString(),
+      serviceRole:String(form.get("serviceRole")) as "driver"|"guide"|"driver_guide",publicPhone:String(form.get("publicPhone")??""),
     });
     setNotice(
       ok
@@ -618,6 +620,8 @@ export function OperationsDashboard() {
                     柚子车辆ID（可稍后补充）
                     <input name="externalDispatchId" />
                   </label>
+                  <label>游客可见车辆颜色<input required name="publicColor" maxLength={40} placeholder="例如：黑色" /></label>
+                  <label>游客可见车辆照片 HTTPS URL（选填）<input name="publicPhotoUrl" type="url" placeholder="https://" /></label>
                   <button className="button">保存车辆</button>
                 </form>
               </article>
@@ -632,6 +636,8 @@ export function OperationsDashboard() {
                     柚子司机ID
                     <input name="driverExternalId" />
                   </label>
+                  <label>游客可见身份<select required name="serviceRole" defaultValue="driver"><option value="driver">司机</option><option value="guide">导游</option><option value="driver_guide">司导</option></select></label>
+                  <label>游客紧急联系用公开电话<input required name="publicPhone" type="tel" minLength={5} maxLength={40} /></label>
                   <fieldset>
                     <legend>可驾驶车型</legend>
                     {snapshot.vehicleTypes.map((v) => (

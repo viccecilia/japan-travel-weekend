@@ -63,7 +63,7 @@ export type VehicleGroupMeetingRow = {
   changed_at: string;
   acknowledged: boolean;
 };
-export type PassengerTripContextRow={trip_title:string;itinerary:string[];return_at:string|null;staff_name:string|null;staff_role:'driver'|'guide'|'operations'|null;vehicle_type:string;vehicle_label:string|null};
+export type PassengerTripContextRow={trip_title:string;itinerary:string[];return_at:string|null;staff_name:string|null;staff_role:'driver'|'guide'|'driver_guide'|'operations'|null;staff_phone:string|null;vehicle_type:string;vehicle_label:string|null;vehicle_color:string|null;vehicle_photo_url:string|null};
 const seatStatus = (available: number, capacity: number): SeatStatus =>
   available <= 0
     ? "已售罄"
@@ -607,7 +607,7 @@ export class SupabaseTripRoomRepository {
       return null;
     }
   }
-  async loadPassengerContext(vehicleGroupId:string){if(!this.client)return null;try{const {data,error}=await this.client.rpc('get_passenger_trip_context',{p_vehicle_group:vehicleGroupId}).maybeSingle();return error?null:data as PassengerTripContextRow|null}catch{return null}}
+  async loadPassengerContext(vehicleGroupId:string){if(!this.client)return null;try{const {data,error}=await this.client.rpc('get_passenger_trip_context_v2',{p_vehicle_group:vehicleGroupId}).maybeSingle();return error?null:data as PassengerTripContextRow|null}catch{return null}}
   async acknowledgeMeeting(vehicleGroupId: string, revision: number) {
     if (!this.client) return false;
     try {

@@ -13,6 +13,7 @@ export type OperationsVehicle = {
   vehicle_type_key: string;
   external_dispatch_id: string | null;
   status: "available" | "assigned" | "in_service" | "maintenance" | "inactive";
+  public_color?:string|null;public_photo_url?:string|null;
 };
 export type OperationsDriver = {
   id: string;
@@ -20,6 +21,7 @@ export type OperationsDriver = {
   external_dispatch_id: string | null;
   languages: string[];
   status: "available" | "unavailable" | "suspended";
+  service_role?:"driver"|"guide"|"driver_guide";public_phone?:string|null;
   driver_vehicle_qualifications: { vehicle_type_key: string }[];
   driver_availability_windows: { starts_at: string; ends_at: string }[];
 };
@@ -187,13 +189,13 @@ export class SupabaseOperationsRepository {
           this.client
             .from("fleet_vehicles")
             .select(
-              "id,registration_identifier,vehicle_type_key,external_dispatch_id,status",
+              "id,registration_identifier,vehicle_type_key,external_dispatch_id,status,public_color,public_photo_url",
             )
             .order("registration_identifier"),
           this.client
             .from("driver_resources")
             .select(
-              "id,display_name,external_dispatch_id,languages,status,driver_vehicle_qualifications(vehicle_type_key),driver_availability_windows(starts_at,ends_at)",
+              "id,display_name,external_dispatch_id,languages,status,service_role,public_phone,driver_vehicle_qualifications(vehicle_type_key),driver_availability_windows(starts_at,ends_at)",
             )
             .order("display_name"),
           this.client.rpc("get_operations_dashboard_departures"),
@@ -343,12 +345,14 @@ export class SupabaseOperationsRepository {
     registration: string;
     vehicleType: string;
     externalDispatchId: string;
+    publicColor:string;publicPhotoUrl:string;
   }) {
     if (!this.client) return false;
-    const { error } = await this.client.rpc("operations_create_vehicle", {
+    const { error } = await this.client.rpc("operations_create_vehicle_v2", {
       p_registration: input.registration,
       p_vehicle_type: input.vehicleType,
       p_external_dispatch_id: input.externalDispatchId || null,
+      p_public_color:input.publicColor,p_public_photo_url:input.publicPhotoUrl||null,
     });
     return !error;
   }
@@ -385,15 +389,17 @@ export class SupabaseOperationsRepository {
     languages: string[];
     availableFrom: string;
     availableUntil: string;
+    serviceRole:"driver"|"guide"|"driver_guide";publicPhone:string;
   }) {
     if (!this.client) return false;
-    const { error } = await this.client.rpc("operations_create_driver", {
+    const { error } = await this.client.rpc("operations_create_driver_v2", {
       p_display_name: input.displayName,
       p_external_dispatch_id: input.externalDispatchId || null,
       p_vehicle_types: input.vehicleTypes,
       p_languages: input.languages,
       p_available_from: input.availableFrom,
       p_available_until: input.availableUntil,
+      p_service_role:input.serviceRole,p_public_phone:input.publicPhone,
     });
     return !error;
   }

@@ -148,8 +148,10 @@ describe("运营派单界面", () => {
     fireEvent.change(screen.getByRole("combobox", { name: "车型" }), {
       target: { value: "alphard-6" },
     });
+    fireEvent.change(screen.getByRole("textbox",{name:"游客可见车辆颜色"}),{target:{value:"黑色"}});
     fireEvent.click(screen.getByRole("button", { name: "保存车辆" }));
     await waitFor(() => expect(createVehicle).toHaveBeenCalledTimes(1));
+    expect(createVehicle).toHaveBeenCalledWith(expect.objectContaining({publicColor:"黑色",publicPhotoUrl:""}));
     await waitFor(() => expect(registration).toHaveValue(""));
     expect(screen.getByText("车辆已保存")).toBeInTheDocument();
   });

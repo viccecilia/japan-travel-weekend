@@ -153,7 +153,7 @@ type RemoteMeeting = {
   changed_at: string;
   acknowledged: boolean;
 };
-type PassengerTripContext={trip_title:string;itinerary:string[];return_at:string|null;staff_name:string|null;staff_role:'driver'|'guide'|'operations'|null;vehicle_type:string;vehicle_label:string|null};
+type PassengerTripContext={trip_title:string;itinerary:string[];return_at:string|null;staff_name:string|null;staff_role:'driver'|'guide'|'driver_guide'|'operations'|null;staff_phone:string|null;vehicle_type:string;vehicle_label:string|null;vehicle_color:string|null;vehicle_photo_url:string|null};
 type RemoteAttendance = {
   passenger_id: string;
   passenger_label: string;
@@ -752,13 +752,14 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
         }}
         guide={{
           name: passengerContext?.staff_name??"当班工作人员待分配",
-          role: passengerContext?.staff_role==='guide'?"司导":passengerContext?.staff_role==='driver'?"司机":"工作人员",
-          phone: "",
+          role: passengerContext?.staff_role==='guide'?"导游":passengerContext?.staff_role==='driver_guide'?"司导":passengerContext?.staff_role==='driver'?"司机":"工作人员",
+          phone: passengerContext?.staff_phone??"",
           avatar: "导",
           vehicle: {
             type: passengerContext?.vehicle_type??(room.vehicle_type || "车型待定"),
-            color: "颜色待更新",
+            color: passengerContext?.vehicle_color??"颜色待更新",
             plate: passengerContext?.vehicle_label??room.vehicle_label ?? "车牌待更新",
+            photoUrl:passengerContext?.vehicle_photo_url??undefined,
           },
         }}
         stops={[remoteStop,...itineraryStops]}
