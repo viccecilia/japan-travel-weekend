@@ -542,6 +542,27 @@ export class SupabaseStaffRepository {
       return null;
     }
   }
+  async reportDelay(
+    vehicleGroupId: string,
+    delayMinutes: number,
+    reason: string,
+  ) {
+    if (!this.client) return false;
+    try {
+      const { data, error } = await this.client.rpc(
+        "report_vehicle_group_delay",
+        {
+          p_vehicle_group: vehicleGroupId,
+          p_delay_minutes: delayMinutes,
+          p_reason: reason,
+          p_idempotency_key: crypto.randomUUID(),
+        },
+      );
+      return !error && Boolean(data);
+    } catch {
+      return false;
+    }
+  }
 }
 export class SupabaseTripRoomRepository {
   constructor(private readonly client: SupabaseClient | null) {}
@@ -718,6 +739,19 @@ export class SupabaseTripRoomRepository {
       { p_vehicle_group: vehicleGroupId },
     );
     return error ? [] : (data ?? []);
+  }
+  async loadAttendanceSummary(vehicleGroupId: string) {
+    if (!this.client) return null;
+    try {
+      const { data, error } = await this.client
+        .rpc("get_vehicle_group_attendance_summary", {
+          p_vehicle_group: vehicleGroupId,
+        })
+        .maybeSingle();
+      return error ? null : data;
+    } catch {
+      return null;
+    }
   }
   async setOwnCheckin(
     passengerId: string,

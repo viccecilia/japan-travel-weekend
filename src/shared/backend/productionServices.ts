@@ -136,6 +136,13 @@ export class ProductionBrowserServices {
   ) {
     return this.staff.updateMeeting(input);
   }
+  reportStaffDelay(
+    vehicleGroupId: string,
+    delayMinutes: number,
+    reason: string,
+  ) {
+    return this.staff.reportDelay(vehicleGroupId, delayMinutes, reason);
+  }
   createCheckout(input: CheckoutRequest) {
     return this.checkout.checkout(input);
   }

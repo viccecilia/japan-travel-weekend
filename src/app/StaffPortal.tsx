@@ -50,7 +50,13 @@ type StaffMessage = {
   template_key: string | null;
 };
 type StaffAction =
-  "passengers" | "chat" | "notice" | "meeting" | "incident" | "support";
+  | "passengers"
+  | "chat"
+  | "notice"
+  | "meeting"
+  | "delay"
+  | "incident"
+  | "support";
 
 const previewTasks: StaffTask[] = [
   {
@@ -372,6 +378,7 @@ export function StaffPortal() {
               <Link to={taskPath(active, "chat")}>团队群聊</Link>
               <Link to={taskPath(active, "notice")}>发送通知</Link>
               <Link to={taskPath(active, "meeting")}>集合管理</Link>
+              <Link to={taskPath(active, "delay")}>报告延误</Link>
               <Link to={taskPath(active, "incident")}>异常上报</Link>
               <Link to={taskPath(active, "support")}>联系运营</Link>
             </div>
@@ -403,6 +410,7 @@ export function StaffTaskAction() {
       "chat",
       "notice",
       "meeting",
+      "delay",
       "incident",
       "support",
     ] as string[]
@@ -438,9 +446,11 @@ export function StaffTaskAction() {
                 ? "发送通知"
                 : action === "meeting"
                   ? "集合管理"
-                  : action === "incident"
-                    ? "异常上报"
-                    : "联系运营"}
+                  : action === "delay"
+                    ? "报告延误"
+                    : action === "incident"
+                      ? "异常上报"
+                      : "联系运营"}
         </h1>
         <p>
           {task.trip_title} · {task.vehicle_label ?? task.vehicle_type}
@@ -455,6 +465,8 @@ export function StaffTaskAction() {
         <NoticeAction task={task} />
       ) : action === "meeting" ? (
         <MeetingAction task={task} preview={preview} />
+      ) : action === "delay" ? (
+        <DelayAction task={task} preview={preview} />
       ) : (
         <EscalationAction task={task} kind={action as "incident" | "support"} />
       )}
@@ -948,6 +960,84 @@ function MeetingAction({
         </label>
         <button disabled={status === "saving"}>
           {status === "saving" ? "正在保存" : "保存集合信息"}
+        </button>
+      </form>
+      {result && (
+        <p className="staff-result" role="status">
+          {result}
+        </p>
+      )}
+    </section>
+  );
+}
+
+function DelayAction({ task, preview }: { task: StaffTask; preview: boolean }) {
+  const { services } = useApp();
+  const [minutes, setMinutes] = useState("15");
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState("");
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    const delayMinutes = Number(minutes);
+    if (
+      !Number.isInteger(delayMinutes) ||
+      delayMinutes < 1 ||
+      delayMinutes > 360 ||
+      reason.trim().length < 3
+    )
+      return;
+    if (preview || !services) {
+      setResult("本地预览：延误记录不会写入服务器或通知乘客。");
+      return;
+    }
+    setBusy(true);
+    const ok = await services.reportStaffDelay(
+      task.vehicle_group_id,
+      delayMinutes,
+      reason.trim(),
+    );
+    setBusy(false);
+    setResult(
+      ok
+        ? "延误已记录；群聊重大通知与本车乘客必要通知已进入待发送队列。"
+        : "延误未保存，请检查本车权限、分钟数和原因。",
+    );
+    if (ok) setReason("");
+  };
+  return (
+    <section className="staff-detail">
+      <div className="staff-detail-note">
+        延误通知只发给本车已付款乘客。页面显示“已进入待发送队列”，不会把尚未送达的外部通知标记为成功。
+      </div>
+      <form
+        className="staff-escalation"
+        onSubmit={(event) => void submit(event)}
+      >
+        <label>
+          预计延误分钟数
+          <input
+            type="number"
+            min={1}
+            max={360}
+            required
+            value={minutes}
+            onChange={(event) => setMinutes(event.target.value)}
+          />
+        </label>
+        <label>
+          延误原因
+          <textarea
+            required
+            minLength={3}
+            maxLength={500}
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            placeholder="例如：高速公路事故拥堵，预计晚到约 20 分钟"
+          />
+        </label>
+        <button disabled={busy || reason.trim().length < 3}>
+          {busy ? "正在提交" : "提交延误通知"}
         </button>
       </form>
       {result && (
