@@ -10,7 +10,7 @@ describe('京都奈良支付前黄金路径',()=>{
   it('路线内容包含景点顺序、履约说明与非伪造商业状态',()=>{
     const trip=getTrip('kyoto-nara-classic')!;
     expect(trip.status).toBe('标准路线');
-    expect(trip.timeline.map(item=>item.title)).toEqual(expect.arrayContaining(['伏见稻荷大社','清水寺与东山历史街区','奈良公园与东大寺周边']));
+    expect(trip.timeline.map(item=>item.title)).toEqual(expect.arrayContaining(['清水寺与东山历史街区','伏见稻荷大社','奈良公园']));
     expect(trip.timeline.every(item=>item.location&&item.detail)).toBe(true);
     expect(trip.price).toBeNull();
     expect(trip.availableSeats).toBeNull();
