@@ -7,12 +7,13 @@ export type TestApiReadiness = {
     database: boolean;
     stripeTestMode: boolean;
     webhookSecret: boolean;
+    notificationReceiptSecret: boolean;
   };
 };
 
 export async function checkTestApiReadiness(
   client: Pick<SupabaseClient, "from"> | null,
-  env: Partial<Record<"STRIPE_SECRET_KEY" | "STRIPE_WEBHOOK_SECRET", string>>,
+  env: Partial<Record<"STRIPE_SECRET_KEY" | "STRIPE_WEBHOOK_SECRET" | "NOTIFICATION_WEBHOOK_SECRET", string>>,
 ): Promise<TestApiReadiness> {
   let database: boolean;
   try {
@@ -24,6 +25,7 @@ export async function checkTestApiReadiness(
   }
   const stripeTestMode = env.STRIPE_SECRET_KEY?.startsWith("sk_test_") === true;
   const webhookSecret = env.STRIPE_WEBHOOK_SECRET?.startsWith("whsec_") === true;
-  const checks = { database, stripeTestMode, webhookSecret };
+  const notificationReceiptSecret=(env.NOTIFICATION_WEBHOOK_SECRET?.length??0)>=32;
+  const checks = { database, stripeTestMode, webhookSecret, notificationReceiptSecret };
   return { ok: Object.values(checks).every(Boolean), mode: "test", checks };
 }

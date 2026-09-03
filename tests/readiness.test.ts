@@ -14,10 +14,11 @@ describe("测试 API 就绪探针", () => {
     await expect(checkTestApiReadiness(supabase, {
       STRIPE_SECRET_KEY: "sk_test_example",
       STRIPE_WEBHOOK_SECRET: "whsec_example",
+      NOTIFICATION_WEBHOOK_SECRET: "test-notification-secret-at-least-32-characters",
     })).resolves.toEqual({
       ok: true,
       mode: "test",
-      checks: { database: true, stripeTestMode: true, webhookSecret: true },
+      checks: { database: true, stripeTestMode: true, webhookSecret: true, notificationReceiptSecret: true },
     });
     expect(supabase.from).toHaveBeenCalledWith("trip_attendance_config");
   });
@@ -28,7 +29,7 @@ describe("测试 API 就绪探针", () => {
       STRIPE_WEBHOOK_SECRET: "",
     });
     expect(result.ok).toBe(false);
-    expect(result.checks).toEqual({ database: false, stripeTestMode: false, webhookSecret: false });
+    expect(result.checks).toEqual({ database: false, stripeTestMode: false, webhookSecret: false, notificationReceiptSecret: false });
     expect(JSON.stringify(result)).not.toContain("sk_live_forbidden");
   });
 
@@ -36,6 +37,7 @@ describe("测试 API 就绪探针", () => {
     const result = await checkTestApiReadiness(null, {
       STRIPE_SECRET_KEY: "sk_test_example",
       STRIPE_WEBHOOK_SECRET: "whsec_example",
+      NOTIFICATION_WEBHOOK_SECRET: "test-notification-secret-at-least-32-characters",
     });
     expect(result.ok).toBe(false);
     expect(result.checks.database).toBe(false);

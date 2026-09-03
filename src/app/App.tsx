@@ -610,6 +610,8 @@ export function AppNotifications() {
                     <small>
                       {item.deliveryStatus === "delivered"
                         ? "已送达"
+                        : item.deliveryStatus === "submitted"
+                          ? "已提交发送，等待渠道确认送达"
                         : item.deliveryStatus === "failed"
                           ? "发送失败"
                           : item.deliveryStatus === "suppressed"
