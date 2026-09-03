@@ -40,9 +40,9 @@ const Empty = ({
 export function LanguageSelect({ compact = false }: { compact?: boolean }) {
   return (
     <label className={`language-select${compact ? " compact" : ""}`}>
-      {compact ? <span aria-hidden="true">文</span> : "语言"}
+      {compact ? <span aria-hidden="true">译</span> : "语言"}
       <select aria-label="语言" value="zh-CN" onChange={() => {}}>
-        <option value="zh-CN">{compact ? "简中" : "简体中文"}</option>
+        <option value="zh-CN">简体中文</option>
         <option disabled>English（后续开放）</option>
         <option disabled>日本語（后续开放）</option>
       </select>
