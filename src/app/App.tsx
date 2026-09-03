@@ -241,7 +241,7 @@ export function AppHome() {
   return (
     <div className="fulfillment-home passenger-home-v2">
       <section className="passenger-yellow-hero">
-        <div className="passenger-welcome"><div><span>周末，从大阪出发</span><h1>你好，今天想去哪里？</h1></div><Link to="/app/notifications" aria-label="查看通知">●<small>通知</small></Link></div>
+        <div className="passenger-welcome"><div><span>周末，从大阪出发</span><h1>你好，今天想去哪里？</h1></div><Link to="/app/notifications" aria-label="查看通知"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><em aria-hidden="true" /></Link></div>
         <div className="next-trip-pass">
           <div><span>{state.tripRoom ? "下一次行程" : "JAPAN TRAVEL PASS"}</span><h2>{state.tripRoom ? "京都与奈良 · 明日出发" : "把关西周末装进口袋"}</h2><p>{state.tripRoom ? "08:00 大阪梅田集合 · 车辆信息已更新" : "路线、订单、集合与旅行消息集中查看"}</p></div>
           <Link to={state.tripRoom ? "/app/my-trip" : "/app/trips"}>{state.tripRoom ? "查看行程" : "开始选路线"} →</Link>
