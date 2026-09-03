@@ -15,13 +15,10 @@ export function TripCard({ trip, app = false, showcaseIndex }: { trip: Trip; app
         </div>
         <h3>{trip.title}</h3>
         <p>{trip.summary}</p>
-        <div className="chips">
-          {trip.categories.map((c) => (
-            <span key={c}>{c}</span>
-          ))}
-          <span>价格待公布</span>
-          <span>{trip.status==='标准路线'?'标准路线内容':'日期未开放'}</span>
-        </div>
+        {app ? <p className="app-card-route"><b>简要路线</b>{trip.stops.slice(0,4).join(' → ')}</p> : <div className="chips">
+          {trip.categories.map((c) => <span key={c}>{c}</span>)}
+          <span>价格待公布</span><span>{trip.status==='标准路线'?'标准路线内容':'日期未开放'}</span>
+        </div>}
         <Link
           className="text-link"
           to={`${app ? "/app/trips" : "/trips"}/${trip.slug}`}

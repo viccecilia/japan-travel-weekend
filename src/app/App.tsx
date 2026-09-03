@@ -56,17 +56,16 @@ export function AppShell({
   children: ReactNode;
   nav?: boolean;
 }) {
+  const { pathname } = useLocation();
+  const screen = pathname.split('/').filter(Boolean).slice(1, 2)[0] ?? 'home';
   return (
     <div className="app-stage">
-      <div className="app-frame">
+      <div className={`app-frame passenger-v2 screen-${screen}`}>
         <header className="app-top">
-          <Link className="app-back" to="/" aria-label="返回网站">
-            ←<span>网站</span>
-          </Link>
-          <b className="app-brand"><i>JT</i><span>Japan Travel Weekend</span></b>
+          <Link className="app-brand" to="/app" aria-label="返回游客端首页"><i>JT</i><span>Japan Travel Weekend</span></Link>
           <LanguageSelect compact />
         </header>
-        <main className="app-content">{children}</main>
+        <main className="app-content passenger-screen">{children}</main>
         {nav && (
           <nav className="bottom-nav" aria-label="应用导航">
             <NavLink end to="/app">
@@ -186,7 +185,6 @@ export function Login() {
             placeholder={passwordRuleText}
           />
         </label>
-        <LanguageSelect />
       {!services && !production && (
           <label>
             推荐码 <small>选填</small>
@@ -251,10 +249,9 @@ export function AppHome() {
       </section>
       <section className="passenger-member-strip" aria-label="会员信息"><div><small>旅行金</small><b>¥{state.credits}</b></div><div><small>会员等级</small><b>{tierFor(state.completedTrips).name}</b></div><Link to="/app/rewards">查看权益 →</Link></section>
       <nav className="passenger-quick-actions" aria-label="常用功能">
-        <Link to="/app/trips"><i>旅</i><span>找路线</span></Link>
-        <Link to="/app/orders"><i>单</i><span>我的订单</span></Link>
         <Link to="/app/my-trip"><i>行</i><span>集合行程</span></Link>
-        <Link to="/app/notifications"><i>知</i><span>通知</span></Link>
+        <Link to="/app/guides"><i>读</i><span>旅行指南</span></Link>
+        <Link to="/app/rewards"><i>惠</i><span>会员权益</span></Link>
         <Link to="/app/support"><i>问</i><span>客服</span></Link>
       </nav>
       <Link className="passenger-alert-ribbon" to="/app/notifications"><span>出发提醒</span><b>付款、集合与车辆通知集中查看</b><strong>›</strong></Link>
@@ -337,12 +334,6 @@ export function AppTrip() {
       <section className="route-detail-hero"><img src={t.heroImage} alt={`${t.shortTitle}路线风景`} /><div className="route-detail-overlay"><span>{t.region} · {t.duration}</span><h1>{t.shortTitle}</h1><p>{t.subtitle}</p></div></section>
       <div className="route-facts"><span><small>行程时长</small><b>{t.duration}</b></span><span><small>步行强度</small><b>{t.walkingLevel}</b></span><span><small>服务语言</small><b>{t.languages.join('、')}</b></span></div>
       <p className="route-lead">{t.description}</p>
-      <div className="chips route-tags">
-        {t.categories.map((c) => (
-          <span key={c}>{c}</span>
-        ))}
-        <span>{sellable.length?`${sellable.length} 个班次可预订`:'班次待开放'}</span>
-      </div>
       <h2>行程亮点</h2>
       <ul className="check-list">
         {t.highlights.map((x) => (
