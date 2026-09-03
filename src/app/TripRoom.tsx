@@ -773,6 +773,14 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
           if (own)
             void updateOwnAttendance(own.passenger_id, "at_meeting_point");
         }}
+        initialLateMinutes={(attendance[0] as {late_minutes?:number|null}|undefined)?.late_minutes}
+        onLate={async (minutes) => {
+          const own = attendance[0];
+          if (!own) return false;
+          const ok = await services.tripRoom.reportOwnLate(own.passenger_id, minutes);
+          if (ok) setAttendance(await services.tripRoom.loadAttendance(room.vehicle_group_id) as RemoteAttendance[]);
+          return ok;
+        }}
       />
     );
   }

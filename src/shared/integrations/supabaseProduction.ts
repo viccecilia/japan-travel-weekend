@@ -776,6 +776,15 @@ export class SupabaseTripRoomRepository {
     });
     return !error;
   }
+  async reportOwnLate(passengerId: string, minutes: 5 | 10 | 15) {
+    if (!this.client) return false;
+    const { error } = await this.client.rpc("report_own_late_arrival", {
+      p_passenger: passengerId,
+      p_minutes: minutes,
+      p_idempotency_key: crypto.randomUUID(),
+    });
+    return !error;
+  }
   async setStaffCheckin(
     vehicleGroupId: string,
     passengerId: string,
