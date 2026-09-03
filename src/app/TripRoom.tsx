@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { appConfig } from "../shared/config/businessRules";
-import { TravelService } from "../shared/services/travelService";
 import { describeAssistance } from "../shared/services/passengerAssistance";
 import { remoteChatAvailability } from "../shared/services/realtimeAccess";
 import { travelRepository } from "../shared/data/repository";
@@ -10,7 +9,8 @@ import { driverLocationNavigationUrl } from "../shared/capabilities/locationLink
 import {attendanceSummary} from "../shared/services/attendance";
 import {chatLanguages,preferredChatLanguage,templateTranslation,type ChatLanguage} from "../shared/services/chatTranslation";
 import { useApp } from "./store";
-const service = new TravelService(travelRepository);
+import {PassengerChatRoom} from './PassengerChatRoom';
+import {passengerChatDemo} from '../shared/data/passengerChatDemo';
 const Empty = () => (
   <div className="empty-card">
     <b>暂无进行中的行程</b>
@@ -87,11 +87,7 @@ export function MyTrip() {
   );
 }
 export function TripRoom() {
-  const { state, setState, services } = useApp();
-  const [notice, setNotice] = useState("");
-  const [localTranslationLanguage,setLocalTranslationLanguage]=useState<ChatLanguage>(()=>preferredChatLanguage(typeof navigator==='undefined'?[]:navigator.languages));
-  const [localFollowDevice,setLocalFollowDevice]=useState(true);
-  const [localAutoTranslate,setLocalAutoTranslate]=useState(true);
+  const { state, services } = useApp();
   if (services) return <RemoteTripRoom services={services} />;
   if (appConfig.runtimeMode === "production")
     return (
@@ -102,134 +98,7 @@ export function TripRoom() {
     );
   const room = state.tripRoom;
   if (!room) return <Empty />;
-  const dep = travelRepository.getDeparture("dep-kyoto-seed");
-  const frozen = room.access === "frozen";
-  const pending = "待确认；确认后将在本页面和订单详情中更新";
-  const share = (enabled: boolean) => {
-    if (frozen) return;
-    const grant = enabled
-      ? service.startLocationSharing(room, "current-passenger", 15)
-      : service.stopLocationSharing(room.locationGrant);
-    setState({ ...state, tripRoom: { ...room, locationGrant: grant } });
-    setNotice(
-      enabled
-        ? "已授权共享 15 分钟，仅本车司机和司导可见。"
-        : "位置共享已停止。",
-    );
-  };
-  return (
-    <div className="trip-room fulfillment-room">
-      <div className="frozen-banner" role="status">
-        <b>{frozen ? "群组只读预览" : "群组已开放"}</b>
-        <span>
-          {frozen
-            ? `群组将在${appConfig.tripRoom.opens}开放，当前可提前查看履约信息。`
-            : "本车群组已开放。"}
-        </span>
-      </div>
-      <div className="room-head">
-        <div>
-          <span>京都与奈良 · 本车群组</span>
-          <h1>集合与到达信息</h1>
-          <b>出发时间：{dep?.departureTime ?? "待确认"}</b>
-          <p>
-            集合地点：{dep?.meetingPointName ?? pending}
-            <br />
-            完整地址：{dep?.meetingAddress ?? pending}
-          </p>
-        </div>
-      </div>
-      <section className="fulfilment-summary">
-        <h2>到达方式</h2>
-        <div className="receipt">
-          <div>
-            <span>公共交通</span>
-            <b>{dep?.arrivalInstructions.transit ?? pending}</b>
-          </div>
-          <div>
-            <span>步行</span>
-            <b>{dep?.arrivalInstructions.walking ?? pending}</b>
-          </div>
-          <div>
-            <span>驾车</span>
-            <b>{dep?.arrivalInstructions.driving ?? pending}</b>
-          </div>
-        </div>
-        {dep?.meetingPhoto && (
-          <>
-            <img
-              className="meeting-photo"
-              src={dep.meetingPhoto}
-              alt="集合地点开发占位参考图"
-            />
-            <p className="notice">开发占位图，不是实际集合地点照片。</p>
-          </>
-        )}
-      </section>
-      <div className="demo-map" role="img" aria-label="地图位置待确认">
-        <span className="map-label">地图位置待确认 · 地图服务未连接</span>
-      </div>
-      <button className="button secondary full" disabled>
-        打开导航（地图未连接）
-      </button>
-      {!frozen && (
-        <div className="room-actions">
-          {room.locationGrant.enabled ? (
-            <button className="room-action" onClick={() => share(false)}>
-              停止共享位置
-            </button>
-          ) : (
-            <button className="room-action" onClick={() => share(true)}>
-              共享我的位置 15 分钟
-            </button>
-          )}
-        </div>
-      )}
-      {notice && (
-        <div className="demo-notice room-notice" role="status">
-          {notice}
-        </div>
-      )}
-      <section className="vehicle-chat fulfillment-chat">
-        <h2>本车消息</h2>
-        <p className="privacy">
-          仅本车乘客与被分配的工作人员可见，不展示私人联系方式。
-        </p>
-        <fieldset className="translation-settings">
-          <legend>聊天翻译</legend>
-          <label><input type="checkbox" checked={localFollowDevice} onChange={event=>{setLocalFollowDevice(event.target.checked);if(event.target.checked)setLocalTranslationLanguage(preferredChatLanguage(navigator.languages))}}/> 跟随手机系统语言</label>
-          <label>翻译成<select value={localTranslationLanguage} disabled={localFollowDevice} onChange={event=>setLocalTranslationLanguage(event.target.value as ChatLanguage)}>{chatLanguages.map(language=><option key={language.code} value={language.code}>{language.label}</option>)}</select></label>
-          <label><input type="checkbox" checked={localAutoTranslate} onChange={event=>setLocalAutoTranslate(event.target.checked)}/> 自动显示译文</label>
-          <p className="privacy">当前目标：{chatLanguages.find(item=>item.code===localTranslationLanguage)?.label}。开发模式仅验证界面，不调用外部翻译服务。</p>
-        </fieldset>
-        {room.messages.map((m) => (
-          <article key={m.id} className={`${m.important ? "important " : ""}${m.role === "system" ? "system-card" : "member-message"}`}>
-            <header>
-              <b>{m.author}</b>
-              <span>{m.role === "system" ? "系统" : "成员"}</span>
-            </header>
-            <p>{m.content}</p>
-          </article>
-        ))}
-        <label>
-          发送消息
-          <textarea
-            disabled
-            value=""
-            onChange={() => {}}
-            placeholder={
-              frozen
-                ? `群组将在${appConfig.tripRoom.opens}开放`
-                : "消息功能尚未连接"
-            }
-          />
-        </label>
-        <button className="button full" disabled>
-          {frozen ? "群组尚未开放" : "消息功能尚未连接"}
-        </button>
-      </section>
-    </div>
-  );
+  return <PassengerChatRoom {...passengerChatDemo}/>;
 }
 
 type RemoteMessage = {id:string;content:string;original_content?:string|null;source_language?:string;template_key?:string|null;important?:boolean;author_id?:string;trip_room_message_translations?:Array<{target_language:string;translated_content:string;provider:string;quality:string}>};
@@ -399,6 +268,11 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
   const markBoarded=async(orderId:string)=>{const ok=await services.tripRoom.markOrderBoarded(room.vehicle_group_id,orderId);if(!ok){setNotice("登车状态更新失败或订单不属于本车。");return}setBoardings((await services.tripRoom.loadBoardingStatus(room.vehicle_group_id)) as RemoteBoarding[]);setNotice("登车状态已更新。");};
   const verifyBoarding=async()=>{if(!boardingToken.trim())return;const result=await services.verifyBoardingCredential({token:boardingToken.trim(),vehicleGroupId:room.vehicle_group_id,idempotencyKey:crypto.randomUUID()});if(!result){setBoardingResult('核验被拒绝：凭证格式、工作人员权限或本车归属不正确。');return}const labels:Record<string,string>={valid:'核验成功，已登记登车。',used:'该凭证已经使用。',expired:'该凭证已经过期。',revoked:'该凭证无效或已撤销。','wrong-vehicle':'该凭证不属于本车。'};setBoardingResult(labels[result.status]??`核验结果：${result.status}`);setBoardingToken('');setBoardings((await services.tripRoom.loadBoardingStatus(room.vehicle_group_id)) as RemoteBoarding[]);};
   const previewPhoto=(file:File|undefined)=>{if(!file)return;if(!file.type.startsWith('image/')||file.size>5*1024*1024){setNotice('请选择不超过 5 MB 的图片文件。');return}const reader=new FileReader();reader.onload=()=>typeof reader.result==='string'&&setLocalPhoto({name:file.name,url:reader.result});reader.readAsDataURL(file);};
+  if(passenger){
+    const remoteStop={...passengerChatDemo.stops[0],name:'当前集合',meetingTime:room.departs_at?new Date(room.departs_at).toLocaleTimeString('zh-CN',{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit',hour12:false}):passengerChatDemo.stops[0].meetingTime,meetingPointName:room.meeting_name??passengerChatDemo.stops[0].meetingPointName,meetingPointDescription:room.meeting_address??undefined,latitude:room.map_lat??passengerChatDemo.stops[0].latitude,longitude:room.map_lng??passengerChatDemo.stops[0].longitude,status:'current' as const};
+    const passengerMessages=messages.map(message=>({id:message.id,senderId:message.author_id??'operations',name:message.author_id===currentUserId?'我':message.author_id?'本车成员':'Japan Travel',role:(message.author_id?'passenger':'operations') as 'passenger'|'operations',content:message.original_content??message.content,translated:translatedMessage(message)??undefined,sourceLanguage:message.source_language,time:''}));
+    return <PassengerChatRoom {...passengerChatDemo} status={room.room_status==='closed'?'ended':room.room_status==='open'?'meeting':'preparing'} stage={room.room_status==='open'?'集合与登车':'出发准备'} party={{arrived:attendanceTotals.arrived,total:attendanceTotals.total||room.booked_seats,distanceMeters:passengerChatDemo.party.distanceMeters,walkMinutes:passengerChatDemo.party.walkMinutes}} stops={[remoteStop,...passengerChatDemo.stops.slice(1)]} messages={passengerMessages.length?passengerMessages:passengerChatDemo.messages} readOnly={!access.enabled} onSend={content=>void services.tripRoom.sendMessage(room.room_id,content)} onArrive={()=>{const own=attendance[0];if(own)void updateOwnAttendance(own.passenger_id,'at_meeting_point')}}/>;
+  }
   return (
     <div className="trip-room fulfillment-room">
       <div className="frozen-banner" role="status">
