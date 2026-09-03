@@ -41,6 +41,14 @@ type AttendanceRow = {
   status_at: string | null;
   contact_status: string | null;
 };
+type AttendanceSummary = {
+  total: number;
+  arrived: number;
+  boarded: number;
+  needs_assistance: number;
+  pending: number;
+  all_present: boolean;
+};
 type StaffMessage = {
   id: string;
   content: string;
@@ -490,16 +498,23 @@ function PassengerAction({
   );
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState("");
+  const [summary, setSummary] = useState<AttendanceSummary | null>(null);
   const [contacts, setContacts] = useState<
     Record<string, { contact_name: string; phone: string }>
   >({});
   const refresh = async () => {
-    if (services)
+    if (services) {
       setRows(
         (await services.tripRoom.loadAttendance(
           task.vehicle_group_id,
         )) as AttendanceRow[],
       );
+      setSummary(
+        (await services.tripRoom.loadAttendanceSummary(
+          task.vehicle_group_id,
+        )) as AttendanceSummary | null,
+      );
+    }
   };
   useEffect(() => {
     let active = true;
@@ -511,6 +526,11 @@ function PassengerAction({
       .loadAttendance(task.vehicle_group_id)
       .then((value) => {
         if (active) setRows(value as AttendanceRow[]);
+      });
+    void services.tripRoom
+      .loadAttendanceSummary(task.vehicle_group_id)
+      .then((value) => {
+        if (active) setSummary(value as AttendanceSummary | null);
       });
     return () => {
       active = false;
@@ -587,6 +607,32 @@ function PassengerAction({
       <div className="staff-detail-note">
         仅显示本车团员和履约必要信息。联系电话只在允许联系后按需显示，并记录查看人和时间。
       </div>
+      {summary && (
+        <div
+          className="staff-kpis staff-attendance-summary"
+          aria-label="本车签到汇总"
+        >
+          <article>
+            <span>已到集合点</span>
+            <b>
+              {summary.arrived}/{summary.total}
+            </b>
+            <small>
+              {summary.all_present ? "全员已到" : `待确认 ${summary.pending}`}
+            </small>
+          </article>
+          <article>
+            <span>已登车</span>
+            <b>{summary.boarded}</b>
+            <small>按本人逐一确认</small>
+          </article>
+          <article>
+            <span>需要协助</span>
+            <b>{summary.needs_assistance}</b>
+            <small>优先处理</small>
+          </article>
+        </div>
+      )}
       {rows.length === 0 ? (
         <StatusCard title="暂无本车乘客">
           订单分车后，乘客会按车辆群组显示。
