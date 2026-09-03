@@ -315,7 +315,7 @@ export function AppTrips() {
         title="下一次想去哪里？"
         text="路线可浏览，日期、价格和余位以正式开放信息为准。"
       />
-      <div className="catalog-intro"><b>{trips.length} 条精选路线</b><span>从经典古都到海岸、温泉与亲子主题</span></div>
+      <div className="catalog-intro"><b>{trips.length} 条精选路线</b><span>每日可订 · 大阪出发 · 中文服务</span></div>
       <div className="app-list route-card-list">
         {trips.map((t) => (
           <TripCard key={t.id} trip={t} app />
@@ -335,6 +335,7 @@ export function AppTrip() {
       <section className="route-detail-hero"><img src={t.heroImage} alt={`${t.shortTitle}路线风景`} /><div className="route-detail-overlay"><span>{t.region} · {t.duration}</span><h1>{t.shortTitle}</h1><p>{t.subtitle}</p></div></section>
       <div className="route-facts"><span><small>行程时长</small><b>{t.duration}</b></span><span><small>步行强度</small><b>{t.walkingLevel}</b></span><span><small>服务语言</small><b>{t.languages.join('、')}</b></span></div>
       <p className="route-lead">{t.description}</p>
+      <section className="route-trust-strip" aria-label="预订保障"><span><b>当天往返</b><small>清楚显示预计结束时间</small></span><span><b>价格透明</b><small>下单前核对费用与规则</small></span><span><b>集中通知</b><small>集合及车辆变更及时送达</small></span></section>
       <nav className="route-section-nav" aria-label="线路详情导航"><a href="#route-reasons">路线亮点</a><a href="#route-schedule">参考行程</a><a href="#route-prep">出发准备</a></nav>
       <section className="route-reasons" id="route-reasons"><header><span>WHY THIS TRIP</span><h2>这条路线值得去的理由</h2></header><div>{t.highlights.map((item,index)=><article key={item}><i>{String(index+1).padStart(2,'0')}</i><h3>{item}</h3><p>{index===0?t.summary:index===1?`一天串联${t.stops.slice(0,3).join('、')}等代表性地点。`:`由${t.languages.join('、')}服务陪伴，重要变更集中在订单与行程通知中。`}</p></article>)}</div></section>
       <section className="route-spot-preview"><header><span>SPOT PREVIEW</span><h2>沿途会看到什么</h2></header><div>{t.timeline.filter(item=>!item.title.includes('集合')&&!item.title.includes('返回')).slice(0,3).map((item,index)=><article key={item.title}><b>{String(index+1).padStart(2,'0')}</b><div><span>{item.location}</span><h3>{item.title}</h3><p>{item.detail}</p></div></article>)}</div></section>
