@@ -63,6 +63,7 @@ export type VehicleGroupMeetingRow = {
   changed_at: string;
   acknowledged: boolean;
 };
+export type PassengerTripContextRow={trip_title:string;itinerary:string[];return_at:string|null;staff_name:string|null;staff_role:'driver'|'guide'|'operations'|null;vehicle_type:string;vehicle_label:string|null};
 const seatStatus = (available: number, capacity: number): SeatStatus =>
   available <= 0
     ? "已售罄"
@@ -606,6 +607,7 @@ export class SupabaseTripRoomRepository {
       return null;
     }
   }
+  async loadPassengerContext(vehicleGroupId:string){if(!this.client)return null;try{const {data,error}=await this.client.rpc('get_passenger_trip_context',{p_vehicle_group:vehicleGroupId}).maybeSingle();return error?null:data as PassengerTripContextRow|null}catch{return null}}
   async acknowledgeMeeting(vehicleGroupId: string, revision: number) {
     if (!this.client) return false;
     try {
@@ -668,13 +670,7 @@ export class SupabaseTripRoomRepository {
   }
   async loadMessages(roomId: string) {
     if (!this.client) return [];
-    const { data, error } = await this.client
-      .from("trip_room_messages")
-      .select(
-        "id,author_id,content,original_content,source_language,template_key,important,created_at,trip_room_message_translations(target_language,translated_content,provider,quality)",
-      )
-      .eq("trip_room_id", roomId)
-      .order("created_at");
+    const { data, error } = await this.client.rpc('get_trip_room_messages_for_member',{p_room:roomId});
     return error ? [] : (data ?? []);
   }
   async sendMessage(

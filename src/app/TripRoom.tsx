@@ -114,6 +114,8 @@ type RemoteMessage = {
   template_key?: string | null;
   important?: boolean;
   author_id?: string;
+  author_name?: string;
+  author_role?: "passenger"|"driver"|"guide"|"operations";
   created_at?: string;
   trip_room_message_translations?: Array<{
     target_language: string;
@@ -151,6 +153,7 @@ type RemoteMeeting = {
   changed_at: string;
   acknowledged: boolean;
 };
+type PassengerTripContext={trip_title:string;itinerary:string[];return_at:string|null;staff_name:string|null;staff_role:'driver'|'guide'|'operations'|null;vehicle_type:string;vehicle_label:string|null};
 type RemoteAttendance = {
   passenger_id: string;
   passenger_label: string;
@@ -231,6 +234,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
     useState<RemoteDriverLocation | null>(null);
   const [locatingDriver, setLocatingDriver] = useState(false);
   const [meeting, setMeeting] = useState<RemoteMeeting | null>(null);
+  const [passengerContext,setPassengerContext]=useState<PassengerTripContext|null>(null);
   const subscription = useRef<{
     close(): void;
   } | null>(null);
@@ -276,6 +280,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
           nextRoom.vehicle_group_id,
         )) as RemoteMeeting | null,
       );
+      if(currentRole==='passenger')setPassengerContext(await services.tripRoom.loadPassengerContext(nextRoom.vehicle_group_id) as PassengerTripContext|null);
       setDriverLocation(
         (await services.tripRoom.loadDriverLocation(
           nextRoom.vehicle_group_id,
@@ -690,22 +695,16 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
           : Number(room.map_lng),
       status: "current" as const,
     };
+    const itineraryStops=(passengerContext?.itinerary??[]).filter(name=>name!==remoteStop.meetingPointName).map((name,index)=>({id:`route-${index}`,name,meetingTime:"时间待司导更新",meetingPointName:name,meetingPointDescription:"具体停留与集合安排以司导在群内发布的信息为准。",latitude:remoteStop.latitude,longitude:remoteStop.longitude,status:'upcoming' as const}));
+    if(passengerContext?.return_at)itineraryStops.push({id:'return',name:'预计返程到达',meetingTime:new Date(passengerContext.return_at).toLocaleTimeString('zh-CN',{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit',hour12:false}),meetingPointName:'返回地点以订单与司导通知为准',meetingPointDescription:'预计到达时间会受当天交通影响。',latitude:remoteStop.latitude,longitude:remoteStop.longitude,status:'upcoming' as const});
     const passengerMessages = messages.map((message) => ({
       id: message.id,
       senderId: message.author_id ?? "operations",
       name:
         message.author_id === currentUserId
           ? "我"
-          : message.template_key
-            ? "司导通知"
-            : message.author_id
-              ? "本车成员"
-              : "Japan Travel",
-      role: (message.template_key
-        ? "guide"
-        : message.author_id
-          ? "passenger"
-          : "operations") as "passenger" | "guide" | "operations",
+          : message.author_name??"本车成员",
+      role: (message.author_role??"passenger") as "passenger" | "driver" | "guide" | "operations",
       content: message.original_content ?? message.content,
       translated: translatedMessage(message) ?? undefined,
       sourceLanguage: message.source_language,
@@ -720,7 +719,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
     }));
     return (
       <PassengerChatRoom
-        tripName={room.vehicle_label ?? "本车旅行团"}
+        tripName={passengerContext?.trip_title??room.vehicle_label ?? "本车旅行团"}
         status={
           room.room_status === "closed"
             ? "ended"
@@ -752,17 +751,17 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
           walkMinutes: null,
         }}
         guide={{
-          name: "当班司导",
-          role: "司导资料待更新",
+          name: passengerContext?.staff_name??"当班工作人员待分配",
+          role: passengerContext?.staff_role==='guide'?"司导":passengerContext?.staff_role==='driver'?"司机":"工作人员",
           phone: "",
           avatar: "导",
           vehicle: {
-            type: room.vehicle_type || "车型待定",
+            type: passengerContext?.vehicle_type??(room.vehicle_type || "车型待定"),
             color: "颜色待更新",
-            plate: room.vehicle_label ?? "车牌待更新",
+            plate: passengerContext?.vehicle_label??room.vehicle_label ?? "车牌待更新",
           },
         }}
-        stops={[remoteStop]}
+        stops={[remoteStop,...itineraryStops]}
         messages={passengerMessages}
         readOnly={!access.enabled}
         onSend={(content) =>
