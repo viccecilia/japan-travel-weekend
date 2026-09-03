@@ -363,12 +363,16 @@ export function BookingPage() {
   const deps = departures.filter((d) => d.tripSlug === t.slug);
   const nav = useNavigate();
   const sellable = deps.filter((departure) => departure.price != null && departure.availableSeats !== 0);
-  const initialDeparture=state.booking?.tripSlug===t.slug&&sellable.some(item=>item.id===state.booking?.departureId)?state.booking.departureId:sellable[0]?.id??'';
+  const datedDepartures=deps.filter(departure=>departure.departureTime).sort((a,b)=>new Date(a.departureTime!).getTime()-new Date(b.departureTime!).getTime()).slice(0,30);
+  const displayedDepartures=datedDepartures.length?datedDepartures:deps;
+  const firstDisplayedSellable=displayedDepartures.find(item=>item.price!=null&&item.availableSeats!==0);
+  const initialDeparture=state.booking?.tripSlug===t.slug&&displayedDepartures.some(item=>item.id===state.booking?.departureId)?state.booking.departureId:firstDisplayedSellable?.id??'';
   const [selectedDeparture,setSelectedDeparture]=useState(initialDeparture);
   const [adults,setAdults]=useState(state.booking?.tripSlug===t.slug?state.booking?.adults??1:1);
   const [children,setChildren]=useState(state.booking?.tripSlug===t.slug?state.booking?.children??0:0);
   const [infants,setInfants]=useState(state.booking?.tripSlug===t.slug?state.booking?.infants??0:0);
-  const chosen=sellable.find(item=>item.id===selectedDeparture);
+  const effectiveDepartureId=displayedDepartures.some(item=>item.id===selectedDeparture)?selectedDeparture:firstDisplayedSellable?.id??'';
+  const chosen=sellable.find(item=>item.id===effectiveDepartureId);
   const bookingTotal=seatOrderTotal(chosen?.price,adults+children+infants);
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -390,7 +394,8 @@ export function BookingPage() {
       <section className="booking-route-summary"><img src={t.heroImage} alt=""/><div><span>{t.region} · {t.duration}</span><h1>{t.shortTitle}</h1><p>{t.subtitle}</p></div></section>
       {deps.length ? (
         <form className="form" onSubmit={submit}>
-          <fieldset className="departure-picker"><legend>选择出发日期</legend>{deps.map(d=><label className={selectedDeparture===d.id?'selected':''} key={d.id}><input required type="radio" name="departure" value={d.id} checked={selectedDeparture===d.id} disabled={d.price==null||d.availableSeats===0} onChange={()=>setSelectedDeparture(d.id)}/><span><b>{d.dateLabel}</b><small>{d.status}{d.availableSeats==null?'':` · 余 ${d.availableSeats} 席`}</small></span><strong>{d.price==null?'待公布':`¥${d.price.toLocaleString('ja-JP')}/席`}</strong></label>)}</fieldset>
+          <fieldset className="departure-calendar"><legend>选择出发日期 <small>未来 30 天 · 日本时间</small></legend><div className="departure-calendar-grid">{displayedDepartures.map(d=>{const date=d.departureTime?new Date(d.departureTime):null;const day=date?new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Tokyo',day:'numeric'}).format(date):d.dateLabel;const weekday=date?new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Tokyo',weekday:'short'}).format(date):'';const weekend=weekday==='周六'||weekday==='周日';return <label className={`${effectiveDepartureId===d.id?'selected ':''}${weekend?'weekend':''}`} key={d.id}><input required type="radio" name="departure" value={d.id} checked={effectiveDepartureId===d.id} disabled={d.price==null||d.availableSeats===0} onChange={()=>setSelectedDeparture(d.id)}/><span>{weekday||'日期'}</span><b>{day}</b><small>{d.price==null?'待定':`¥${d.price.toLocaleString('ja-JP')}`}</small></label>})}</div></fieldset>
+          {chosen&&<div className="selected-departure-summary"><div><span>已选日期</span><b>{chosen.dateLabel}</b></div><div><span>价格类型</span><b>{chosen.departureTime&&['周六','周日'].includes(new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Tokyo',weekday:'short'}).format(new Date(chosen.departureTime)))?'周末价格':'平日价格'}</b></div><div><span>余位</span><b>{chosen.availableSeats==null?'待公布':`${chosen.availableSeats} 席`}</b></div></div>}
           <h2 className="booking-subtitle">出行人数</h2>
           <div className="form-row booking-party-grid">
             <label>
