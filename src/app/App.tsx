@@ -327,6 +327,7 @@ export function AppTrips() {
 export function AppTrip() {
   const t = travelRepository.getTrip(useParams().slug || "");
   const {departures}=useApp();
+  const [activeDetailTab,setActiveDetailTab]=useState<'highlights'|'schedule'|'prep'>('highlights');
   if (!t) return <Empty title="未找到行程" />;
   const routeDepartures=departures.filter(item=>item.tripSlug===t.slug);
   const sellable=routeDepartures.filter(item=>item.price!=null&&item.availableSeats!==0);
@@ -336,28 +337,24 @@ export function AppTrip() {
       <div className="route-facts"><span><small>行程时长</small><b>{t.duration}</b></span><span><small>步行强度</small><b>{t.walkingLevel}</b></span><span><small>服务语言</small><b>{t.languages.join('、')}</b></span></div>
       <p className="route-lead">{t.description}</p>
       <section className="route-trust-strip" aria-label="预订保障"><span><b>当天往返</b><small>清楚显示预计结束时间</small></span><span><b>价格透明</b><small>下单前核对费用与规则</small></span><span><b>集中通知</b><small>集合及车辆变更及时送达</small></span></section>
-      <nav className="route-section-nav" aria-label="线路详情导航"><a href="#route-reasons">路线亮点</a><a href="#route-schedule">参考行程</a><a href="#route-prep">出发准备</a></nav>
-      <section className="route-reasons" id="route-reasons"><header><span>WHY THIS TRIP</span><h2>这条路线值得去的理由</h2></header><div>{t.highlights.map((item,index)=><article key={item}><i>{String(index+1).padStart(2,'0')}</i><h3>{item}</h3><p>{index===0?t.summary:index===1?`一天串联${t.stops.slice(0,3).join('、')}等代表性地点。`:`由${t.languages.join('、')}服务陪伴，重要变更集中在订单与行程通知中。`}</p></article>)}</div></section>
-      <section className="route-spot-preview"><header><span>SPOT PREVIEW</span><h2>沿途会看到什么</h2></header><div>{t.timeline.filter(item=>!item.title.includes('集合')&&!item.title.includes('返回')).slice(0,3).map((item,index)=><article key={item.title}><b>{String(index+1).padStart(2,'0')}</b><div><span>{item.location}</span><h3>{item.title}</h3><p>{item.detail}</p></div></article>)}</div></section>
-      <h2 id="route-schedule">参考行程顺序</h2>
-      <div className="route-timeline">
-        {t.timeline.map((item,index)=><article key={`${item.title}-${index}`}><span>{item.time??'时间以班次为准'}</span><div><h3>{item.title}</h3><b>{item.location}</b><p>{item.detail}</p></div></article>)}
-      </div>
-      <div className="route-detail-grid">
-        <section><h2>适合人群</h2><ul className="check-list">{t.suitableFor.map(item=><li key={item}>{item}</li>)}</ul></section>
-        <section><h2>餐食与步行</h2><p>{t.mealOptions}</p><p>步行强度：{t.walkingLevel}</p></section>
-        <section><h2>包含项目</h2><ul>{t.included.map(item=><li key={item}>{item}</li>)}</ul></section>
-        <section><h2>不包含项目</h2><ul>{t.excluded.map(item=><li key={item}>{item}</li>)}</ul></section>
-      </div>
-      <h2>预订前须知</h2>
-      <ul className="check-list">{t.notices.map(item=><li key={item}>{item}</li>)}</ul>
-      <section className="travel-prep-section" id="route-prep">
-        <header><span>出发准备</span><h2>准备充分，旅途更轻松</h2><p>以下是这条路线的实用建议；出发前仍请查看订单中的当日天气和最新通知。</p></header>
-        <div className="travel-prep-grid">
-          <details open><summary><i>包</i><span><b>建议携带</b><small>随身物品清单</small></span></summary><ul>{t.packingList.map(item=><li key={item}>{item}</li>)}</ul></details>
-          <details><summary><i>衣</i><span><b>穿着建议</b><small>结合步行量和天气准备</small></span></summary><p>{t.clothingAdvice}</p></details>
-          <details><summary><i>心</i><span><b>友情提示</b><small>让全团出行更顺畅</small></span></summary><ul>{t.friendlyReminders.map(item=><li key={item}>{item}</li>)}</ul></details>
-          <details><summary><i>助</i><span><b>儿童与特殊需求</b><small>需要时请提前申报</small></span></summary><p>{t.childPolicy}</p><p>{t.luggagePolicy}</p><p>{t.assistanceStatus}。</p></details>
+      <section className="route-detail-window">
+        <nav className="route-section-nav" aria-label="线路详情导航" role="tablist">
+          {([['highlights','路线亮点'],['schedule','参考行程'],['prep','出发准备']] as const).map(([key,label])=><button key={key} type="button" role="tab" aria-selected={activeDetailTab===key} className={activeDetailTab===key?'active':''} onClick={()=>setActiveDetailTab(key)}>{label}</button>)}
+        </nav>
+        <div className="route-tab-panel" role="tabpanel">
+          {activeDetailTab==='highlights'&&<>
+            <section className="route-reasons"><header><span>WHY THIS TRIP</span><h2>这条路线值得去的理由</h2></header><div>{t.highlights.map((item,index)=><article key={item}><i>{String(index+1).padStart(2,'0')}</i><h3>{item}</h3><p>{index===0?t.summary:index===1?`一天串联${t.stops.slice(0,3).join('、')}等代表性地点。`:`由${t.languages.join('、')}服务陪伴，重要变更集中在订单与行程通知中。`}</p></article>)}</div></section>
+            <section className="route-spot-preview"><header><span>SPOT PREVIEW</span><h2>沿途会看到什么</h2></header><div>{t.timeline.filter(item=>!item.title.includes('集合')&&!item.title.includes('返回')).slice(0,3).map((item,index)=><article key={item.title}><b>{String(index+1).padStart(2,'0')}</b><div><span>{item.location}</span><h3>{item.title}</h3><p>{item.detail}</p></div></article>)}</div></section>
+          </>}
+          {activeDetailTab==='schedule'&&<>
+            <div className="route-panel-heading"><span>DAY SCHEDULE</span><h2>参考行程顺序</h2><p>具体时间会因路况、天气和现场运营情况调整，请以当日通知为准。</p></div>
+            <div className="route-timeline">{t.timeline.map((item,index)=><article key={`${item.title}-${index}`}><span>{item.time??'时间以班次为准'}</span><div><h3>{item.title}</h3><b>{item.location}</b><p>{item.detail}</p></div></article>)}</div>
+            <div className="route-detail-grid"><section><h2>适合人群</h2><ul className="check-list">{t.suitableFor.map(item=><li key={item}>{item}</li>)}</ul></section><section><h2>餐食与步行</h2><p>{t.mealOptions}</p><p>步行强度：{t.walkingLevel}</p></section><section><h2>包含项目</h2><ul>{t.included.map(item=><li key={item}>{item}</li>)}</ul></section><section><h2>不包含项目</h2><ul>{t.excluded.map(item=><li key={item}>{item}</li>)}</ul></section></div>
+          </>}
+          {activeDetailTab==='prep'&&<>
+            <section className="travel-prep-section"><header><span>出发准备</span><h2>准备充分，旅途更轻松</h2><p>以下是这条路线的实用建议；出发前仍请查看订单中的当日天气和最新通知。</p></header><div className="travel-prep-grid"><details open><summary><i>包</i><span><b>建议携带</b><small>随身物品清单</small></span></summary><ul>{t.packingList.map(item=><li key={item}>{item}</li>)}</ul></details><details><summary><i>衣</i><span><b>穿着建议</b><small>结合步行量和天气准备</small></span></summary><p>{t.clothingAdvice}</p></details><details><summary><i>心</i><span><b>友情提示</b><small>让全团出行更顺畅</small></span></summary><ul>{t.friendlyReminders.map(item=><li key={item}>{item}</li>)}</ul></details><details><summary><i>助</i><span><b>儿童与特殊需求</b><small>需要时请提前申报</small></span></summary><p>{t.childPolicy}</p><p>{t.luggagePolicy}</p><p>{t.assistanceStatus}。</p></details></div></section>
+            <section className="route-booking-notices"><span>BOOKING NOTES</span><h2>预订前须知</h2><ul className="check-list">{t.notices.map(item=><li key={item}>{item}</li>)}</ul></section>
+          </>}
         </div>
       </section>
       <p className="notice">{t.assistanceStatus}。未确认或无法提供的附加服务不会提前收费。</p>
