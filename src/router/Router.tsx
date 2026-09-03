@@ -166,7 +166,7 @@ export function Router() {
       <Route
         path="/app/my-trip/room"
         element={
-          <RequireAccount><AppShell><TripRoom /></AppShell></RequireAccount>
+          <RequireAccount><AppShell nav><TripRoom /></AppShell></RequireAccount>
         }
       />
       <Route
