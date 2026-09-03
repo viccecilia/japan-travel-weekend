@@ -23,8 +23,93 @@ const Empty = () => (
     <Link to="/app/trips">浏览路线 →</Link>
   </div>
 );
+type OwnTripFulfilment = {
+  departs_at: string;
+  meeting_name: string | null;
+  meeting_address: string | null;
+  vehicle_group_id: string | null;
+  trip_room_id: string | null;
+  boarding_ready: boolean;
+};
 export function MyTrip() {
-  const { state } = useApp();
+  const { state, services } = useApp();
+  const [remote, setRemote] = useState<{
+    loading: boolean;
+    error: string | null;
+    order: { id: string; departure_id: string; seat_count: number; status: string } | null;
+    fulfilment: OwnTripFulfilment | null;
+  }>({ loading: Boolean(services), error: null, order: null, fulfilment: null });
+  useEffect(() => {
+    let active = true;
+    if (!services) return () => { active = false; };
+    void services.loadOwnOrders().then(async (result) => {
+      if (!active) return;
+      if (result.error) {
+        setRemote({ loading: false, error: result.error, order: null, fulfilment: null });
+        return;
+      }
+      const eligible = (result.data as Array<{ id: string; departure_id: string; seat_count: number; status: string }>).filter(
+        (item) => item.status === "paid" || item.status === "confirmed",
+      );
+      const candidates = await Promise.all(
+        eligible.map(async (order) => ({ order, fulfilment: await services.loadOwnOrderFulfilment(order.id) as OwnTripFulfilment | null })),
+      );
+      if (!active) return;
+      const withFulfilment = candidates
+        .filter((item) => item.fulfilment)
+        .sort((a, b) => new Date(a.fulfilment!.departs_at).getTime() - new Date(b.fulfilment!.departs_at).getTime());
+      const selected = withFulfilment.find(
+        (item) => new Date(item.fulfilment!.departs_at).getTime() >= Date.now(),
+      ) ?? withFulfilment[0] ?? candidates[0];
+      setRemote({
+        loading: false,
+        error: null,
+        order: selected?.order ?? null,
+        fulfilment: selected?.fulfilment ?? null,
+      });
+    }).catch(() => {
+      if (active) setRemote({ loading: false, error: "暂时无法读取本人行程", order: null, fulfilment: null });
+    });
+    return () => { active = false; };
+  }, [services]);
+  if (services) {
+    if (remote.loading)
+      return <div className="empty-card"><b>正在读取本人行程</b><p>请稍候，正在同步订单与集合资料。</p></div>;
+    if (remote.error)
+      return <div className="empty-card"><b>暂时无法读取行程</b><p>{remote.error}</p></div>;
+    if (!remote.order)
+      return <><div className="app-title"><div className="eyebrow">我的行程</div><h1>行程履约</h1></div><Empty /></>;
+    const fulfilment = remote.fulfilment;
+    return (
+      <div className="my-trip-page">
+        <div className="app-title">
+          <div className="eyebrow">我的账户／我的行程</div>
+          <h1>已付款一日游</h1>
+          <p>集合、车辆与行程房间会按运营确认进度更新。</p>
+        </div>
+        <div className="receipt">
+          <div><span>订单编号</span><b>{remote.order.id}</b></div>
+          <div><span>订单状态</span><b>{remote.order.status === "confirmed" ? "已确认" : "已付款"}</b></div>
+          <div><span>出发时间</span><b>{fulfilment ? new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Tokyo", month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(fulfilment.departs_at)) : "等待运营确认"}</b></div>
+          <div><span>集合地点</span><b>{fulfilment?.meeting_name ?? "等待运营确认"}</b></div>
+          <div><span>集合地址</span><b>{fulfilment?.meeting_address ?? "等待运营确认"}</b></div>
+        </div>
+        <Link className="button secondary full" to={`/app/orders/${remote.order.id}`}>查看订单详情</Link>
+        {fulfilment?.vehicle_group_id && fulfilment.trip_room_id ? (
+          <>
+            <div className="trip-status">
+              <span>{fulfilment.boarding_ready ? "车辆组与行程房间已准备" : "履约资料准备中"}</span>
+              <b>{fulfilment.meeting_name ?? "集合地点待确认"}</b>
+              <small>{fulfilment.meeting_address ?? "请留意最新通知"}</small>
+            </div>
+            <Link className="button full" to="/app/my-trip/room">进入本车行程房间</Link>
+          </>
+        ) : (
+          <p className="notice">订单已付款，车辆分组和行程房间仍在准备中；准备完成后入口会自动开放。</p>
+        )}
+      </div>
+    );
+  }
   const order = state.orders[0];
   if (!state.tripRoom && !order)
     return (
