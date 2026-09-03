@@ -23,7 +23,7 @@ export function TripCard({ trip, app = false, showcaseIndex }: { trip: Trip; app
           className="text-link"
           to={`${app ? "/app/trips" : "/trips"}/${trip.slug}`}
         >
-          查看详情 →
+          查看路线 <span aria-hidden="true">→</span>
         </Link>
       </div>
     </article>
