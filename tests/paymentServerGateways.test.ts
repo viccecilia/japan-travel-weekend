@@ -25,9 +25,9 @@ describe('服务端支付 gateway',()=>{
     expect(rpc).toHaveBeenCalledWith('reserve_inventory_from_draft',expect.objectContaining({p_draft:'draft-1',p_account:'account-1',p_departure:'dep-1',p_seats:3}));
   });
   it('银行转账待核对状态同时写入服务端权威金额',async()=>{
-    const rpc=vi.fn(async()=>({data:true,error:null}));
+    const rpc=vi.fn(async()=>({data:'2026-09-04T00:00:00Z',error:null}));
     const gateway=new SupabaseManualPaymentGateway({rpc} as never);
-    await expect(gateway.markPending('order-1',17000)).resolves.toBe(true);
+    await expect(gateway.markPending('order-1',17000)).resolves.toEqual({dueAt:'2026-09-04T00:00:00Z'});
     expect(rpc).toHaveBeenCalledWith('mark_bank_transfer_pending',{p_order:'order-1',p_amount:17000});
   });
 });

@@ -2043,7 +2043,7 @@ export function Payment() {
     const result=await services.createCheckout({draftId:state.booking.draftId,departureId:selectedDeparture.id,seats:seatImpact,idempotencyKey:crypto.randomUUID(),paymentMethod});
     setSubmitting(false);
     if(!result||result.status==='failed'){setCheckoutError(result?.status==='failed'?result.error:'测试支付服务不可用');return}
-    if(result.status==='pending_manual_review'){nav(`/app/payment-result?order_id=${encodeURIComponent(result.orderId)}&manual=1`);return}
+    if(result.status==='pending_manual_review'){nav(`/app/payment-result?order_id=${encodeURIComponent(result.orderId)}&manual=1&due_at=${encodeURIComponent(result.paymentDueAt)}`);return}
     setCardSession({orderId:result.orderId,clientSecret:result.clientSecret});
   };
   return (
@@ -2122,6 +2122,7 @@ export function PaymentResult() {
     status: string;
   } | null>(null);
   const manual = query.get("manual") === "1";
+  const manualPaymentDueAt = query.get("due_at");
   useEffect(() => {
     if (!services || !id) return;
     let active = true;
@@ -2196,6 +2197,7 @@ export function PaymentResult() {
             <span>订单状态</span>
             <b>{statusLabel}</b>
           </div>
+          {manual&&manualPaymentDueAt&&<div><span>转账付款期限（日本时间）</span><b>{new Date(manualPaymentDueAt).toLocaleString("zh-CN",{timeZone:"Asia/Tokyo",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit",hour12:false})}</b></div>}
         </div>
         <Link className="button full" to={`/app/orders/${id}`}>
           查看我的订单

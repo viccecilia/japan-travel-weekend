@@ -14,6 +14,12 @@ do $$ begin
   if not exists(select 1 from pg_policies where schemaname='public' and tablename='manual_payment_decisions' and policyname='manual_payment_decisions_operations_select') then
     raise exception 'FAIL audit policy missing';
   end if;
+  if not exists(select 1 from information_schema.columns where table_schema='public' and table_name='orders' and column_name='manual_payment_due_at') then
+    raise exception 'FAIL bank transfer deadline missing';
+  end if;
+  if not exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='expire_due_bank_transfers' and p.prosecdef) then
+    raise exception 'FAIL bank transfer expiry function missing or not security definer';
+  end if;
 end $$;
 
 set local role authenticated;

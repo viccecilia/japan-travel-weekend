@@ -25,7 +25,7 @@ export class SupabaseAccessTokenVerifier{
 }
 export class SupabaseManualPaymentGateway{
   constructor(private readonly client:SupabaseClient|null){}
-  async markPending(orderId:string,amount:number){if(!this.client)return false;const {data,error}=await this.client.rpc('mark_bank_transfer_pending',{p_order:orderId,p_amount:amount});return !error&&data===true}
+  async markPending(orderId:string,amount:number){if(!this.client)return null;const {data,error}=await this.client.rpc('mark_bank_transfer_pending',{p_order:orderId,p_amount:amount});return !error&&typeof data==='string'?{dueAt:data}:null}
 }
 
 export class SupabaseServerPricingGateway{
