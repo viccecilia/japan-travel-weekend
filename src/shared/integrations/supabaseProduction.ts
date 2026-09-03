@@ -391,7 +391,7 @@ export class SupabaseOrderRepository {
       const { data, error } = await this.client
         .from("booking_drafts")
         .select(
-          "id,departure_id,adults,children,infants,seat_impact,assistance_summary,operational_review_status,status,created_at,updated_at,expires_at",
+          "id,departure_id,adults,children,infants,seat_impact,assistance_summary,operational_review_status,status,converted_order_id,converted_at,created_at,updated_at,expires_at",
         )
         .order("updated_at", { ascending: false });
       return error

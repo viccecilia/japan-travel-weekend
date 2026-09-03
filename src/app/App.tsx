@@ -2270,6 +2270,8 @@ export function Orders() {
       seat_impact: number;
       operational_review_status: string;
       status: string;
+      converted_order_id: string | null;
+      converted_at: string | null;
       created_at: string;
       updated_at: string;
       expires_at: string;
@@ -2308,7 +2310,7 @@ export function Orders() {
       <h2>订单</h2>
       {services && drafts.length > 0 && (
         <section className="draft-list">
-          <h2>支付前订单草稿</h2>
+          <h2>订单草稿与转换记录</h2>
           {drafts.map((draft) => (
             <article className="order-card" key={draft.id}>
               <b>
@@ -2316,6 +2318,8 @@ export function Orders() {
                   ? "草稿已过期"
                   : draft.status === "cancelled"
                     ? "草稿已放弃"
+                    : draft.status === "converted"
+                      ? "已进入付款流程"
                     : "订单草稿 · 尚未支付"}
               </b>
               <span>
@@ -2354,7 +2358,7 @@ export function Orders() {
                     放弃草稿
                   </button>
                 </div>
-              ) : null}
+              ) : draft.status==='converted'&&draft.converted_order_id ? <Link className="text-link" to={`/app/orders/${draft.converted_order_id}`}>查看对应订单</Link> : null}
             </article>
           ))}
         </section>
@@ -2376,7 +2380,7 @@ export function Orders() {
               <span>
                 {o.id} · {o.seat_count} 个座位
               </span>
-              <small>{o.status}</small>
+              <small>{{pending_payment:'等待在线支付',pending_manual_review:'等待人工确认到账',paid:'已支付',confirmed:'行程已确认',payment_review:'付款需要人工核对',refunded:'退款处理中',cancelled:'已取消',expired:'支付时限已过'}[o.status]??o.status}</small>
             </article>
           ))
         ) : (
