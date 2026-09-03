@@ -298,7 +298,8 @@ export function AppNotifications(){
 }
 
 export function AppGuides(){
-  return <div className="passenger-page"><AppTitle eyebrow="旅行灵感" title="关西旅行指南" text="餐食、集合、礼仪和季节提醒，帮助你在出发前做好准备。"/><div className="guide-feature"><img src="/images/kyoto-nara.jpg" alt="京都古街"/><div><span>初次参加指南</span><h2>第一次参加周末一日游</h2><p>从订单确认、集合签到到返程提醒，一次看懂完整流程。</p><Link to="/how-it-works">查看流程 →</Link></div></div><div className="guide-list" id="food"><article><span>餐食推荐</span><h2>京都与奈良的一日用餐建议</h2><p>了解午餐自理、过敏信息申报和行程中的用餐时间安排。</p></article><article id="meeting"><span>集合指南</span><h2>如何快速找到集合车辆</h2><p>出发前确认地标、提前到达，并在行程房间查看最新车辆提示。</p></article><article><span>旅行礼仪</span><h2>神社、温泉与观光巴士礼仪</h2><p>用简单的准备，让自己和同团旅客都更舒适。</p></article></div></div>
+  const steps=[['01','选择路线','先查看景点、步行强度、餐食和费用包含项目。'],['02','选择日期','日历显示当日价格、余位和出发时间；选择前请再次核对。'],['03','填写乘客','填写联系人、参加者和儿童座椅或无障碍等特殊需求。'],['04','确认订单','核对日期、人数、金额、取消规则和旅行条件后提交。'],['05','完成付款','付款成功后等待运营确认；已付款不等于车辆和集合信息已全部确定。'],['06','准备出发','订单确认后查看集合地图；出发前留意车辆、司导和天气通知。']];
+  return <div className="passenger-page"><AppTitle eyebrow="第一次参加" title="从选择路线到顺利出发" text="把预约状态、集合方式和出发准备一次说明清楚。"/><div className="guide-feature"><img src="/images/kyoto-nara.jpg" alt="京都古街"/><div><span>预约指南</span><h2>六步完成一日游预约</h2><p>每一步都可以返回核对；只有订单显示“已确认”，才代表预约最终成立。</p><Link to="/app/trips">开始选择路线 →</Link></div></div><section className="booking-flow-guide"><header><span>BOOKING FLOW</span><h2>预约到出发</h2></header>{steps.map(([number,title,text])=><article key={number}><i>{number}</i><div><h3>{title}</h3><p>{text}</p></div></article>)}</section><section className="booking-status-guide"><span>订单状态怎么看</span><h2>四个状态，不要混淆</h2><div><p><b>资料已保存</b>尚未付款，也不代表占位成功。</p><p><b>待付款</b>请在订单显示的期限内完成付款。</p><p><b>已付款</b>款项已受理，等待运营完成最终确认。</p><p><b>已确认</b>预约成立；集合与车辆资料会按确认进度更新。</p></div></section><div className="guide-list" id="food"><article><span>餐食推荐</span><h2>京都与奈良的一日用餐建议</h2><p>了解午餐自理、过敏信息申报和行程中的用餐时间安排。</p></article><article id="meeting"><span>集合指南</span><h2>如何快速找到集合车辆</h2><p>分别确认集合时间和出发时间，提前查看地标、车站出口、实景照片及步行路线。</p></article><article><span>旅行礼仪</span><h2>神社、温泉与观光巴士礼仪</h2><p>用简单的准备，让自己和同团旅客都更舒适。</p></article></div></div>
 }
 
 export function AppSupport(){
@@ -334,13 +335,10 @@ export function AppTrip() {
       <section className="route-detail-hero"><img src={t.heroImage} alt={`${t.shortTitle}路线风景`} /><div className="route-detail-overlay"><span>{t.region} · {t.duration}</span><h1>{t.shortTitle}</h1><p>{t.subtitle}</p></div></section>
       <div className="route-facts"><span><small>行程时长</small><b>{t.duration}</b></span><span><small>步行强度</small><b>{t.walkingLevel}</b></span><span><small>服务语言</small><b>{t.languages.join('、')}</b></span></div>
       <p className="route-lead">{t.description}</p>
-      <h2>行程亮点</h2>
-      <ul className="check-list">
-        {t.highlights.map((x) => (
-          <li key={x}>{x}</li>
-        ))}
-      </ul>
-      <h2>参考行程顺序</h2>
+      <nav className="route-section-nav" aria-label="线路详情导航"><a href="#route-reasons">路线亮点</a><a href="#route-schedule">参考行程</a><a href="#route-prep">出发准备</a></nav>
+      <section className="route-reasons" id="route-reasons"><header><span>WHY THIS TRIP</span><h2>这条路线值得去的理由</h2></header><div>{t.highlights.map((item,index)=><article key={item}><i>{String(index+1).padStart(2,'0')}</i><h3>{item}</h3><p>{index===0?t.summary:index===1?`一天串联${t.stops.slice(0,3).join('、')}等代表性地点。`:`由${t.languages.join('、')}服务陪伴，重要变更集中在订单与行程通知中。`}</p></article>)}</div></section>
+      <section className="route-spot-preview"><header><span>SPOT PREVIEW</span><h2>沿途会看到什么</h2></header><div>{t.timeline.filter(item=>!item.title.includes('集合')&&!item.title.includes('返回')).slice(0,3).map((item,index)=><article key={item.title}><b>{String(index+1).padStart(2,'0')}</b><div><span>{item.location}</span><h3>{item.title}</h3><p>{item.detail}</p></div></article>)}</div></section>
+      <h2 id="route-schedule">参考行程顺序</h2>
       <div className="route-timeline">
         {t.timeline.map((item,index)=><article key={`${item.title}-${index}`}><span>{item.time??'时间以班次为准'}</span><div><h3>{item.title}</h3><b>{item.location}</b><p>{item.detail}</p></div></article>)}
       </div>
@@ -352,7 +350,7 @@ export function AppTrip() {
       </div>
       <h2>预订前须知</h2>
       <ul className="check-list">{t.notices.map(item=><li key={item}>{item}</li>)}</ul>
-      <section className="travel-prep-section">
+      <section className="travel-prep-section" id="route-prep">
         <header><span>出发准备</span><h2>准备充分，旅途更轻松</h2><p>以下是这条路线的实用建议；出发前仍请查看订单中的当日天气和最新通知。</p></header>
         <div className="travel-prep-grid">
           <details open><summary><i>包</i><span><b>建议携带</b><small>随身物品清单</small></span></summary><ul>{t.packingList.map(item=><li key={item}>{item}</li>)}</ul></details>
