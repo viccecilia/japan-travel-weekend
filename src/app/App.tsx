@@ -2120,9 +2120,10 @@ export function PaymentResult() {
   const [remoteOrder, setRemoteOrder] = useState<{
     id: string;
     status: string;
+    manual_payment_due_at?: string | null;
   } | null>(null);
   const manual = query.get("manual") === "1";
-  const manualPaymentDueAt = query.get("due_at");
+  const manualPaymentDueAt = remoteOrder?.manual_payment_due_at ?? query.get("due_at");
   useEffect(() => {
     if (!services || !id) return;
     let active = true;
@@ -2130,7 +2131,7 @@ export function PaymentResult() {
     const check = async () => {
       const result = await services.loadOwnOrders();
       const found =
-        (result.data as Array<{ id: string; status: string }>).find(
+        (result.data as Array<{ id: string; status: string; manual_payment_due_at?:string|null }>).find(
           (item) => item.id === id,
         ) ?? null;
       if (active) setRemoteOrder(found);
@@ -2264,6 +2265,7 @@ export function Orders() {
       departure_id: string;
       seat_count: number;
       status: string;
+      manual_payment_due_at?: string | null;
     }>;
   }>({ loading: Boolean(services), error: null, rows: [] });
   const [drafts, setDrafts] = useState<
@@ -2299,6 +2301,7 @@ export function Orders() {
             departure_id: string;
             seat_count: number;
             status: string;
+            manual_payment_due_at?: string | null;
           }>,
         });
       });
@@ -2387,6 +2390,7 @@ export function Orders() {
                 {o.id} · {o.seat_count} 个座位
               </span>
               <small>{{pending_payment:'等待在线支付',pending_manual_review:'等待人工确认到账',paid:'已支付',confirmed:'行程已确认',payment_review:'付款需要人工核对',refunded:'退款处理中',cancelled:'已取消',expired:'支付时限已过'}[o.status]??o.status}</small>
+              {o.status==='pending_manual_review'&&o.manual_payment_due_at&&<small>请于 {new Date(o.manual_payment_due_at).toLocaleString("zh-CN",{timeZone:"Asia/Tokyo",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit",hour12:false})} 前完成转账</small>}
             </article>
           ))
         ) : (
@@ -2423,6 +2427,7 @@ export function OrderDetail() {
     status: string;
     amount: number | null;
     currency: string;
+    manual_payment_due_at?: string | null;
   } | null>(null);
   const [remoteFulfilment, setRemoteFulfilment] = useState<{
     departs_at: string | null;
@@ -2454,6 +2459,7 @@ export function OrderDetail() {
             status: string;
             amount: number | null;
             currency: string;
+            manual_payment_due_at?: string | null;
           }>
         ).find((item) => item.id === id) ?? null,
       );
@@ -2538,6 +2544,7 @@ export function OrderDetail() {
               {remoteOrder.amount == null ? "待确认" : `¥${remoteOrder.amount}`}
             </b>
           </div>
+          {remoteOrder.status==='pending_manual_review'&&remoteOrder.manual_payment_due_at&&<div><span>转账付款期限（日本时间）</span><b>{new Date(remoteOrder.manual_payment_due_at).toLocaleString("zh-CN",{timeZone:"Asia/Tokyo",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit",hour12:false})}</b></div>}
           <div><span>特殊需求审核</span><b>{reviewLabel}</b></div>
           <div><span>履约需求摘要</span><b>{assistanceItems.length?assistanceItems.join('；'):'无已申报项目'}</b></div>
         </div>
