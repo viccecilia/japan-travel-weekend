@@ -169,6 +169,7 @@ type RemoteAttendance = {
     | "no_show_confirmed";
   status_at: string | null;
   contact_status: string | null;
+  late_minutes?: number | null;
 };
 const staffTemplates = [
   ["introduce", "自我介绍"],
@@ -971,6 +972,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
             <div key={item.passenger_id}>
               <span>
                 <b>{item.passenger_label}</b> · {attendanceLabels[item.status]}
+                {item.late_minutes ? ` · 预计迟到${item.late_minutes}${item.late_minutes===15?'分钟以上':'分钟'}` : ''}
               </span>
               {passenger ? (
                 <div className="room-actions">

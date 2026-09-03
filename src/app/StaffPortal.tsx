@@ -40,6 +40,7 @@ type AttendanceRow = {
   status: string;
   status_at: string | null;
   contact_status: string | null;
+  late_minutes?: number | null;
 };
 type AttendanceSummary = {
   total: number;
@@ -648,6 +649,7 @@ function PassengerAction({
                 </div>
                 <em>{statusLabel[row.status] ?? row.status}</em>
               </header>
+              {row.late_minutes ? <p className="staff-late-alert" role="status">预计迟到 {row.late_minutes}{row.late_minutes===15?' 分钟以上':' 分钟'}</p> : null}
               {contacts[row.passenger_id] && (
                 <p>
                   <b>{contacts[row.passenger_id].contact_name}</b> ·{" "}

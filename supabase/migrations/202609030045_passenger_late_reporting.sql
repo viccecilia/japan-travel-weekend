@@ -35,7 +35,8 @@ begin
   return query select v_checkin.id,v_checkin.late_minutes,v_checkin.status_at;
 end$$;
 
-create or replace function public.get_vehicle_group_attendance(p_vehicle_group uuid)
+drop function if exists public.get_vehicle_group_attendance(uuid);
+create function public.get_vehicle_group_attendance(p_vehicle_group uuid)
 returns table(passenger_id uuid,passenger_label text,order_id uuid,status text,status_at timestamptz,contact_status text,late_minutes integer)
 language sql stable security definer set search_path=public,pg_temp as $$
   select p.id,case when public.is_operations() or public.is_group_staff(p_vehicle_group) then coalesce(nullif(p.display_name,''),'乘客') else coalesce(nullif(p.display_name,''),'本人乘客') end,p.order_id,coalesce(pc.status,'pending'),pc.status_at,
@@ -47,5 +48,7 @@ $$;
 
 revoke all on function public.report_own_late_arrival(uuid,integer,text) from public,anon;
 grant execute on function public.report_own_late_arrival(uuid,integer,text) to authenticated,service_role;
+revoke all on function public.get_vehicle_group_attendance(uuid) from public,anon;
+grant execute on function public.get_vehicle_group_attendance(uuid) to authenticated,service_role;
 
 commit;
