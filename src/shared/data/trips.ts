@@ -8,7 +8,14 @@ const rows:Brief[]=[
  {id:'trip-biwa',slug:'biwako-shirahige',title:'琵琶湖山谷、白须神社与近江八幡一日游',shortTitle:'琵琶湖M线',subtitle:'水上鸟居、山顶湖景与童话草屋',summary:'连接白须神社水上鸟居、琵琶湖观景台与La Collina近江八幡。',description:'从湖中鸟居启程，登上琵琶湖观景台俯瞰湖面，再到La Collina近江八幡感受自然建筑与甜点文化。',region:'滋贺',duration:'约 10–11 小时',walkingLevel:'中等',categories:['自然风光','经典人文'],heroImage:'/images/lake-biwa.jpg',highlights:['白须神社水上鸟居','琵琶湖山顶全景','La Collina草屋'],stops:['白须神社','琵琶湖观景台','La Collina近江八幡'],timeline:[['白须神社','从专用观景区域欣赏湖中鸟居。'],['琵琶湖观景台','搭乘自费缆车前往山顶自由活动。'],['La Collina近江八幡','参观草屋建筑与当地甜点空间。']],sourceUrl:'https://www.gogoday.com/pages/dayTrip/index?id=189&lang=zh'},
  {id:'trip-wakayama',slug:'wakayama-family',title:'和歌山猫站长与白滨温泉一日游',shortTitle:'和歌山猫站长白滨',subtitle:'特色电车、海鲜市场与壮阔海岸',summary:'从贵志站猫站长出发，前往白滨海鲜市场、温泉与海岸名胜。',description:'体验贵志川线特色电车，在Toretore市场自由用餐，可自费体验温泉，最后游览千叠敷与三段壁。',region:'和歌山',duration:'约 9–10 小时',walkingLevel:'轻松至中等',categories:['亲子','海滨'],heroImage:'/images/wakayama.jpg',highlights:['贵志站猫站长','白滨海鲜与温泉','千叠敷与三段壁'],stops:['贵志站','特色电车','白滨Toretore市场','Toretore温泉','千叠敷','三段壁'],timeline:[['贵志站','参观猫站长主题车站并体验特色电车。'],['白滨Toretore市场','自由用餐、购物或自费体验温泉。'],['千叠敷与三段壁','欣赏白滨代表性海岸地貌。']],sourceUrl:'https://www.gogoday.com/pages/dayTrip/index?id=200&lang=zh'},
  {id:'trip-kobe',slug:'kobe-arima-rokko',title:'神户有马温泉与六甲山夜景一日游',shortTitle:'神户夜景B线',subtitle:'温泉古街、异人馆、港湾与千万夜景',summary:'从有马温泉出发，经过北野异人馆与神户港，以六甲山夜景收尾。',description:'午后漫步有马温泉古街，感受北野异人馆与神户港的城市风貌，夜间登上六甲山欣赏神户灯火。',region:'兵库',duration:'约 10–11 小时',walkingLevel:'中等',categories:['经典人文','温泉'],heroImage:'/images/kobe.jpg',highlights:['有马温泉古街','神户港与北野异人馆','六甲山夜景'],stops:['有马温泉','北野异人馆街','神户港与马赛克摩天轮','六甲山夜景'],timeline:[['有马温泉','漫步日本代表性古老温泉街。'],['北野与神户港','感受港都历史与现代夜景。'],['六甲山','从山上眺望神户城市灯火。']],sourceUrl:'https://www.gogoday.com/pages/dayTrip/index?id=190&lang=zh'}];
-export const trips:Trip[]=rows.map(r=>({...common,...r,gallery:[r.heroImage],timeline:r.timeline.map(([title,detail])=>({time:null,title,detail,location:title})),imageCredits:['Japan Travel / 大寅集团提供的来源站素材']}));
+const publishedSeatPrices:Record<string,number>={
+  'kyoto-nara-classic':6900,
+  'amanohashidate-ine':7290,
+  'biwako-shirahige':5500,
+  'wakayama-family':8900,
+  'kobe-arima-rokko':6750,
+};
+export const trips:Trip[]=rows.map(r=>({...common,...r,price:publishedSeatPrices[r.slug],priceStatus:'每席含税',minimumGuests:1,seatStatus:'未来30天每日开放',gallery:[r.heroImage],timeline:r.timeline.map(([title,detail])=>({time:null,title,detail,location:title})),imageCredits:['Japan Travel / 大寅集团提供的来源站素材']}));
 const kyotoNara=trips.find(trip=>trip.slug==='kyoto-nara-classic');
 if(kyotoNara)Object.assign(kyotoNara,{
   status:'标准路线',
