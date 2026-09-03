@@ -557,6 +557,31 @@ export class SupabaseTripRoomRepository {
       ? { data: null, error: "无法读取本车行程房间" }
       : { data, error: null };
   }
+  async loadCurrentMeeting(vehicleGroupId: string) {
+    if (!this.client) return null;
+    try {
+      const { data, error } = await this.client
+        .rpc("get_current_vehicle_group_meeting", {
+          p_vehicle_group: vehicleGroupId,
+        })
+        .maybeSingle();
+      return error ? null : (data as VehicleGroupMeetingRow | null);
+    } catch {
+      return null;
+    }
+  }
+  async acknowledgeMeeting(vehicleGroupId: string, revision: number) {
+    if (!this.client) return false;
+    try {
+      const { data, error } = await this.client.rpc(
+        "acknowledge_vehicle_group_meeting",
+        { p_vehicle_group: vehicleGroupId, p_revision: revision },
+      );
+      return !error && data === true;
+    } catch {
+      return false;
+    }
+  }
   async startOwnLocationShare(vehicleGroupId: string, minutes: 15 | 30) {
     if (!this.client) return false;
     const { error } = await this.client.rpc("start_own_location_share", {
