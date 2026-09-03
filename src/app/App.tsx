@@ -24,6 +24,9 @@ import { useApp } from "./store";
 import { referralCodeFromSearch, safeReturnTo } from "./auth";
 import { passwordRules, passwordRuleText } from "../shared/config/authConfig";
 import { seatOrderTotal } from "../shared/services/pricing";
+import { Elements } from "@stripe/react-stripe-js";
+import { stripeTestClient } from "../shared/integrations/stripeClient";
+import { StripePaymentForm } from "./StripePaymentForm";
 const trips = travelRepository.listTrips();
 const Empty = ({
   title = "暂无内容",
@@ -1972,6 +1975,8 @@ export function Payment() {
   const [submitting, setSubmitting] = useState(false);
   const [draftStatus, setDraftStatus] = useState("");
   const [draftKey] = useState(() => crypto.randomUUID());
+  const [checkoutError,setCheckoutError]=useState("");
+  const [cardSession,setCardSession]=useState<{orderId:string;clientSecret:string}|null>(null);
   const production = appConfig.runtimeMode === "production";
   const selectedDeparture = departures.find(
     (item) => item.id === state.booking?.departureId,
@@ -1989,6 +1994,7 @@ export function Payment() {
     state.booking?.acceptedCancellation &&
     state.booking?.acceptedTerms,
   );
+  const testCheckoutReady=Boolean(!production&&services?.checkoutAvailable&&stripeTestClient&&state.booking?.draftId&&selectedDeparture&&seatImpact>0);
   const saveDraft = async () => {
     if (
       !services ||
@@ -2027,13 +2033,22 @@ export function Payment() {
       );
     } else setDraftStatus(result.error ?? "订单草稿保存失败");
   };
+  const startTestCheckout=async(paymentMethod:'card'|'bank_transfer')=>{
+    if(!testCheckoutReady||!services||!state.booking?.draftId||!selectedDeparture)return;
+    setSubmitting(true);setCheckoutError("");
+    const result=await services.createCheckout({draftId:state.booking.draftId,departureId:selectedDeparture.id,seats:seatImpact,idempotencyKey:crypto.randomUUID(),paymentMethod});
+    setSubmitting(false);
+    if(!result||result.status==='failed'){setCheckoutError(result?.status==='failed'?result.error:'测试支付服务不可用');return}
+    if(result.status==='pending_manual_review'){nav(`/app/payment-result?order_id=${encodeURIComponent(result.orderId)}&manual=1`);return}
+    setCardSession({orderId:result.orderId,clientSecret:result.clientSecret});
+  };
   return (
     <>
       <BookingSteps current={4} />
       <AppTitle
         eyebrow="第 4 步，共 4 步"
         title="支付前确认"
-        text="本阶段停在支付前：先保存可恢复的订单草稿，不会发起扣款。"
+        text={testCheckoutReady?"测试模式会先锁定库存，再由 Stripe 测试支付确认；不会产生真实扣款。":"本阶段停在支付前：先保存可恢复的订单草稿，不会发起扣款。"}
       />
       {!paymentReady && (
         <div className="notice" role="alert">
@@ -2047,7 +2062,9 @@ export function Payment() {
         </div>
       </div>
       <div className="notice">
-        {production
+        {testCheckoutReady
+          ? "已连接 Stripe 测试模式。测试卡不会产生真实扣款；订单仍会经过真实库存锁与 Webhook 状态流程。"
+          : production
           ? "支付功能尚未开放。本页只安全保存订单草稿；在线支付不会创建付款请求，银行转账也不会生成收款指示。"
           : "支付功能尚未开放。本页只把草稿保存到隔离测试数据库；Stripe 不会创建 Payment Intent，银行转账也不会生成收款指示。"}
       </div>
@@ -2073,9 +2090,11 @@ export function Payment() {
         </p>
       )}
       {state.booking?.draftId && (
-        <Link className="button secondary full" to="/app/orders">
-          查看账户中的订单草稿
-        </Link>
+        testCheckoutReady ? <section className="payment-methods" aria-label="测试支付方式">
+          {!cardSession&&<><button type="button" disabled={submitting} onClick={()=>void startTestCheckout('card')}><b>银行卡测试支付</b><small>仅接受 Stripe 测试卡</small></button><button type="button" disabled={submitting} onClick={()=>void startTestCheckout('bank_transfer')}><b>银行转账测试流程</b><small>进入人工到账确认状态</small></button></>}
+          {checkoutError&&<div className="danger" role="alert">{checkoutError}</div>}
+          {cardSession&&stripeTestClient&&<Elements stripe={stripeTestClient} options={{clientSecret:cardSession.clientSecret}}><StripePaymentForm orderId={cardSession.orderId} onComplete={(orderId)=>nav(`/app/payment-result?order_id=${encodeURIComponent(orderId)}`)}/></Elements>}
+        </section> : <Link className="button secondary full" to="/app/orders">查看账户中的订单草稿</Link>
       )}
       <button className="text-link" onClick={() => nav(-1)}>
         返回修改
@@ -2142,26 +2161,27 @@ export function PaymentResult() {
     };
   }, [id, nav, services]);
   if (id && services) {
-    const paid = remoteOrder?.status === "paid";
+    const status=remoteOrder?.status;
+    const paid = status === "paid" || status === "confirmed";
+    const review=status==='payment_review';
+    const refunded=status==='refunded';
+    const cancelled=status==='cancelled'||status==='expired';
     const pending =
       manual ||
-      remoteOrder?.status === "pending_manual_review" ||
-      remoteOrder?.status === "pending_payment";
+      status === "pending_manual_review" ||
+      status === "pending_payment";
+    const title=paid?'支付成功':review?'付款需要人工确认':refunded?'退款已发起':cancelled?'订单未完成':pending?'等待付款确认':'正在确认订单';
+    const description=paid?'订单已支付，并已加入“我的账户／我的行程”。':review?'付款结果已收到，但库存或状态需要工作人员核对；请勿重复付款。':refunded?'我方已经发起原路退款，银行或发卡机构实际到账时间可能不同。':cancelled?'本次订单未完成，系统不会把它作为已付款行程。':manual?'银行转账申请已记录，到账后由工作人员确认。':'正在等待服务端确认支付结果，请勿重复付款。';
+    const statusLabel=paid?'已支付':review?'人工核对中':refunded?'退款处理中':cancelled?'未完成':pending?'待确认':'确认中';
     return (
       <div className="result">
         <div className="result-icon" aria-hidden="true">
-          {paid ? "✓" : "…"}
+          {paid ? "✓" : refunded ? "↩" : cancelled ? "!" : "…"}
         </div>
         <AppTitle
           eyebrow="支付状态"
-          title={paid ? "支付成功" : pending ? "等待付款确认" : "正在确认订单"}
-          text={
-            paid
-              ? "订单已支付，并已加入“我的账户／我的行程”。"
-              : manual
-                ? "银行转账申请已记录，到账后由工作人员确认。"
-                : "正在等待服务端确认支付结果，请勿重复付款。"
-          }
+          title={title}
+          text={description}
         />
         <div className="receipt">
           <div>
@@ -2170,7 +2190,7 @@ export function PaymentResult() {
           </div>
           <div>
             <span>订单状态</span>
-            <b>{paid ? "已支付" : pending ? "待确认" : "确认中"}</b>
+            <b>{statusLabel}</b>
           </div>
         </div>
         <Link className="button full" to={`/app/orders/${id}`}>
