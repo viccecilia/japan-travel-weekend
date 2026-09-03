@@ -81,6 +81,7 @@ export type OperationsNotificationDeliveryIssue = {
   createdAt: string;
   updatedAt: string;
 };
+export type OperationsAccountDeletionRequest={id:string;status:"requested"|"deferred_active_booking"|"reviewing";requestedAt:string;updatedAt:string};
 export type DispatchPlanDraft = {
   sequence: number;
   vehicleType: string;
@@ -100,6 +101,7 @@ export type OperationsSnapshot = {
   bookingDrafts: OperationsBookingDraft[];
   fulfilmentWorkItems: OperationsFulfilmentWorkItem[];
   notificationDeliveryIssues: OperationsNotificationDeliveryIssue[];
+  accountDeletionRequests?: OperationsAccountDeletionRequest[];
   dispatchTasks: OperationsDispatchTask[];
   dispatchDrafts: number;
   loadedAt: string;
@@ -179,7 +181,7 @@ export class SupabaseOperationsRepository {
   }> {
     if (!this.client) return { data: null, error: "运营数据服务未配置" };
     try {
-      const [types, vehicles, drivers, departures, drafts, workItems, notificationIssues, tasks] =
+      const [types, vehicles, drivers, departures, drafts, workItems, notificationIssues, deletionRequests, tasks] =
         await Promise.all([
           this.client
             .from("vehicle_type_configs")
@@ -209,6 +211,7 @@ export class SupabaseOperationsRepository {
             .order("created_at", { ascending: true })
             .limit(100),
           this.client.rpc("get_operations_notification_delivery_queue"),
+          this.client.from("account_deletion_requests").select("id,status,requested_at,updated_at").in("status",["requested","deferred_active_booking","reviewing"]).order("requested_at",{ascending:true}).limit(100),
           this.client
             .from("dispatch_tasks")
             .select(
@@ -225,6 +228,7 @@ export class SupabaseOperationsRepository {
         drafts.error ||
         workItems.error ||
         notificationIssues.error ||
+        deletionRequests.error ||
         tasks.error
       )
         return {
@@ -301,6 +305,7 @@ export class SupabaseOperationsRepository {
       const notificationDeliveryIssues = ((notificationIssues.data ?? []) as {
         id:string;event_type:string;order_id:string|null;status:"failed"|"submitted";attempts:number;last_error_code:string|null;created_at:string;updated_at:string;
       }[]).map(row=>({id:row.id,eventType:row.event_type,orderId:row.order_id,status:row.status,attempts:Number(row.attempts),lastErrorCode:row.last_error_code,createdAt:row.created_at,updatedAt:row.updated_at}));
+      const accountDeletionRequests=((deletionRequests.data??[]) as Array<{id:string;status:"requested"|"deferred_active_booking"|"reviewing";requested_at:string;updated_at:string}>).map(row=>({id:row.id,status:row.status,requestedAt:row.requested_at,updatedAt:row.updated_at}));
       const operationDepartures = (
         (departures.data ?? []) as OperationsDepartureRow[]
       ).map((row) => ({
@@ -329,6 +334,7 @@ export class SupabaseOperationsRepository {
           bookingDrafts,
           fulfilmentWorkItems,
           notificationDeliveryIssues,
+          accountDeletionRequests,
           dispatchTasks,
           dispatchDrafts: dispatchTasks.filter(
             (task) => task.status === "draft" || task.status === "confirmed",
@@ -449,6 +455,7 @@ export class SupabaseOperationsRepository {
     });
     return { ok: !error, result: typeof data === "string" ? data : null, error: error?.message ?? null };
   }
+  async reviewAccountDeletion(requestId:string,decision:"reviewing"|"rejected",note:string){return this.transition("operations_review_account_deletion",{p_request:requestId,p_decision:decision,p_note:note})}
   async retryNotificationDelivery(outboxId:string,reason:string){return this.transition("operations_retry_notification_delivery",{p_outbox:outboxId,p_reason:reason})}
   private async transition(name: string, args: Record<string, unknown>) {
     if (!this.client) return { ok: false, error: "运营数据服务未配置" };

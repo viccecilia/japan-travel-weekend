@@ -17,6 +17,7 @@ export const FICTIONAL_ACCOUNT_CHECKS = [
   "operations_fleet_dispatch_acceptance.sql",
   "booking_draft_conversion_regression.sql",
   "bank_transfer_resolution_acceptance.sql",
+  "account_deletion_request_acceptance.sql",
 ];
 
 function describeFile(path, name) {

@@ -174,4 +174,13 @@ describe("运营派单界面", () => {
     expect(screen.getByText("到账已确认；订单已付款并进入自动配车。")).toBeInTheDocument();
     expect(screen.getByText("仅填写核账编号，不得填写银行卡号或账户凭证。")).toBeInTheDocument();
   });
+  it("账户删除申请只向运营展示最小队列并支持受理",async()=>{
+    const reviewAccountDeletion=vi.fn(async()=>({ok:true,error:null}));
+    const deletionSnapshot={...snapshot,accountDeletionRequests:[{id:"60000000-0000-4000-8000-000000000001",status:"requested" as const,requestedAt:"2026-09-03T00:00:00Z",updatedAt:"2026-09-03T00:00:00Z"}]};
+    const services={operations:{loadSnapshot:vi.fn(async()=>({data:deletionSnapshot,error:null})),reviewAccountDeletion,saveDispatchPlan:vi.fn(),createVehicle:vi.fn(),createDriver:vi.fn(),confirmDispatchTasks:vi.fn(),simulateDispatchSend:vi.fn(),cancelDispatchTasks:vi.fn()},loadSellableDepartures:async()=>({data:[],error:null}),onAuthStateChange:()=>()=>{},currentUser:async()=>null} as unknown as ProductionBrowserServices;
+    render(<AppProvider services={services}><OperationsDashboard/></AppProvider>);
+    fireEvent.change(await screen.findByRole("textbox",{name:"处理说明"}),{target:{value:"核对法定留存"}});fireEvent.click(screen.getByRole("button",{name:"标记处理中"}));
+    await waitFor(()=>expect(reviewAccountDeletion).toHaveBeenCalledWith("60000000-0000-4000-8000-000000000001","reviewing","核对法定留存"));
+    expect(screen.getByText("不显示联系方式、订单内容或私人资料")).toBeInTheDocument();
+  });
 });

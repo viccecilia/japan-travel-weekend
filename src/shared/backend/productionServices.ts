@@ -110,6 +110,9 @@ export class ProductionBrowserServices {
   ) {
     return this.accountProfile.updateOwn(input);
   }
+  loadOwnAccountDeletionRequest() { return this.accountProfile.loadOwnDeletionRequest(); }
+  requestOwnAccountDeletion(confirmation:string,reason:string) { return this.accountProfile.requestOwnDeletion(confirmation,reason); }
+  cancelOwnAccountDeletion(requestId:string) { return this.accountProfile.cancelOwnDeletion(requestId); }
   saveOwnBookingDraft(
     input: Parameters<SupabaseOrderRepository["saveOwnDraft"]>[0],
   ) {

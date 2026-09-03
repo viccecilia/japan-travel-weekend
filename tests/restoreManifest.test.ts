@@ -23,7 +23,7 @@ describe("restore evidence manifest", () => {
     expect(manifest.phases[0].files).toHaveLength(EXPECTED_MIGRATION_COUNT);
     expect(manifest.phases[1].files.map((file) => file.name)).toEqual(STRUCTURE_CHECKS);
     expect(manifest.phases[2].files.map((file) => file.name)).toEqual(FICTIONAL_ACCOUNT_CHECKS);
-    expect(manifest.verificationCount).toBe(9);
+    expect(manifest.verificationCount).toBe(10);
     for (const phase of manifest.phases) {
       for (const file of phase.files) {
         expect(file.bytes).toBeGreaterThan(0);

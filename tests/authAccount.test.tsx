@@ -80,6 +80,16 @@ describe('账户页面',()=>{
     await waitFor(()=>expect(screen.getByRole('button',{name:'登录账户'})).toBeInTheDocument());
     expect(signOut).toHaveBeenCalledOnce();
   });
+  it('账户删除必须输入完整确认语句且只提交申请',async()=>{
+    const rpc=vi.fn((name:string)=>name==='get_own_account_profile'?{maybeSingle:async()=>({data:null,error:null})}:Promise.resolve({data:{id:'delete-request-1',status:'requested',requested_at:'2026-09-03T00:00:00Z'},error:null}));
+    const client=authClient({getUser:vi.fn(async()=>({data:{user:{id:'account-1',email:'person@example.invalid'}},error:null}))});
+    (client as unknown as {rpc:typeof rpc}).rpc=rpc;
+    render(<MemoryRouter initialEntries={['/app/profile']}><AppProvider services={new ProductionBrowserServices(client,undefined)}><Router/></AppProvider></MemoryRouter>);
+    const submit=await screen.findByRole('button',{name:'提交账户删除申请'});expect(submit).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('请输入“删除我的账户”确认'),{target:{value:'删除我的账户'}});fireEvent.click(submit);
+    await waitFor(()=>expect(rpc).toHaveBeenCalledWith('request_own_account_deletion',{p_confirmation:'删除我的账户',p_reason:null}));
+    expect(screen.getByText('删除申请已登记，尚未实际删除账户。')).toBeInTheDocument();
+  });
   it('会话过期立即关闭私有页面并返回登录',async()=>{
     let listener:((event:string,session:{user:{email:string}}|null)=>void)|undefined;
     const client=authClient({

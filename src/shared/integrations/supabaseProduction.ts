@@ -430,6 +430,13 @@ export type OwnAccountProfile = {
   accepted_privacy_at: string | null;
   updated_at: string;
 };
+export type AccountDeletionRequest = {
+  id: string;
+  status: "requested" | "deferred_active_booking" | "reviewing" | "rejected" | "cancelled" | "completed";
+  reason: string | null;
+  requested_at: string;
+  updated_at: string;
+};
 export class SupabaseAccountProfileRepository {
   constructor(private readonly client: SupabaseClient | null) {}
   get available() {
@@ -472,6 +479,23 @@ export class SupabaseAccountProfileRepository {
     } catch {
       return { ok: false, error: "资料未保存，请稍后重试" };
     }
+  }
+  async loadOwnDeletionRequest() {
+    if (!this.client) return { data: null, error: "账户资料服务未配置" };
+    try {
+      const { data, error } = await this.client.from("account_deletion_requests").select("id,status,reason,requested_at,updated_at").in("status",["requested","deferred_active_booking","reviewing"]).order("requested_at",{ascending:false}).limit(1).maybeSingle();
+      return error ? { data: null, error: "无法读取删除申请" } : { data: data as AccountDeletionRequest | null, error: null };
+    } catch { return {data:null,error:"无法读取删除申请"}; }
+  }
+  async requestOwnDeletion(confirmation:string,reason:string) {
+    if (!this.client) return { data: null, error: "账户资料服务未配置" };
+    const { data, error } = await this.client.rpc("request_own_account_deletion",{p_confirmation:confirmation,p_reason:reason||null});
+    return error ? { data: null, error: "删除申请未提交，请检查确认文字" } : { data: data as AccountDeletionRequest, error: null };
+  }
+  async cancelOwnDeletion(requestId:string) {
+    if (!this.client) return { ok:false,error:"账户资料服务未配置" };
+    const { data,error }=await this.client.rpc("cancel_own_account_deletion",{p_request:requestId});
+    return error||data!==true?{ok:false,error:"申请无法取消，可能已进入人工处理"}:{ok:true,error:null};
   }
 }
 export class SupabaseStaffRepository {

@@ -2868,6 +2868,11 @@ export function Profile() {
     "loading" | "ready" | "saving" | "unavailable"
   >(services ? "loading" : "unavailable");
   const [profileNotice, setProfileNotice] = useState("");
+  const [deletionRequest,setDeletionRequest]=useState<{id:string;status:string;requested_at:string}|null>(null);
+  const [deletionConfirmation,setDeletionConfirmation]=useState("");
+  const [deletionReason,setDeletionReason]=useState("");
+  const [deletionBusy,setDeletionBusy]=useState(false);
+  const [deletionNotice,setDeletionNotice]=useState("");
   useEffect(() => {
     let active = true;
     if (!services)
@@ -2894,6 +2899,7 @@ export function Profile() {
       active = false;
     };
   }, [services]);
+  useEffect(()=>{if(!services)return;let active=true;void services.loadOwnAccountDeletionRequest().then(result=>{if(active){setDeletionRequest(result.data);if(result.error)setDeletionNotice(result.error)}});return()=>{active=false}},[services]);
   const saveProfile = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!services) return;
@@ -2922,6 +2928,12 @@ export function Profile() {
     reset();
     nav("/app/login");
   };
+  const requestDeletion=async(event:FormEvent<HTMLFormElement>)=>{
+    event.preventDefault();if(!services)return;setDeletionBusy(true);setDeletionNotice("");
+    const result=await services.requestOwnAccountDeletion(deletionConfirmation,deletionReason.trim());
+    setDeletionBusy(false);setDeletionRequest(result.data);setDeletionNotice(result.error??(result.data?.status==='deferred_active_booking'?"申请已登记；存在未结束行程，将在履约与法定留存确认后处理。":"删除申请已登记，尚未实际删除账户。"));
+  };
+  const cancelDeletion=async()=>{if(!services||!deletionRequest)return;setDeletionBusy(true);const result=await services.cancelOwnAccountDeletion(deletionRequest.id);setDeletionBusy(false);setDeletionNotice(result.error??"删除申请已取消。");if(result.ok)setDeletionRequest(null)};
   return (
     <>
       <AppTitle eyebrow="账户与偏好" title="我的" />
@@ -3061,6 +3073,20 @@ export function Profile() {
         />{" "}
         紧凑显示
       </label>
+      {services&&state.user&&<section className="form" aria-labelledby="account-deletion-title">
+        <h2 id="account-deletion-title">账户删除申请</h2>
+        <p className="privacy">提交申请不会立即删除账户。未结束行程、退款、争议处理及依法必须保存的交易记录会先由运营核对；申请中不会影响当前订单履约。</p>
+        {deletionRequest?<>
+          <div className="status">申请状态：{{requested:"已提交",deferred_active_booking:"等待行程结束",reviewing:"人工处理中"}[deletionRequest.status]??deletionRequest.status}</div>
+          <small>申请时间：{new Date(deletionRequest.requested_at).toLocaleString("zh-CN",{timeZone:"Asia/Tokyo"})}</small>
+          {deletionRequest.status!=="reviewing"&&<button type="button" className="button secondary full" disabled={deletionBusy} onClick={()=>void cancelDeletion()}>取消删除申请</button>}
+        </>:<form onSubmit={requestDeletion}>
+          <label>申请原因（选填）<textarea maxLength={500} value={deletionReason} onChange={event=>setDeletionReason(event.target.value)} /></label>
+          <label>请输入“删除我的账户”确认<input required value={deletionConfirmation} onChange={event=>setDeletionConfirmation(event.target.value)} autoComplete="off" /></label>
+          <button className="button danger-button full" disabled={deletionBusy||deletionConfirmation!=="删除我的账户"}>{deletionBusy?"正在提交…":"提交账户删除申请"}</button>
+        </form>}
+        {deletionNotice&&<p className="notice" role="status">{deletionNotice}</p>}
+      </section>}
       {services && state.user ? (
         <button className="button danger-button full" onClick={logout}>
           退出账户

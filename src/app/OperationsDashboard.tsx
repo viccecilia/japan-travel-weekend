@@ -53,6 +53,16 @@ function BankTransferReview({ item, busy, onResolve }: {
   </div>;
 }
 
+function AccountDeletionReview({request,busy,onReview}:{request:{id:string;status:string};busy:boolean;onReview:(id:string,decision:"reviewing"|"rejected",note:string)=>Promise<void>}){
+  const [note,setNote]=useState("");
+  return <div className="operations-bank-review">
+    <label>处理说明<input value={note} maxLength={500} onChange={event=>setNote(event.target.value)} placeholder="例如：核对未结束订单及法定留存"/></label>
+    <small>不要在说明中填写乘客电话、证件、付款凭据或特殊需求。</small>
+    <button disabled={busy||note.trim().length<3||request.status==="reviewing"} onClick={()=>void onReview(request.id,"reviewing",note.trim())}>标记处理中</button>
+    <button className="secondary" disabled={busy||note.trim().length<3} onClick={()=>void onReview(request.id,"rejected",note.trim())}>驳回申请</button>
+  </div>;
+}
+
 export function OperationsDashboard() {
   const { services } = useApp();
   const [snapshot, setSnapshot] = useState<OperationsSnapshot | null>(null);
@@ -348,6 +358,7 @@ export function OperationsDashboard() {
     if(result.ok)await reload();
     setBusy(false);
   };
+  const reviewAccountDeletion=async(id:string,decision:"reviewing"|"rejected",note:string)=>{if(!services)return;setBusy(true);const result=await services.operations.reviewAccountDeletion(id,decision,note);setNotice(result.ok?(decision==="reviewing"?"删除申请已进入人工核对，尚未删除账户。":"删除申请已驳回并保留处理记录。"): `处理失败：${result.error??"请核对申请状态和运营权限"}`);if(result.ok)await reload();setBusy(false)};
   return (
     <main className="operations-dashboard">
       <header className="operations-head">
@@ -466,6 +477,10 @@ export function OperationsDashboard() {
                   保存路线内容
                 </button>
               </form>
+            </section>
+            <section className="operations-section">
+              <header><div><span>账户与隐私</span><h2>删除申请队列</h2></div><small>不显示联系方式、订单内容或私人资料</small></header>
+              {(snapshot.accountDeletionRequests??[]).length===0?<p className="operations-empty">暂无账户删除申请。</p>:<div className="operations-dispatch-list">{(snapshot.accountDeletionRequests??[]).map(request=><article key={request.id}><div><b>{request.status==="deferred_active_booking"?"等待未结束行程":"账户删除申请"}</b><span>{request.status}</span></div><span>申请编号尾号 {request.id.slice(-6)}</span><small>{japanDate(request.requestedAt)}</small><AccountDeletionReview request={request} busy={busy} onReview={reviewAccountDeletion}/></article>)}</div>}
             </section>
             <section className="operations-section">
               <header><div><span>履约通知</span><h2>发送异常与待回执</h2></div><small>不显示收件地址、通知正文或乘客隐私</small></header>
