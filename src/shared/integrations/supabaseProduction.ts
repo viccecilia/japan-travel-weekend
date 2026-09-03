@@ -305,6 +305,21 @@ export class SupabaseOrderRepository {
       ? { data: [], error: "订单读取失败" }
       : { data: data ?? [], error: null };
   }
+  async loadOwnNotifications() {
+    if (!this.client) return { data: [], error: "通知服务未配置" };
+    try {
+      const { data, error } = await this.client
+        .from("notification_outbox")
+        .select("id,event_type,order_id,necessary,status,created_at,updated_at")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      return error
+        ? { data: [], error: "通知读取失败" }
+        : { data: data ?? [], error: null };
+    } catch {
+      return { data: [], error: "通知读取失败" };
+    }
+  }
   async ownPrivateAssistance(orderId: string) {
     if (!this.client) return null;
     const { data, error } = await this.client

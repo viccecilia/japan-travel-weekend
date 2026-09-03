@@ -93,6 +93,9 @@ export class ProductionBrowserServices {
   loadOwnOrders() {
     return this.orders.loadOwnOrders();
   }
+  loadOwnNotifications() {
+    return this.orders.loadOwnNotifications();
+  }
   loadOwnDrafts() {
     return this.orders.loadOwnDrafts();
   }
