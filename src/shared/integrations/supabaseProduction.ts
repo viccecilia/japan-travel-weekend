@@ -1,19 +1,30 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Departure, SeatStatus } from "../types";
 
-type SellableDepartureRow={id:string;trip_slug:string;trip_title:string;departs_at:string;ends_at?:string|null;capacity:number;available_seats:number;seat_price_jpy:number;meeting_name?:string|null;meeting_address?:string|null;map_lat?:number|null;map_lng?:number|null;arrival_transit?:string|null;arrival_walking?:string|null;arrival_driving?:string|null;meeting_photo_url?:string|null};
+type SellableDepartureRow={id:string;trip_slug:string;trip_title:string;departs_at:string;ends_at:string;capacity:number;available_seats:number;minimum_guests:number;seat_price_jpy:number;child_price_jpy?:number|null;infant_price_jpy?:number|null;currency:'JPY';tax_included:boolean;sales_close_at:string;meeting_name:string;meeting_address:string;map_lat:number;map_lng:number;arrival_transit?:string|null;arrival_walking?:string|null;arrival_driving?:string|null;meeting_photo_url?:string|null};
 export type StaffTaskRow={staff_assignment_id:string;assignment_role:'driver'|'guide'|'operations';vehicle_group_id:string;room_id:string|null;room_status:string|null;departure_id:string;trip_title:string;departs_at:string|null;meeting_name:string|null;meeting_address:string|null;map_lat:number|null;map_lng:number|null;vehicle_sequence:number;vehicle_type:string;vehicle_label:string|null;vehicle_capacity:number;booked_seats:number;passenger_count:number;boarded_count:number;payment_ready_count:number;payment_review_count:number;payment_blocked_count:number};
 const seatStatus=(available:number,capacity:number):SeatStatus=>available<=0?'已售罄':available<=2?'余位较少':available/capacity<=.25?'即将满员':'可预订';
 const weekendBucket=(date:Date,now=new Date()):Departure['weekend']=>{const days=(date.getTime()-now.getTime())/86400000;return days<=7?'本周末':days<=14?'下周末':'稍后'};
 export function mapSellableDeparture(row:SellableDepartureRow,now=new Date()):Departure{
   const departsAt=new Date(row.departs_at);
   const coordinates=row.map_lat==null||row.map_lng==null?null:{lat:Number(row.map_lat),lng:Number(row.map_lng)};
-  return {id:row.id,tripSlug:row.trip_slug,dateLabel:new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Tokyo',month:'long',day:'numeric',weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(departsAt),weekend:weekendBucket(departsAt,now),status:seatStatus(row.available_seats,row.capacity),departureTime:departsAt.toISOString(),expectedEndTime:row.ends_at??null,meetingPointName:row.meeting_name??null,meetingAddress:row.meeting_address??null,meetingCoordinates:coordinates,arrivalInstructions:{transit:row.arrival_transit??null,walking:row.arrival_walking??null,driving:row.arrival_driving??null},meetingPhoto:row.meeting_photo_url??null,meetingPhotoStatus:row.meeting_photo_url?'已确认':'待确认',mapStatus:coordinates?'已连接':'未连接',price:row.seat_price_jpy,availableSeats:row.available_seats,inventoryStatus:'权威库存',isSeed:false};
+  return {id:row.id,tripSlug:row.trip_slug,dateLabel:new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Tokyo',month:'long',day:'numeric',weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(departsAt),weekend:weekendBucket(departsAt,now),status:seatStatus(row.available_seats,row.capacity),departureTime:departsAt.toISOString(),expectedEndTime:row.ends_at,meetingPointName:row.meeting_name,meetingAddress:row.meeting_address,meetingCoordinates:coordinates,arrivalInstructions:{transit:row.arrival_transit??null,walking:row.arrival_walking??null,driving:row.arrival_driving??null},meetingPhoto:row.meeting_photo_url??null,meetingPhotoStatus:row.meeting_photo_url?'已确认':'待确认',mapStatus:coordinates?'已连接':'未连接',price:row.seat_price_jpy,availableSeats:row.available_seats,minimumGuests:row.minimum_guests,salesCloseAt:row.sales_close_at,currency:row.currency,taxIncluded:row.tax_included,inventoryStatus:'权威库存',isSeed:false};
+}
+export function sellableDepartureIssues(row:SellableDepartureRow,now=new Date()){
+  const issues:string[]=[];const departure=new Date(row.departs_at),end=new Date(row.ends_at),close=new Date(row.sales_close_at);
+  if(!Number.isFinite(departure.getTime())||departure<=now)issues.push('departure');
+  if(!Number.isFinite(end.getTime())||end<=departure)issues.push('return');
+  if(!Number.isFinite(close.getTime())||close<=now||close>=departure)issues.push('sales-close');
+  if(row.capacity<1||row.minimum_guests<1||row.minimum_guests>row.capacity)issues.push('capacity');
+  if(row.available_seats<1||row.available_seats>row.capacity)issues.push('inventory');
+  if(row.seat_price_jpy<1||row.currency!=='JPY'||row.tax_included!==true)issues.push('price');
+  if(!row.meeting_name?.trim()||!row.meeting_address?.trim()||!Number.isFinite(Number(row.map_lat))||!Number.isFinite(Number(row.map_lng)))issues.push('meeting');
+  return issues;
 }
 export class SupabaseDepartureRepository{
   constructor(private readonly client:SupabaseClient|null){}
   get available(){return this.client!==null}
-  async listSellable(){if(!this.client)return {data:[] as Departure[],error:'班次服务未配置'};try{const {data,error}=await this.client.rpc('list_sellable_departures');return error?{data:[] as Departure[],error:'无法读取可售班次'}:{data:((data??[]) as SellableDepartureRow[]).map(row=>mapSellableDeparture(row)),error:null}}catch{return {data:[] as Departure[],error:'无法读取可售班次'}}}
+  async listSellable(){if(!this.client)return {data:[] as Departure[],error:'班次服务未配置'};try{const {data,error}=await this.client.rpc('list_sellable_departures');return error?{data:[] as Departure[],error:'无法读取可售班次'}:{data:((data??[]) as SellableDepartureRow[]).filter(row=>sellableDepartureIssues(row).length===0).map(row=>mapSellableDeparture(row)),error:null}}catch{return {data:[] as Departure[],error:'无法读取可售班次'}}}
 }
 export class SupabaseAuthRepository {
   constructor(private readonly client: SupabaseClient | null,private readonly appOrigin:string=typeof window==='undefined'?'http://localhost':window.location.origin) {}
