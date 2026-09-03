@@ -1,6 +1,6 @@
 import type {Category,Trip} from '../types';
 import {cancellationPolicy} from '../config/legalOperations';
-const common={meetingPoint:null,departureTime:null,returnTime:null,price:null,priceStatus:'待公布' as const,minimumGuests:null,maximumGuests:null,availableSeats:null,seatStatus:'未开放' as const,included:['车辆及行程服务的最终包含项由运营发布'],excluded:['餐食、景点门票及个人消费是否包含以班次确认页为准'],languages:['简体中文'],mealOptions:'餐食安排待运营确认；未确认前请按自理准备。',childPolicy:'成人、儿童及婴儿的占座与费用规则以具体班次确认页为准。',luggagePolicy:'大件行李、婴儿车及行动辅助设备须在乘客资料中申报并由运营确认。',suitableFor:['希望从大阪出发、一天游览关西代表景点的旅客'],notices:['实际顺序和停留时间可能因天气、交通、景区管制调整','未确认的门票、餐食、辅助设备和费用不会提前收费'],assistanceStatus:'儿童座椅、轮椅、无障碍车辆及工作人员协助均须运营确认',cancellationPolicy:cancellationPolicy.summary,weatherPolicy:'天气或拥堵仅导致顺序、停留或到达时间调整时，不当然构成全额退款；依法应退款、解除或补偿的情形除外。',status:'预告' as const};
+const common={meetingPoint:null,departureTime:null,returnTime:null,price:null,priceStatus:'待公布' as const,minimumGuests:null,maximumGuests:null,availableSeats:null,seatStatus:'未开放' as const,included:['车辆及行程服务的最终包含项由运营发布'],excluded:['餐食、景点门票及个人消费是否包含以班次确认页为准'],languages:['简体中文'],mealOptions:'餐食安排待运营确认；未确认前请按自理准备。',childPolicy:'成人、儿童及婴儿的占座与费用规则以具体班次确认页为准。',luggagePolicy:'大件行李、婴儿车及行动辅助设备须在乘客资料中申报并由运营确认。',suitableFor:['希望从大阪出发、一天游览关西代表景点的旅客'],notices:['实际顺序和停留时间可能因天气、交通、景区管制调整','未确认的门票、餐食、辅助设备和费用不会提前收费'],packingList:['可确认订单和集合信息的手机','移动电源及充电线','饮用水和常用个人药品','轻便雨具或折叠伞'],clothingAdvice:'建议穿着便于步行的鞋和可增减的外套；请在出发前一天结合目的地天气调整防晒、防雨或保暖用品。',friendlyReminders:['贵重物品请随身保管，下车时确认随身物品','巴士将按公布时间出发，请预留前往集合点的时间','垃圾请带回车内指定位置或依景区规则处理'],assistanceStatus:'儿童座椅、轮椅、无障碍车辆及工作人员协助均须运营确认',cancellationPolicy:cancellationPolicy.summary,weatherPolicy:'天气或拥堵仅导致顺序、停留或到达时间调整时，不当然构成全额退款；依法应退款、解除或补偿的情形除外。',status:'预告' as const};
 type Brief={id:string;slug:string;title:string;shortTitle:string;subtitle:string;summary:string;description:string;region:string;duration:string;walkingLevel:string;categories:Category[];heroImage:string;highlights:string[];stops:string[];timeline:[string,string][];sourceUrl:string};
 const rows:Brief[]=[
  {id:'trip-kyoto-nara',slug:'kyoto-nara-classic',title:'京都与奈良世界遗产经典一日游',shortTitle:'京都与奈良',subtitle:'神社、古街与鹿群交织的关西经典路线',summary:'适合初次到访者，一天感受京都与奈良最具代表性的文化景观。',description:'从伏见稻荷大社的朱红鸟居出发，漫步京都古街，再前往奈良公园与代表性寺院。',region:'京都与奈良',duration:'约 10–11 小时',walkingLevel:'中等',categories:['经典人文'],heroImage:'/images/kyoto-nara.jpg',highlights:['世界遗产氛围','京都历史街区','奈良公园景观'],stops:['伏见稻荷大社','清水寺','祇园花见小路','奈良公园','东大寺','春日大社'],timeline:[['伏见稻荷大社','从著名的千本鸟居开启一天。'],['清水寺与祇园','欣赏寺院景观并漫步历史街区。'],['奈良公园与寺院','穿过公园前往东大寺与春日大社。']],sourceUrl:'https://japan-travel.info/ja/routes/kyoto-nara-classic/'},
@@ -25,5 +25,8 @@ if(kyotoNara)Object.assign(kyotoNara,{
   excluded:['未在班次确认页明确列出的景点门票','午餐、饮品及个人消费','儿童座椅、轮椅租赁等尚未确认的附加服务'],
   suitableFor:['第一次到访关西、希望一天串联京都与奈良代表景点的旅客','可接受中等步行量及上下车转换的旅客'],
   notices:['全程步行强度为中等，东山街区包含坡道与石阶','景点顺序和停留时间可因天气、拥堵及景区管制调整','鹿群为野生动物，请依现场指引互动并照看儿童'],
+  packingList:['防滑、适合长时间步行的鞋','可确认集合地点与接收通知的手机','移动电源、饮用水及常用个人药品','夏季防晒用品，雨季轻便雨具，冬季保暖外套'],
+  clothingAdvice:'伏见稻荷和京都东山区域有坡道、石阶与较长步行路段，建议穿运动鞋或防滑平底鞋；避免影响行动的长裙和不便步行的鞋履。',
+  friendlyReminders:['奈良鹿属于野生动物，请勿追逐、拥抱或向幼童单独递食','景区人流较多，请遵守司导公布的集合时间并留意群内通知','神社与寺院内请降低音量，并遵守禁止摄影和饮食区域提示'],
 });
 export const getTrip=(slug?:string)=>trips.find(t=>t.slug===slug);

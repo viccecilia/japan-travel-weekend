@@ -352,6 +352,15 @@ export function AppTrip() {
       </div>
       <h2>预订前须知</h2>
       <ul className="check-list">{t.notices.map(item=><li key={item}>{item}</li>)}</ul>
+      <section className="travel-prep-section">
+        <header><span>出发准备</span><h2>准备充分，旅途更轻松</h2><p>以下是这条路线的实用建议；出发前仍请查看订单中的当日天气和最新通知。</p></header>
+        <div className="travel-prep-grid">
+          <details open><summary><i>包</i><span><b>建议携带</b><small>随身物品清单</small></span></summary><ul>{t.packingList.map(item=><li key={item}>{item}</li>)}</ul></details>
+          <details><summary><i>衣</i><span><b>穿着建议</b><small>结合步行量和天气准备</small></span></summary><p>{t.clothingAdvice}</p></details>
+          <details><summary><i>心</i><span><b>友情提示</b><small>让全团出行更顺畅</small></span></summary><ul>{t.friendlyReminders.map(item=><li key={item}>{item}</li>)}</ul></details>
+          <details><summary><i>助</i><span><b>儿童与特殊需求</b><small>需要时请提前申报</small></span></summary><p>{t.childPolicy}</p><p>{t.luggagePolicy}</p><p>{t.assistanceStatus}。</p></details>
+        </div>
+      </section>
       <p className="notice">{t.assistanceStatus}。未确认或无法提供的附加服务不会提前收费。</p>
       <div className="route-booking-bar"><div><small>{sellable.length?'当前最低每席':'开放状态'}</small><b>{sellable.length?`¥${Math.min(...sellable.map(item=>item.price as number)).toLocaleString('ja-JP')}`:'班次待发布'}</b></div><Link className="button" to={`/app/booking/${t.slug}`}>{sellable.length?'选择班次':'查看开放状态'}</Link></div>
     </div>
