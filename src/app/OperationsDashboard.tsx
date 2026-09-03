@@ -14,6 +14,7 @@ import { recommendDrivers } from "../shared/operations/driverAssignment";
 import type {
   DispatchPlanDraft,
   OperationsDispatchTask,
+  OperationsFulfilmentWorkItem,
   OperationsSnapshot,
 } from "../shared/integrations/supabaseOperations";
 import { useApp } from "./store";
@@ -34,6 +35,23 @@ const localDateTime = (date: Date) => {
   const offset = date.getTimezoneOffset() * 60_000;
   return new Date(date.getTime() - offset).toISOString().slice(0, 16);
 };
+
+function BankTransferReview({ item, busy, onResolve }: {
+  item: OperationsFulfilmentWorkItem;
+  busy: boolean;
+  onResolve: (input: { orderId: string; decision: "confirmed" | "rejected"; reference?: string; reason?: string; idempotencyKey: string }) => Promise<void>;
+}) {
+  const [reference, setReference] = useState("");
+  const [reason, setReason] = useState("");
+  const [idempotencyKey] = useState(()=>crypto.randomUUID());
+  return <div className="operations-bank-review">
+    <label>入账参考<input value={reference} maxLength={100} onChange={(event)=>setReference(event.target.value)} placeholder="银行流水尾号或内部核账编号" aria-describedby={`bank-review-help-${item.id}`}/></label>
+    <small id={`bank-review-help-${item.id}`}>仅填写核账编号，不得填写银行卡号或账户凭证。</small>
+    <button disabled={busy||reference.trim().length<4} onClick={()=>void onResolve({orderId:item.orderId,decision:"confirmed",reference:reference.trim(),idempotencyKey})}>确认到账</button>
+    <label>驳回原因<input value={reason} maxLength={500} onChange={(event)=>setReason(event.target.value)} placeholder="例如：未查询到对应入账"/></label>
+    <button className="secondary" disabled={busy||reason.trim().length<3} onClick={()=>void onResolve({orderId:item.orderId,decision:"rejected",reason:reason.trim(),idempotencyKey})}>驳回并释放座位</button>
+  </div>;
+}
 
 export function OperationsDashboard() {
   const { services } = useApp();
@@ -322,6 +340,14 @@ export function OperationsDashboard() {
     setNotice(result.ok?"通知已重新进入发送队列，送达状态仍以供应商回执为准。":`通知重试失败：${result.error??"请核对状态和运营权限"}`);
     await reload();setBusy(false);
   };
+  const resolveBankTransfer = async (input: {orderId:string;decision:"confirmed"|"rejected";reference?:string;reason?:string;idempotencyKey:string}) => {
+    if(!services)return;
+    setBusy(true);
+    const result=await services.operations.resolveBankTransfer(input);
+    setNotice(result.ok?(result.result==="paid"?"到账已确认；订单已付款并进入自动配车。":result.result==="payment_review"?"到账已记录，但原座位已失效；已转入付款异常复核。":"转账已驳回，订单取消并释放座位。"): `核账失败：${result.error??"请检查订单状态和运营权限"}`);
+    if(result.ok)await reload();
+    setBusy(false);
+  };
   return (
     <main className="operations-dashboard">
       <header className="operations-head">
@@ -490,6 +516,9 @@ export function OperationsDashboard() {
                             重试自动入组
                           </button>
                         </div>
+                      )}
+                      {item.kind === "manual_payment_review" && (
+                        <BankTransferReview item={item} busy={busy} onResolve={resolveBankTransfer}/>
                       )}
                     </article>
                   ))}

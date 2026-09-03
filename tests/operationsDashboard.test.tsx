@@ -161,4 +161,17 @@ describe("运营派单界面", () => {
     const services={operations:{loadSnapshot:vi.fn(async()=>({data:issueSnapshot,error:null})),retryNotificationDelivery,saveDispatchPlan:vi.fn(),createVehicle:vi.fn(),createDriver:vi.fn(),confirmDispatchTasks:vi.fn(),simulateDispatchSend:vi.fn(),cancelDispatchTasks:vi.fn()},loadSellableDepartures:async()=>({data:[],error:null}),onAuthStateChange:()=>()=>{},currentUser:async()=>null} as unknown as ProductionBrowserServices;
     render(<AppProvider services={services}><OperationsDashboard/></AppProvider>);fireEvent.click(await screen.findByRole('button',{name:'核对后重新发送'}));await waitFor(()=>expect(retryNotificationDelivery).toHaveBeenCalledWith('40000000-0000-4000-8000-000000000001','已核对渠道后重试'));expect(screen.getByText('已提交但回执超时')).toBeInTheDocument();expect(screen.getAllByRole('button',{name:'核对后重新发送'})).toHaveLength(1);
   });
+  it("银行转账核账要求安全参考号并提交受审计确认",async()=>{
+    const resolveBankTransfer=vi.fn(async()=>({ok:true,result:"paid",error:null}));
+    const reviewSnapshot={...snapshot,fulfilmentWorkItems:[{id:"50000000-0000-4000-8000-000000000001",orderId:"51000000-0000-4000-8000-000000000001",departureId:snapshot.departures[0].id,kind:"manual_payment_review" as const,status:"pending" as const,createdAt:"2026-09-03T00:00:00Z",updatedAt:"2026-09-03T00:00:00Z"}]};
+    const services={operations:{loadSnapshot:vi.fn(async()=>({data:reviewSnapshot,error:null})),resolveBankTransfer,saveDispatchPlan:vi.fn(),createVehicle:vi.fn(),createDriver:vi.fn(),confirmDispatchTasks:vi.fn(),simulateDispatchSend:vi.fn(),cancelDispatchTasks:vi.fn()},loadSellableDepartures:async()=>({data:[],error:null}),onAuthStateChange:()=>()=>{},currentUser:async()=>null} as unknown as ProductionBrowserServices;
+    render(<AppProvider services={services}><OperationsDashboard/></AppProvider>);
+    const confirm=await screen.findByRole("button",{name:"确认到账"});
+    expect(confirm).toBeDisabled();
+    fireEvent.change(screen.getByRole("textbox",{name:"入账参考"}),{target:{value:"BANK-REF-001"}});
+    fireEvent.click(confirm);
+    await waitFor(()=>expect(resolveBankTransfer).toHaveBeenCalledWith(expect.objectContaining({orderId:"51000000-0000-4000-8000-000000000001",decision:"confirmed",reference:"BANK-REF-001",idempotencyKey:expect.any(String)})));
+    expect(screen.getByText("到账已确认；订单已付款并进入自动配车。")).toBeInTheDocument();
+    expect(screen.getByText("仅填写核账编号，不得填写银行卡号或账户凭证。")).toBeInTheDocument();
+  });
 });

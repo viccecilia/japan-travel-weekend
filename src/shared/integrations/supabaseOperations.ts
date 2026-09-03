@@ -432,6 +432,23 @@ export class SupabaseOperationsRepository {
       p_order: orderId,
     });
   }
+  async resolveBankTransfer(input: {
+    orderId: string;
+    decision: "confirmed" | "rejected";
+    reference?: string;
+    reason?: string;
+    idempotencyKey: string;
+  }) {
+    if (!this.client) return { ok: false, result: null, error: "运营数据服务未配置" };
+    const { data, error } = await this.client.rpc("operations_resolve_bank_transfer", {
+      p_order: input.orderId,
+      p_decision: input.decision,
+      p_reference: input.reference ?? "",
+      p_reason: input.reason ?? "",
+      p_idempotency_key: input.idempotencyKey,
+    });
+    return { ok: !error, result: typeof data === "string" ? data : null, error: error?.message ?? null };
+  }
   async retryNotificationDelivery(outboxId:string,reason:string){return this.transition("operations_retry_notification_delivery",{p_outbox:outboxId,p_reason:reason})}
   private async transition(name: string, args: Record<string, unknown>) {
     if (!this.client) return { ok: false, error: "运营数据服务未配置" };

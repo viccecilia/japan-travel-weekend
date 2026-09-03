@@ -16,6 +16,7 @@ export const FICTIONAL_ACCOUNT_CHECKS = [
   "boarding_credential_regression.sql",
   "operations_fleet_dispatch_acceptance.sql",
   "booking_draft_conversion_regression.sql",
+  "bank_transfer_resolution_acceptance.sql",
 ];
 
 function describeFile(path, name) {
