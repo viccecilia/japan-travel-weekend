@@ -530,7 +530,11 @@ export function AppNotifications() {
         },
       };
       setItems(
-        result.data.map((row: any) => {
+        result.data.map((row: {
+          event_type: string;
+          created_at: string;
+          status: string;
+        }) => {
           const template = copy[row.event_type] ?? {
             type: "system" as const,
             label: "系统通知",

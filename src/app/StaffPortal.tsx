@@ -854,13 +854,12 @@ function MeetingAction({
   const [reason, setReason] = useState("首次确认集合信息");
   const [revision, setRevision] = useState<number | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "saving">(
-    "loading",
+    services ? "loading" : "idle",
   );
   const [result, setResult] = useState("");
   useEffect(() => {
     let active = true;
     if (!services) {
-      setStatus("idle");
       return () => {
         active = false;
       };
