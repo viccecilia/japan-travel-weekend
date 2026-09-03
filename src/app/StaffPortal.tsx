@@ -49,7 +49,8 @@ type StaffMessage = {
   created_at: string;
   template_key: string | null;
 };
-type StaffAction = "passengers" | "chat" | "notice" | "incident" | "support";
+type StaffAction =
+  "passengers" | "chat" | "notice" | "meeting" | "incident" | "support";
 
 const previewTasks: StaffTask[] = [
   {
@@ -370,6 +371,7 @@ export function StaffPortal() {
               <Link to={taskPath(active, "passengers")}>乘客点名</Link>
               <Link to={taskPath(active, "chat")}>团队群聊</Link>
               <Link to={taskPath(active, "notice")}>发送通知</Link>
+              <Link to={taskPath(active, "meeting")}>集合管理</Link>
               <Link to={taskPath(active, "incident")}>异常上报</Link>
               <Link to={taskPath(active, "support")}>联系运营</Link>
             </div>
@@ -396,7 +398,14 @@ export function StaffTaskAction() {
   const task =
     tasks.find((item) => item.staff_assignment_id === assignmentId) ?? null;
   const valid = (
-    ["passengers", "chat", "notice", "incident", "support"] as string[]
+    [
+      "passengers",
+      "chat",
+      "notice",
+      "meeting",
+      "incident",
+      "support",
+    ] as string[]
   ).includes(action);
   if (!resolved)
     return (
@@ -427,9 +436,11 @@ export function StaffTaskAction() {
               ? "团队群聊"
               : action === "notice"
                 ? "发送通知"
-                : action === "incident"
-                  ? "异常上报"
-                  : "联系运营"}
+                : action === "meeting"
+                  ? "集合管理"
+                  : action === "incident"
+                    ? "异常上报"
+                    : "联系运营"}
         </h1>
         <p>
           {task.trip_title} · {task.vehicle_label ?? task.vehicle_type}
@@ -442,6 +453,8 @@ export function StaffTaskAction() {
         <ChatAction task={task} />
       ) : action === "notice" ? (
         <NoticeAction task={task} />
+      ) : action === "meeting" ? (
+        <MeetingAction task={task} preview={preview} />
       ) : (
         <EscalationAction task={task} kind={action as "incident" | "support"} />
       )}
@@ -756,6 +769,190 @@ function NoticeAction({ task }: { task: StaffTask }) {
       {notice && (
         <p className="staff-result" role="status">
           {notice}
+        </p>
+      )}
+    </section>
+  );
+}
+
+function MeetingAction({
+  task,
+  preview,
+}: {
+  task: StaffTask;
+  preview: boolean;
+}) {
+  const { services } = useApp();
+  const [meetingAt, setMeetingAt] = useState("");
+  const [meetingName, setMeetingName] = useState(task.meeting_name ?? "");
+  const [meetingAddress, setMeetingAddress] = useState(
+    task.meeting_address ?? "",
+  );
+  const [latitude, setLatitude] = useState(task.map_lat?.toString() ?? "");
+  const [longitude, setLongitude] = useState(task.map_lng?.toString() ?? "");
+  const [landmark, setLandmark] = useState("");
+  const [reason, setReason] = useState("首次确认集合信息");
+  const [revision, setRevision] = useState<number | null>(null);
+  const [status, setStatus] = useState<"idle" | "loading" | "saving">(
+    "loading",
+  );
+  const [result, setResult] = useState("");
+  useEffect(() => {
+    let active = true;
+    if (!services) {
+      setStatus("idle");
+      return () => {
+        active = false;
+      };
+    }
+    void services.loadStaffMeeting(task.vehicle_group_id).then((meeting) => {
+      if (!active) return;
+      if (meeting) {
+        const local = new Date(meeting.meeting_at);
+        local.setMinutes(local.getMinutes() - local.getTimezoneOffset());
+        setMeetingAt(local.toISOString().slice(0, 16));
+        setMeetingName(meeting.meeting_name);
+        setMeetingAddress(meeting.meeting_address);
+        setLatitude(String(meeting.latitude));
+        setLongitude(String(meeting.longitude));
+        setLandmark(meeting.landmark_description);
+        setReason("");
+        setRevision(meeting.revision);
+      }
+      setStatus("idle");
+    });
+    return () => {
+      active = false;
+    };
+  }, [services, task.vehicle_group_id]);
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    const lat = Number(latitude),
+      lng = Number(longitude);
+    if (
+      !meetingAt ||
+      !meetingName.trim() ||
+      !meetingAddress.trim() ||
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng) ||
+      reason.trim().length < 3
+    )
+      return;
+    if (preview || !services) {
+      setRevision((value) => (value ?? 0) + 1);
+      setResult("本地预览已更新，不会写入服务器或通知游客。");
+      return;
+    }
+    setStatus("saving");
+    const nextRevision = await services.updateStaffMeeting({
+      vehicleGroupId: task.vehicle_group_id,
+      meetingAt: new Date(meetingAt).toISOString(),
+      meetingName: meetingName.trim(),
+      meetingAddress: meetingAddress.trim(),
+      latitude: lat,
+      longitude: lng,
+      landmarkDescription: landmark.trim(),
+      reason: reason.trim(),
+    });
+    setStatus("idle");
+    if (nextRevision == null) {
+      setResult("集合信息未保存，请检查坐标、变更原因和本车权限。");
+      return;
+    }
+    setRevision(nextRevision);
+    setReason("");
+    setResult(
+      "集合信息已保存；游客端将读取新坐标，已开放群聊会生成重大变更通知。",
+    );
+  };
+  if (status === "loading")
+    return (
+      <StatusCard title="正在读取当前集合点">核对当前版本与坐标。</StatusCard>
+    );
+  return (
+    <section className="staff-detail">
+      <div className="staff-detail-note">
+        当前版本：{revision ?? "尚未建立"}
+        。首次确认和每次变更都必须填写原因；提交后旧坐标立即失效。
+      </div>
+      <form
+        className="staff-escalation"
+        onSubmit={(event) => void submit(event)}
+      >
+        <label>
+          集合时间（设备时区）
+          <input
+            type="datetime-local"
+            required
+            value={meetingAt}
+            onChange={(event) => setMeetingAt(event.target.value)}
+          />
+        </label>
+        <label>
+          集合地点名称
+          <input
+            required
+            minLength={2}
+            maxLength={160}
+            value={meetingName}
+            onChange={(event) => setMeetingName(event.target.value)}
+          />
+        </label>
+        <label>
+          详细地址
+          <input
+            required
+            minLength={3}
+            maxLength={300}
+            value={meetingAddress}
+            onChange={(event) => setMeetingAddress(event.target.value)}
+          />
+        </label>
+        <div className="staff-coordinate-grid">
+          <label>
+            纬度
+            <input
+              inputMode="decimal"
+              required
+              value={latitude}
+              onChange={(event) => setLatitude(event.target.value)}
+            />
+          </label>
+          <label>
+            经度
+            <input
+              inputMode="decimal"
+              required
+              value={longitude}
+              onChange={(event) => setLongitude(event.target.value)}
+            />
+          </label>
+        </div>
+        <label>
+          明显地标说明
+          <textarea
+            maxLength={500}
+            value={landmark}
+            onChange={(event) => setLandmark(event.target.value)}
+          />
+        </label>
+        <label>
+          确认／变更原因
+          <textarea
+            required
+            minLength={3}
+            maxLength={300}
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+          />
+        </label>
+        <button disabled={status === "saving"}>
+          {status === "saving" ? "正在保存" : "保存集合信息"}
+        </button>
+      </form>
+      {result && (
+        <p className="staff-result" role="status">
+          {result}
         </p>
       )}
     </section>

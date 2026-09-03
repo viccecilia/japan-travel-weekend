@@ -73,6 +73,10 @@ describe("工作人员端", () => {
       "href",
       "/staff/tasks/assignment-1/notice",
     );
+    expect(screen.getByRole("link", { name: "集合管理" })).toHaveAttribute(
+      "href",
+      "/staff/tasks/assignment-1/meeting",
+    );
     expect(screen.getByRole("link", { name: "异常上报" })).toHaveAttribute(
       "href",
       "/staff/tasks/assignment-1/incident",
@@ -238,7 +242,66 @@ describe("工作人员端", () => {
       target: { value: "测试车辆延误，不包含真实乘客资料" },
     });
     fireEvent.click(screen.getByRole("button", { name: "提交运营记录" }));
-    expect(await screen.findByRole("status")).toHaveTextContent("已提交运营记录");
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "已提交运营记录",
+    );
     expect(screen.getByText(/Yuzu Dispatch/)).toBeInTheDocument();
+  });
+  it("司导可读取并提交版本化集合信息", async () => {
+    const calls: string[] = [];
+    const client = {
+      auth: {
+        getUser: async () => ({ data: { user: null }, error: null }),
+        getSession: async () => ({ data: { session: null } }),
+        onAuthStateChange: () => ({
+          data: { subscription: { unsubscribe() {} } },
+        }),
+      },
+      rpc: (name: string) => {
+        calls.push(name);
+        if (name === "get_staff_portal_tasks")
+          return { data: [task], error: null };
+        if (name === "get_current_vehicle_group_meeting")
+          return { maybeSingle: async () => ({ data: null, error: null }) };
+        if (name === "update_vehicle_group_meeting")
+          return { data: 1, error: null };
+        return { data: null, error: null };
+      },
+    } as unknown as SupabaseClient;
+    render(
+      <MemoryRouter initialEntries={["/staff/tasks/assignment-1/meeting"]}>
+        <AppProvider
+          services={new ProductionBrowserServices(client, undefined)}
+        >
+          <Routes>
+            <Route
+              path="/staff/tasks/:assignmentId/:action"
+              element={<StaffTaskAction />}
+            />
+          </Routes>
+        </AppProvider>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText(/当前版本：尚未建立/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/集合时间/), {
+      target: { value: "2026-09-04T11:30" },
+    });
+    fireEvent.change(screen.getByLabelText("集合地点名称"), {
+      target: { value: "东大寺南大门东侧" },
+    });
+    fireEvent.change(screen.getByLabelText("详细地址"), {
+      target: { value: "奈良市春日野町" },
+    });
+    fireEvent.change(screen.getByLabelText("纬度"), {
+      target: { value: "34.6889" },
+    });
+    fireEvent.change(screen.getByLabelText("经度"), {
+      target: { value: "135.8398" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存集合信息" }));
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "集合信息已保存",
+    );
+    expect(calls).toContain("update_vehicle_group_meeting");
   });
 });

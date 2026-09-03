@@ -128,6 +128,14 @@ export class ProductionBrowserServices {
   ) {
     return this.staff.recordExecution(vehicleGroupId, eventType, detail);
   }
+  loadStaffMeeting(vehicleGroupId: string) {
+    return this.staff.loadMeeting(vehicleGroupId);
+  }
+  updateStaffMeeting(
+    input: Parameters<SupabaseStaffRepository["updateMeeting"]>[0],
+  ) {
+    return this.staff.updateMeeting(input);
+  }
   createCheckout(input: CheckoutRequest) {
     return this.checkout.checkout(input);
   }

@@ -49,6 +49,20 @@ export type StaffTaskRow = {
   payment_review_count: number;
   payment_blocked_count: number;
 };
+export type VehicleGroupMeetingRow = {
+  vehicle_group_id: string;
+  meeting_at: string;
+  meeting_name: string;
+  meeting_address: string;
+  latitude: number;
+  longitude: number;
+  landmark_description: string;
+  status: "scheduled" | "active" | "completed" | "cancelled";
+  revision: number;
+  changed_reason: string | null;
+  changed_at: string;
+  acknowledged: boolean;
+};
 const seatStatus = (available: number, capacity: number): SeatStatus =>
   available <= 0
     ? "已售罄"
@@ -482,6 +496,50 @@ export class SupabaseStaffRepository {
       return !error;
     } catch {
       return false;
+    }
+  }
+  async loadMeeting(vehicleGroupId: string) {
+    if (!this.client) return null;
+    try {
+      const { data, error } = await this.client
+        .rpc("get_current_vehicle_group_meeting", {
+          p_vehicle_group: vehicleGroupId,
+        })
+        .maybeSingle();
+      return error ? null : (data as VehicleGroupMeetingRow | null);
+    } catch {
+      return null;
+    }
+  }
+  async updateMeeting(input: {
+    vehicleGroupId: string;
+    meetingAt: string;
+    meetingName: string;
+    meetingAddress: string;
+    latitude: number;
+    longitude: number;
+    landmarkDescription: string;
+    reason: string;
+  }) {
+    if (!this.client) return null;
+    try {
+      const { data, error } = await this.client.rpc(
+        "update_vehicle_group_meeting",
+        {
+          p_vehicle_group: input.vehicleGroupId,
+          p_meeting_at: input.meetingAt,
+          p_meeting_name: input.meetingName,
+          p_meeting_address: input.meetingAddress,
+          p_latitude: input.latitude,
+          p_longitude: input.longitude,
+          p_landmark_description: input.landmarkDescription,
+          p_reason: input.reason,
+          p_idempotency_key: crypto.randomUUID(),
+        },
+      );
+      return error ? null : Number(data);
+    } catch {
+      return null;
     }
   }
 }
