@@ -41,11 +41,12 @@ begin
   select count(*)::integer into v_group_count from public.vehicle_group_orders where order_id=v_result.order_id and vehicle_group_id=v_group;
   select status into v_work_status from public.fulfilment_work_items where order_id=v_result.order_id and kind='paid_order_ready';
   select booked_seats into v_booked from public.vehicle_assignments where id=v_assignment;
-  if v_group_count<>1 or v_work_status<>'completed' or v_booked<>2 then raise exception 'FAIL paid order was not made fulfilment-ready'; end if;
+  select id,status into v_boarding,v_hold_status from public.boardings where order_id=v_result.order_id;
+  if v_group_count<>1 or v_work_status<>'completed' or v_booked<>2 or v_boarding is null or v_hold_status<>'not_issued' then raise exception 'FAIL paid order was not made fulfilment-ready'; end if;
   if public.apply_payment_event(v_key||'-event',v_result.order_id,'succeeded',now(),'fictional-payload-digest') then raise exception 'FAIL duplicate payment event accepted'; end if;
   select count(*)::integer into v_group_count from public.vehicle_group_orders where order_id=v_result.order_id;
   if v_group_count<>1 then raise exception 'FAIL duplicate payment changed vehicle allocation'; end if;
-  insert into public.boardings(order_id,status) values(v_result.order_id,'issued') returning id into v_boarding;
+  update public.boardings set status='issued',updated_at=now() where id=v_boarding;
   insert into public.boarding_credentials(boarding_id,vehicle_group_id,token_digest,expires_at)
     values(v_boarding,v_group,decode(repeat('ab',32),'hex'),now()+interval '1 day');
   insert into public.location_shares(vehicle_group_id,subject_id,scope,started_at,expires_at)

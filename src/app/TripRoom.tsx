@@ -98,7 +98,7 @@ export function MyTrip() {
         {fulfilment?.vehicle_group_id && fulfilment.trip_room_id ? (
           <>
             <div className="trip-status">
-              <span>{fulfilment.boarding_ready ? "车辆组与行程房间已准备" : "履约资料准备中"}</span>
+              <span>车辆组与行程房间已建立</span>
               <b>{fulfilment.meeting_name ?? "集合地点待确认"}</b>
               <small>{fulfilment.meeting_address ?? "请留意最新通知"}</small>
             </div>
