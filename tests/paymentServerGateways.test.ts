@@ -1,5 +1,5 @@
 import {describe,expect,it,vi} from 'vitest';
-import {SupabaseServerPricingGateway} from '../server/supabase';
+import {SupabaseOrderInventoryGateway,SupabaseServerPricingGateway} from '../server/supabase';
 
 describe('服务端支付 gateway',()=>{
   it('只为开放且配置正整数日元单价的班次报价',async()=>{
@@ -17,5 +17,11 @@ describe('服务端支付 gateway',()=>{
     await expect(gateway.quote('departure',0)).resolves.toBeNull();
     response.data={seat_price_jpy:8500,status:'closed'} as never;
     await expect(gateway.quote('departure',1)).resolves.toBeNull();
+  });
+  it('草稿结账把账户、班次和席数一起交给原子转换函数',async()=>{
+    const rpc=vi.fn(async()=>({data:[{order_id:'o1',hold_id:'h1'}],error:null}));
+    const gateway=new SupabaseOrderInventoryGateway({rpc} as never);
+    await expect(gateway.reserve({accountId:'account-1',accessTokenHash:'hash'},{draftId:'draft-1',departureId:'dep-1',seats:3,idempotencyKey:'checkout-1',expiresAt:'2026-09-03T10:00:00Z'})).resolves.toEqual({orderId:'o1',holdId:'h1'});
+    expect(rpc).toHaveBeenCalledWith('reserve_inventory_from_draft',expect.objectContaining({p_draft:'draft-1',p_account:'account-1',p_departure:'dep-1',p_seats:3}));
   });
 });

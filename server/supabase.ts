@@ -8,12 +8,12 @@ export function createSupabaseServerClient(config:SupabaseServerConfig):Supabase
 }
 
 export type VerifiedSession={accountId:string;accessTokenHash:string};
-export interface OrderInventoryGateway{reserve(session:VerifiedSession,input:{departureId:string;seats:number;idempotencyKey:string;expiresAt:string}):Promise<{orderId:string;holdId:string}|null>;cancel(session:VerifiedSession,orderId:string):Promise<boolean>}
+export interface OrderInventoryGateway{reserve(session:VerifiedSession,input:{departureId:string;seats:number;idempotencyKey:string;expiresAt:string;draftId?:string}):Promise<{orderId:string;holdId:string}|null>;cancel(session:VerifiedSession,orderId:string):Promise<boolean>}
 export class SupabaseOrderInventoryGateway implements OrderInventoryGateway{
   constructor(private readonly client:SupabaseClient|null){}
-  async reserve(session:VerifiedSession,input:{departureId:string;seats:number;idempotencyKey:string;expiresAt:string}){
+  async reserve(session:VerifiedSession,input:{departureId:string;seats:number;idempotencyKey:string;expiresAt:string;draftId?:string}){
     if(!this.client)return null;
-    const {data,error}=await this.client.rpc('reserve_inventory',{p_departure:input.departureId,p_account:session.accountId,p_seats:input.seats,p_key:input.idempotencyKey,p_expires:input.expiresAt});
+    const {data,error}=input.draftId?await this.client.rpc('reserve_inventory_from_draft',{p_draft:input.draftId,p_account:session.accountId,p_departure:input.departureId,p_seats:input.seats,p_key:input.idempotencyKey,p_expires:input.expiresAt}):await this.client.rpc('reserve_inventory',{p_departure:input.departureId,p_account:session.accountId,p_seats:input.seats,p_key:input.idempotencyKey,p_expires:input.expiresAt});
     if(error||!data?.[0])return null;
     return {orderId:data[0].order_id as string,holdId:data[0].hold_id as string};
   }

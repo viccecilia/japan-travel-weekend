@@ -1,4 +1,4 @@
-export type CheckoutRequest={departureId:string;seats:number;idempotencyKey:string;paymentMethod:'card'|'bank_transfer'};
+export type CheckoutRequest={departureId:string;seats:number;idempotencyKey:string;paymentMethod:'card'|'bank_transfer';draftId?:string};
 export type CheckoutResponse={orderId:string;holdId:string;status:'requires_payment_action';clientSecret:string}|{orderId:string;holdId:string;status:'pending_manual_review'};
 export type CheckoutFailure={status:'failed';error:string;httpStatus:number|null};
 export const isSafeApiBaseUrl=(value:string|undefined)=>Boolean(value&&(value.startsWith('https://')||/^\/(?!\/)/.test(value)));
