@@ -12,5 +12,6 @@ describe('passenger late reporting migration',()=>{
     expect(sql).toContain('o.account_id=auth.uid()');
     expect(sql).toContain('client_message_id=p_idempotency_key');
     expect(sql).toContain("important)");
+    expect(sql).toContain('late report idempotency mismatch');
   });
 });

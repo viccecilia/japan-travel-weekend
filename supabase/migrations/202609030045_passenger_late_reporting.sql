@@ -6,7 +6,7 @@ alter table public.passenger_checkins
 create or replace function public.report_own_late_arrival(p_passenger uuid,p_minutes integer,p_idempotency_key text)
 returns table(checkin_id uuid,late_minutes integer,reported_at timestamptz)
 language plpgsql security definer set search_path=public,pg_temp as $$
-declare v_order uuid;v_group uuid;v_room uuid;v_checkin public.passenger_checkins%rowtype;v_message text;
+declare v_order uuid;v_group uuid;v_room uuid;v_checkin public.passenger_checkins%rowtype;v_prior public.passenger_checkin_events%rowtype;v_message text;
 begin
   if auth.uid() is null or p_minutes not in (5,10,15) or length(p_idempotency_key) not between 8 and 200 then
     raise exception 'invalid late report';
@@ -17,14 +17,20 @@ begin
     where p.id=p_passenger and o.account_id=auth.uid();
   if v_order is null then raise exception 'late report not allowed'; end if;
 
+  select e.* into v_prior from public.passenger_checkin_events e where e.actor_id=auth.uid() and e.idempotency_key=p_idempotency_key;
+  if found then
+    select pc.* into v_checkin from public.passenger_checkins pc where pc.id=v_prior.checkin_id;
+    if v_checkin.passenger_id<>p_passenger or v_prior.status<>('late_'||p_minutes) then raise exception 'late report idempotency mismatch'; end if;
+    return query select v_checkin.id,v_checkin.late_minutes,v_checkin.status_at;return;
+  end if;
+
   insert into public.passenger_checkins(passenger_id,order_id,vehicle_group_id,status,status_at,updated_by,late_minutes)
     values(p_passenger,v_order,v_group,'needs_assistance',now(),auth.uid(),p_minutes)
     on conflict(passenger_id) do update set status='needs_assistance',status_at=now(),updated_by=auth.uid(),updated_at=now(),late_minutes=excluded.late_minutes
     returning * into v_checkin;
 
   insert into public.passenger_checkin_events(checkin_id,actor_id,idempotency_key,status)
-    values(v_checkin.id,auth.uid(),p_idempotency_key,'late_'||p_minutes)
-    on conflict(actor_id,idempotency_key) do nothing;
+    values(v_checkin.id,auth.uid(),p_idempotency_key,'late_'||p_minutes);
 
   select id into v_room from public.trip_rooms where vehicle_group_id=v_group and status='open' order by created_at desc limit 1;
   if v_room is not null and not exists(select 1 from public.trip_room_messages where author_id=auth.uid() and client_message_id=p_idempotency_key) then
