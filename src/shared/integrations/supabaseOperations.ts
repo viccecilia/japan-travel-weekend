@@ -38,6 +38,10 @@ export type OperationsDeparture = {
   pendingOrders: number;
   grossAmountJpy: number;
   loadFactor: number;
+  bookingClosesAt: string | null;
+  chatOpensAt: string | null;
+  dispatchPlanningStatus: "collecting" | "ready_for_planning" | "needs_manual_review" | "planned" | "confirmed";
+  requiresManualReview: boolean;
 };
 export type OperationsDispatchTask = {
   id: string;
@@ -134,6 +138,10 @@ type OperationsDepartureRow = {
   booked_seats: number;
   pending_orders: number;
   gross_amount_jpy: number;
+  booking_closes_at: string | null;
+  chat_opens_at: string | null;
+  dispatch_planning_status: OperationsDeparture["dispatchPlanningStatus"];
+  requires_manual_review: boolean;
 };
 export const summarizeDeparture = (row: DepartureRow): OperationsDeparture => {
   const orders = row.orders ?? [];
@@ -167,6 +175,10 @@ export const summarizeDeparture = (row: DepartureRow): OperationsDeparture => {
       row.capacity > 0
         ? Math.round((bookedSeats / row.capacity) * 1000) / 10
         : 0,
+    bookingClosesAt: null,
+    chatOpensAt: null,
+    dispatchPlanningStatus: "collecting",
+    requiresManualReview: false,
   };
 };
 
@@ -324,6 +336,10 @@ export class SupabaseOperationsRepository {
           row.capacity > 0
             ? Math.round((Number(row.booked_seats) / row.capacity) * 1000) / 10
             : 0,
+        bookingClosesAt: row.booking_closes_at,
+        chatOpensAt: row.chat_opens_at,
+        dispatchPlanningStatus: row.dispatch_planning_status,
+        requiresManualReview: row.requires_manual_review,
       }));
       return {
         data: {

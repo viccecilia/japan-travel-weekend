@@ -632,6 +632,17 @@ export function OperationsDashboard() {
                           待付款 <b>{item.pendingOrders}</b>
                         </span>
                       </div>
+                      <p className={item.requiresManualReview ? "operations-cutoff-alert" : "operations-cutoff"}>
+                        截单：{japanDate(item.bookingClosesAt)} · 聊天开放：{japanDate(item.chatOpensAt)}
+                        <br />
+                        {item.requiresManualReview
+                          ? `报名 ${item.bookedSeats} 人，低于4人，请人工确认车辆与发车安排`
+                          : item.dispatchPlanningStatus === "ready_for_planning"
+                            ? "已截单，可以开始配车"
+                            : item.dispatchPlanningStatus === "confirmed"
+                              ? "车辆与司机已确认，任务已同步到工作人员端"
+                              : "报名收集中"}
+                      </p>
                       <button
                         type="button"
                         onClick={() => selectDeparture(item.id)}

@@ -18,6 +18,7 @@ export type StaffTask = {
   departure_id: string;
   trip_title: string;
   departs_at: string | null;
+  chat_opens_at: string | null;
   meeting_name: string | null;
   meeting_address: string | null;
   map_lat: number | null;
@@ -77,6 +78,7 @@ const previewTasks: StaffTask[] = [
     departure_id: "preview-departure",
     trip_title: "京都与奈良一日游",
     departs_at: new Date(Date.now() + 3_600_000).toISOString(),
+    chat_opens_at: new Date(Date.now() - 3_600_000).toISOString(),
     meeting_name: "大阪梅田集合点",
     meeting_address: "集合地址将在任务确认后显示",
     map_lat: null,
@@ -101,6 +103,7 @@ const previewTasks: StaffTask[] = [
     departure_id: "preview-departure-2",
     trip_title: "天桥立与伊根",
     departs_at: new Date(Date.now() + 86_400_000).toISOString(),
+    chat_opens_at: new Date(Date.now() + 43_200_000).toISOString(),
     meeting_name: "大阪站周边",
     meeting_address: null,
     map_lat: null,
@@ -1206,6 +1209,9 @@ function TaskSummary({ task }: { task: StaffTask }) {
           {task.meeting_name ?? "集合点待确认"}
           {task.meeting_address ? ` · ${task.meeting_address}` : ""}
         </p>
+        {task.chat_opens_at && task.room_status !== "open" && (
+          <p>团队聊天将于 {dayLabel(task.chat_opens_at)} {timeLabel(task.chat_opens_at)} 开放</p>
+        )}
       </div>
       <em>
         {task.room_status === "open"

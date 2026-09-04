@@ -1,8 +1,8 @@
 import nodemailer from 'nodemailer';
 
-export type EmailAlertEvent='alert'|'recovery';
+export type EmailAlertEvent='alert'|'recovery'|'low-booking';
 export type EmailAlertConfig={host:string;port:number;secure:boolean;user:string;password:string;from:string;to:string};
-export type EmailAlertInput={event:EmailAlertEvent;endpoint:string;consecutiveFailures:number;occurredAt?:Date};
+export type EmailAlertInput={event:EmailAlertEvent;endpoint:string;consecutiveFailures:number;occurredAt?:Date;departureId?:string;tripTitle?:string;departsAt?:string;passengerCount?:number;threshold?:number};
 
 export function readEmailAlertConfig(env:NodeJS.ProcessEnv):EmailAlertConfig|null{
   if(env.JTW_EMAIL_ALERT_ENABLED!=='true')return null;
@@ -15,6 +15,11 @@ export function readEmailAlertConfig(env:NodeJS.ProcessEnv):EmailAlertConfig|nul
 }
 
 export function buildEmailAlert(input:EmailAlertInput){
+  if(input.event==='low-booking'){
+    const occurredAt=(input.occurredAt??new Date()).toISOString();
+    const lines=['次日班次低人数人工介入提醒','环境：测试环境',`路线：${input.tripTitle??'未命名路线'}`,`班次：${input.departsAt??'时间待确认'}`,`班次ID：${input.departureId??'未知'}`,`已确认人数：${input.passengerCount??0}`,`人工复核阈值：${input.threshold??4}`,`生成时间：${occurredAt}`,'','该班次不会自动取消。请运营人员确认车辆、司机和是否正常发车，并在后台完成配车。','此邮件由 Japan Travel Weekend 班次截单任务自动发送。'];
+    return {subject:`[JT Weekend][需人工介入] 次日班次仅 ${input.passengerCount??0} 人`,text:lines.join('\n')};
+  }
   const isAlert=input.event==='alert';
   const title=isAlert?'测试 API 异常告警':'测试 API 恢复通知';
   const occurredAt=(input.occurredAt??new Date()).toISOString();

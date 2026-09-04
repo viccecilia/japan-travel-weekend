@@ -13,4 +13,10 @@ describe('测试环境邮件告警',()=>{
     const recovery=buildEmailAlert({event:'recovery',endpoint:'api-test.japan-travel.info',consecutiveFailures:0,occurredAt:new Date('2026-08-26T10:05:00Z')});
     expect(alert.subject).toContain('异常告警');expect(alert.text).toContain('连续失败次数：3');expect(recovery.subject).toContain('恢复通知');expect(recovery.text).toContain('事件已自动关闭');
   });
+  it('生成低人数班次人工介入邮件且明确不会自动取消',()=>{
+    const message=buildEmailAlert({event:'low-booking',endpoint:'departure-cutoff',consecutiveFailures:0,departureId:'departure-1',tripTitle:'京都与奈良一日游',departsAt:'2026-09-06T08:00:00+09:00',passengerCount:3,threshold:4});
+    expect(message.subject).toContain('需人工介入');
+    expect(message.text).toContain('已确认人数：3');
+    expect(message.text).toContain('不会自动取消');
+  });
 });
