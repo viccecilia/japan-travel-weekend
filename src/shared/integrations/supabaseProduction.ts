@@ -604,6 +604,14 @@ export class SupabaseStaffRepository {
       return false;
     }
   }
+  async advanceJourney(vehicleGroupId:string,action:'stop_arrived'|'trip_completed',stopName:string,reason:string){
+    if(!this.client)return null;
+    try{const {data,error}=await this.client.rpc('advance_vehicle_group_journey',{p_vehicle_group:vehicleGroupId,p_action:action,p_stop_name:stopName,p_reason:reason,p_idempotency_key:crypto.randomUUID()});return error?null:data?.[0]??null}catch{return null}
+  }
+  async publishLocation(vehicleGroupId:string,latitude:number,longitude:number,accuracy:number|null){
+    if(!this.client)return false;const {error}=await this.client.rpc('publish_driver_location',{p_vehicle_group:vehicleGroupId,p_latitude:latitude,p_longitude:longitude,p_accuracy_meters:accuracy,p_minutes:15});return !error;
+  }
+  async stopLocation(vehicleGroupId:string){if(!this.client)return false;const {error}=await this.client.rpc('stop_driver_location',{p_vehicle_group:vehicleGroupId});return !error}
 }
 export class SupabaseTripRoomRepository {
   constructor(private readonly client: SupabaseClient | null) {}

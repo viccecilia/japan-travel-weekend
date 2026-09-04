@@ -3,8 +3,9 @@ export function walkingNavigationUrl({latitude,longitude}:NavigationDestination)
   if(!Number.isFinite(latitude)||!Number.isFinite(longitude)||Math.abs(latitude)>90||Math.abs(longitude)>180)return null;
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${latitude},${longitude}`)}&travelmode=walking`;
 }
-export function meetingMapEmbedUrl({latitude,longitude}:NavigationDestination){
+export function meetingMapEmbedUrl({latitude,longitude}:NavigationDestination,browserKey?:string){
   if(!Number.isFinite(latitude)||!Number.isFinite(longitude)||Math.abs(latitude)>90||Math.abs(longitude)>180)return null;
+  if(browserKey?.trim())return `https://www.google.com/maps/embed/v1/place?key=${encodeURIComponent(browserKey.trim())}&q=${encodeURIComponent(`${latitude},${longitude}`)}&zoom=17`;
   return `https://www.google.com/maps?q=${encodeURIComponent(`${latitude},${longitude}`)}&z=17&output=embed`;
 }
 export function openWalkingNavigation(destination:NavigationDestination,open:(url:string,target:string)=>unknown=window.open){const url=walkingNavigationUrl(destination);if(!url)return false;open(url,'_blank');return true}
