@@ -46,9 +46,6 @@ export type StaffTaskRow = {
   booked_seats: number;
   passenger_count: number;
   boarded_count: number;
-  payment_ready_count: number;
-  payment_review_count: number;
-  payment_blocked_count: number;
 };
 export type VehicleGroupMeetingRow = {
   vehicle_group_id: string;

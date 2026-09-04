@@ -27,13 +27,10 @@ const task = {
   booked_seats: 12,
   passenger_count: 12,
   boarded_count: 8,
-  payment_ready_count: 10,
-  payment_review_count: 2,
-  payment_blocked_count: 0,
 };
 
 describe("工作人员端", () => {
-  it("只展示履约付款状态，不展示金额或支付凭据", async () => {
+  it("只展示已进入本车的履约名单，不展示付款职责或支付凭据", async () => {
     const client = {
       auth: {
         getUser: async () => ({ data: { user: null }, error: null }),
@@ -56,10 +53,9 @@ describe("工作人员端", () => {
         </AppProvider>
       </MemoryRouter>,
     );
-    expect(await screen.findByText("本车订单状态")).toBeInTheDocument();
-    expect(screen.getByText("可登车 10")).toBeInTheDocument();
-    expect(screen.getByText("待人工确认 2")).toBeInTheDocument();
-    expect(document.body.textContent).not.toMatch(/¥|银行卡|卡号：|优惠券/);
+    expect(await screen.findByText("剩余未登车")).toBeInTheDocument();
+    expect(screen.getByText("仅履约名单")).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/¥|银行卡|卡号：|优惠券|付款资格|待人工确认|不可登车/);
     expect(screen.getByText("司机权限")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "乘客点名" })).toHaveAttribute(
       "href",

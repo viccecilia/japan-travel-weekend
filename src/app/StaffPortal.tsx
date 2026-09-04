@@ -30,9 +30,6 @@ export type StaffTask = {
   booked_seats: number;
   passenger_count: number;
   boarded_count: number;
-  payment_ready_count: number;
-  payment_review_count: number;
-  payment_blocked_count: number;
 };
 type AttendanceRow = {
   passenger_id: string;
@@ -91,9 +88,6 @@ const previewTasks: StaffTask[] = [
     booked_seats: 12,
     passenger_count: 12,
     boarded_count: 8,
-    payment_ready_count: 10,
-    payment_review_count: 2,
-    payment_blocked_count: 0,
   },
   {
     staff_assignment_id: "preview-tomorrow",
@@ -116,9 +110,6 @@ const previewTasks: StaffTask[] = [
     booked_seats: 18,
     passenger_count: 18,
     boarded_count: 0,
-    payment_ready_count: 17,
-    payment_review_count: 1,
-    payment_blocked_count: 0,
   },
 ];
 const previewAttendance: AttendanceRow[] = [
@@ -264,7 +255,7 @@ export function StaffPortal() {
     <StaffFrame task={active}>
       {preview && (
         <div className="staff-preview">
-          本地界面预览 · 不代表真实任务、乘客或付款状态
+          本地界面预览 · 不代表真实任务或乘客
         </div>
       )}
       <header className="staff-welcome">
@@ -349,27 +340,10 @@ export function StaffPortal() {
               <small>按乘客点名</small>
             </article>
             <article>
-              <span>可登车订单</span>
-              <b>{active.payment_ready_count}</b>
-              <small>不显示金额</small>
+              <span>剩余未登车</span>
+              <b>{Math.max(0, active.passenger_count-active.boarded_count)}</b>
+              <small>仅履约名单</small>
             </article>
-          </section>
-          <section className="staff-payment">
-            <header>
-              <div>
-                <span>付款与登车资格</span>
-                <h2>本车订单状态</h2>
-              </div>
-              <small>仅履约状态</small>
-            </header>
-            <div>
-              <b className="ready">可登车 {active.payment_ready_count}</b>
-              <b className="review">待人工确认 {active.payment_review_count}</b>
-              <b className="blocked">不可登车 {active.payment_blocked_count}</b>
-            </div>
-            <p>
-              工作人员不显示支付金额、卡号、优惠和退款金额；待确认订单交由运营处理。
-            </p>
           </section>
           <section className="staff-actions">
             <h2>当前任务</h2>
@@ -401,7 +375,7 @@ export function StaffPortal() {
             <b>{roleLabel(active.assignment_role)}权限</b>
             <p>
               {active.assignment_role === "driver"
-                ? "车辆、导航、付款资格、点名、司机通知和本车群聊。"
+                ? "车辆、导航、点名、司机通知和本车群聊。"
                 : active.assignment_role === "guide"
                   ? "团员、行程节点、点名、广播、翻译和本团群聊。"
                   : "运营授权范围内的履约协助。"}
@@ -1088,7 +1062,7 @@ function DelayAction({ task, preview }: { task: StaffTask; preview: boolean }) {
   return (
     <section className="staff-detail">
       <div className="staff-detail-note">
-        延误通知只发给本车已付款乘客。页面显示“已进入待发送队列”，不会把尚未送达的外部通知标记为成功。
+        延误通知只发给本车乘客。页面显示“已进入待发送队列”，不会把尚未送达的外部通知标记为成功。
       </div>
       <form
         className="staff-escalation"
@@ -1192,7 +1166,6 @@ function EscalationAction({
             ) : (
               <>
                 <option>需要运营协助</option>
-                <option>付款资格人工核对</option>
                 <option>乘客联系请求</option>
                 <option>调度调整请求</option>
               </>
