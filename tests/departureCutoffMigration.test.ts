@@ -8,6 +8,8 @@ describe('班次截单、配车交接与工作人员同步迁移',()=>{
     expect(sql).toContain("time '12:00'");
     expect(sql).toContain("at time zone 'Asia/Tokyo'");
     expect(sql).toContain('departures_lifecycle_defaults');
+    expect(sql).toContain("commerce_changed:=tg_op='INSERT'");
+    expect(sql).toContain('allow independent lifecycle/audit fields to be backfilled safely');
   });
   it('截止后关闭销售并区分自动规划与低人数人工介入',()=>{
     expect(sql).toContain('process_due_departure_cutoffs');

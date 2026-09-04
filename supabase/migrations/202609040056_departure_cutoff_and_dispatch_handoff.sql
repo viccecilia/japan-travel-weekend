@@ -6,6 +6,31 @@ alter table public.departures
   add column if not exists dispatch_planning_status text not null default 'collecting'
     check(dispatch_planning_status in ('collecting','ready_for_planning','needs_manual_review','planned','confirmed'));
 
+-- Existing isolated-test fixtures may predate the complete sellable product
+-- contract. Keep strict validation for inserts and commerce-field changes, but
+-- allow independent lifecycle/audit fields to be backfilled safely.
+create or replace function public.guard_sellable_departure()
+returns trigger language plpgsql set search_path=public,pg_temp as $$
+declare commerce_changed boolean;
+begin
+  commerce_changed:=tg_op='INSERT' or (
+    new.status,new.departs_at,new.ends_at,new.sales_open_at,new.sales_close_at,new.minimum_guests,
+    new.capacity,new.seat_price_jpy,new.currency,new.tax_included,new.meeting_name,new.meeting_address,new.map_lat,new.map_lng
+  ) is distinct from (
+    old.status,old.departs_at,old.ends_at,old.sales_open_at,old.sales_close_at,old.minimum_guests,
+    old.capacity,old.seat_price_jpy,old.currency,old.tax_included,old.meeting_name,old.meeting_address,old.map_lat,old.map_lng
+  );
+  if commerce_changed and new.status='open' and (
+    new.departs_at is null or new.ends_at is null or new.ends_at<=new.departs_at
+    or new.sales_open_at is null or new.sales_close_at is null or new.sales_open_at>=new.sales_close_at or new.sales_close_at>=new.departs_at
+    or new.minimum_guests is null or new.minimum_guests<1 or new.minimum_guests>new.capacity
+    or new.seat_price_jpy is null or new.seat_price_jpy<=0 or new.currency<>'JPY' or not new.tax_included
+    or length(trim(coalesce(new.meeting_name,'')))<2 or length(trim(coalesce(new.meeting_address,'')))<5
+    or new.map_lat is null or new.map_lng is null
+  ) then raise exception 'departure product incomplete'; end if;
+  return new;
+end$$;
+
 update public.departures set
   booking_closes_at=coalesce(booking_closes_at,departs_at-interval '24 hours'),
   chat_opens_at=coalesce(chat_opens_at,(((departs_at at time zone 'Asia/Tokyo')::date-1)+time '12:00') at time zone 'Asia/Tokyo')
