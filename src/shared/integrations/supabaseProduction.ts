@@ -738,7 +738,7 @@ export class SupabaseTripRoomRepository {
     return error ? null : data;
   }
   async saveTranslationPreference(
-    targetLanguage: "zh-CN" | "ja" | "en" | "vi" | "ne",
+    targetLanguage: "zh-CN" | "zh-TW" | "ja" | "en" | "vi" | "ne",
     autoTranslate: boolean,
     followDeviceLanguage: boolean,
   ) {

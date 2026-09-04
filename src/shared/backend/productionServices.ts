@@ -170,7 +170,7 @@ export class ProductionBrowserServices {
   }
   translateMessage(input: {
     messageId: string;
-    targetLanguage: "zh-CN" | "ja" | "en" | "vi" | "ne";
+    targetLanguage: "zh-CN" | "zh-TW" | "ja" | "en" | "vi" | "ne";
   }) {
     return this.checkout.translateMessage(input);
   }

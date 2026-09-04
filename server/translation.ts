@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export const translationTargets = ["zh-CN", "ja", "en", "vi", "ne"] as const;
+export const translationTargets = ["zh-CN", "zh-TW", "ja", "en", "vi", "ne"] as const;
 export type TranslationTarget = (typeof translationTargets)[number];
 export const isTranslationTarget = (value: unknown): value is TranslationTarget => typeof value === "string" && translationTargets.includes(value as TranslationTarget);
 
