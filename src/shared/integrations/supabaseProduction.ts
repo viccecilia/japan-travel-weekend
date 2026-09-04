@@ -340,6 +340,16 @@ export class SupabaseOrderRepository {
       return null;
     }
   }
+  async loadOwnCancellationRequest(orderId:string){
+    if(!this.client)return null;
+    const {data,error}=await this.client.from('order_cancellation_requests').select('id,status,reason_code,refund_percent,estimated_refund_amount,requested_at,updated_at').eq('order_id',orderId).in('status',['requested','reviewing','refund_processing']).order('requested_at',{ascending:false}).limit(1).maybeSingle();
+    return error?null:data;
+  }
+  async requestOwnCancellation(orderId:string,reasonCode:string,note:string){
+    if(!this.client)return {ok:false,error:'取消申请服务未配置'};
+    const {data,error}=await this.client.rpc('request_own_order_cancellation',{p_order:orderId,p_reason_code:reasonCode,p_customer_note:note.trim()});
+    return error||!data?{ok:false,error:'申请未提交，请检查订单状态和出发日期'}:{ok:true,error:null,id:String(data)};
+  }
   async saveOwnDraft(input: {
     departureId: string;
     adults: number;

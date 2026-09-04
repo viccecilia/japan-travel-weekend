@@ -2440,6 +2440,9 @@ export function OrderDetail() {
     boarding_ready: boolean;
   } | null>(null);
   const [remoteDraft,setRemoteDraft]=useState<{operational_review_status:string;assistance_summary:Record<string,unknown>}|null>(null);
+  const [cancellation,setCancellation]=useState<{id:string;status:string;refund_percent:number;estimated_refund_amount:number}|null>(null);
+  const [cancellationNotice,setCancellationNotice]=useState('');
+  const [cancellationBusy,setCancellationBusy]=useState(false);
   const [remoteResolved, setRemoteResolved] = useState(!services);
   useEffect(() => {
     if (!services || !id) return;
@@ -2448,7 +2451,8 @@ export function OrderDetail() {
       services.loadOwnOrders(),
       services.loadOwnOrderFulfilment(id),
       services.loadOwnDrafts(),
-    ]).then(([result, fulfilment,draftResult]) => {
+      services.loadOwnCancellationRequest(id),
+    ]).then(([result, fulfilment,draftResult,cancellationResult]) => {
       if (!active) return;
       setRemoteOrder(
         (
@@ -2466,12 +2470,20 @@ export function OrderDetail() {
       setRemoteFulfilment(fulfilment as typeof remoteFulfilment);
       const linked=(draftResult.data as Array<{converted_order_id?:string|null;operational_review_status:string;assistance_summary:Record<string,unknown>}>).find(item=>item.converted_order_id===id)??null;
       setRemoteDraft(linked);
+      setCancellation(cancellationResult as typeof cancellation);
       setRemoteResolved(true);
     });
     return () => {
       active = false;
     };
   }, [services, id]);
+  const submitCancellation=async(event:FormEvent<HTMLFormElement>)=>{
+    event.preventDefault();if(!services||!id)return;
+    const form=new FormData(event.currentTarget);setCancellationBusy(true);
+    const result=await services.requestOwnCancellation(id,String(form.get('reason')),String(form.get('note')??''));
+    setCancellationBusy(false);setCancellationNotice(result.error??'取消申请已提交，订单在运营审核和退款完成前仍保持原状态。');
+    if(result.ok)setCancellation(await services.loadOwnCancellationRequest(id) as typeof cancellation);
+  };
   if (services) {
     if (!remoteResolved)
       return (
@@ -2548,6 +2560,8 @@ export function OrderDetail() {
           <div><span>特殊需求审核</span><b>{reviewLabel}</b></div>
           <div><span>履约需求摘要</span><b>{assistanceItems.length?assistanceItems.join('；'):'无已申报项目'}</b></div>
         </div>
+        {['paid','confirmed'].includes(remoteOrder.status)&&(cancellation?<section className="empty-card" aria-live="polite"><b>取消／退款申请处理中</b><p>当前状态：{cancellation.status} · 按现行规则预计退款 {cancellation.refund_percent}%（¥{cancellation.estimated_refund_amount}）。最终金额以运营审核和支付渠道确认为准。</p></section>:<section className="empty-card"><b>需要取消行程？</b><p>提交后由运营审核；不会立即取消订单，也不会由司机处理。</p><form className="form" onSubmit={submitCancellation}><label>取消原因<select name="reason" required defaultValue="plans_changed"><option value="plans_changed">计划有变</option><option value="health">健康原因</option><option value="transport">交通原因</option><option value="duplicate">重复预订</option><option value="other">其他原因</option></select></label><label>补充说明（选填）<textarea name="note" maxLength={500}/></label><button className="button secondary full" disabled={cancellationBusy}>{cancellationBusy?'正在提交':'申请取消／退款'}</button></form></section>)}
+        {cancellationNotice&&<p className="notice" role="status">{cancellationNotice}</p>}
         {navigationUrl ? (
           <a
             className="button full"

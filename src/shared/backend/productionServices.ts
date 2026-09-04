@@ -121,6 +121,8 @@ export class ProductionBrowserServices {
   loadOwnOrderFulfilment(orderId: string) {
     return this.orders.ownFulfilment(orderId);
   }
+  loadOwnCancellationRequest(orderId:string){return this.orders.loadOwnCancellationRequest(orderId)}
+  requestOwnCancellation(orderId:string,reasonCode:string,note:string){return this.orders.requestOwnCancellation(orderId,reasonCode,note)}
   loadSellableDepartures() {
     return this.departures.listSellable();
   }

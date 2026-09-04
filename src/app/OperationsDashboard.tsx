@@ -479,6 +479,10 @@ export function OperationsDashboard() {
               </form>
             </section>
             <section className="operations-section">
+              <header><div><span>订单与支付</span><h2>取消／退款申请</h2></div><small>司机端不可见；退款以支付渠道回调为准</small></header>
+              {(snapshot.cancellationRequests??[]).length===0?<p className="operations-empty">暂无取消或退款申请。</p>:<div className="operations-dispatch-list">{(snapshot.cancellationRequests??[]).map(request=><article key={request.id}><div><b>订单尾号 {request.orderId.slice(-6)}</b><span>{request.status}</span></div><span>原因：{request.reasonCode} · 规则退款 {request.refundPercent}%</span><small>预计 ¥{request.estimatedRefundAmount} · {japanDate(request.requestedAt)}</small><p>当前仅进入审核队列；运营批准后必须由服务端调用支付渠道，不能在浏览器直接改成已退款。</p></article>)}</div>}
+            </section>
+            <section className="operations-section">
               <header><div><span>账户与隐私</span><h2>删除申请队列</h2></div><small>不显示联系方式、订单内容或私人资料</small></header>
               {(snapshot.accountDeletionRequests??[]).length===0?<p className="operations-empty">暂无账户删除申请。</p>:<div className="operations-dispatch-list">{(snapshot.accountDeletionRequests??[]).map(request=><article key={request.id}><div><b>{request.status==="deferred_active_booking"?"等待未结束行程":"账户删除申请"}</b><span>{request.status}</span></div><span>申请编号尾号 {request.id.slice(-6)}</span><small>{japanDate(request.requestedAt)}</small><AccountDeletionReview request={request} busy={busy} onReview={reviewAccountDeletion}/></article>)}</div>}
             </section>

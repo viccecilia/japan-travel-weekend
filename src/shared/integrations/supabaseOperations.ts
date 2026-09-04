@@ -86,6 +86,7 @@ export type OperationsNotificationDeliveryIssue = {
   updatedAt: string;
 };
 export type OperationsAccountDeletionRequest={id:string;status:"requested"|"deferred_active_booking"|"reviewing";requestedAt:string;updatedAt:string};
+export type OperationsCancellationRequest={id:string;orderId:string;status:string;reasonCode:string;refundPercent:number;estimatedRefundAmount:number;requestedAt:string;updatedAt:string};
 export type DispatchPlanDraft = {
   sequence: number;
   vehicleType: string;
@@ -106,6 +107,7 @@ export type OperationsSnapshot = {
   fulfilmentWorkItems: OperationsFulfilmentWorkItem[];
   notificationDeliveryIssues: OperationsNotificationDeliveryIssue[];
   accountDeletionRequests?: OperationsAccountDeletionRequest[];
+  cancellationRequests?: OperationsCancellationRequest[];
   dispatchTasks: OperationsDispatchTask[];
   dispatchDrafts: number;
   loadedAt: string;
@@ -193,7 +195,7 @@ export class SupabaseOperationsRepository {
   }> {
     if (!this.client) return { data: null, error: "运营数据服务未配置" };
     try {
-      const [types, vehicles, drivers, departures, drafts, workItems, notificationIssues, deletionRequests, tasks] =
+      const [types, vehicles, drivers, departures, drafts, workItems, notificationIssues, deletionRequests, cancellationRequests, tasks] =
         await Promise.all([
           this.client
             .from("vehicle_type_configs")
@@ -224,6 +226,7 @@ export class SupabaseOperationsRepository {
             .limit(100),
           this.client.rpc("get_operations_notification_delivery_queue"),
           this.client.from("account_deletion_requests").select("id,status,requested_at,updated_at").in("status",["requested","deferred_active_booking","reviewing"]).order("requested_at",{ascending:true}).limit(100),
+          this.client.from('order_cancellation_requests').select('id,order_id,status,reason_code,refund_percent,estimated_refund_amount,requested_at,updated_at').in('status',['requested','reviewing','refund_processing']).order('requested_at',{ascending:true}).limit(100),
           this.client
             .from("dispatch_tasks")
             .select(
@@ -241,6 +244,7 @@ export class SupabaseOperationsRepository {
         workItems.error ||
         notificationIssues.error ||
         deletionRequests.error ||
+        cancellationRequests.error ||
         tasks.error
       )
         return {
@@ -318,6 +322,7 @@ export class SupabaseOperationsRepository {
         id:string;event_type:string;order_id:string|null;status:"failed"|"submitted";attempts:number;last_error_code:string|null;created_at:string;updated_at:string;
       }[]).map(row=>({id:row.id,eventType:row.event_type,orderId:row.order_id,status:row.status,attempts:Number(row.attempts),lastErrorCode:row.last_error_code,createdAt:row.created_at,updatedAt:row.updated_at}));
       const accountDeletionRequests=((deletionRequests.data??[]) as Array<{id:string;status:"requested"|"deferred_active_booking"|"reviewing";requested_at:string;updated_at:string}>).map(row=>({id:row.id,status:row.status,requestedAt:row.requested_at,updatedAt:row.updated_at}));
+      const cancellationQueue=((cancellationRequests.data??[]) as Array<{id:string;order_id:string;status:string;reason_code:string;refund_percent:number;estimated_refund_amount:number;requested_at:string;updated_at:string}>).map(row=>({id:row.id,orderId:row.order_id,status:row.status,reasonCode:row.reason_code,refundPercent:Number(row.refund_percent),estimatedRefundAmount:Number(row.estimated_refund_amount),requestedAt:row.requested_at,updatedAt:row.updated_at}));
       const operationDepartures = (
         (departures.data ?? []) as OperationsDepartureRow[]
       ).map((row) => ({
@@ -351,6 +356,7 @@ export class SupabaseOperationsRepository {
           fulfilmentWorkItems,
           notificationDeliveryIssues,
           accountDeletionRequests,
+          cancellationRequests:cancellationQueue,
           dispatchTasks,
           dispatchDrafts: dispatchTasks.filter(
             (task) => task.status === "draft" || task.status === "confirmed",
