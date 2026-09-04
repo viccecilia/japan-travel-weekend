@@ -23,3 +23,7 @@ export function applyMeetingChange(stops:readonly ItineraryStop[],change:{stopId
   return stops.map(stop=>stop.id===change.stopId?{...stop,...change,status:'changed' as const}:stop);
 }
 
+export function projectItineraryStops(stops:readonly Omit<ItineraryStop,'status'>[],currentMeetingName:string){
+  const currentIndex=stops.findIndex(stop=>stop.meetingPointName===currentMeetingName||stop.name===currentMeetingName);
+  return {currentIndex,stops:stops.map((stop,index)=>({...stop,status:(index<currentIndex?'completed':index===currentIndex?'current':'upcoming') as ItineraryStopStatus}))};
+}

@@ -65,6 +65,7 @@ export type VehicleGroupMeetingRow = {
   acknowledged: boolean;
 };
 export type PassengerTripContextRow={trip_title:string;itinerary:string[];return_at:string|null;staff_name:string|null;staff_role:'driver'|'guide'|'driver_guide'|'operations'|null;staff_phone:string|null;vehicle_type:string;vehicle_label:string|null;vehicle_color:string|null;vehicle_photo_url:string|null};
+export type VehicleGroupItineraryStopRow={id:string;name:string;arrivalTime?:string;meetingTime:string;meetingPointName:string;meetingPointDescription?:string;meetingPointPhoto?:string;latitude:number;longitude:number};
 const seatStatus = (available: number, capacity: number): SeatStatus =>
   available <= 0
     ? "已售罄"
@@ -608,6 +609,7 @@ export class SupabaseStaffRepository {
     if(!this.client)return null;
     try{const {data,error}=await this.client.rpc('advance_vehicle_group_journey',{p_vehicle_group:vehicleGroupId,p_action:action,p_stop_name:stopName,p_reason:reason,p_idempotency_key:crypto.randomUUID()});return error?null:data?.[0]??null}catch{return null}
   }
+  async advanceToItineraryStop(vehicleGroupId:string,stopId:string,reason:string){if(!this.client)return null;try{const {data,error}=await this.client.rpc('advance_vehicle_group_to_itinerary_stop',{p_vehicle_group:vehicleGroupId,p_stop_id:stopId,p_reason:reason,p_idempotency_key:crypto.randomUUID()});return error?null:data?.[0]??null}catch{return null}}
   async publishLocation(vehicleGroupId:string,latitude:number,longitude:number,accuracy:number|null){
     if(!this.client)return false;const {error}=await this.client.rpc('publish_driver_location',{p_vehicle_group:vehicleGroupId,p_latitude:latitude,p_longitude:longitude,p_accuracy_meters:accuracy,p_minutes:15});return !error;
   }
@@ -641,6 +643,7 @@ export class SupabaseTripRoomRepository {
     }
   }
   async loadPassengerContext(vehicleGroupId:string){if(!this.client)return null;try{const {data,error}=await this.client.rpc('get_passenger_trip_context_v2',{p_vehicle_group:vehicleGroupId}).maybeSingle();return error?null:data as PassengerTripContextRow|null}catch{return null}}
+  async loadItinerary(vehicleGroupId:string){if(!this.client)return [] as VehicleGroupItineraryStopRow[];try{const {data,error}=await this.client.rpc('get_vehicle_group_itinerary',{p_vehicle_group:vehicleGroupId});return error||!Array.isArray(data)?[]:data as VehicleGroupItineraryStopRow[]}catch{return []}}
   async acknowledgeMeeting(vehicleGroupId: string, revision: number) {
     if (!this.client) return false;
     try {

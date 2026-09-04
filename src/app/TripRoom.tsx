@@ -16,6 +16,7 @@ import {
 import { useApp } from "./store";
 import { PassengerChatRoom } from "./PassengerChatRoom";
 import { passengerChatDemo } from "../shared/data/passengerChatDemo";
+import {projectItineraryStops} from "../shared/services/itineraryMeeting";
 const Empty = () => (
   <div className="empty-card">
     <b>暂无进行中的行程</b>
@@ -239,6 +240,7 @@ type RemoteMeeting = {
   acknowledged: boolean;
 };
 type PassengerTripContext={trip_title:string;itinerary:string[];return_at:string|null;staff_name:string|null;staff_role:'driver'|'guide'|'driver_guide'|'operations'|null;staff_phone:string|null;vehicle_type:string;vehicle_label:string|null;vehicle_color:string|null;vehicle_photo_url:string|null};
+type RemoteItineraryStop={id:string;name:string;arrivalTime?:string;meetingTime:string;meetingPointName:string;meetingPointDescription?:string;meetingPointPhoto?:string;latitude:number;longitude:number};
 type RemoteAttendance = {
   passenger_id: string;
   passenger_label: string;
@@ -321,6 +323,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
   const [locatingDriver, setLocatingDriver] = useState(false);
   const [meeting, setMeeting] = useState<RemoteMeeting | null>(null);
   const [passengerContext,setPassengerContext]=useState<PassengerTripContext|null>(null);
+  const [routeStops,setRouteStops]=useState<RemoteItineraryStop[]>([]);
   const subscription = useRef<{
     close(): void;
   } | null>(null);
@@ -366,7 +369,10 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
           nextRoom.vehicle_group_id,
         )) as RemoteMeeting | null,
       );
-      if(currentRole==='passenger')setPassengerContext(await services.tripRoom.loadPassengerContext(nextRoom.vehicle_group_id) as PassengerTripContext|null);
+      if(currentRole==='passenger'){
+        setPassengerContext(await services.tripRoom.loadPassengerContext(nextRoom.vehicle_group_id) as PassengerTripContext|null);
+        setRouteStops(await services.tripRoom.loadItinerary(nextRoom.vehicle_group_id) as RemoteItineraryStop[]);
+      }
       setDriverLocation(
         (await services.tripRoom.loadDriverLocation(
           nextRoom.vehicle_group_id,
@@ -781,8 +787,10 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
           : Number(room.map_lng),
       status: "current" as const,
     };
-    const itineraryStops=(passengerContext?.itinerary??[]).filter(name=>name!==remoteStop.meetingPointName).map((name,index)=>({id:`route-${index}`,name,meetingTime:"时间待司导更新",meetingPointName:name,meetingPointDescription:"具体停留与集合安排以司导在群内发布的信息为准。",latitude:remoteStop.latitude,longitude:remoteStop.longitude,status:'upcoming' as const}));
-    if(passengerContext?.return_at)itineraryStops.push({id:'return',name:'预计返程到达',meetingTime:new Date(passengerContext.return_at).toLocaleTimeString('zh-CN',{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit',hour12:false}),meetingPointName:'返回地点以订单与司导通知为准',meetingPointDescription:'预计到达时间会受当天交通影响。',latitude:remoteStop.latitude,longitude:remoteStop.longitude,status:'upcoming' as const});
+    const projected=projectItineraryStops(routeStops,remoteStop.meetingPointName);
+    const matchedIndex=projected.currentIndex;
+    const itineraryStops=routeStops.length?projected.stops:(passengerContext?.itinerary??[]).filter(name=>name!==remoteStop.meetingPointName).map((name,index)=>({id:`route-${index}`,name,meetingTime:"时间待司导更新",meetingPointName:name,meetingPointDescription:"具体停留与集合安排以司导在群内发布的信息为准。",latitude:remoteStop.latitude,longitude:remoteStop.longitude,status:'upcoming' as const}));
+    if(!routeStops.length&&passengerContext?.return_at)itineraryStops.push({id:'return',name:'预计返程到达',meetingTime:new Date(passengerContext.return_at).toLocaleTimeString('zh-CN',{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit',hour12:false}),meetingPointName:'返回地点以订单与司导通知为准',meetingPointDescription:'预计到达时间会受当天交通影响。',latitude:remoteStop.latitude,longitude:remoteStop.longitude,status:'upcoming' as const});
     const passengerMessages = messages.map((message) => ({
       id: message.id,
       senderId: message.author_id ?? "operations",
@@ -848,7 +856,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
             photoUrl:passengerContext?.vehicle_photo_url??undefined,
           },
         }}
-        stops={[remoteStop,...itineraryStops]}
+        stops={matchedIndex>=0?itineraryStops:[remoteStop,...itineraryStops]}
         messages={passengerMessages}
         readOnly={!access.enabled}
         onSend={(content) =>

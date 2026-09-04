@@ -150,6 +150,7 @@ export class ProductionBrowserServices {
     return this.staff.reportDelay(vehicleGroupId, delayMinutes, reason);
   }
   advanceStaffJourney(vehicleGroupId:string,action:'stop_arrived'|'trip_completed',stopName:string,reason:string){return this.staff.advanceJourney(vehicleGroupId,action,stopName,reason)}
+  advanceStaffToItineraryStop(vehicleGroupId:string,stopId:string,reason:string){return this.staff.advanceToItineraryStop(vehicleGroupId,stopId,reason)}
   publishStaffLocation(vehicleGroupId:string,latitude:number,longitude:number,accuracy:number|null){return this.staff.publishLocation(vehicleGroupId,latitude,longitude,accuracy)}
   stopStaffLocation(vehicleGroupId:string){return this.staff.stopLocation(vehicleGroupId)}
   createCheckout(input: CheckoutRequest) {

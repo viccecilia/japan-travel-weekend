@@ -499,21 +499,24 @@ export function StaffTaskAction() {
 function JourneyAction({task,preview}:{task:StaffTask;preview:boolean}){
   const {services}=useApp();
   const [stopName,setStopName]=useState(task.meeting_name??"");
+  const [routeStops,setRouteStops]=useState<Array<{id:string;name:string;meetingTime:string;meetingPointName:string;meetingPointDescription?:string;latitude:number;longitude:number}>>([]);
   const [reason,setReason]=useState("按今日行程到达");
   const [busy,setBusy]=useState("");
   const [result,setResult]=useState("");
+  useEffect(()=>{let active=true;if(services)void services.tripRoom.loadItinerary(task.vehicle_group_id).then(value=>{if(active)setRouteStops(value)});return()=>{active=false}},[services,task.vehicle_group_id]);
   const transition=async(action:'stop_arrived'|'trip_completed')=>{
     if(action==='stop_arrived'&&stopName.trim().length<2)return;
     if(!window.confirm(action==='trip_completed'?'确认结束本车行程？结束后群聊将转为只读。':`确认已到达“${stopName.trim()}”？`))return;
     if(preview||!services){setResult(action==='trip_completed'?'本地预览：行程已结束，群聊转为只读。':'本地预览：已更新当前景点。');return}
-    setBusy(action);const value=await services.advanceStaffJourney(task.vehicle_group_id,action,stopName.trim(),reason.trim());setBusy("");
+    const selectedStop=routeStops.find(stop=>stop.name===stopName.trim());
+    setBusy(action);const value=action==='stop_arrived'&&selectedStop?await services.advanceStaffToItineraryStop(task.vehicle_group_id,selectedStop.id,reason.trim()):await services.advanceStaffJourney(task.vehicle_group_id,action,stopName.trim(),reason.trim());setBusy("");
     setResult(value?action==='trip_completed'?'行程已结束：司机定位已停止，群聊已转为只读。':'当前景点已更新，游客端已生成行程通知。':'操作失败，请检查任务状态、权限和说明。');
   };
   const shareLocation=()=>{
     if(!navigator.geolocation){setResult('当前设备不支持定位。');return}
     setBusy('location');navigator.geolocation.getCurrentPosition(async position=>{const ok=services?await services.publishStaffLocation(task.vehicle_group_id,position.coords.latitude,position.coords.longitude,position.coords.accuracy):true;setBusy('');setResult(ok?'司机位置已共享 15 分钟，游客仅能在本车行程中查看。':'位置共享失败，请检查定位权限和群聊状态。')},()=>{setBusy('');setResult('无法读取当前位置，请允许浏览器定位后重试。')},{enableHighAccuracy:true,timeout:10000,maximumAge:15000});
   };
-  return <section className="staff-detail"><div className="staff-detail-note">到达景点会写入本车时间线并通知游客。请先在“集合管理”更新下一集合点；结束行程会停止定位并永久关闭本次群聊发送功能。</div><form className="staff-escalation" onSubmit={e=>{e.preventDefault();void transition('stop_arrived')}}><label>当前到达景点<input required minLength={2} maxLength={160} value={stopName} onChange={e=>setStopName(e.target.value)}/></label><label>现场说明<textarea required minLength={3} maxLength={300} value={reason} onChange={e=>setReason(e.target.value)}/></label><button disabled={busy!==''}>确认到达景点</button></form><div className="staff-template-grid"><button type="button" disabled={busy!==''} onClick={shareLocation}>{busy==='location'?'正在读取定位':'共享司机实时位置'}</button><button type="button" disabled={busy!==''} onClick={async()=>{setBusy('stop-location');const ok=services?await services.stopStaffLocation(task.vehicle_group_id):true;setBusy('');setResult(ok?'已停止共享司机位置。':'当前没有可停止的位置共享。')}}>停止位置共享</button><button type="button" disabled={busy!==''||reason.trim().length<3} onClick={()=>void transition('trip_completed')}>{busy==='trip_completed'?'正在结束':'结束本车行程'}</button></div>{result&&<p className="staff-result" role="status">{result}</p>}</section>
+  return <section className="staff-detail"><div className="staff-detail-note">到达景点会写入本车时间线并通知游客。选择下一节点后，可直接带入该线路的正式集合点资料；结束行程会停止定位并将群聊转为只读。</div>{routeStops.length>0&&<div className="staff-template-grid" aria-label="今日线路节点">{routeStops.map(stop=><button type="button" key={stop.id} className={stopName===stop.name?'active':''} onClick={()=>setStopName(stop.name)}><b>{stop.meetingTime}</b><span>{stop.name}</span><small>{stop.meetingPointName}</small></button>)}</div>}<form className="staff-escalation" onSubmit={e=>{e.preventDefault();void transition('stop_arrived')}}><label>当前到达景点<input required minLength={2} maxLength={160} value={stopName} onChange={e=>setStopName(e.target.value)}/></label><label>现场说明<textarea required minLength={3} maxLength={300} value={reason} onChange={e=>setReason(e.target.value)}/></label><button disabled={busy!==''}>确认到达景点</button></form><div className="staff-template-grid"><button type="button" disabled={busy!==''} onClick={shareLocation}>{busy==='location'?'正在读取定位':'共享司机实时位置'}</button><button type="button" disabled={busy!==''} onClick={async()=>{setBusy('stop-location');const ok=services?await services.stopStaffLocation(task.vehicle_group_id):true;setBusy('');setResult(ok?'已停止共享司机位置。':'当前没有可停止的位置共享。')}}>停止位置共享</button><button type="button" disabled={busy!==''||reason.trim().length<3} onClick={()=>void transition('trip_completed')}>{busy==='trip_completed'?'正在结束':'结束本车行程'}</button></div>{result&&<p className="staff-result" role="status">{result}</p>}</section>
 }
 
 function PassengerAction({
