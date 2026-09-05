@@ -14,5 +14,6 @@ export class TestBackendApi{
   private async post<T>(path:string,input:unknown):Promise<T|null>{const token=await this.accessToken();if(!this.available||!token)return null;try{const response=await this.fetcher(`${this.baseUrl}${path}`,{method:'POST',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},body:JSON.stringify(input)});return response.ok?await response.json() as T:null}catch{return null}}
   issueBoardingCredential(orderId:string){return this.post<{token:string;expiresAt:string;vehicleGroupId:string}>('/v1/boarding/issue',{orderId})}
   verifyBoardingCredential(input:{token:string;vehicleGroupId:string;idempotencyKey:string}){return this.post<{status:string;boardingId:string|null;verifiedAt:string}>('/v1/boarding/verify',input)}
-  translateMessage(input:{messageId:string;targetLanguage:'zh-CN'|'zh-TW'|'ja'|'en'|'vi'|'ne'}){return this.post<{translated:true;cached:boolean}>('/v1/translations/message',input)}
+  translateMessage(input:{messageId:string;targetLanguage:'zh-CN'|'zh-TW'|'ja'|'en'|'vi'|'ne'|'ko'}){return this.post<{translated:true;cached:boolean}>('/v1/translations/message',input)}
+  executeRefund(input:{requestId:string;idempotencyKey:string}){return this.post<{accepted:true;requestId:string;status:'refund_processing'}>('/v1/operations/refunds',input)}
 }

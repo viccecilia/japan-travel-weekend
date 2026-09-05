@@ -1,17 +1,19 @@
 import Stripe from 'stripe';
 import {createHash} from 'node:crypto';
 
-export type StripeTestConfig={secretKey:string;webhookSecret:string};
+export type StripeTestConfig={secretKey:string;webhookSecret:string;mode?:'test'|'live'};
 export type PaymentEventStore={has(providerEventId:string):Promise<boolean>;findOrderIdByPaymentIntent(paymentIntentId:string):Promise<string|null>;apply(input:{providerEventId:string;orderId:string;status:'succeeded'|'failed'|'cancelled'|'refunded';createdAt:string;payloadDigest:string}):Promise<boolean>};
 export class StripeTestAdapter{
   private readonly stripe:Stripe|null;
-  constructor(private readonly config:StripeTestConfig){this.stripe=config.secretKey.startsWith('sk_test_')?new Stripe(config.secretKey):null}
+  readonly mode:'test'|'live';
+  constructor(private readonly config:StripeTestConfig){this.mode=config.mode??'test';const expectedPrefix=this.mode==='live'?'sk_live_':'sk_test_';this.stripe=config.secretKey.startsWith(expectedPrefix)?new Stripe(config.secretKey):null}
   get available(){return this.stripe!==null&&this.config.webhookSecret.startsWith('whsec_')}
   async createPaymentIntent(input:{orderId:string;amount:number;idempotencyKey:string}){
     if(!this.stripe||input.amount<=0)return null;
-    return this.stripe.paymentIntents.create({amount:input.amount,currency:'jpy',metadata:{order_id:input.orderId}},{idempotencyKey:input.idempotencyKey});
+    return this.stripe.paymentIntents.create({amount:input.amount,currency:'jpy',metadata:{order_id:input.orderId,jtw_payment_mode:this.mode}},{idempotencyKey:input.idempotencyKey});
   }
   async cancelPaymentIntent(id:string){if(!this.stripe)return false;await this.stripe.paymentIntents.cancel(id);return true}
+  async createRefund(input:{paymentIntentId:string;amount:number;idempotencyKey:string}){if(!this.stripe||!input.paymentIntentId.startsWith('pi_')||!Number.isSafeInteger(input.amount)||input.amount<1)return null;return this.stripe.refunds.create({payment_intent:input.paymentIntentId,amount:input.amount,metadata:{jtw_payment_mode:this.mode}},{idempotencyKey:input.idempotencyKey})}
   async handleWebhook(rawBody:Buffer,signature:string,store:PaymentEventStore){
     if(!this.available||!this.stripe)return {accepted:false,reason:'unavailable'} as const;
     let event:Stripe.Event;

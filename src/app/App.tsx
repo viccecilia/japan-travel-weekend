@@ -20,13 +20,15 @@ import {
 } from "../shared/services/passengerAssistance";
 import type { ChildSeatChoice } from "../shared/types";
 import { GoogleMapsAdapter } from "../shared/integrations/googleMaps";
-import { useApp } from "./store";
+import { useApp, useOptionalApp } from "./store";
 import { referralCodeFromSearch, safeReturnTo } from "./auth";
 import { passwordRules, passwordRuleText } from "../shared/config/authConfig";
 import { seatOrderTotal } from "../shared/services/pricing";
 import { Elements } from "@stripe/react-stripe-js";
-import { stripeTestClient } from "../shared/integrations/stripeClient";
+import { stripeClient,stripeMode } from "../shared/integrations/stripeClient";
 import { StripePaymentForm } from "./StripePaymentForm";
+import {passengerPaymentCopy,paymentState} from '../shared/i18n/passengerPayment';
+import { passengerBookingCopy, passengerCheckoutCopy, passengerCoreCopy, passengerFormCopy, passengerHomeCopy, passengerLocales, passengerRoutesCopy } from "../shared/i18n/passengerLocale";
 const trips = travelRepository.listTrips();
 const Empty = ({
   title = "暂无内容",
@@ -41,13 +43,14 @@ const Empty = ({
   </div>
 );
 export function LanguageSelect({ compact = false }: { compact?: boolean }) {
+  const app=useOptionalApp();
+  const locale=app?.state.ui.locale ?? "zh-CN";
+  const selected=passengerLocales.find(item=>item.code===locale) ?? passengerLocales[0];
   return (
     <label className={`language-select${compact ? " compact" : ""}`}>
-      {compact ? <span aria-hidden="true">CN</span> : "语言"}
-      <select aria-label="语言" value="zh-CN" onChange={() => {}}>
-        <option value="zh-CN">{compact ? "CN" : "简体中文"}</option>
-        <option disabled>English（后续开放）</option>
-        <option disabled>日本語（后续开放）</option>
+      {compact ? <span aria-hidden="true">{selected.short}</span> : passengerCoreCopy[locale].language}
+      <select aria-label={passengerCoreCopy[locale].language} value={locale} onChange={(event) => app?.setUi({...app.state.ui,locale:event.target.value as typeof locale})}>
+        {passengerLocales.map(item=><option value={item.code} key={item.code}>{compact?item.short:item.label}</option>)}
       </select>
     </label>
   );
@@ -60,12 +63,14 @@ export function AppShell({
   nav?: boolean;
 }) {
   const { pathname } = useLocation();
+  const app=useOptionalApp();
+  const c=passengerCoreCopy[app?.state.ui.locale ?? "zh-CN"];
   const screen = pathname.split("/").filter(Boolean).slice(1, 2)[0] ?? "home";
   return (
     <div className="app-stage">
       <div className={`app-frame passenger-v2 screen-${screen}`}>
         <header className="app-top">
-          <Link className="app-brand" to="/app" aria-label="返回游客端首页">
+          <Link className="app-brand" to="/app" aria-label={c.backHome}>
             <i>JT</i>
             <span>Japan Travel Weekend</span>
           </Link>
@@ -73,21 +78,21 @@ export function AppShell({
         </header>
         <main className="app-content passenger-screen">{children}</main>
         {nav && (
-          <nav className="bottom-nav" aria-label="应用导航">
+          <nav className="bottom-nav" aria-label={app?.state.ui.locale === "ja" ? "アプリナビゲーション" : app?.state.ui.locale === "ko" ? "앱 탐색" : app?.state.ui.locale === "en" ? "App navigation" : app?.state.ui.locale === "vi" ? "Điều hướng ứng dụng" : app?.state.ui.locale === "ne" ? "एप नेभिगेसन" : "应用导航"}>
             <NavLink end to="/app">
-              ⌂<span>首页</span>
+              ⌂<span>{c.home}</span>
             </NavLink>
             <NavLink to="/app/trips">
-              ◇<span>行程</span>
+              ◇<span>{c.trips}</span>
             </NavLink>
             <NavLink to="/app/orders">
-              ▤<span>订单</span>
+              ▤<span>{c.orders}</span>
             </NavLink>
             <NavLink to="/app/my-trip/room">
-              ◉<span>消息</span>
+              ◉<span>{c.messages}</span>
             </NavLink>
             <NavLink to="/app/profile">
-              ○<span>我的</span>
+              ○<span>{c.profile}</span>
             </NavLink>
           </nav>
         )}
@@ -110,12 +115,14 @@ const AppTitle = ({
     {text && <p>{text}</p>}
   </div>
 );
-const BookingSteps = ({ current }: { current: 1 | 2 | 3 | 4 }) => (
-  <ol
+const BookingSteps = ({ current }: { current: 1 | 2 | 3 | 4 }) => {
+  const app=useOptionalApp();
+  const c=passengerCoreCopy[app?.state.ui.locale ?? "zh-CN"];
+  return <ol
     className="booking-steps"
     aria-label={`预订进度，第 ${current} 步，共 4 步`}
   >
-    {["选择班次", "乘客资料", "确认订单", "提交订单"].map((label, index) => (
+    {c.steps.map((label, index) => (
       <li
         className={index + 1 <= current ? "active" : ""}
         aria-current={index + 1 === current ? "step" : undefined}
@@ -125,8 +132,8 @@ const BookingSteps = ({ current }: { current: 1 | 2 | 3 | 4 }) => (
         <b>{label}</b>
       </li>
     ))}
-  </ol>
-);
+  </ol>;
+};
 export function Login() {
   const { state, setState, services, authResolved } = useApp();
   const nav = useNavigate();
@@ -136,6 +143,7 @@ export function Login() {
   );
   const referralCode = referralCodeFromSearch(location.search);
   const [error, setError] = useState("");
+  const c=passengerCoreCopy[state.ui.locale ?? "zh-CN"];
   const connected = backend.connected || services?.authAvailable === true;
   const production = appConfig.runtimeMode === "production";
   useEffect(() => {
@@ -176,31 +184,31 @@ export function Login() {
   return (
     <>
       <AppTitle
-        eyebrow="欢迎"
-        title="从关西周末出发"
+        eyebrow={c.welcome}
+        title={c.loginTitle}
         text={
           services
             ? production
-              ? "登录账户"
-              : "登录测试账户"
+              ? c.login
+              : c.testLogin
             : backend.connected
-              ? "创建仅限当前会话的本地开发账户"
-              : "正式账户服务尚未连接"
+              ? c.localAccount
+              : c.unavailable
         }
       />
       <form className="form" onSubmit={submit}>
         <label>
-          电子邮箱
+          {c.email}
           <input
             required
             name="email"
             type="email"
             autoComplete="username"
-            placeholder="请输入电子邮箱"
+            placeholder={c.emailPlaceholder}
           />
         </label>
         <label>
-          密码
+          {c.password}
           <input
             required
             minLength={passwordRules.minLength}
@@ -212,7 +220,7 @@ export function Login() {
         </label>
         {!services && !production && (
           <label>
-            推荐码 <small>选填</small>
+            {c.referral} <small>{c.optional}</small>
             <input
               name="referral"
               autoComplete="off"
@@ -264,6 +272,7 @@ export function AppHome() {
     departuresResolved,
     departuresError,
   } = useApp();
+  const h=passengerHomeCopy[state.ui.locale ?? "zh-CN"];
   const featuredTrips = trips.slice(0, 4);
   const visibleDepartures = deps.filter(
     (departure) =>
@@ -278,8 +287,8 @@ export function AppHome() {
       <section className="passenger-yellow-hero">
         <div className="passenger-welcome">
           <div>
-            <span>周末，从大阪出发</span>
-            <h1>你好，今天想去哪里？</h1>
+            <span>{h.kicker}</span>
+            <h1>{h.greeting}</h1>
           </div>
           <Link to="/app/notifications" aria-label="查看通知">
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -291,31 +300,35 @@ export function AppHome() {
         <div className="next-trip-pass">
           <div>
             <span>JAPAN TRAVEL PASS</span>
-            <h2>把关西周末装进口袋</h2>
-            <p>路线、订单、集合与旅行消息集中查看</p>
+            <h2>{h.passTitle}</h2>
+            <p>{h.passText}</p>
           </div>
-          <Link to="/app/trips">开始选路线 →</Link>
+          <Link to="/app/trips">{h.choose} →</Link>
         </div>
       </section>
       <section className="passenger-member-strip" aria-label="会员信息">
         <div>
-          <small>旅行金</small>
+          <small>{h.credit}</small>
           <b>¥{state.credits}</b>
         </div>
         <div>
-          <small>会员等级</small>
+          <small>{h.tier}</small>
           <b>{tierFor(state.completedTrips).name}</b>
         </div>
-        <Link to="/app/rewards">查看权益 →</Link>
+        <Link to="/app/rewards">{h.benefits} →</Link>
       </section>
-      <nav className="passenger-quick-actions" aria-label="常用功能">
-        <Link to="/app/my-trip">
+       <nav className="passenger-quick-actions" aria-label="常用功能">
+         <Link to="/app/ai-guide">
+           <i>伴</i>
+           <span>AI随行</span>
+         </Link>
+         <Link to="/app/my-trip">
           <i>行</i>
-          <span>集合行程</span>
+          <span>{h.meeting}</span>
         </Link>
         <Link to="/app/guides">
           <i>读</i>
-          <span>旅行指南</span>
+          <span>{h.guides}</span>
         </Link>
         <Link to="/app/rewards">
           <i>惠</i>
@@ -323,20 +336,20 @@ export function AppHome() {
         </Link>
         <Link to="/app/support">
           <i>问</i>
-          <span>客服</span>
+          <span>{h.support}</span>
         </Link>
       </nav>
       <Link className="passenger-alert-ribbon" to="/app/notifications">
-        <span>出发提醒</span>
-        <b>付款、集合与车辆通知集中查看</b>
+        <span>{h.alert}</span>
+        <b>{h.alertText}</b>
         <strong>›</strong>
       </Link>
       <div className="passenger-section-heading">
         <div>
           <span>WEEKEND PICKS</span>
-          <h2>这个周末，去看更远的风景</h2>
+          <h2>{h.picks}</h2>
         </div>
-        <Link to="/app/trips">全部路线</Link>
+        <Link to="/app/trips">{h.allRoutes}</Link>
       </div>
       <div className="passenger-route-rail">
         {featuredTrips.map((trip) => (
@@ -355,14 +368,14 @@ export function AppHome() {
       <div className="passenger-section-heading compact">
         <div>
           <span>AVAILABLE</span>
-          <h2>近期可订班次</h2>
+          <h2>{h.available}</h2>
         </div>
-        <Link to="/app/trips">查看全部</Link>
+        <Link to="/app/trips">{h.all}</Link>
       </div>
       {!departuresResolved ? (
-        <Empty title="正在读取可售班次" text="请稍候，正在同步最新出发信息。" />
+        <Empty title={h.loadingTitle} text={h.loadingText} />
       ) : departuresError ? (
-        <Empty title="暂时无法读取班次" text="请稍后刷新页面重试。" />
+        <Empty title={h.errorTitle} text={h.errorText} />
       ) : visibleDepartures.length ? (
         <div className="passenger-departure-list">
           {visibleDepartures.slice(0, 3).map((departure) => {
@@ -397,16 +410,16 @@ export function AppHome() {
         </div>
       ) : (
         <Empty
-          title="暂无开放班次"
-          text="正式环境不会自动生成日期、价格、余位或即将出发的行程。"
+          title={h.emptyTitle}
+          text={h.emptyText}
         />
       )}
       <div className="passenger-section-heading compact">
         <div>
           <span>TRAVEL IDEAS</span>
-          <h2>出发前，看一点有用的</h2>
+          <h2>{h.ideas}</h2>
         </div>
-        <Link to="/app/guides">全部内容</Link>
+        <Link to="/app/guides">{h.all}</Link>
       </div>
       <div className="passenger-guide-grid">
         <Link to="/app/guides#food">
@@ -423,10 +436,10 @@ export function AppHome() {
       <Link className="passenger-private-card" to="/app/private-groups">
         <div>
           <span>PRIVATE GROUPS</span>
-          <b>企业、学校或亲友团体出行</b>
-          <p>告诉我们人数和日期，获取专属方案。</p>
+          <b>{h.privateTitle}</b>
+          <p>{h.privateText}</p>
         </div>
-        <strong>咨询 →</strong>
+        <strong>{h.inquire} →</strong>
       </Link>
     </div>
   );
@@ -795,20 +808,22 @@ export function AppSupport() {
   );
 }
 export function AppTrips() {
+  const {state}=useApp();
+  const r=passengerRoutesCopy[state.ui.locale ?? 'zh-CN'];
   return (
     <div className="route-catalog">
       <AppTitle
-        eyebrow="路线预告"
-        title="下一次想去哪里？"
-        text="路线可浏览，日期、价格和余位以正式开放信息为准。"
+        eyebrow={r.eyebrow}
+        title={r.title}
+        text={r.text}
       />
       <div className="catalog-intro">
-        <b>{trips.length} 条精选路线</b>
-        <span>每日可订 · 大阪出发 · 中文服务</span>
+        <b>{trips.length} {r.selected}</b>
+        <span>{r.catalogMeta}</span>
       </div>
       <div className="app-list route-card-list">
         {trips.map((t) => (
-          <TripCard key={t.id} trip={t} app />
+          <TripCard key={t.id} trip={t} app locale={state.ui.locale ?? 'zh-CN'} />
         ))}
       </div>
     </div>
@@ -816,11 +831,12 @@ export function AppTrips() {
 }
 export function AppTrip() {
   const t = travelRepository.getTrip(useParams().slug || "");
-  const { departures } = useApp();
+  const { departures,state } = useApp();
+  const r=passengerRoutesCopy[state.ui.locale ?? 'zh-CN'];
   const [activeDetailTab, setActiveDetailTab] = useState<
     "highlights" | "schedule" | "prep"
   >("highlights");
-  if (!t) return <Empty title="未找到行程" />;
+  if (!t) return <Empty title={r.notFound} />;
   const routeDepartures = departures.filter((item) => item.tripSlug === t.slug);
   const sellable = routeDepartures.filter(
     (item) => item.price != null && item.availableSeats !== 0,
@@ -839,31 +855,31 @@ export function AppTrip() {
       </section>
       <div className="route-facts">
         <span>
-          <small>行程时长</small>
+          <small>{r.duration}</small>
           <b>{t.duration}</b>
         </span>
         <span>
-          <small>步行强度</small>
+          <small>{r.walking}</small>
           <b>{t.walkingLevel}</b>
         </span>
         <span>
-          <small>服务语言</small>
+          <small>{r.service}</small>
           <b>{t.languages.join("、")}</b>
         </span>
       </div>
       <p className="route-lead">{t.description}</p>
       <section className="route-trust-strip" aria-label="预订保障">
         <span>
-          <b>当天往返</b>
-          <small>清楚显示预计结束时间</small>
+          <b>{r.roundTrip}</b>
+          <small>{r.roundTripText}</small>
         </span>
         <span>
-          <b>价格透明</b>
-          <small>下单前核对费用与规则</small>
+          <b>{r.transparent}</b>
+          <small>{r.transparentText}</small>
         </span>
         <span>
-          <b>集中通知</b>
-          <small>集合及车辆变更及时送达</small>
+          <b>{r.notices}</b>
+          <small>{r.noticesText}</small>
         </span>
       </section>
       <section className="route-detail-window">
@@ -874,9 +890,9 @@ export function AppTrip() {
         >
           {(
             [
-              ["highlights", "路线亮点"],
-              ["schedule", "参考行程"],
-              ["prep", "出发准备"],
+              ["highlights", r.highlights],
+              ["schedule", r.schedule],
+              ["prep", r.prep],
             ] as const
           ).map(([key, label]) => (
             <button
@@ -897,7 +913,7 @@ export function AppTrip() {
               <section className="route-reasons">
                 <header>
                   <span>WHY THIS TRIP</span>
-                  <h2>这条路线值得去的理由</h2>
+                  <h2>{r.why}</h2>
                 </header>
                 <div>
                   {t.highlights.map((item, index) => (
@@ -918,7 +934,7 @@ export function AppTrip() {
               <section className="route-spot-preview">
                 <header>
                   <span>SPOT PREVIEW</span>
-                  <h2>沿途会看到什么</h2>
+                  <h2>{r.spots}</h2>
                 </header>
                 <div>
                   {t.timeline
@@ -946,10 +962,8 @@ export function AppTrip() {
             <>
               <div className="route-panel-heading">
                 <span>DAY SCHEDULE</span>
-                <h2>参考行程顺序</h2>
-                <p>
-                  具体时间会因路况、天气和现场运营情况调整，请以当日通知为准。
-                </p>
+                <h2>{r.daySchedule}</h2>
+                <p>{r.scheduleNote}</p>
               </div>
               <div className="route-timeline">
                 {t.timeline.map((item, index) => (
@@ -1085,7 +1099,7 @@ export function AppTrip() {
           </b>
         </div>
         <Link className="button" to={`/app/booking/${t.slug}`}>
-          {sellable.length ? "选择班次" : "查看开放状态"}
+          {sellable.length ? r.book : r.availability}
         </Link>
       </div>
     </div>
@@ -1094,6 +1108,8 @@ export function AppTrip() {
 export function BookingPage() {
   const t = travelRepository.getTrip(useParams().slug || "") ?? trips[0];
   const { state, updateBooking, departures } = useApp();
+  const locale=state.ui.locale ?? 'zh-CN';
+  const b=passengerBookingCopy[locale];
   const deps = departures.filter((d) => d.tripSlug === t.slug);
   const nav = useNavigate();
   const sellable = deps.filter(
@@ -1114,17 +1130,9 @@ export function BookingPage() {
   const firstCalendarDate = displayedDepartures.find(
     (item) => item.departureTime,
   )?.departureTime;
-  const calendarWeekdays = [
-    "周一",
-    "周二",
-    "周三",
-    "周四",
-    "周五",
-    "周六",
-    "周日",
-  ];
+  const calendarWeekdays = Array.from({length:7},(_,index)=>new Intl.DateTimeFormat(locale,{weekday:'short',timeZone:'Asia/Tokyo'}).format(new Date(Date.UTC(2024,0,index+1))));
   const firstCalendarWeekday = firstCalendarDate
-    ? new Intl.DateTimeFormat("zh-CN", {
+    ? new Intl.DateTimeFormat(locale, {
         timeZone: "Asia/Tokyo",
         weekday: "short",
       }).format(new Date(firstCalendarDate))
@@ -1189,12 +1197,12 @@ export function BookingPage() {
         <form className="form" onSubmit={submit}>
           <fieldset className="departure-calendar">
             <legend>
-              选择出发日期 <small>未来 30 天 · 日本时间</small>
+              {b.selectDate} <small>{b.next30}</small>
             </legend>
             <div className="departure-calendar-weekdays" aria-hidden="true">
               {calendarWeekdays.map((day) => (
                 <span
-                  className={day === "周六" || day === "周日" ? "weekend" : ""}
+                  className={day === calendarWeekdays[5] || day === calendarWeekdays[6] ? "weekend" : ""}
                   key={day}
                 >
                   {day}
@@ -1212,7 +1220,7 @@ export function BookingPage() {
               {displayedDepartures.map((d) => {
                 const date = d.departureTime ? new Date(d.departureTime) : null;
                 const day = date
-                  ? new Intl.DateTimeFormat("zh-CN", {
+                  ? new Intl.DateTimeFormat(locale, {
                       timeZone: "Asia/Tokyo",
                       day: "numeric",
                     }).format(date)
@@ -1223,7 +1231,7 @@ export function BookingPage() {
                       weekday: "short",
                     }).format(date)
                   : "";
-                const weekend = weekday === "周六" || weekday === "周日";
+                const weekend = weekday === calendarWeekdays[5] || weekday === calendarWeekdays[6];
                 return (
                   <label
                     className={`${effectiveDepartureId === d.id ? "selected " : ""}${weekend ? "weekend" : ""}`}
@@ -1253,24 +1261,24 @@ export function BookingPage() {
             <>
               <div className="selected-departure-summary">
                 <div>
-                  <span>已选日期</span>
+                  <span>{b.selectedDate}</span>
                   <b>{chosen.dateLabel}</b>
                 </div>
                 <div>
-                  <span>出发时间</span>
+                  <span>{b.departureTime}</span>
                   <b>
                     {chosen.departureTime
-                      ? new Intl.DateTimeFormat("zh-CN", {
+                      ? new Intl.DateTimeFormat(locale, {
                           timeZone: "Asia/Tokyo",
                           hour: "2-digit",
                           minute: "2-digit",
                           hour12: false,
                         }).format(new Date(chosen.departureTime))
-                      : "待确认"}
+                      : b.pending}
                   </b>
                 </div>
                 <div>
-                  <span>每席价格</span>
+                  <span>{b.seatPrice}</span>
                   <b>
                     {chosen.price == null
                       ? "待公布"
@@ -1278,7 +1286,7 @@ export function BookingPage() {
                   </b>
                 </div>
                 <div>
-                  <span>余位</span>
+                  <span>{b.remaining}</span>
                   <b>
                     {chosen.availableSeats == null
                       ? "待公布"
@@ -1332,10 +1340,10 @@ export function BookingPage() {
               </span>
             </div>
           )}
-          <h2 className="booking-subtitle">出行人数</h2>
+          <h2 className="booking-subtitle">{b.people}</h2>
           <div className="form-row booking-party-grid">
             <label>
-              成人座位
+              {b.adult}
               <input
                 min="1"
                 max="6"
@@ -1346,7 +1354,7 @@ export function BookingPage() {
               />
             </label>
             <label>
-              儿童座位
+              {b.child}
               <input
                 min="0"
                 max="6"
@@ -1357,7 +1365,7 @@ export function BookingPage() {
               />
             </label>
             <label>
-              婴儿
+              {b.infant}
               <input
                 min="0"
                 max="6"
@@ -1372,10 +1380,8 @@ export function BookingPage() {
             成人、儿童及婴儿均计入配车人数；婴儿占座与费用规则由运营确认后再进入付款。
           </p>
           <div className="booking-note">
-            <b>座位与车辆说明</b>
-            <p>
-              成人、儿童及婴儿均计入配车人数。车辆由平台根据最终人数统一安排，购买时不指定车型。
-            </p>
+            <b>{b.seatNote}</b>
+            <p>{b.seatText}</p>
           </div>
           {!sellable.length && (
             <p className="notice" role="status">
@@ -1384,7 +1390,7 @@ export function BookingPage() {
           )}
           <div className="booking-submit">
             <span>
-              <small>合计</small>
+              <small>{b.total}</small>
               <b>
                 {bookingTotal == null
                   ? "待确认"
@@ -1395,14 +1401,14 @@ export function BookingPage() {
               className="button"
               disabled={!sellable.length || adults + children + infants < 1}
             >
-              继续填写资料
+              {b.continue}
             </button>
           </div>
         </form>
       ) : (
         <Empty
-          title="该路线暂无开放班次"
-          text="正式环境不会编造日期、价格或余位。请稍后查看。"
+          title={b.noDepartures}
+          text={b.noDeparturesText}
         />
       )}
     </>
@@ -1410,6 +1416,7 @@ export function BookingPage() {
 }
 export function Passengers() {
   const { state, updateBooking, departures } = useApp();
+  const p=passengerFormCopy[state.ui.locale ?? 'zh-CN'];
   const nav = useNavigate();
   const childCount = state.booking?.children ?? 0;
   const [seatChoice, setSeatChoice] = useState<ChildSeatChoice | "">("");
@@ -1499,9 +1506,9 @@ export function Passengers() {
     <>
       <BookingSteps current={2} />
       <AppTitle
-        eyebrow="第 2 步，共 4 步"
-        title="填写出行联系人"
-        text="用于发送订单确认和行前集合通知，请填写当天能够联系到的信息。"
+        eyebrow={p.step}
+        title={p.title}
+        text={p.text}
       />
       <div className="passenger-trip-summary">
         <span>{selectedDeparture?.dateLabel}</span>
@@ -1517,64 +1524,66 @@ export function Passengers() {
           <header>
             <span>01</span>
             <div>
-              <h2>主要联系人</h2>
-              <p>订单与紧急联络信息</p>
+              <h2>{p.contact}</h2>
+              <p>{p.contactText}</p>
             </div>
           </header>
           <label>
-            主要乘客姓名
+            {p.name}
             <input
               required
               name="name"
               autoComplete="name"
-              placeholder="请与旅行证件姓名保持一致"
+              placeholder={p.namePlaceholder}
             />
           </label>
           <label>
-            国籍
+            {p.nationality}
             <input
               required
               name="nationality"
               autoComplete="country-name"
-              placeholder="例如：中国、日本"
+              placeholder={p.nationalityPlaceholder}
             />
           </label>
           <label>
-            首选沟通语言
+            {p.language}
             <select name="language">
               <option>简体中文</option>
+              <option>繁體中文</option>
               <option>日本語</option>
               <option>English</option>
               <option>Tiếng Việt</option>
               <option>नेपाली</option>
+              <option>한국어</option>
             </select>
           </label>
           <label>
-            手机号码
+            {p.phone}
             <input
               required
               name="phone"
               type="tel"
               autoComplete="tel"
               inputMode="tel"
-              placeholder="包含国家或地区代码"
+              placeholder={p.phonePlaceholder}
             />
           </label>
           <label>
-            紧急联系人
-            <input required name="emergency" placeholder="姓名及联系电话" />
+            {p.emergency}
+            <input required name="emergency" placeholder={p.emergencyPlaceholder} />
           </label>
         </section>
         <div className="form-section-heading">
           <span>02</span>
           <div>
-            <h2>乘车与协助需求</h2>
-            <p>没有特殊需求时保持默认即可</p>
+            <h2>{p.assistance}</h2>
+            <p>{p.assistanceText}</p>
           </div>
         </div>
         {childCount > 0 && (
           <fieldset className="assistance-module">
-            <legend>儿童乘车需求</legend>
+            <legend>{p.childNeeds}</legend>
             <p>
               本订单包含 {childCount}{" "}
               名儿童。年龄用于运营判断乘车需求；身高和体重字段已在结构中预留，本轮不收集。
@@ -1676,7 +1685,7 @@ export function Passengers() {
           </fieldset>
         )}
         <fieldset className="assistance-module">
-          <legend>轮椅／行动协助</legend>
+          <legend>{p.wheelchair}</legend>
           <label className="check">
             <input
               name="needsWheelchair"
@@ -1756,7 +1765,7 @@ export function Passengers() {
           )}
         </fieldset>
         <fieldset className="assistance-module">
-          <legend>其他配车与集合需求</legend>
+          <legend>{p.otherNeeds}</legend>
           <label>
             大件行李数量
             <input
@@ -1793,29 +1802,28 @@ export function Passengers() {
           <header>
             <span>03</span>
             <div>
-              <h2>补充信息</h2>
-              <p>均为选填，请只填写本次行程需要的信息</p>
+              <h2>{p.extra}</h2>
+              <p>{p.extraText}</p>
             </div>
           </header>
           <label>
-            饮食需求
-            <textarea name="dietary" placeholder="选填" />
+            {p.dietary}
+            <textarea name="dietary" placeholder={p.optional} />
           </label>
           <label>
-            订单备注
-            <textarea name="notes" placeholder="选填" />
+            {p.notes}
+            <textarea name="notes" placeholder={p.optional} />
           </label>
         </section>
-        <button className="button full">核对订单</button>
-        <p className="privacy">
-          继续后仍可返回修改。平台只向本次行程必要的工作人员提供最少履约信息。
-        </p>
+        <button className="button full">{p.review}</button>
+        <p className="privacy">{p.privacy}</p>
       </form>
     </>
   );
 }
 export function Checkout() {
   const { state, updateBooking, departures } = useApp();
+  const x=passengerCheckoutCopy[state.ui.locale ?? 'zh-CN'];
   const nav = useNavigate();
   const dep = departures.find((item) => item.id === state.booking?.departureId);
   const guests =
@@ -1834,15 +1842,15 @@ export function Checkout() {
     return (
       <>
         <AppTitle
-          eyebrow="订单资料不完整"
-          title="请先选择有效班次"
-          text="只有价格、库存和乘客资料均已确认后，才能进入结账。"
+          eyebrow={x.incomplete}
+          title={x.selectValid}
+          text={x.selectValidText}
         />
         <Link
           className="button full"
           to={`/app/booking/${state.booking?.tripSlug ?? "kyoto-nara-classic"}`}
         >
-          返回选择出发班次
+          {x.back}
         </Link>
       </>
     );
@@ -1850,9 +1858,9 @@ export function Checkout() {
     <>
       <BookingSteps current={3} />
       <AppTitle
-        eyebrow="第 3 步，共 4 步"
-        title="确认预订信息"
-        text="请特别核对出发日期、人数和联系电话。提交后会先保存订单，不会在本阶段扣款。"
+        eyebrow={x.step}
+        title={x.title}
+        text={x.text}
       />
       <section className="checkout-hero">
         <img src={trip?.heroImage} alt="" />
@@ -1865,30 +1873,30 @@ export function Checkout() {
         </div>
       </section>
       <div className="checkout-section-title">
-        <h2>行程与费用</h2>
-        <Link to={`/app/booking/${state.booking.tripSlug}`}>修改</Link>
+        <h2>{x.tripCost}</h2>
+        <Link to={`/app/booking/${state.booking.tripSlug}`}>{x.edit}</Link>
       </div>
       <div className="receipt checkout-receipt">
         <div>
-          <span>行程</span>
+          <span>{x.trip}</span>
           <b>
             {travelRepository.getTrip(state.booking?.tripSlug || "")
               ?.shortTitle ?? "待选择"}
           </b>
         </div>
         <div>
-          <span>出发班次</span>
+          <span>{x.departure}</span>
           <b>{dep?.dateLabel ?? "待选择"}</b>
         </div>
         <div>
-          <span>成人／儿童／婴儿</span>
+          <span>{x.travellers}</span>
           <b>
             {state.booking?.adults ?? 0} 名成人／{state.booking?.children ?? 0}{" "}
             名儿童／{state.booking?.infants ?? 0} 名婴儿
           </b>
         </div>
         <div>
-          <span>特殊乘车需求</span>
+          <span>{x.assistance}</span>
           <b>
             {summaries.map((item) => (
               <span className="summary-line" key={item}>
@@ -1898,37 +1906,37 @@ export function Checkout() {
           </b>
         </div>
         <div>
-          <span>运营审核状态</span>
+          <span>{x.reviewStatus}</span>
           <b>
             {state.booking?.assistance?.operationalReviewStatus ?? "未提出"}
           </b>
         </div>
         <div>
-          <span>每席价格</span>
+          <span>{x.seatPrice}</span>
           <b>{dep?.price == null ? "待公布" : `¥${dep.price}`}</b>
         </div>
         <div>
-          <span>应付总额</span>
+          <span>{x.total}</span>
           <b className="checkout-total">
             {total == null ? "待公布" : `¥${total.toLocaleString("ja-JP")}`}
           </b>
         </div>
       </div>
       <div className="checkout-section-title">
-        <h2>主要联系人</h2>
-        <Link to="/app/passengers">修改</Link>
+        <h2>{x.contact}</h2>
+        <Link to="/app/passengers">{x.edit}</Link>
       </div>
       <div className="receipt checkout-contact">
         <div>
-          <span>姓名</span>
+          <span>{x.name}</span>
           <b>{state.booking.passenger.name}</b>
         </div>
         <div>
-          <span>联系电话</span>
+          <span>{x.phone}</span>
           <b>{state.booking.passenger.phone}</b>
         </div>
         <div>
-          <span>沟通语言</span>
+          <span>{x.language}</span>
           <b>{state.booking.passenger.language}</b>
         </div>
       </div>
@@ -1939,21 +1947,18 @@ export function Checkout() {
       )}
       <section className="cancellation-summary">
         <header>
-          <span>取消规则</span>
-          <b>按日本时间计算</b>
+          <span>{x.cancel}</span>
+          <b>{x.japanTime}</b>
         </header>
         <div>
           <span>
-            <b>3天前</b>
-            <small>退还 100%</small>
+            <b>{x.fullRefund}</b>
           </span>
           <span>
-            <b>2～3天</b>
-            <small>退还 50%</small>
+            <b>{x.halfRefund}</b>
           </span>
           <span>
-            <b>前1天起</b>
-            <small>原则不退</small>
+            <b>{x.noRefund}</b>
           </span>
         </div>
         <p>
@@ -1963,13 +1968,13 @@ export function Checkout() {
       <form className="form checkout-consent" onSubmit={submit}>
         <label className="check">
           <input required type="checkbox" />{" "}
-          <span>我已阅读并理解上述取消退款规则</span>
+          <span>{x.consentCancel}</span>
         </label>
         <label className="check">
           <input required type="checkbox" />{" "}
-          <span>我同意预订条款及隐私政策</span>
+          <span>{x.consentTerms}</span>
         </label>
-        <button className="button full">确认并进入提交页</button>
+        <button className="button full">{x.submit}</button>
       </form>
     </>
   );
@@ -1979,6 +1984,7 @@ export function Payment() {
   const [submitting, setSubmitting] = useState(false);
   const [draftStatus, setDraftStatus] = useState("");
   const [draftKey] = useState(() => crypto.randomUUID());
+  const [checkoutKeys] = useState(()=>({card:crypto.randomUUID(),bank_transfer:crypto.randomUUID()}));
   const [checkoutError,setCheckoutError]=useState("");
   const [cardSession,setCardSession]=useState<{orderId:string;clientSecret:string}|null>(null);
   const production = appConfig.runtimeMode === "production";
@@ -1998,7 +2004,7 @@ export function Payment() {
     state.booking?.acceptedCancellation &&
     state.booking?.acceptedTerms,
   );
-  const testCheckoutReady=Boolean(!production&&services?.checkoutAvailable&&stripeTestClient&&state.booking?.draftId&&selectedDeparture&&seatImpact>0);
+  const checkoutReady=Boolean(services?.checkoutAvailable&&stripeClient&&state.booking?.draftId&&selectedDeparture&&seatImpact>0);
   const saveDraft = async () => {
     if (
       !services ||
@@ -2037,10 +2043,10 @@ export function Payment() {
       );
     } else setDraftStatus(result.error ?? "订单草稿保存失败");
   };
-  const startTestCheckout=async(paymentMethod:'card'|'bank_transfer')=>{
-    if(!testCheckoutReady||!services||!state.booking?.draftId||!selectedDeparture)return;
+  const startCheckout=async(paymentMethod:'card'|'bank_transfer')=>{
+    if(!checkoutReady||!services||!state.booking?.draftId||!selectedDeparture)return;
     setSubmitting(true);setCheckoutError("");
-    const result=await services.createCheckout({draftId:state.booking.draftId,departureId:selectedDeparture.id,seats:seatImpact,idempotencyKey:crypto.randomUUID(),paymentMethod});
+    const result=await services.createCheckout({draftId:state.booking.draftId,departureId:selectedDeparture.id,seats:seatImpact,idempotencyKey:checkoutKeys[paymentMethod],paymentMethod});
     setSubmitting(false);
     if(!result||result.status==='failed'){setCheckoutError(result?.status==='failed'?result.error:'测试支付服务不可用');return}
     if(result.status==='pending_manual_review'){nav(`/app/payment-result?order_id=${encodeURIComponent(result.orderId)}&manual=1&due_at=${encodeURIComponent(result.paymentDueAt)}`);return}
@@ -2052,7 +2058,7 @@ export function Payment() {
       <AppTitle
         eyebrow="第 4 步，共 4 步"
         title="支付前确认"
-        text={testCheckoutReady?"测试模式会先锁定库存，再由 Stripe 测试支付确认；不会产生真实扣款。":"本阶段停在支付前：先保存可恢复的订单草稿，不会发起扣款。"}
+        text={checkoutReady?(stripeMode==='test'?"测试模式会先锁定库存，再由 Stripe 测试支付确认；不会产生真实扣款。":"系统会先锁定库存，再由 Stripe 安全确认付款。增值税和最终金额以本页为准。") : "本阶段停在支付前：先保存可恢复的订单草稿，不会发起扣款。"}
       />
       {!paymentReady && (
         <div className="notice" role="alert">
@@ -2066,8 +2072,8 @@ export function Payment() {
         </div>
       </div>
       <div className="notice">
-        {testCheckoutReady
-          ? "已连接 Stripe 测试模式。测试卡不会产生真实扣款；订单仍会经过真实库存锁与 Webhook 状态流程。"
+        {checkoutReady
+          ? stripeMode==='test'?"已连接 Stripe 测试模式。测试卡不会产生真实扣款；订单仍会经过真实库存锁与 Webhook 状态流程。":"已连接 Stripe 正式支付。付款成功后订单才会进入司机履约名单。"
           : production
           ? "支付功能尚未开放。本页只安全保存订单草稿；在线支付不会创建付款请求，银行转账也不会生成收款指示。"
           : "支付功能尚未开放。本页只把草稿保存到隔离测试数据库；Stripe 不会创建 Payment Intent，银行转账也不会生成收款指示。"}
@@ -2094,10 +2100,10 @@ export function Payment() {
         </p>
       )}
       {state.booking?.draftId && (
-        testCheckoutReady ? <section className="payment-methods" aria-label="测试支付方式">
-          {!cardSession&&<><button type="button" disabled={submitting} onClick={()=>void startTestCheckout('card')}><b>银行卡测试支付</b><small>仅接受 Stripe 测试卡</small></button><button type="button" disabled={submitting} onClick={()=>void startTestCheckout('bank_transfer')}><b>银行转账测试流程</b><small>进入人工到账确认状态</small></button></>}
+        checkoutReady ? <section className="payment-methods" aria-label={stripeMode==='test'?"测试支付方式":"支付方式"}>
+          {!cardSession&&<><button type="button" disabled={submitting} onClick={()=>void startCheckout('card')}><b>{stripeMode==='test'?'银行卡测试支付':'银行卡支付'}</b><small>{stripeMode==='test'?'仅接受 Stripe 测试卡':'由 Stripe 安全处理'}</small></button><button type="button" disabled={submitting} onClick={()=>void startCheckout('bank_transfer')}><b>{stripeMode==='test'?'银行转账测试流程':'银行转账'}</b><small>进入人工到账确认状态</small></button></>}
           {checkoutError&&<div className="danger" role="alert">{checkoutError}</div>}
-          {cardSession&&stripeTestClient&&<Elements stripe={stripeTestClient} options={{clientSecret:cardSession.clientSecret}}><StripePaymentForm orderId={cardSession.orderId} onComplete={(orderId)=>nav(`/app/payment-result?order_id=${encodeURIComponent(orderId)}`)}/></Elements>}
+          {cardSession&&stripeClient&&<Elements stripe={stripeClient} options={{clientSecret:cardSession.clientSecret}}><StripePaymentForm locale={state.ui.locale ?? 'zh-CN'} orderId={cardSession.orderId} onComplete={(orderId,status)=>nav(`/app/payment-result?order_id=${encodeURIComponent(orderId)}${status==='processing'?'&processing=1':''}`)}/></Elements>}
         </section> : <Link className="button secondary full" to="/app/orders">查看账户中的订单草稿</Link>
       )}
       <button className="text-link" onClick={() => nav(-1)}>
@@ -2110,6 +2116,7 @@ export function PaymentResult() {
   const location = useLocation();
   const nav = useNavigate();
   const { state, services } = useApp();
+  const paymentCopy=passengerPaymentCopy[state.ui.locale ?? 'zh-CN'];
   const query = new URLSearchParams(location.search);
   const id =
     (location.state as null | { id?: string })?.id ??
@@ -2169,39 +2176,32 @@ export function PaymentResult() {
   if (id && services) {
     const status=remoteOrder?.status;
     const paid = status === "paid" || status === "confirmed";
-    const review=status==='payment_review';
     const refunded=status==='refunded';
     const cancelled=status==='cancelled'||status==='expired';
-    const pending =
-      manual ||
-      status === "pending_manual_review" ||
-      status === "pending_payment";
-    const title=paid?'支付成功':review?'付款需要人工确认':refunded?'退款已发起':cancelled?'订单未完成':pending?'等待付款确认':'正在确认订单';
-    const description=paid?'订单已支付，并已加入“我的账户／我的行程”。':review?'付款结果已收到，但库存或状态需要工作人员核对；请勿重复付款。':refunded?'我方已经发起原路退款，银行或发卡机构实际到账时间可能不同。':cancelled?'本次订单未完成，系统不会把它作为已付款行程。':manual?'银行转账申请已记录，到账后由工作人员确认。':'正在等待服务端确认支付结果，请勿重复付款。';
-    const statusLabel=paid?'已支付':review?'人工核对中':refunded?'退款处理中':cancelled?'未完成':pending?'待确认':'确认中';
+    const stateKey=paymentState(status,manual);const stateText=paymentCopy.states[stateKey];
     return (
       <div className="result">
         <div className="result-icon" aria-hidden="true">
           {paid ? "✓" : refunded ? "↩" : cancelled ? "!" : "…"}
         </div>
         <AppTitle
-          eyebrow="支付状态"
-          title={title}
-          text={description}
+          eyebrow={paymentCopy.eyebrow}
+          title={stateText.title}
+          text={stateText.description}
         />
         <div className="receipt">
           <div>
-            <span>订单编号</span>
+            <span>{paymentCopy.orderNumber}</span>
             <b>{id}</b>
           </div>
           <div>
-            <span>订单状态</span>
-            <b>{statusLabel}</b>
+            <span>{paymentCopy.orderStatus}</span>
+            <b>{stateText.label}</b>
           </div>
-          {manual&&manualPaymentDueAt&&<div><span>转账付款期限（日本时间）</span><b>{new Date(manualPaymentDueAt).toLocaleString("zh-CN",{timeZone:"Asia/Tokyo",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit",hour12:false})}</b></div>}
+          {manual&&manualPaymentDueAt&&<div><span>{paymentCopy.due}</span><b>{new Date(manualPaymentDueAt).toLocaleString(state.ui.locale ?? "zh-CN",{timeZone:"Asia/Tokyo",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit",hour12:false})}</b></div>}
         </div>
         <Link className="button full" to={`/app/orders/${id}`}>
-          查看我的订单
+          {paymentCopy.viewOrder}
         </Link>
       </div>
     );

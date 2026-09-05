@@ -26,5 +26,5 @@ export type MeetingPoint={name:string;time:string;note:string};
 export type VehicleGroup={id:string;vehicleAssignmentId:string;departureId:string;memberIds:string[];staffIds:string[]};
 export type TripRoomData={id:string;vehicleGroupId:string;access:'frozen'|'open';meeting:MeetingPoint;members:VehicleGroupMember[];messages:TripRoomMessage[];locationGrant:LocationGrant};
 export type RuntimeMode='production'|'development'|'demo';
-export type UiPreferences={compact:boolean};
+export type UiPreferences={compact:boolean;locale?:import('../i18n/passengerLocale').PassengerLocale};
 export type AppState={user:null|{email:string};booking:Booking|null;orders:Order[];completedTrips:number;credits:number;ownReferralCode:string;ui:UiPreferences;tripRoom:TripRoomData|null};

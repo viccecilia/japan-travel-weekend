@@ -63,6 +63,17 @@ function AccountDeletionReview({request,busy,onReview}:{request:{id:string;statu
   </div>;
 }
 
+function CancellationReview({request,busy,onApprove,onReject}:{request:{id:string;estimatedRefundAmount:number;refundPercent:number};busy:boolean;onApprove:(id:string,key:string)=>Promise<void>;onReject:(id:string,reason:string)=>Promise<void>}){
+  const [reason,setReason]=useState('');
+  const [idempotencyKey]=useState(()=>crypto.randomUUID());
+  return <div className="operations-bank-review">
+    <small>批准后将通过服务端向 Stripe 发起 ¥{request.estimatedRefundAmount.toLocaleString('ja-JP')} 退款；最终状态以支付渠道回调为准。</small>
+    <button disabled={busy||request.estimatedRefundAmount<1} onClick={()=>void onApprove(request.id,idempotencyKey)}>批准并发起退款</button>
+    <label>拒绝原因<input value={reason} maxLength={500} onChange={event=>setReason(event.target.value)} placeholder="至少5个字符；游客可在订单中看到处理状态"/></label>
+    <button className="secondary" disabled={busy||reason.trim().length<5} onClick={()=>void onReject(request.id,reason.trim())}>拒绝退款申请</button>
+  </div>;
+}
+
 export function OperationsDashboard() {
   const { services } = useApp();
   const [snapshot, setSnapshot] = useState<OperationsSnapshot | null>(null);
@@ -359,6 +370,8 @@ export function OperationsDashboard() {
     setBusy(false);
   };
   const reviewAccountDeletion=async(id:string,decision:"reviewing"|"rejected",note:string)=>{if(!services)return;setBusy(true);const result=await services.operations.reviewAccountDeletion(id,decision,note);setNotice(result.ok?(decision==="reviewing"?"删除申请已进入人工核对，尚未删除账户。":"删除申请已驳回并保留处理记录。"): `处理失败：${result.error??"请核对申请状态和运营权限"}`);if(result.ok)await reload();setBusy(false)};
+  const approveCancellation=async(id:string,key:string)=>{if(!services)return;setBusy(true);const result=await services.executeOperationsRefund(id,key);setNotice(result?.accepted?"退款已由服务端提交 Stripe，当前为处理中；最终结果等待支付渠道回调。":"退款未提交：请核对运营权限、订单付款状态与服务端连接。");if(result?.accepted)await reload();setBusy(false)};
+  const rejectCancellation=async(id:string,reason:string)=>{if(!services)return;setBusy(true);const result=await services.operations.rejectCancellationRequest(id,reason);setNotice(result.ok?"退款申请已拒绝并保存处理理由；订单付款状态未被修改。":`拒绝失败：${result.error??"请核对申请状态和运营权限"}`);if(result.ok)await reload();setBusy(false)};
   return (
     <main className="operations-dashboard">
       <header className="operations-head">
@@ -480,7 +493,7 @@ export function OperationsDashboard() {
             </section>
             <section className="operations-section">
               <header><div><span>订单与支付</span><h2>取消／退款申请</h2></div><small>司机端不可见；退款以支付渠道回调为准</small></header>
-              {(snapshot.cancellationRequests??[]).length===0?<p className="operations-empty">暂无取消或退款申请。</p>:<div className="operations-dispatch-list">{(snapshot.cancellationRequests??[]).map(request=><article key={request.id}><div><b>订单尾号 {request.orderId.slice(-6)}</b><span>{request.status}</span></div><span>原因：{request.reasonCode} · 规则退款 {request.refundPercent}%</span><small>预计 ¥{request.estimatedRefundAmount} · {japanDate(request.requestedAt)}</small><p>当前仅进入审核队列；运营批准后必须由服务端调用支付渠道，不能在浏览器直接改成已退款。</p></article>)}</div>}
+              {(snapshot.cancellationRequests??[]).length===0?<p className="operations-empty">暂无取消或退款申请。</p>:<div className="operations-dispatch-list">{(snapshot.cancellationRequests??[]).map(request=><article key={request.id}><div><b>订单尾号 {request.orderId.slice(-6)}</b><span>{request.status}</span></div><span>原因：{request.reasonCode} · 规则退款 {request.refundPercent}%</span><small>预计 ¥{request.estimatedRefundAmount} · {japanDate(request.requestedAt)}</small><CancellationReview request={request} busy={busy} onApprove={approveCancellation} onReject={rejectCancellation}/></article>)}</div>}
             </section>
             <section className="operations-section">
               <header><div><span>账户与隐私</span><h2>删除申请队列</h2></div><small>不显示联系方式、订单内容或私人资料</small></header>

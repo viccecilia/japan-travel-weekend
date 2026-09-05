@@ -49,6 +49,7 @@ import {AuthCallback,CreateAccount,ForgotPassword,ResetPassword} from "../app/Au
 import {OperationsDashboard} from "../app/OperationsDashboard";
 import {DesignLab} from "../app/DesignLab";
 import {StaffPortal,StaffTaskAction} from "../app/StaffPortal";
+import {AiGuide} from "../app/AiGuide";
 function ScrollToTop(){const {pathname}=useLocation();useEffect(()=>{if(!navigator.userAgent.includes('jsdom'))window.scrollTo({top:0,left:0,behavior:'auto'});},[pathname]);return null;}
 export function Router() {
   return (
@@ -169,6 +170,7 @@ export function Router() {
           <RequireAccount><AppShell nav><TripRoom /></AppShell></RequireAccount>
         }
       />
+      <Route path="/app/ai-guide" element={<RequireAccount><AppShell nav><AiGuide/></AppShell></RequireAccount>} />
       <Route
         path="/app/private-groups"
         element={

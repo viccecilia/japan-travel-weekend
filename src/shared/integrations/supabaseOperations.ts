@@ -478,6 +478,7 @@ export class SupabaseOperationsRepository {
     return { ok: !error, result: typeof data === "string" ? data : null, error: error?.message ?? null };
   }
   async reviewAccountDeletion(requestId:string,decision:"reviewing"|"rejected",note:string){return this.transition("operations_review_account_deletion",{p_request:requestId,p_decision:decision,p_note:note})}
+  async rejectCancellationRequest(requestId:string,reason:string){return this.transition("operations_reject_cancellation_request",{p_request:requestId,p_reason:reason})}
   async retryNotificationDelivery(outboxId:string,reason:string){return this.transition("operations_retry_notification_delivery",{p_outbox:outboxId,p_reason:reason})}
   private async transition(name: string, args: Record<string, unknown>) {
     if (!this.client) return { ok: false, error: "运营数据服务未配置" };

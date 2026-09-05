@@ -15,11 +15,11 @@ const UI_KEY = "jtw-ui-preferences-v1";
 const loadUi = (): UiPreferences => {
   try {
     return {
-      ...{ compact: false },
+      ...{ compact: false, locale: "zh-CN" },
       ...JSON.parse(localStorage.getItem(UI_KEY) ?? "{}"),
     };
   } catch {
-    return { compact: false };
+    return { compact: false, locale: "zh-CN" };
   }
 };
 const repo = createMemoryRepository(isSeedEnabled);
@@ -126,3 +126,4 @@ export const useApp = () => {
   if (!c) throw new Error("缺少应用数据上下文");
   return c;
 };
+export const useOptionalApp = () => useContext(Context);

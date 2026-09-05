@@ -617,6 +617,7 @@ export class SupabaseStaffRepository {
     try{const {data,error}=await this.client.rpc('advance_vehicle_group_journey',{p_vehicle_group:vehicleGroupId,p_action:action,p_stop_name:stopName,p_reason:reason,p_idempotency_key:crypto.randomUUID()});return error?null:data?.[0]??null}catch{return null}
   }
   async advanceToItineraryStop(vehicleGroupId:string,stopId:string,reason:string){if(!this.client)return null;try{const {data,error}=await this.client.rpc('advance_vehicle_group_to_itinerary_stop',{p_vehicle_group:vehicleGroupId,p_stop_id:stopId,p_reason:reason,p_idempotency_key:crypto.randomUUID()});return error?null:data?.[0]??null}catch{return null}}
+  async startFreeTime(vehicleGroupId:string,stopName:string,minutes:number){if(!this.client)return false;try{const {data,error}=await this.client.rpc('start_vehicle_group_free_time',{p_vehicle_group:vehicleGroupId,p_stop_name:stopName,p_minutes:minutes,p_idempotency_key:crypto.randomUUID()});return !error&&data===true}catch{return false}}
   async publishLocation(vehicleGroupId:string,latitude:number,longitude:number,accuracy:number|null){
     if(!this.client)return false;const {error}=await this.client.rpc('publish_driver_location',{p_vehicle_group:vehicleGroupId,p_latitude:latitude,p_longitude:longitude,p_accuracy_meters:accuracy,p_minutes:15});return !error;
   }
@@ -738,7 +739,7 @@ export class SupabaseTripRoomRepository {
     return error ? null : data;
   }
   async saveTranslationPreference(
-    targetLanguage: "zh-CN" | "zh-TW" | "ja" | "en" | "vi" | "ne",
+    targetLanguage: "zh-CN" | "zh-TW" | "ja" | "en" | "vi" | "ne" | "ko",
     autoTranslate: boolean,
     followDeviceLanguage: boolean,
   ) {

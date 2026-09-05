@@ -153,6 +153,7 @@ export class ProductionBrowserServices {
   }
   advanceStaffJourney(vehicleGroupId:string,action:'stop_arrived'|'trip_completed',stopName:string,reason:string){return this.staff.advanceJourney(vehicleGroupId,action,stopName,reason)}
   advanceStaffToItineraryStop(vehicleGroupId:string,stopId:string,reason:string){return this.staff.advanceToItineraryStop(vehicleGroupId,stopId,reason)}
+  startStaffFreeTime(vehicleGroupId:string,stopName:string,minutes:number){return this.staff.startFreeTime(vehicleGroupId,stopName,minutes)}
   publishStaffLocation(vehicleGroupId:string,latitude:number,longitude:number,accuracy:number|null){return this.staff.publishLocation(vehicleGroupId,latitude,longitude,accuracy)}
   stopStaffLocation(vehicleGroupId:string){return this.staff.stopLocation(vehicleGroupId)}
   createCheckout(input: CheckoutRequest) {
@@ -170,8 +171,9 @@ export class ProductionBrowserServices {
   }
   translateMessage(input: {
     messageId: string;
-    targetLanguage: "zh-CN" | "zh-TW" | "ja" | "en" | "vi" | "ne";
+    targetLanguage: "zh-CN" | "zh-TW" | "ja" | "en" | "vi" | "ne" | "ko";
   }) {
     return this.checkout.translateMessage(input);
   }
+  executeOperationsRefund(requestId:string,idempotencyKey:string){return this.checkout.executeRefund({requestId,idempotencyKey})}
 }

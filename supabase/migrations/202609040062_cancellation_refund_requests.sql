@@ -32,8 +32,9 @@ declare v_order public.orders%rowtype;v_departs timestamptz;v_days integer;v_per
 begin
   if auth.uid() is null then raise exception 'authentication required'; end if;
   if p_reason_code not in ('plans_changed','health','transport','duplicate','other') or length(trim(coalesce(p_customer_note,'')))>500 then raise exception 'invalid request'; end if;
-  select o.*,d.departs_at into v_order,v_departs from public.orders o join public.departures d on d.id=o.departure_id where o.id=p_order and o.account_id=auth.uid() for update of o;
+  select o.* into v_order from public.orders o where o.id=p_order and o.account_id=auth.uid() for update;
   if v_order.id is null or v_order.status not in ('paid','confirmed') then raise exception 'order is not cancellation eligible'; end if;
+  select d.departs_at into v_departs from public.departures d where d.id=v_order.departure_id;
   if v_departs<=now() then raise exception 'departure already started'; end if;
   v_days:=((v_departs at time zone 'Asia/Tokyo')::date-(now() at time zone 'Asia/Tokyo')::date);
   v_percent:=case when v_days>3 then 100 when v_days>=2 then 50 else 0 end;
