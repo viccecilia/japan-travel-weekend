@@ -10,7 +10,12 @@ export class StripeTestAdapter{
   get available(){return this.stripe!==null&&this.config.webhookSecret.startsWith('whsec_')}
   async createPaymentIntent(input:{orderId:string;amount:number;idempotencyKey:string}){
     if(!this.stripe||input.amount<=0)return null;
-    return this.stripe.paymentIntents.create({amount:input.amount,currency:'jpy',metadata:{order_id:input.orderId,jtw_payment_mode:this.mode}},{idempotencyKey:input.idempotencyKey});
+    return this.stripe.paymentIntents.create({
+      amount:input.amount,
+      currency:'jpy',
+      automatic_payment_methods:{enabled:true},
+      metadata:{order_id:input.orderId,jtw_payment_mode:this.mode}
+    },{idempotencyKey:input.idempotencyKey});
   }
   async cancelPaymentIntent(id:string){if(!this.stripe)return false;await this.stripe.paymentIntents.cancel(id);return true}
   async createRefund(input:{paymentIntentId:string;amount:number;idempotencyKey:string}){if(!this.stripe||!input.paymentIntentId.startsWith('pi_')||!Number.isSafeInteger(input.amount)||input.amount<1)return null;return this.stripe.refunds.create({payment_intent:input.paymentIntentId,amount:input.amount,metadata:{jtw_payment_mode:this.mode}},{idempotencyKey:input.idempotencyKey})}
