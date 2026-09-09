@@ -305,7 +305,7 @@ describe("已批准测试服务栈", () => {
     ).toBe(false);
     expect(mapStripeEvent("payment_intent.payment_failed")).toBe("failed");
     expect(mapStripeEvent("payment_intent.canceled")).toBe("cancelled");
-    expect(mapStripeEvent("charge.refunded")).toBe("refunded");
+    expect(mapStripeEvent("charge.refunded")).toBe("refund_updated");
   });
   it("Stripe 乱序事件不能回退已成功或已退款状态", () => {
     expect(
@@ -352,6 +352,10 @@ describe("已批准测试服务栈", () => {
       has: async (id) => applied.includes(id),
       findOrderIdByPaymentIntent: async () => null,
       apply: async (event) => {
+        applied.push(event.providerEventId);
+        return true;
+      },
+      applyRefund: async (event) => {
         applied.push(event.providerEventId);
         return true;
       },

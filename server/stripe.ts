@@ -2,7 +2,7 @@ import Stripe from 'stripe';
 import {createHash} from 'node:crypto';
 
 export type StripeTestConfig={secretKey:string;webhookSecret:string;mode?:'test'|'live'};
-export type PaymentEventStore={has(providerEventId:string):Promise<boolean>;findOrderIdByPaymentIntent(paymentIntentId:string):Promise<string|null>;apply(input:{providerEventId:string;orderId:string;status:'succeeded'|'failed'|'cancelled'|'refunded';createdAt:string;payloadDigest:string}):Promise<boolean>};
+export type PaymentEventStore={has(providerEventId:string):Promise<boolean>;findOrderIdByPaymentIntent(paymentIntentId:string):Promise<string|null>;apply(input:{providerEventId:string;orderId:string;status:'succeeded'|'failed'|'cancelled';createdAt:string;payloadDigest:string}):Promise<boolean>;applyRefund(input:{providerEventId:string;orderId:string;providerRefundId:string|null;amountRefunded:number;chargeAmount:number;createdAt:string;payloadDigest:string}):Promise<boolean>};
 export class StripeTestAdapter{
   private readonly stripe:Stripe|null;
   readonly mode:'test'|'live';
@@ -24,10 +24,13 @@ export class StripeTestAdapter{
     let event:Stripe.Event;
     try{event=this.stripe.webhooks.constructEvent(rawBody,signature,this.config.webhookSecret)}catch{return {accepted:false,reason:'invalid-signature'} as const}
     if(await store.has(event.id))return {accepted:true,duplicate:true} as const;
+    const status=mapStripeEvent(event.type);if(!status)return {accepted:true,ignored:true} as const;
     const orderId=await extractOrderId(event,store);
     if(!orderId)return {accepted:false,reason:'missing-order'} as const;
-    const status=mapStripeEvent(event.type);if(!status)return {accepted:true,ignored:true} as const;
-    const applied=await store.apply({providerEventId:event.id,orderId,status,createdAt:new Date(event.created*1000).toISOString(),payloadDigest:createHash('sha256').update(rawBody).digest('hex')});
+    const createdAt=new Date(event.created*1000).toISOString();const payloadDigest=createHash('sha256').update(rawBody).digest('hex');
+    const applied=status==='refund_updated'
+      ?await store.applyRefund(refundEventInput(event,orderId,createdAt,payloadDigest))
+      :await store.apply({providerEventId:event.id,orderId,status,createdAt,payloadDigest});
     return {accepted:applied,duplicate:false} as const;
   }
 }
@@ -41,7 +44,11 @@ export async function extractOrderId(event:Stripe.Event,store:Pick<PaymentEventS
   if(event.type==='charge.refunded'){const charge=event.data.object as Stripe.Charge;const paymentIntentId=typeof charge.payment_intent==='string'?charge.payment_intent:charge.payment_intent?.id;if(!paymentIntentId)return null;return store.findOrderIdByPaymentIntent(paymentIntentId)}
   return null;
 }
-export function mapStripeEvent(type:string){if(type==='payment_intent.succeeded')return 'succeeded' as const;if(type==='payment_intent.payment_failed')return 'failed' as const;if(type==='payment_intent.canceled')return 'cancelled' as const;if(type==='charge.refunded')return 'refunded' as const;return null}
+export function mapStripeEvent(type:string){if(type==='payment_intent.succeeded')return 'succeeded' as const;if(type==='payment_intent.payment_failed')return 'failed' as const;if(type==='payment_intent.canceled')return 'cancelled' as const;if(type==='charge.refunded')return 'refund_updated' as const;return null}
+export function refundEventInput(event:Stripe.Event,orderId:string,createdAt:string,payloadDigest:string){
+  const charge=event.data.object as Stripe.Charge;const refunds=charge.refunds?.data??[];const latest=refunds.reduce<Stripe.Refund|null>((value,item)=>!value||item.created>value.created?item:value,null);
+  return {providerEventId:event.id,orderId,providerRefundId:latest?.id??null,amountRefunded:charge.amount_refunded,chargeAmount:charge.amount,createdAt,payloadDigest};
+}
 export function acceptPaymentTransition(current:{status:'created'|'processing'|'succeeded'|'failed'|'cancelled'|'refunded';eventCreatedAt:string}|null,next:{status:'succeeded'|'failed'|'cancelled'|'refunded';eventCreatedAt:string}){
   if(!current)return true;
   if(new Date(next.eventCreatedAt).getTime()<new Date(current.eventCreatedAt).getTime())return false;

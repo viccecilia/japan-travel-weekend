@@ -308,22 +308,22 @@ function OperationsLiveDashboard() {
     const form = new FormData(event.currentTarget);
     setBusy(true);
     const result = await services.operations.saveRouteCatalog({
-      slug: "kyoto-nara-classic",
-      title: String(form.get("title")),
-      summary: String(form.get("summary")),
-      walkingLevel: String(form.get("walkingLevel")),
-      mealNotes: String(form.get("mealNotes")),
-      notices: String(form.get("notices"))
+      slug: String(form.get("slug")).trim(),
+      title: String(form.get("title")).trim()||undefined,
+      summary: String(form.get("summary")).trim()||undefined,
+      walkingLevel: String(form.get("walkingLevel")).trim()||undefined,
+      mealNotes: String(form.get("mealNotes")).trim()||undefined,
+      notices: String(form.get("notices")).trim()?String(form.get("notices"))
         .split("\n")
         .map((value) => value.trim())
-        .filter(Boolean),
-      heroImageUrl: String(form.get("heroImageUrl")),
-      status: String(form.get("status")) as "draft" | "published",
+        .filter(Boolean):undefined,
+      heroImageUrl: String(form.get("heroImageUrl")).trim()||undefined,
+      status: (String(form.get("status")).trim()||undefined) as "draft" | "published" | undefined,
     });
     setBusy(false);
     setNotice(
       result.ok
-        ? "京都奈良路线内容已保存；前台只读取已发布内容"
+        ? "路线修改已安全保存；未填写的字段和原图库保持不变"
         : `路线内容保存失败：${result.error ?? "未知错误"}`,
     );
   };
@@ -599,30 +599,30 @@ function OperationsLiveDashboard() {
               <header>
                 <div>
                   <span>路线内容管理</span>
-                  <h2>京都奈良标准路线</h2>
+                  <h2>路线安全修订</h2>
                 </div>
                 <small>价格与库存不在此表单中编造</small>
               </header>
               <form className="operations-controls" onSubmit={submitRoute}>
                 <label>
+                  路线编号（slug）
+                  <input required name="slug" placeholder="例如 kyoto-nara-classic" />
+                </label>
+                <label>
                   路线标题
-                  <input
-                    required
-                    name="title"
-                    defaultValue="京都与奈良世界遗产经典一日游"
-                  />
+                  <input name="title" placeholder="不修改请留空" />
                 </label>
                 <label>
                   前台摘要
                   <textarea
-                    required
                     name="summary"
-                    defaultValue="从大阪出发，一天连接京都代表性历史街区与奈良公园区域。"
+                    placeholder="不修改请留空"
                   />
                 </label>
                 <label>
                   步行强度
-                  <select name="walkingLevel" defaultValue="中等">
+                  <select name="walkingLevel" defaultValue="">
+                    <option value="">不修改</option>
                     <option>轻松</option>
                     <option>中等</option>
                     <option>较多</option>
@@ -631,19 +631,15 @@ function OperationsLiveDashboard() {
                 <label>
                   餐食说明
                   <textarea
-                    required
                     name="mealNotes"
-                    defaultValue="餐食包含情况以具体班次为准；未确认前按自理准备。"
+                    placeholder="不修改请留空"
                   />
                 </label>
                 <label>
                   注意事项（每行一项）
                   <textarea
-                    required
                     name="notices"
-                    defaultValue={
-                      "景点顺序和停留时间可能因天气、交通或景区管制调整\n未确认的门票、餐食和辅助服务不会提前收费"
-                    }
+                    placeholder="不修改请留空；确需清空将在产品中心提供单独操作"
                   />
                 </label>
                 <label>
@@ -655,7 +651,8 @@ function OperationsLiveDashboard() {
                 </label>
                 <label>
                   发布状态
-                  <select name="status" defaultValue="draft">
+                  <select name="status" defaultValue="">
+                    <option value="">不修改</option>
                     <option value="draft">草稿</option>
                     <option value="published">发布</option>
                   </select>

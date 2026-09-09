@@ -419,28 +419,21 @@ export class SupabaseOperationsRepository {
   }
   async saveRouteCatalog(input: {
     slug: string;
-    title: string;
-    summary: string;
-    walkingLevel: string;
-    mealNotes: string;
-    notices: string[];
-    heroImageUrl: string;
-    status: "draft" | "published";
+    title?: string;
+    summary?: string;
+    walkingLevel?: string;
+    mealNotes?: string;
+    notices?: string[];
+    heroImageUrl?: string;
+    status?: "draft" | "published";
   }) {
     if (!this.client) return { ok: false, error: "运营数据服务未配置" };
-    const { error } = await this.client.rpc("operations_update_route_catalog", {
-      p_slug: input.slug,
-      p_title: input.title,
-      p_content: {
-        summary: input.summary,
-        walkingLevel: input.walkingLevel,
-        mealNotes: input.mealNotes,
-        notices: input.notices,
-      },
-      p_hero_image_url: input.heroImageUrl || null,
-      p_gallery: input.heroImageUrl ? [input.heroImageUrl] : [],
-      p_status: input.status,
-    });
+    const {data:current,error:loadError}=await this.client.from('trips').select('catalog_version').eq('slug',input.slug).maybeSingle();
+    if(loadError||!current)return {ok:false,error:loadError?.message??'路线不存在'};
+    const content=Object.fromEntries(Object.entries({summary:input.summary,walkingLevel:input.walkingLevel,mealNotes:input.mealNotes,notices:input.notices}).filter(([,value])=>value!==undefined));
+    const patch=Object.fromEntries(Object.entries({title:input.title,status:input.status,heroImageUrl:input.heroImageUrl,content:Object.keys(content).length?content:undefined}).filter(([,value])=>value!==undefined));
+    if(!Object.keys(patch).length)return {ok:false,error:'没有可保存的修改'};
+    const { error } = await this.client.rpc("operations_patch_route_catalog", {p_slug:input.slug,p_expected_version:Number(current.catalog_version),p_patch:patch});
     return { ok: !error, error: error?.message ?? null };
   }
   async createDriver(input: {
