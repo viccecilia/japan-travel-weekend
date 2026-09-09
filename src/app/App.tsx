@@ -1257,11 +1257,11 @@ export function BookingPage() {
     state.booking?.tripSlug === t.slug ? (state.booking?.adults ?? 1) : 1,
   );
   const invalidRequestedDeparture=Boolean(requestedDepartureId&&!displayedDepartures.some(item=>item.id===requestedDepartureId));
-  const effectiveDepartureId = !invalidRequestedDeparture&&displayedDepartures.some(
-    (item) => item.id === selectedDeparture,
-  )
-    ? selectedDeparture
-    : (firstDisplayedSellable?.id ?? "");
+  const effectiveDepartureId = invalidRequestedDeparture
+    ? ""
+    : displayedDepartures.some((item) => item.id === selectedDeparture)
+      ? selectedDeparture
+      : (firstDisplayedSellable?.id ?? "");
   const chosen = sellable.find((item) => item.id === effectiveDepartureId);
   const bookingTotal = seatOrderTotal(
     chosen?.price,
@@ -1476,7 +1476,7 @@ export function BookingPage() {
             </span>
             <button
               className="button"
-              disabled={!sellable.length || adults < 1}
+              disabled={!chosen || adults < 1}
             >
               {b.continue}
             </button>
