@@ -40,4 +40,10 @@ describe('operations refund endpoint',()=>{
     const endpoint=new RefundEndpoint(gateway,{available:true,createRefund:vi.fn(async()=>({id:'re_1'} as never))});
     await expect(endpoint.post(session,{requestId:'request-1',idempotencyKey:'refund-key-1'})).resolves.toMatchObject({status:202,body:{status:'refund_result_pending_reconciliation'}});
   });
+  it('replays an already submitted operation without creating a second Stripe refund',async()=>{
+    const createRefund=vi.fn();const gateway={loadForOperations:vi.fn(async()=>({requestId:'request-1',orderId:'order-1',paymentIntentId:'pi_1',amount:1000})),prepare:vi.fn(async()=>({operationId:'operation-1',providerIdempotencyKey:'refund:operation-1',status:'submitted'}))} as unknown as RefundGateway;
+    const endpoint=new RefundEndpoint(gateway,{available:true,createRefund});
+    await expect(endpoint.post(session,{requestId:'request-1',idempotencyKey:'refund-key-1'})).resolves.toMatchObject({status:202,body:{status:'refund_processing',replayed:true}});
+    expect(createRefund).not.toHaveBeenCalled();
+  });
 });

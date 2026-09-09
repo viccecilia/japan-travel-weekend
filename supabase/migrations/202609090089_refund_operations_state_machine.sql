@@ -97,7 +97,9 @@ begin
     where order_id=p_order and (provider_refund_id=p_refund_id or (provider_refund_id is null and status in ('submitted','provider_result_unknown')));
   update public.order_cancellation_requests set status=case when is_full then 'refunded' else 'closed' end,updated_at=now()
     where order_id=p_order and status in ('refund_processing','provider_result_unknown');
-  if delta>0 then
+  -- Full refunds are notified by finalize_refunded_order_trigger. Only partial
+  -- refunds need an event-specific notification here.
+  if delta>0 and not is_full then
     insert into public.notification_outbox(event_id,event_type,recipient_id,order_id,necessary,payload,status)
     select 'refund-completed:'||p_event_id,'refund-completed',o.account_id,o.id,true,jsonb_build_object('orderId',o.id,'amount',delta,'cumulativeAmount',p_amount_refunded,'fullRefund',is_full,'currency',o.currency),'pending'
     from public.orders o where o.id=p_order on conflict(event_id) do nothing;
