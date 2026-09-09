@@ -233,6 +233,7 @@ export function ProductCenter() {
             </label>
             <label>
               景点图文 JSON（数组顺序即游客端展示顺序）
+              <input name="stops" type="hidden" value={Array.isArray(selected.content.stops)?selected.content.stops.join("\n"):""} readOnly />
               <textarea
                 name="itinerary"
                 defaultValue={JSON.stringify(

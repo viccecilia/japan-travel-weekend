@@ -456,6 +456,8 @@ export class SupabaseOrderRepository {
       return { ok: false, error: "无法放弃该草稿" };
     }
   }
+  async loadOwnShareCampaign(){if(!this.client)return {campaign:null,submissions:[],orders:[],error:'分享活动服务未配置'};const [campaigns,submissions,orders]=await Promise.all([this.client.from('link_campaigns').select('id,campaign_month,status,opens_at,closes_at,rules_version').eq('status','open').order('campaign_month',{ascending:false}).limit(1),this.client.from('link_campaign_submissions').select('id,campaign_id,order_id,platform,post_url,platform_account,status,created_at').order('created_at',{ascending:false}),this.client.from('orders').select('id,status,created_at').in('status',['paid','confirmed']).order('created_at',{ascending:false})]);const error=campaigns.error??submissions.error??orders.error;return {campaign:campaigns.data?.[0]??null,submissions:submissions.data??[],orders:orders.data??[],error:error?'分享活动读取失败':null}}
+  async submitShareLink(input:{campaignId:string;orderId:string;platform:'tiktok'|'instagram'|'facebook';url:string;platformAccount:string;authorizationVersion:string}){if(!this.client)return {ok:false,error:'分享活动服务未配置'};const {data,error}=await this.client.rpc('submit_travel_share_link',{p_campaign:input.campaignId,p_order:input.orderId,p_platform:input.platform,p_url:input.url,p_platform_account:input.platformAccount,p_authorization_version:input.authorizationVersion,p_authorization_scope:{repost:true,editing:false,paid_ads:false}});return error||!data?{ok:false,error:error?.message??'投稿未提交'}:{ok:true,error:null,id:String(data)}}
 }
 export type OwnAccountProfile = {
   account_id: string;

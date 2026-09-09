@@ -2880,6 +2880,17 @@ function ReferralPanel(){
     <h2>{c.coupons}</h2><div className="coupon-filter-tabs" role="tablist">{(['all','active','pending','used','invalid'] as const).map(key=><button role="tab" aria-selected={couponFilter===key} className={couponFilter===key?'active':''} onClick={()=>setCouponFilter(key)} key={key}>{filterCopy[key]}</button>)}</div>{summary.coupons.length===0?<p className="privacy">{c.none}</p>:visibleCoupons.length===0?<p className="privacy">{c.none}</p>:<div className="app-list">{visibleCoupons.map(item=>{const waiting=item.status==='pending_trip_completion';const invalid=['void','frozen','expired'].includes(item.status);const used=['reserved','redeemed'].includes(item.status);const format=(value:string|null)=>value?new Date(value).toLocaleString(locale,{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Tokyo'}):null;return <article className={`order-card referral-coupon ${waiting?'is-pending':''} ${invalid?'is-invalid':''} ${used?'is-used':''}`} key={item.id}><b>{item.discountPercent}% OFF</b><span>{item.recipientKind==='inviter'?c.invites:c.title}</span>{invalid?<small>{c.invalid}</small>:waiting?<><small>{c.pending}</small>{item.qualifyingTripStartsAt&&<span>{c.tripStarts}：{format(item.qualifyingTripStartsAt)}</span>}{item.availableAt&&<span>{c.available}：{format(item.availableAt)}</span>}</>:used?<small>{filterCopy.usedStatus}</small>:<><small>{filterCopy.activeStatus}</small><span>{c.valid} {new Date(item.expiresAt).toLocaleDateString(locale)}</span></>}</article>})}</div>}
   </section>;
 }
+function TravelShareCampaign(){
+  const {services}=useApp();
+  const [data,setData]=useState<Awaited<ReturnType<NonNullable<typeof services>['loadOwnShareCampaign']>>|null>(null);
+  const [notice,setNotice]=useState('');const [busy,setBusy]=useState(false);
+  const reload=async()=>{if(services)setData(await services.loadOwnShareCampaign())};
+  useEffect(()=>{void reload()},[services]);
+  if(!data)return <section className="form"><h2>旅行分享活动</h2><p>正在读取活动状态…</p></section>;
+  if(!data.campaign)return <section className="form"><h2>旅行分享活动</h2><p className="privacy">活动规则尚在确认，目前保持关闭。开放后只需提交 TikTok、Instagram 或 Facebook 的帖子链接，不上传照片或视频文件。</p></section>;
+  const submit=async(event:FormEvent<HTMLFormElement>)=>{event.preventDefault();if(!services||!data.campaign)return;const form=new FormData(event.currentTarget);setBusy(true);const result=await services.submitShareLink({campaignId:String(data.campaign.id),orderId:String(form.get('orderId')),platform:String(form.get('platform')) as 'tiktok'|'instagram'|'facebook',url:String(form.get('url')),platformAccount:String(form.get('platformAccount')),authorizationVersion:'share-link-v1'});setBusy(false);setNotice(result.error??'链接已提交，等待人工核验；互动数不会被系统臆测为 0。');if(result.ok){event.currentTarget.reset();await reload()}};
+  return <section className="form"><h2>旅行分享活动</h2><p className="privacy">仅提交外部帖子链接。帖子需关联本人已完成的行程并 @ 对应平台官方账号；转载授权不等同于音乐或同行者肖像授权。活动先人工核验，不自动抓取或保存视频。</p><form onSubmit={submit}><label>已完成订单<select name="orderId" required><option value="">请选择</option>{data.orders.map(order=><option value={String(order.id)} key={String(order.id)}>{String(order.id).slice(0,8)} · {String(order.status)}</option>)}</select></label><label>平台<select name="platform" required><option value="tiktok">TikTok</option><option value="instagram">Instagram</option><option value="facebook">Facebook</option></select></label><label>本人平台账号<input name="platformAccount" required minLength={2}/></label><label>公开帖子链接<input name="url" required type="url" placeholder="https://…"/></label><label className="check"><input type="checkbox" required/><span>我确认内容属于本人，并授权官方账号按活动说明转载该帖子链接所指内容；付费广告或扩大用途需另行确认。</span></label><button className="button full" disabled={busy||data.orders.length===0}>{busy?'正在提交':'提交链接等待核验'}</button></form>{notice&&<p className="notice" role="status">{notice}</p>}{data.submissions.length>0&&<div className="app-list">{data.submissions.map(item=><article className="order-card" key={String(item.id)}><b>{String(item.platform)}</b><span>{String(item.platform_account)} · {String(item.status)}</span><a href={String(item.post_url)} target="_blank" rel="noreferrer">查看已提交链接</a></article>)}</div>}</section>;
+}
 export function Profile() {
   const { state, setUi, reset, services } = useApp();
   const locale=state.ui.locale??'zh-CN';
@@ -3012,6 +3023,7 @@ export function Profile() {
           </Link>
         </div>
       </section>
+      {accountRole==='passenger'&&<TravelShareCampaign/>}
       {services && (
         <form className="form" onSubmit={saveDisplayName}>
           <h2>{pc.name}</h2>

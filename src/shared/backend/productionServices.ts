@@ -110,6 +110,8 @@ export class ProductionBrowserServices {
   abandonOwnDraft(draftId: string) {
     return this.orders.abandonOwnDraft(draftId);
   }
+  loadOwnShareCampaign(){return this.orders.loadOwnShareCampaign()}
+  submitShareLink(input:Parameters<SupabaseOrderRepository['submitShareLink']>[0]){return this.orders.submitShareLink(input)}
   loadOwnAccountProfile() {
     return this.accountProfile.loadOwn();
   }
