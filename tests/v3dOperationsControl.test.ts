@@ -1,0 +1,8 @@
+import {describe,expect,it,vi} from 'vitest';import {readFileSync} from 'node:fs';import {SupabaseOperationsRepository} from '../src/shared/integrations/supabaseOperations';
+const migration=readFileSync('supabase/migrations/202609090098_departure_edit_and_driver_statistics.sql','utf8');const page=readFileSync('src/app/operations/DepartureCenter.tsx','utf8');
+describe('V3-D operations controls',()=>{
+ it('lists editable departures with versions and committed inventory',()=>{expect(migration).toContain('get_operations_editable_departures');expect(migration).toContain('schedule_version');expect(migration).toContain("l.status='committed'")});
+ it('provides source-backed driver workload statistics',()=>{expect(migration).toContain('get_operations_driver_statistics');expect(migration).toContain("js.status='completed'");expect(migration).toContain('driver_location_points')});
+ it('sends optimistic version and Japan-time sales windows to the update RPC',async()=>{const rpc=vi.fn().mockResolvedValue({data:2,error:null});const repository=new SupabaseOperationsRepository({rpc} as never);await repository.updateDeparture({id:'d',expectedVersion:1,price:8000,capacity:10,salesOpenAt:'2026-09-01T00:00:00Z',salesCloseAt:'2026-09-10T00:00:00Z',status:'open'});expect(rpc).toHaveBeenCalledWith('operations_update_departure',expect.objectContaining({p_expected_version:1,p_price:8000,p_capacity:10}))});
+ it('exposes existing departure editing instead of batch-create only',()=>{expect(page).toContain('价格与截止时间调整');expect(page).toContain('已下单价格快照保持不变')});
+});
