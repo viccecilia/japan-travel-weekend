@@ -6,7 +6,7 @@ describe('服务端支付 gateway',()=>{
     const maybeSingle=vi.fn(async()=>({data:{seat_price_jpy:8500,status:'open'},error:null}));
     const client={from:vi.fn(()=>({select:vi.fn(()=>({eq:vi.fn(()=>({maybeSingle}))}))}))};
     const gateway=new SupabaseServerPricingGateway(client as never);
-    await expect(gateway.quote('departure',2)).resolves.toEqual({amount:17000,currency:'JPY'});
+    await expect(gateway.quote('departure',2)).resolves.toEqual({amount:17000,unitPrice:8500,currency:'JPY'});
     expect(client.from).toHaveBeenCalledWith('departures');
   });
   it('缺价格、关闭班次和非法席数一律 fail closed',async()=>{

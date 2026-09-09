@@ -174,6 +174,7 @@ export class ProductionBrowserServices {
   createCheckout(input: CheckoutRequest) {
     return this.checkout.checkout(input);
   }
+  createQuote(input:{departureId:string;seats:number;couponId?:string}){return this.checkout.quote(input)}
   issueBoardingCredential(orderId: string) {
     return this.checkout.issueBoardingCredential(orderId);
   }

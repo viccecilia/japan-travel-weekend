@@ -35,9 +35,12 @@ export class SupabaseServerPricingGateway{
     const {data,error}=await this.client.from('departures').select('seat_price_jpy,status').eq('id',departureId).maybeSingle();
     const unit=Number(data?.seat_price_jpy);
     if(error||data?.status!=='open'||!Number.isSafeInteger(unit)||unit<1)return null;
-    const amount=unit*seats;return Number.isSafeInteger(amount)?{amount,currency:'JPY' as const}:null;
+    const amount=unit*seats;return Number.isSafeInteger(amount)?{amount,unitPrice:unit,currency:'JPY' as const}:null;
   }
-  async applyCoupon(accountId:string,orderId:string,couponId:string,grossAmount:number){if(!this.client||!accountId||!orderId||!couponId||!Number.isSafeInteger(grossAmount)||grossAmount<1)return null;const {data,error}=await this.client.rpc('price_order_with_coupon',{p_account:accountId,p_order:orderId,p_coupon:couponId,p_expected_gross:grossAmount});const row=data?.[0];if(error||!row)return null;return {amount:Number(row.amount),grossAmount:Number(row.gross_amount),discountAmount:Number(row.discount_amount),discountPercent:Number(row.discount_percent)}}
+  async applyCoupon(accountId:string,orderId:string,couponId:string,grossAmount:number){if(!this.client||!accountId||!orderId||!couponId||!Number.isSafeInteger(grossAmount)||grossAmount<1)return null;const {data,error}=await this.client.rpc('price_order_with_coupon',{p_account:accountId,p_order:orderId,p_coupon:couponId,p_expected_gross:grossAmount});const row=data?.[0];if(error||!row)return null;return {amount:Number(row.amount),grossAmount:Number(row.gross_amount),discountAmount:Number(row.discount_amount),discountPercent:Number(row.discount_percent),discountedSeats:Number(row.discounted_seats),discountedUnitPrice:Number(row.discounted_unit_price),sourceType:String(row.source_type)}}
+  async createQuote(accountId:string,input:{departureId:string;seats:number;couponId?:string}){if(!this.client)return null;const {data,error}=await this.client.rpc('create_order_quote',{p_account:accountId,p_departure:input.departureId,p_seats:input.seats,p_coupon:input.couponId??null});return error||!data?null:data as Record<string,unknown>}
+  async applyQuote(accountId:string,orderId:string,quoteId:string){if(!this.client)return null;const {data,error}=await this.client.rpc('apply_order_quote',{p_account:accountId,p_order:orderId,p_quote:quoteId});const row=data?.[0];if(error||!row)return null;return {amount:Number(row.amount),grossAmount:Number(row.gross_amount),discountAmount:Number(row.discount_amount),discountPercent:Number(row.discount_percent),discountedSeats:Number(row.discounted_seats),discountedUnitPrice:Number(row.discounted_unit_price),sourceType:String(row.source_type??'')}}
+  async confirmFree(accountId:string,orderId:string){if(!this.client)return false;const {data,error}=await this.client.rpc('confirm_coupon_covered_order',{p_account:accountId,p_order:orderId});return !error&&data===true}
 }
 
 export class SupabasePaymentIntentRecorder{
