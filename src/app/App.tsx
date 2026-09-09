@@ -83,7 +83,11 @@ const tripSupplement:Record<string,Record<string,{name:string;region:string;dura
  'zh-TW':{'kobe-arima-rokko':{name:'神戶、有馬與六甲山',region:'兵庫',duration:'約 10–11 小時',stops:['有馬溫泉','北野異人館街','神戶港','六甲山夜景']},'wakayama-family':{name:'和歌山親子路線',region:'和歌山',duration:'約 9–10 小時',stops:['貴志站','Toretore 市場','千疊敷','三段壁']}},
  ne:{'kobe-arima-rokko':{name:'कोबे, अरिमा र रोक्को पर्वत',region:'ह्योगो',duration:'१०–११ घण्टा',stops:['अरिमा ओन्सेन','कितानो इजिनकान','कोबे बन्दरगाह','रोक्को रात्री दृश्य']},'wakayama-family':{name:'वाकायामा पारिवारिक रुट',region:'वाकायामा',duration:'९–१० घण्टा',stops:['किशी स्टेशन','तोरेतोरे बजार','सेन्जोजिकी','सान्दानबेकी']}},
 };
-const localizedTripSummary=(locale:PassengerLocale,trip:typeof trips[number])=>tripHomeCopy[locale]?.[trip.slug]??tripSupplement[locale]?.[trip.slug]??expandedRouteSummary(locale,trip.slug)??{name:trip.shortTitle,region:trip.region,duration:trip.duration,stops:trip.stops};
+const localizedTripSummary=(locale:PassengerLocale,trip:typeof trips[number])=>{
+ const published=trip.localizedContent?.[locale]??trip.localizedContent?.['zh-CN'];
+ if(trip.catalogSource==='published')return {name:typeof published?.title==='string'?published.title:trip.shortTitle,region:typeof published?.region==='string'?published.region:trip.region,duration:typeof published?.duration==='string'?published.duration:trip.duration,stops:Array.isArray(published?.stops)?published.stops.filter((item):item is string=>typeof item==='string'):trip.stops};
+ return tripHomeCopy[locale]?.[trip.slug]??tripSupplement[locale]?.[trip.slug]??expandedRouteSummary(locale,trip.slug)??{name:trip.shortTitle,region:trip.region,duration:trip.duration,stops:trip.stops};
+};
 const routePlaceQueries:Record<string,string[]>={
  'kyoto-nara-classic':['Kiyomizu-dera Temple Kyoto Japan','Fushimi Inari Taisha Kyoto Japan','Nara Park Japan'],
  'amanohashidate-ine':['Amanohashidate View Land Kyoto Japan','Chionji Temple Amanohashidate Japan','Ine Funaya Kyoto Japan'],
@@ -980,13 +984,13 @@ export function AppTrip() {
     (item) => item.price != null && item.availableSeats !== 0,
   );
   const richSpots=featuredRouteSpots[t.slug]?.[locale]??null;
-  const routePitch=featuredRoutePitch[t.slug]?.[locale]??null;
+  const routePitch=t.catalogSource==='published'?null:featuredRoutePitch[t.slug]?.[locale]??null;
   const displayTrip=localizedTripSummary(locale,t);
   const detail=routeDetailExtra[locale];
   const routeText=routeContentFallback[locale];
-  const expandedSummary=expandedRouteSummary(locale,t.slug);
+  const expandedSummary=t.catalogSource==='published'?null:expandedRouteSummary(locale,t.slug);
   const fallbackSpots=displayTrip.stops.map((name,index)=>({name,location:displayTrip.region,intro:routeText.spot(name),history:'',highlights:[] as string[],tip:'',time:t.timeline[index]?.time}));
-  const displayedSpots=richSpots??fallbackSpots;
+  const displayedSpots=t.catalogSource==='published'?fallbackSpots:richSpots??fallbackSpots;
   return (
     <div className="route-detail-page">
       <section className="route-detail-hero">
@@ -1013,7 +1017,7 @@ export function AppTrip() {
           <b>{detail.languages}</b>
         </span>
       </div>
-      <p className="route-lead">{routePitch?.lead ?? expandedSummary?.summary ?? routeText.lead(displayTrip.stops.join('、'))}</p>
+      <p className="route-lead">{routePitch?.lead ?? expandedSummary?.summary ?? (t.catalogSource==='published'&&t.summary?t.summary:routeText.lead(displayTrip.stops.join('、')))}</p>
       {routePitch&&<div className="route-fit-tags" aria-label="适合人群">{routePitch.fit.map(item=><span key={item}>{item}</span>)}</div>}
       <section className="route-trust-strip" aria-label={detail.trust}>
         <span>

@@ -2,6 +2,7 @@
 import {
   createContext,
   useContext,
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -44,6 +45,8 @@ type Ctx = {
   departures: Departure[];
   departuresResolved: boolean;
   departuresError: string | null;
+  catalogRevision: number;
+  refreshCatalog: () => Promise<string | null>;
   updateBooking: (b: Partial<Booking>) => void;
   addOrder: (o: Order) => void;
   setUi: (ui: UiPreferences) => void;
@@ -62,8 +65,9 @@ export function AppProvider({
   const [departures,setDepartures]=useState<Departure[]>(()=>services?[]:repo.listDepartures());
   const [departuresResolved,setDeparturesResolved]=useState(!services);
   const [departuresError,setDeparturesError]=useState<string|null>(null);
-  const [,setCatalogRevision]=useState(0);
-  useEffect(()=>{let active=true;if(!services||typeof services.loadPublishedCatalog!=='function')return()=>{active=false};void services.loadPublishedCatalog().then(result=>{if(!active)return;if(!result.error){replacePublishedTripCatalog(result.data);setCatalogRevision(value=>value+1)}});return()=>{active=false}},[services]);
+  const [catalogRevision,setCatalogRevision]=useState(0);
+  const refreshCatalog=useCallback(async()=>{if(!services||typeof services.loadPublishedCatalog!=='function')return null;const result=await services.loadPublishedCatalog();if(!result.error){replacePublishedTripCatalog(result.data);setCatalogRevision(value=>value+1)}return result.error},[services]);
+  useEffect(()=>{let active=true;if(!services||typeof services.loadPublishedCatalog!=='function')return()=>{active=false};const load=async()=>{const result=await services.loadPublishedCatalog();if(active&&!result.error){replacePublishedTripCatalog(result.data);setCatalogRevision(value=>value+1)}};void load();const onFocus=()=>void load();window.addEventListener('focus',onFocus);window.addEventListener('online',onFocus);return()=>{active=false;window.removeEventListener('focus',onFocus);window.removeEventListener('online',onFocus)}},[services]);
   useEffect(()=>{let active=true;if(!services)return()=>{active=false};void services.loadSellableDepartures().then(result=>{if(!active)return;setDepartures(result.data);setDeparturesError(result.error);setDeparturesResolved(true)});return()=>{active=false}},[services]);
   useEffect(() => {
     let active = true;
@@ -97,6 +101,8 @@ export function AppProvider({
       departures,
       departuresResolved,
       departuresError,
+      catalogRevision,
+      refreshCatalog,
       updateBooking: (b: Partial<Booking>) =>
         setState((s) => ({
           ...s,
@@ -120,7 +126,7 @@ export function AppProvider({
         setState(initialState());
       },
     }),
-    [state, services, authResolved, departures, departuresResolved, departuresError],
+    [state, services, authResolved, departures, departuresResolved, departuresError, catalogRevision, refreshCatalog],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
