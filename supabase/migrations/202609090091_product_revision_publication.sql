@@ -26,7 +26,7 @@ create policy product_revision_operations_read on public.product_revisions for s
 -- are written. The completeness trigger remains active and validates the row.
 update public.trips set content=content||jsonb_build_object(
   'description',case when length(trim(coalesce(content->>'description','')))>=20 then content->>'description' else coalesce(nullif(content->>'summary',''),title)||'。行程由运营按当天交通、天气及景点开放情况执行，出发前会提供集合信息与注意事项。' end,
-  'itinerary',case when jsonb_typeof(content->'itinerary')='array' and jsonb_array_length(content->'itinerary')>0 then content->'itinerary' else jsonb_build_array(jsonb_build_object('name',coalesce(content->'shortTitle',title),'description','按已发布行程游览，具体顺序以当天运营通知为准。')) end,
+  'itinerary',case when jsonb_typeof(content->'itinerary')='array' and jsonb_array_length(content->'itinerary')>0 then content->'itinerary' else jsonb_build_array(jsonb_build_object('name',coalesce(content->>'shortTitle',title),'description','按已发布行程游览，具体顺序以当天运营通知为准。')) end,
   'included',case when jsonb_typeof(content->'included')='array' and jsonb_array_length(content->'included')>0 then content->'included' else jsonb_build_array('往返车辆与司导服务') end,
   'excluded',case when jsonb_typeof(content->'excluded')='array' then content->'excluded' else jsonb_build_array('餐饮及个人消费') end,
   'childPolicy',case when length(trim(coalesce(content->>'childPolicy','')))>=10 then content->>'childPolicy' else '儿童价格与座位规则以所选班次和结账页显示为准。' end,
