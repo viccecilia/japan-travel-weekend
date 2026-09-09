@@ -36,4 +36,4 @@ jobs:
           version: 2.115.0
       - run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector
       - run: supabase db reset --local
-      - run: supabase db lint --local --level error
+      - run: supabase db lint --local --level error --fail-on error

@@ -31,6 +31,7 @@ import { featuredRoutePitch, featuredRouteSpots } from "../shared/i18n/spotConte
 import {expandedRouteSummary} from '../shared/i18n/routeExpansion';
 import {RoutePlacePhoto} from '../shared/components/RoutePlacePhoto';
 import {routePhotoAt} from '../shared/data/routePhotoCatalog';
+import {groupDeparturesByMonth, resolveDepartureSelection} from './bookingDepartureSelection';
 const trips = travelRepository.listTrips();
 const orderStatusLabels:Record<string,Record<string,string>>={
  'zh-CN':{pending_payment:'等待在线支付',pending_manual_review:'等待人工确认到账',paid:'已支付',confirmed:'行程已确认',payment_review:'付款需要人工核对',refunded:'已退款',cancelled:'已取消',expired:'支付时限已过'},
@@ -1206,7 +1207,7 @@ export function AppTrip() {
 }
 export function BookingPage() {
   const t = travelRepository.getTrip(useParams().slug || "") ?? trips[0];
-  const { state, updateBooking, departures } = useApp();
+  const { state, updateBooking, departures, departuresResolved } = useApp();
   const locale=state.ui.locale ?? 'zh-CN';
   const b=passengerBookingCopy[locale];
   const sales=bookingSalesCopy[locale];
@@ -1231,20 +1232,7 @@ export function BookingPage() {
   const firstDisplayedSellable = displayedDepartures.find(
     (item) => item.price != null && item.availableSeats !== 0,
   );
-  const firstCalendarDate = displayedDepartures.find(
-    (item) => item.departureTime,
-  )?.departureTime;
   const calendarWeekdays = Array.from({length:7},(_,index)=>new Intl.DateTimeFormat(locale,{weekday:'short',timeZone:'Asia/Tokyo'}).format(new Date(Date.UTC(2024,0,index+1))));
-  const firstCalendarWeekday = firstCalendarDate
-    ? new Intl.DateTimeFormat(locale, {
-        timeZone: "Asia/Tokyo",
-        weekday: "short",
-      }).format(new Date(firstCalendarDate))
-    : calendarWeekdays[0];
-  const calendarLeadingBlanks = Math.max(
-    0,
-    calendarWeekdays.indexOf(firstCalendarWeekday),
-  );
   const initialDeparture =
     requestedDepartureId
       ? (displayedDepartures.some(item=>item.id===requestedDepartureId)?requestedDepartureId:'')
@@ -1256,12 +1244,13 @@ export function BookingPage() {
   const [adults, setAdults] = useState(
     state.booking?.tripSlug === t.slug ? (state.booking?.adults ?? 1) : 1,
   );
-  const invalidRequestedDeparture=Boolean(requestedDepartureId&&!displayedDepartures.some(item=>item.id===requestedDepartureId));
-  const effectiveDepartureId = invalidRequestedDeparture
-    ? ""
-    : displayedDepartures.some((item) => item.id === selectedDeparture)
-      ? selectedDeparture
-      : (firstDisplayedSellable?.id ?? "");
+  const selection=resolveDepartureSelection({requestedId:requestedDepartureId,selectedId:selectedDeparture,departures:displayedDepartures,resolved:departuresResolved});
+  const invalidRequestedDeparture=selection.invalidRequested;
+  const effectiveDepartureId=selection.selectedId;
+  useEffect(()=>{
+    if(departuresResolved&&selection.selectedId!==selectedDeparture)setSelectedDeparture(selection.selectedId);
+  },[departuresResolved,selectedDeparture,selection.selectedId]);
+  const departureMonths=groupDeparturesByMonth(displayedDepartures,locale);
   const chosen = sellable.find((item) => item.id === effectiveDepartureId);
   const bookingTotal = seatOrderTotal(
     chosen?.price,
@@ -1301,63 +1290,31 @@ export function BookingPage() {
             <legend>
               {b.selectDate} <small>{b.next30}</small>
             </legend>
-            <div className="departure-calendar-weekdays" aria-hidden="true">
-              {calendarWeekdays.map((day) => (
-                <span
-                  className={day === calendarWeekdays[5] || day === calendarWeekdays[6] ? "weekend" : ""}
-                  key={day}
-                >
-                  {day}
-                </span>
-              ))}
-            </div>
-            <div className="departure-calendar-grid">
-              {Array.from({ length: calendarLeadingBlanks }, (_, index) => (
-                <span
-                  className="calendar-blank"
-                  aria-hidden="true"
-                  key={`blank-${index}`}
-                />
-              ))}
-              {displayedDepartures.map((d) => {
-                const date = d.departureTime ? new Date(d.departureTime) : null;
-                const day = date
-                  ? new Intl.DateTimeFormat(locale, {
-                      timeZone: "Asia/Tokyo",
-                      day: "numeric",
-                    }).format(date)
-                  : d.dateLabel;
-                const weekday = date
-                  ? new Intl.DateTimeFormat(locale, {
-                      timeZone: "Asia/Tokyo",
-                      weekday: "short",
-                    }).format(date)
-                  : "";
-                const weekend = weekday === calendarWeekdays[5] || weekday === calendarWeekdays[6];
-                return (
-                  <label
-                    className={`${effectiveDepartureId === d.id ? "selected " : ""}${weekend ? "weekend" : ""}`}
-                    key={d.id}
-                  >
-                    <input
-                      required
-                      type="radio"
-                      name="departure"
-                      value={d.id}
-                      checked={effectiveDepartureId === d.id}
-                      disabled={d.price == null || d.availableSeats === 0}
-                      onChange={() => setSelectedDeparture(d.id)}
-                    />
-                    <b>{day}</b>
-                    <small>
-                      {d.price == null
-                        ? b.pending
-                        : `¥${d.price.toLocaleString(locale)}`}
-                    </small>
-                  </label>
-                );
-              })}
-            </div>
+            {departureMonths.map(month=>{
+              const firstDay=month.days[0]?.key;
+              const firstWeekday=firstDay?new Intl.DateTimeFormat(locale,{timeZone:'Asia/Tokyo',weekday:'short'}).format(new Date(`${firstDay}T12:00:00+09:00`)):calendarWeekdays[0];
+              const leading=Math.max(0,calendarWeekdays.indexOf(firstWeekday));
+              return <section className="departure-calendar-month" key={month.key}>
+                <h3>{month.label}</h3>
+                <div className="departure-calendar-weekdays" aria-hidden="true">{calendarWeekdays.map(day=><span className={day===calendarWeekdays[5]||day===calendarWeekdays[6]?'weekend':''} key={day}>{day}</span>)}</div>
+                <div className="departure-calendar-grid">
+                  {Array.from({length:leading},(_,index)=><span className="calendar-blank" aria-hidden="true" key={`blank-${month.key}-${index}`}/>)}
+                  {month.days.map(day=>{
+                    const date=new Date(`${day.key}T12:00:00+09:00`);
+                    const weekday=new Intl.DateTimeFormat(locale,{timeZone:'Asia/Tokyo',weekday:'short'}).format(date);
+                    const weekend=weekday===calendarWeekdays[5]||weekday===calendarWeekdays[6];
+                    return <div className={`departure-calendar-day${weekend?' weekend':''}`} key={day.key}>
+                      <b>{new Intl.DateTimeFormat(locale,{timeZone:'Asia/Tokyo',day:'numeric'}).format(date)}</b>
+                      {day.departures.map(d=><label className={effectiveDepartureId===d.id?'selected':''} key={d.id}>
+                        <input required type="radio" name="departure" value={d.id} checked={effectiveDepartureId===d.id} disabled={d.price==null||d.availableSeats===0} onChange={()=>{setSelectedDeparture(d.id);if(requestedDepartureId)nav(location.pathname,{replace:true})}}/>
+                        <span>{d.departureTime?new Intl.DateTimeFormat(locale,{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit'}).format(new Date(d.departureTime)):''}</span>
+                        <small>{d.price==null?b.pending:`¥${d.price.toLocaleString(locale)}`}</small>
+                      </label>)}
+                    </div>;
+                  })}
+                </div>
+              </section>;
+            })}
           </fieldset>
           {chosen && (
             <>
