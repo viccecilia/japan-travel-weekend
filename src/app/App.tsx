@@ -992,8 +992,9 @@ export function AppTrip() {
   const detail=routeDetailExtra[locale];
   const routeText=routeContentFallback[locale];
   const expandedSummary=t.catalogSource==='published'?null:expandedRouteSummary(locale,t.slug);
-  const fallbackSpots=displayTrip.stops.map((name,index)=>({name,location:displayTrip.region,intro:routeText.spot(name),history:'',highlights:[] as string[],tip:'',time:t.timeline[index]?.time}));
-  const displayedSpots=t.catalogSource==='published'?fallbackSpots:richSpots??fallbackSpots;
+  const fallbackSpots=displayTrip.stops.map((name,index)=>({name,location:displayTrip.region,intro:routeText.spot(name),history:'',highlights:[] as string[],tip:'',time:t.timeline[index]?.time,imageUrl:t.timeline[index]?.imageUrl,stayMinutes:t.timeline[index]?.stayMinutes}));
+  const publishedSpots=t.timeline.map(item=>({name:item.title,location:item.location||displayTrip.region,intro:item.detail,history:'',highlights:item.highlights??[],tip:item.tip??'',time:item.time,imageUrl:item.imageUrl,stayMinutes:item.stayMinutes}));
+  const displayedSpots=t.catalogSource==='published'?(publishedSpots.length?publishedSpots:fallbackSpots):richSpots??fallbackSpots;
   return (
     <div className="route-detail-page">
       <section className="route-detail-hero">
@@ -1013,11 +1014,11 @@ export function AppTrip() {
         </span>
         <span>
           <small>{r.walking}</small>
-          <b>{detail.walking}</b>
+          <b>{t.walkingLevel||detail.walking}</b>
         </span>
         <span>
           <small>{r.service}</small>
-          <b>{detail.languages}</b>
+          <b>{t.languages.length?t.languages.join(' · '):detail.languages}</b>
         </span>
       </div>
       <p className="route-lead">{routePitch?.lead ?? expandedSummary?.summary ?? (t.catalogSource==='published'&&t.summary?t.summary:routeText.lead(displayTrip.stops.join('、')))}</p>
@@ -1092,11 +1093,12 @@ export function AppTrip() {
                         <div>
                           <span>{item.location}</span>
                           <h3>{item.name}</h3>
-                          <RoutePlacePhoto id={`${t.slug}-spot-${index}`} name={item.name} query={routePlaceQueries[t.slug]?.[index]??`${item.name} Japan`} fallbackUrl={t.heroImage} {...routePhotoAt(t.slug,index)} locale={locale}/>
+                          <RoutePlacePhoto id={`${t.slug}-spot-${index}`} name={item.name} query={routePlaceQueries[t.slug]?.[index]??`${item.name} Japan`} fallbackUrl={t.heroImage} {...routePhotoAt(t.slug,index)} url={item.imageUrl??routePhotoAt(t.slug,index)?.url} locale={locale}/>
                           <>
                             <p>{item.intro}</p>
                             {item.history&&<p>{item.history}</p>}
                             {item.highlights.length>0&&<ul className="check-list">{item.highlights.map(point=><li key={point}>{point}</li>)}</ul>}
+                            {item.stayMinutes&&<p className="privacy">预计停留约 {item.stayMinutes} 分钟</p>}
                             {item.tip&&<p className="notice">{item.tip}</p>}
                           </>
                         </div>

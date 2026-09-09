@@ -1,6 +1,6 @@
 import type { PassengerLocale } from './passengerLocale';
 
-export type RichSpot={name:string;location:string;intro:string;history:string;highlights:string[];tip:string};
+export type RichSpot={name:string;location:string;intro:string;history:string;highlights:string[];tip:string;imageUrl?:string;stayMinutes?:number|null};
 
 const zh:RichSpot[]=[
  {name:'清水寺',location:'京都 · 东山',intro:'清水寺不只是一处拍摄京都全景的舞台。本堂、音羽山的林木、音羽瀑布与二年坂、三年坂共同组成一条完整的参拜与街区体验。',history:'寺院开创于778年，现存主要伽蓝多重建于1633年；1994年作为“古都京都的文化财”之一列入世界文化遗产。',highlights:['从本堂舞台同时观察悬造木结构、山林与京都市区','到音羽瀑布理解寺名、地形与观音信仰的联系','沿东山参道步行，感受寺院与古街自然相连'],tip:'坡道和台阶较多，建议穿防滑步行鞋，并为二年坂、三年坂预留慢行时间。'},

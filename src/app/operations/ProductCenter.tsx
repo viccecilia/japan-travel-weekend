@@ -1,13 +1,339 @@
-import {useEffect,useState,type FormEvent} from 'react';
-import {Link} from 'react-router-dom';
-import {useApp} from '../store';
-import type {OperationsProduct} from '../../shared/integrations/supabaseOperations';
+import { useEffect, useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
+import { useApp } from "../store";
+import type { OperationsProduct } from "../../shared/integrations/supabaseOperations";
 
-export function ProductCenter(){
-  const {services,refreshCatalog}=useApp();const [products,setProducts]=useState<OperationsProduct[]>([]);const [selected,setSelected]=useState<OperationsProduct|null>(null);const [notice,setNotice]=useState('');const [busy,setBusy]=useState(false);
-  const reload=async()=>{if(!services)return;const result=await services.operations.listProducts();setProducts(result.data);setNotice(result.error??'');setSelected(current=>result.data.find(item=>item.id===current?.id)??result.data[0]??null)};
-  useEffect(()=>{let active=true;if(services)void services.operations.listProducts().then(result=>{if(!active)return;setProducts(result.data);setNotice(result.error??'');setSelected(result.data[0]??null)});return()=>{active=false}},[services]);
-  const save=async(event:FormEvent<HTMLFormElement>)=>{event.preventDefault();if(!services||!selected)return;const form=new FormData(event.currentTarget);setBusy(true);const lines=(name:string)=>String(form.get(name)??'').split('\n').map(v=>v.trim()).filter(Boolean);let locales:Record<string,unknown>;try{locales=JSON.parse(String(form.get('locales')??'{}')) as Record<string,unknown>}catch{setBusy(false);setNotice('保存失败：多语言 JSON 格式不正确');return}const content={...selected.content,summary:String(form.get('summary')??''),description:String(form.get('description')??''),region:String(form.get('region')??''),duration:String(form.get('duration')??''),walkingLevel:String(form.get('walkingLevel')??''),stops:lines('stops'),highlights:lines('highlights'),included:lines('included'),excluded:lines('excluded'),notices:lines('notices'),locales};const result=await services.operations.saveProductDraft({id:selected.id,expectedVersion:selected.catalogVersion,title:String(form.get('title')??''),content,heroImageUrl:String(form.get('hero')??'').trim()||null,gallery:lines('gallery')});setBusy(false);setNotice(result.ok?'草稿已保存，游客仍看到原公开版本':`保存失败：${result.error}`);if(result.ok)await reload()};
-  const publish=async()=>{if(!services||!selected)return;setBusy(true);const result=await services.operations.publishProduct(selected.id,selected.catalogVersion);if(result.ok){const refreshError=await refreshCatalog();setNotice(refreshError?`发布成功，但游客目录刷新失败：${refreshError}`:'已发布并重新读取游客公开目录')}else setNotice(`发布失败：${result.error}`);setBusy(false);if(result.ok)await reload()};
-  return <main className="operations-page"><header className="operations-hero"><div><span>PRODUCT CENTER</span><h1>产品管理</h1><p>草稿与公开版本分离；发布后立即重新读取游客目录。</p></div><Link className="button secondary" to="/app/operations">返回工作台</Link></header>{notice&&<p className="operations-notice">{notice}</p>}<section className="operations-section"><header><div><span>路线产品</span><h2>产品列表</h2></div><small>公开版本 / 草稿版本 / 数据版本</small></header><div className="operations-dispatch-list">{products.map(item=><button type="button" key={item.id} onClick={()=>setSelected(item)} className={selected?.id===item.id?'selected':''}><b>{item.title}</b><span>{item.slug}</span><small>{item.status} · 公开 v{item.publishedRevision??'—'} · 草稿 v{item.draftRevision??'—'} · 数据 {item.catalogVersion}</small></button>)}</div></section>{selected&&<section className="operations-section"><header><div><span>编辑草稿</span><h2>{selected.title}</h2></div><small>版本 {selected.catalogVersion}；冲突时拒绝覆盖</small></header><form key={`${selected.id}:${selected.catalogVersion}`} className="operations-controls" onSubmit={save}><label>标题<input name="title" defaultValue={selected.title} required/></label><label>摘要<textarea name="summary" defaultValue={String(selected.content.summary??'')} required/></label><label>详细介绍<textarea name="description" defaultValue={String(selected.content.description??'')}/></label><label>地区<input name="region" defaultValue={String(selected.content.region??'')}/></label><label>行程时长<input name="duration" defaultValue={String(selected.content.duration??'')}/></label><label>步行强度<input name="walkingLevel" defaultValue={String(selected.content.walkingLevel??'')}/></label><label>景点（每行一项）<textarea name="stops" defaultValue={Array.isArray(selected.content.stops)?selected.content.stops.join('\n'):''} required/></label><label>亮点（每行一项）<textarea name="highlights" defaultValue={Array.isArray(selected.content.highlights)?selected.content.highlights.join('\n'):''}/></label><label>费用包含（每行一项）<textarea name="included" defaultValue={Array.isArray(selected.content.included)?selected.content.included.join('\n'):''}/></label><label>费用不含（每行一项）<textarea name="excluded" defaultValue={Array.isArray(selected.content.excluded)?selected.content.excluded.join('\n'):''}/></label><label>注意事项（每行一项）<textarea name="notices" defaultValue={Array.isArray(selected.content.notices)?selected.content.notices.join('\n'):''}/></label><label>多语言内容 JSON（语言键下可填写 title、region、duration、stops）<textarea name="locales" defaultValue={JSON.stringify(selected.content.locales??{},null,2)}/></label><label>主图 URL<input name="hero" defaultValue={selected.heroImageUrl??''}/></label><label>图库（每行一张）<textarea name="gallery" defaultValue={selected.gallery.join('\n')}/></label><div className="operations-task-actions"><button className="button" disabled={busy}>保存草稿</button><Link className="button secondary" to={`/app/trips/${selected.slug}`}>查看当前公开页</Link><button className="button" type="button" disabled={busy||selected.draftRevision==null} onClick={()=>void publish()}>发布草稿</button></div></form></section>}</main>
+export function ProductCenter() {
+  const { services, refreshCatalog } = useApp();
+  const [products, setProducts] = useState<OperationsProduct[]>([]);
+  const [selected, setSelected] = useState<OperationsProduct | null>(null);
+  const [notice, setNotice] = useState("");
+  const [busy, setBusy] = useState(false);
+  const reload = async () => {
+    if (!services) return;
+    const result = await services.operations.listProducts();
+    setProducts(result.data);
+    setNotice(result.error ?? "");
+    setSelected(
+      (current) =>
+        result.data.find((item) => item.id === current?.id) ??
+        result.data[0] ??
+        null,
+    );
+  };
+  useEffect(() => {
+    let active = true;
+    if (services)
+      void services.operations.listProducts().then((result) => {
+        if (!active) return;
+        setProducts(result.data);
+        setNotice(result.error ?? "");
+        setSelected(result.data[0] ?? null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [services]);
+  const save = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!services || !selected) return;
+    const form = new FormData(event.currentTarget);
+    setBusy(true);
+    const lines = (name: string) =>
+      String(form.get(name) ?? "")
+        .split("\n")
+        .map((v) => v.trim())
+        .filter(Boolean);
+    let locales: Record<string, unknown>;
+    let itinerary: unknown[];
+    try {
+      locales = JSON.parse(String(form.get("locales") ?? "{}")) as Record<
+        string,
+        unknown
+      >;
+      itinerary = JSON.parse(
+        String(form.get("itinerary") ?? "[]"),
+      ) as unknown[];
+      if (
+        !Array.isArray(itinerary) ||
+        itinerary.some(
+          (item) =>
+            !item ||
+            typeof item !== "object" ||
+            (!("title" in item) && !("name" in item)),
+        )
+      )
+        throw new Error("invalid itinerary");
+    } catch {
+      setBusy(false);
+      setNotice("保存失败：多语言或景点图文 JSON 格式不正确");
+      return;
+    }
+    const content = {
+      ...selected.content,
+      summary: String(form.get("summary") ?? ""),
+      description: String(form.get("description") ?? ""),
+      region: String(form.get("region") ?? ""),
+      duration: String(form.get("duration") ?? ""),
+      walkingLevel: String(form.get("walkingLevel") ?? ""),
+      languages: lines("languages"),
+      stops: itinerary
+        .map((item) =>
+          String(
+            (item as { title?: string; name?: string }).title ??
+              (item as { name?: string }).name ??
+              "",
+          ),
+        )
+        .filter(Boolean),
+      itinerary,
+      highlights: lines("highlights"),
+      included: lines("included"),
+      excluded: lines("excluded"),
+      notices: lines("notices"),
+      locales,
+    };
+    const result = await services.operations.saveProductDraft({
+      id: selected.id,
+      expectedVersion: selected.catalogVersion,
+      title: String(form.get("title") ?? ""),
+      content,
+      heroImageUrl: String(form.get("hero") ?? "").trim() || null,
+      gallery: lines("gallery"),
+    });
+    setBusy(false);
+    setNotice(
+      result.ok
+        ? "草稿已保存，游客仍看到原公开版本"
+        : `保存失败：${result.error}`,
+    );
+    if (result.ok) await reload();
+  };
+  const publish = async () => {
+    if (!services || !selected) return;
+    setBusy(true);
+    const result = await services.operations.publishProduct(
+      selected.id,
+      selected.catalogVersion,
+    );
+    if (result.ok) {
+      const refreshError = await refreshCatalog();
+      setNotice(
+        refreshError
+          ? `发布成功，但游客目录刷新失败：${refreshError}`
+          : "已发布并重新读取游客公开目录",
+      );
+    } else setNotice(`发布失败：${result.error}`);
+    setBusy(false);
+    if (result.ok) await reload();
+  };
+  return (
+    <main className="operations-page">
+      <header className="operations-hero">
+        <div>
+          <span>PRODUCT CENTER</span>
+          <h1>产品管理</h1>
+          <p>草稿与公开版本分离；发布后立即重新读取游客目录。</p>
+        </div>
+        <Link className="button secondary" to="/app/operations">
+          返回工作台
+        </Link>
+      </header>
+      {notice && <p className="operations-notice">{notice}</p>}
+      <section className="operations-section">
+        <header>
+          <div>
+            <span>路线产品</span>
+            <h2>产品列表</h2>
+          </div>
+          <small>公开版本 / 草稿版本 / 数据版本</small>
+        </header>
+        <div className="operations-dispatch-list">
+          {products.map((item) => (
+            <button
+              type="button"
+              key={item.id}
+              onClick={() => setSelected(item)}
+              className={selected?.id === item.id ? "selected" : ""}
+            >
+              <b>{item.title}</b>
+              <span>{item.slug}</span>
+              <small>
+                {item.status} · 公开 v{item.publishedRevision ?? "—"} · 草稿 v
+                {item.draftRevision ?? "—"} · 数据 {item.catalogVersion}
+              </small>
+            </button>
+          ))}
+        </div>
+      </section>
+      {selected && (
+        <section className="operations-section">
+          <header>
+            <div>
+              <span>编辑草稿</span>
+              <h2>{selected.title}</h2>
+            </div>
+            <small>版本 {selected.catalogVersion}；冲突时拒绝覆盖</small>
+          </header>
+          <form
+            key={`${selected.id}:${selected.catalogVersion}`}
+            className="operations-controls"
+            onSubmit={save}
+          >
+            <label>
+              标题
+              <input name="title" defaultValue={selected.title} required />
+            </label>
+            <label>
+              摘要
+              <textarea
+                name="summary"
+                defaultValue={String(selected.content.summary ?? "")}
+                required
+              />
+            </label>
+            <label>
+              详细介绍
+              <textarea
+                name="description"
+                defaultValue={String(selected.content.description ?? "")}
+              />
+            </label>
+            <label>
+              地区
+              <input
+                name="region"
+                defaultValue={String(selected.content.region ?? "")}
+              />
+            </label>
+            <label>
+              行程时长
+              <input
+                name="duration"
+                defaultValue={String(selected.content.duration ?? "")}
+              />
+            </label>
+            <label>
+              步行强度
+              <input
+                name="walkingLevel"
+                defaultValue={String(selected.content.walkingLevel ?? "")}
+              />
+            </label>
+            <label>
+              服务语言（每行一种）
+              <textarea
+                name="languages"
+                defaultValue={
+                  Array.isArray(selected.content.languages)
+                    ? selected.content.languages.join("\n")
+                    : ""
+                }
+              />
+            </label>
+            <label>
+              景点图文 JSON（数组顺序即游客端展示顺序）
+              <textarea
+                name="itinerary"
+                defaultValue={JSON.stringify(
+                  selected.content.itinerary ?? [],
+                  null,
+                  2,
+                )}
+                required
+              />
+              <small>
+                支持 title 或旧 name；可填写 description、location、time、stayMinutes、imageUrl、gallery、highlights、tip。
+              </small>
+            </label>
+            <label>
+              亮点（每行一项）
+              <textarea
+                name="highlights"
+                defaultValue={
+                  Array.isArray(selected.content.highlights)
+                    ? selected.content.highlights.join("\n")
+                    : ""
+                }
+              />
+            </label>
+            <label>
+              费用包含（每行一项）
+              <textarea
+                name="included"
+                defaultValue={
+                  Array.isArray(selected.content.included)
+                    ? selected.content.included.join("\n")
+                    : ""
+                }
+              />
+            </label>
+            <label>
+              费用不含（每行一项）
+              <textarea
+                name="excluded"
+                defaultValue={
+                  Array.isArray(selected.content.excluded)
+                    ? selected.content.excluded.join("\n")
+                    : ""
+                }
+              />
+            </label>
+            <label>
+              注意事项（每行一项）
+              <textarea
+                name="notices"
+                defaultValue={
+                  Array.isArray(selected.content.notices)
+                    ? selected.content.notices.join("\n")
+                    : ""
+                }
+              />
+            </label>
+            <label>
+              多语言内容 JSON（语言键下可填写 title、region、duration、stops）
+              <textarea
+                name="locales"
+                defaultValue={JSON.stringify(
+                  selected.content.locales ?? {},
+                  null,
+                  2,
+                )}
+              />
+            </label>
+            <label>
+              主图 URL
+              <input name="hero" defaultValue={selected.heroImageUrl ?? ""} />
+            </label>
+            <label>
+              图库（每行一张）
+              <textarea
+                name="gallery"
+                defaultValue={selected.gallery.join("\n")}
+              />
+            </label>
+            <div className="operations-task-actions">
+              <button className="button" disabled={busy}>
+                保存草稿
+              </button>
+              <Link
+                className="button secondary"
+                to={`/app/trips/${selected.slug}`}
+              >
+                查看当前公开页
+              </Link>
+              <button
+                className="button"
+                type="button"
+                disabled={busy || selected.draftRevision == null}
+                onClick={() => void publish()}
+              >
+                发布草稿
+              </button>
+            </div>
+          </form>
+        </section>
+      )}
+    </main>
+  );
 }
