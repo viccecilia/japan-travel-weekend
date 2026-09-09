@@ -22,6 +22,21 @@ grant select on public.product_revisions to authenticated;
 grant all on public.product_revisions to service_role;
 create policy product_revision_operations_read on public.product_revisions for select to authenticated using(public.is_operations());
 
+-- Upgrade legacy published rows in one guarded update before revision pointers
+-- are written. The completeness trigger remains active and validates the row.
+update public.trips set content=content||jsonb_build_object(
+  'description',case when length(trim(coalesce(content->>'description','')))>=20 then content->>'description' else coalesce(nullif(content->>'summary',''),title)||'。行程由运营按当天交通、天气及景点开放情况执行，出发前会提供集合信息与注意事项。' end,
+  'itinerary',case when jsonb_typeof(content->'itinerary')='array' and jsonb_array_length(content->'itinerary')>0 then content->'itinerary' else jsonb_build_array(jsonb_build_object('name',coalesce(content->'shortTitle',title),'description','按已发布行程游览，具体顺序以当天运营通知为准。')) end,
+  'included',case when jsonb_typeof(content->'included')='array' and jsonb_array_length(content->'included')>0 then content->'included' else jsonb_build_array('往返车辆与司导服务') end,
+  'excluded',case when jsonb_typeof(content->'excluded')='array' then content->'excluded' else jsonb_build_array('餐饮及个人消费') end,
+  'childPolicy',case when length(trim(coalesce(content->>'childPolicy','')))>=10 then content->>'childPolicy' else '儿童价格与座位规则以所选班次和结账页显示为准。' end,
+  'luggagePolicy',case when length(trim(coalesce(content->>'luggagePolicy','')))>=10 then content->>'luggagePolicy' else '大件行李须在下单前联系运营确认是否可以装载。' end,
+  'accessibilityInfo',case when length(trim(coalesce(content->>'accessibilityInfo','')))>=10 then content->>'accessibilityInfo' else '路线可能包含台阶和坡道，需要无障碍协助时请提前确认。' end,
+  'mealInfo',case when length(trim(coalesce(content->>'mealInfo','')))>=10 then content->>'mealInfo' else '餐食默认不包含，用餐安排以当天运营通知为准。' end,
+  'weatherPolicy',case when length(trim(coalesce(content->>'weatherPolicy','')))>=10 then content->>'weatherPolicy' else '天气或道路异常时会评估替代安排并通知游客。' end,
+  'cancellationPolicyVersion',case when length(trim(coalesce(content->>'cancellationPolicyVersion','')))>=3 then content->>'cancellationPolicyVersion' else '2026-09-v1' end
+) where status='published' and not public.route_catalog_complete(content);
+
 insert into public.product_revisions(trip_id,revision_number,state,title,content,hero_image_url,gallery,published_at)
 select t.id,1,'published',t.title,t.content,t.hero_image_url,t.gallery,now()
 from public.trips t where t.status='published' and not exists(select 1 from public.product_revisions r where r.trip_id=t.id)
