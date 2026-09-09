@@ -90,8 +90,8 @@ function CancellationReview({request,busy,onApprove,onReject}:{request:{id:strin
   const [reason,setReason]=useState('');
   const [idempotencyKey]=useState(()=>crypto.randomUUID());
   return <div className="operations-bank-review">
-    <small>批准后将通过服务端向 Stripe 发起 ¥{request.estimatedRefundAmount.toLocaleString('ja-JP')} 退款；最终状态以支付渠道回调为准。</small>
-    <button disabled={busy||request.estimatedRefundAmount<1} onClick={()=>void onApprove(request.id,idempotencyKey)}>批准并发起退款</button>
+    <small>{request.estimatedRefundAmount===0?'该申请无需退款；批准后取消订单并释放对应资源。':`系统将根据原付款渠道处理 ¥${request.estimatedRefundAmount.toLocaleString('ja-JP')}；原路、待核实或人工处理结果会分别显示。`}</small>
+    <button disabled={busy} onClick={()=>void onApprove(request.id,idempotencyKey)}>{request.estimatedRefundAmount===0?'批准取消（无需退款）':'批准并开始退款处理'}</button>
     <label>拒绝原因<input value={reason} maxLength={500} onChange={event=>setReason(event.target.value)} placeholder="至少5个字符；游客可在订单中看到处理状态"/></label>
     <button className="secondary" disabled={busy||reason.trim().length<5} onClick={()=>void onReject(request.id,reason.trim())}>拒绝退款申请</button>
   </div>;

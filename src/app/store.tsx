@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -37,6 +38,16 @@ export const initialState = (): AppState => ({
     ? repo.getTripRoomForGroup("dep-kyoto-seed-group-1")
     : null,
 });
+const stateForIdentity = (ui: UiPreferences, email: string | null): AppState => ({
+  user: email ? {email} : null,
+  booking: null,
+  orders: [],
+  completedTrips: 0,
+  credits: 0,
+  ownReferralCode: "",
+  ui,
+  tripRoom: null,
+});
 type Ctx = {
   state: AppState;
   setState: (s: AppState) => void;
@@ -66,6 +77,7 @@ export function AppProvider({
   const [departuresResolved,setDeparturesResolved]=useState(!services);
   const [departuresError,setDeparturesError]=useState<string|null>(null);
   const [catalogRevision,setCatalogRevision]=useState(0);
+  const authGeneration=useRef(0);
   const refreshCatalog=useCallback(async()=>{if(!services||typeof services.loadPublishedCatalog!=='function')return null;const result=await services.loadPublishedCatalog();if(!result.error){replacePublishedTripCatalog(result.data);setCatalogRevision(value=>value+1)}return result.error},[services]);
   useEffect(()=>{let active=true;if(!services||typeof services.loadPublishedCatalog!=='function')return()=>{active=false};const load=async()=>{const result=await services.loadPublishedCatalog();if(active&&!result.error){replacePublishedTripCatalog(result.data);setCatalogRevision(value=>value+1)}};void load();const onFocus=()=>void load();window.addEventListener('focus',onFocus);window.addEventListener('online',onFocus);return()=>{active=false;window.removeEventListener('focus',onFocus);window.removeEventListener('online',onFocus)}},[services]);
   useEffect(()=>{let active=true;if(!services)return()=>{active=false};void services.loadSellableDepartures().then(result=>{if(!active)return;setDepartures(result.data);setDeparturesError(result.error);setDeparturesResolved(true)});return()=>{active=false}},[services]);
@@ -74,15 +86,18 @@ export function AppProvider({
     if (!services) return () => { active = false; };
     const unsubscribe=services.onAuthStateChange((event,user)=>{
       if(!active)return;
-      if(event==='SIGNED_OUT'||!user?.email)setState((s)=>({...s,user:null}));
-      else setState((s)=>({...s,user:{email:user.email!}}));
+      authGeneration.current+=1;
+      const email=event==='SIGNED_OUT'?null:user?.email??null;
+      setState((s)=>s.user?.email===email?{...s,user:email?{email}:null}:stateForIdentity(s.ui,email));
       setAuthResolved(true);
     });
+    const requestGeneration=authGeneration.current;
     void services.currentUser().then((user) => {
-      if (!active) return;
-      setState((s) => ({ ...s, user: user?.email ? { email: user.email } : null }));
+      if (!active||requestGeneration!==authGeneration.current) return;
+      const email=user?.email??null;
+      setState((s)=>s.user?.email===email?{...s,user:email?{email}:null}:stateForIdentity(s.ui,email));
     }).catch(() => {
-      if (active) setState((s) => ({ ...s, user: null }));
+      if (active&&requestGeneration===authGeneration.current) setState((s)=>stateForIdentity(s.ui,null));
     }).finally(() => {
       if (active) setAuthResolved(true);
     });

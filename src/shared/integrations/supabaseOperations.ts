@@ -257,7 +257,7 @@ export class SupabaseOperationsRepository {
             .limit(100),
           this.client.rpc("get_operations_notification_delivery_queue"),
           this.client.from("account_deletion_requests").select("id,status,requested_at,updated_at").in("status",["requested","deferred_active_booking","reviewing"]).order("requested_at",{ascending:true}).limit(100),
-          this.client.from('order_cancellation_requests').select('id,order_id,status,reason_code,refund_percent,estimated_refund_amount,requested_at,updated_at').in('status',['requested','reviewing','refund_processing']).order('requested_at',{ascending:true}).limit(100),
+          this.client.from('order_cancellation_requests').select('id,order_id,status,reason_code,refund_percent,estimated_refund_amount,requested_at,updated_at').in('status',['requested','reviewing','refund_prepared','refund_processing','manual_refund_required','provider_result_unknown']).order('requested_at',{ascending:true}).limit(100),
           this.client.rpc('get_operations_staff_applications'),
           this.client.rpc('get_operations_staff_leave_requests'),
           this.client
