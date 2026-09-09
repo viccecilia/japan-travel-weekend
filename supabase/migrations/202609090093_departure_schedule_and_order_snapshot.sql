@@ -78,7 +78,7 @@ begin
     depart_at:=((day+p_departure_time) at time zone 'Asia/Tokyo');
     if exists(select 1 from public.departures d where d.trip_id=p_trip and d.departs_at=depart_at) then skipped:=skipped+1;continue;end if;
     insert into public.departures(trip_id,departs_at,ends_at,capacity,status,seat_price_jpy,sales_open_at,sales_close_at,booking_closes_at,chat_opens_at,minimum_guests,currency,tax_included,meeting_name,meeting_address,map_lat,map_lng)
-    values(p_trip,depart_at,depart_at+make_interval(mins=>p_duration_minutes),p_capacity,'open',p_price,p_sales_open,depart_at-make_interval(hours=>p_close_hours),depart_at-make_interval(hours=>p_close_hours),depart_at-interval '21 hours',1,'JPY',true,trim(p_meeting_name),trim(p_meeting_address),p_map_lat,p_map_lng);created:=created+1;
+    values(p_trip,depart_at,depart_at+make_interval(mins=>p_duration_minutes),p_capacity,'open',p_price,p_sales_open,depart_at-make_interval(hours=>p_close_hours),depart_at-make_interval(hours=>p_close_hours),((((depart_at at time zone 'Asia/Tokyo')::date-1)+time '12:00') at time zone 'Asia/Tokyo'),1,'JPY',true,trim(p_meeting_name),trim(p_meeting_address),p_map_lat,p_map_lng);created:=created+1;
   end loop;
   existing:=jsonb_build_object('created',created,'skippedDuplicates',skipped);
   insert into public.departure_batch_operations(operation_id,actor_id,request_digest,result) values(p_operation,auth.uid(),digest,existing);
@@ -95,7 +95,7 @@ begin
   select coalesce(sum(seats),0)::integer into committed from public.inventory_locks where departure_id=item.id and (status='committed' or (status='held' and expires_at>now()));
   if p_capacity<committed then raise exception 'capacity below committed inventory'; end if;
   if p_price<1 or p_sales_open>=p_sales_close or p_sales_close>=item.departs_at or p_status not in ('draft','open','closed','cancelled') then raise exception 'invalid departure update'; end if;
-  update public.departures set seat_price_jpy=p_price,capacity=p_capacity,sales_open_at=p_sales_open,sales_close_at=p_sales_close,status=p_status,schedule_version=schedule_version+1,updated_at=now() where id=item.id;
+  update public.departures set seat_price_jpy=p_price,capacity=p_capacity,sales_open_at=p_sales_open,sales_close_at=p_sales_close,booking_closes_at=p_sales_close,status=p_status,schedule_version=schedule_version+1,updated_at=now() where id=item.id;
   return item.schedule_version+1;
 end$$;
 

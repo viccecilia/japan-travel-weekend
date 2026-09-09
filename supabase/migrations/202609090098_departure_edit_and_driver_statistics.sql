@@ -1,4 +1,8 @@
 begin;
+do $$begin
+ if exists(select 1 from public.departures group by trip_id,departs_at having count(*)>1) then raise exception 'duplicate departure business keys must be resolved before upgrade'; end if;
+end$$;
+create unique index if not exists departures_trip_departure_unique on public.departures(trip_id,departs_at);
 create or replace function public.get_operations_editable_departures(p_from timestamptz default now()-interval '1 day',p_to timestamptz default now()+interval '120 days') returns table(id uuid,trip_title text,departs_at timestamptz,seat_price_jpy integer,capacity integer,sales_open_at timestamptz,sales_close_at timestamptz,status text,schedule_version integer,committed_seats bigint) language sql stable security definer set search_path=public,pg_temp as $$
  select d.id,t.title,d.departs_at,d.seat_price_jpy,d.capacity,d.sales_open_at,d.sales_close_at,d.status,d.schedule_version,coalesce(sum(l.seats) filter(where l.status='committed' or (l.status='held' and l.expires_at>now())),0)::bigint from public.departures d join public.trips t on t.id=d.trip_id left join public.inventory_locks l on l.departure_id=d.id where public.is_operations() and d.departs_at between p_from and p_to group by d.id,t.title order by d.departs_at
 $$;
