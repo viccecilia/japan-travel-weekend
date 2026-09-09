@@ -554,7 +554,7 @@ export function AppHome() {
               <Link
                 className="passenger-departure-row"
                 key={departure.id}
-                to={`/app/booking/${trip.slug}`}
+                to={`/app/booking/${trip.slug}?departureId=${encodeURIComponent(departure.id)}`}
               >
                 <time>
                   <b>{x.weekend[weekendIndex]}</b>
@@ -1213,17 +1213,20 @@ export function BookingPage() {
   const displayTrip=localizedTripSummary(locale,t);
   const deps = departures.filter((d) => d.tripSlug === t.slug);
   const nav = useNavigate();
+  const location=useLocation();
+  const requestedDepartureId=new URLSearchParams(location.search).get('departureId');
   const sellable = deps.filter(
     (departure) => departure.price != null && departure.availableSeats !== 0,
   );
-  const datedDepartures = deps
+  const sortedDatedDepartures = deps
     .filter((departure) => departure.departureTime)
     .sort(
       (a, b) =>
         new Date(a.departureTime!).getTime() -
         new Date(b.departureTime!).getTime(),
-    )
-    .slice(0, 30);
+    );
+  const firstDepartureTime=sortedDatedDepartures[0]?.departureTime?new Date(sortedDatedDepartures[0].departureTime!).getTime():null;
+  const datedDepartures=firstDepartureTime==null?sortedDatedDepartures:sortedDatedDepartures.filter(item=>new Date(item.departureTime!).getTime()<firstDepartureTime+30*24*60*60*1000);
   const displayedDepartures = datedDepartures.length ? datedDepartures : deps;
   const firstDisplayedSellable = displayedDepartures.find(
     (item) => item.price != null && item.availableSeats !== 0,
@@ -1243,7 +1246,9 @@ export function BookingPage() {
     calendarWeekdays.indexOf(firstCalendarWeekday),
   );
   const initialDeparture =
-    state.booking?.tripSlug === t.slug &&
+    requestedDepartureId
+      ? (displayedDepartures.some(item=>item.id===requestedDepartureId)?requestedDepartureId:'')
+      : state.booking?.tripSlug === t.slug &&
     displayedDepartures.some((item) => item.id === state.booking?.departureId)
       ? state.booking.departureId
       : (firstDisplayedSellable?.id ?? "");
@@ -1251,7 +1256,8 @@ export function BookingPage() {
   const [adults, setAdults] = useState(
     state.booking?.tripSlug === t.slug ? (state.booking?.adults ?? 1) : 1,
   );
-  const effectiveDepartureId = displayedDepartures.some(
+  const invalidRequestedDeparture=Boolean(requestedDepartureId&&!displayedDepartures.some(item=>item.id===requestedDepartureId));
+  const effectiveDepartureId = !invalidRequestedDeparture&&displayedDepartures.some(
     (item) => item.id === selectedDeparture,
   )
     ? selectedDeparture
@@ -1290,6 +1296,7 @@ export function BookingPage() {
       </section>
       {deps.length ? (
         <form className="form" onSubmit={submit}>
+          {invalidRequestedDeparture&&<p className="booking-note" role="alert">该班次已失效、已停售或不属于当前路线，请重新选择日期；系统不会自动替换为其他班次。</p>}
           <fieldset className="departure-calendar">
             <legend>
               {b.selectDate} <small>{b.next30}</small>
