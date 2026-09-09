@@ -169,7 +169,7 @@ export class ProductionBrowserServices {
   advanceStaffJourney(vehicleGroupId:string,action:'stop_arrived'|'trip_completed',stopName:string,reason:string){return this.staff.advanceJourney(vehicleGroupId,action,stopName,reason)}
   advanceStaffToItineraryStop(vehicleGroupId:string,stopId:string,reason:string){return this.staff.advanceToItineraryStop(vehicleGroupId,stopId,reason)}
   startStaffFreeTime(vehicleGroupId:string,stopName:string,minutes:number){return this.staff.startFreeTime(vehicleGroupId,stopName,minutes)}
-  publishStaffLocation(vehicleGroupId:string,latitude:number,longitude:number,accuracy:number|null,recordedAt?:string,sequence?:number){return this.staff.publishLocation(vehicleGroupId,latitude,longitude,accuracy,recordedAt,sequence)}
+  publishStaffLocation(vehicleGroupId:string,sessionId:string,latitude:number,longitude:number,accuracy:number|null,recordedAt?:string,sequence?:number){return this.staff.publishLocation(vehicleGroupId,sessionId,latitude,longitude,accuracy,recordedAt,sequence)}
   stopStaffLocation(vehicleGroupId:string){return this.staff.stopLocation(vehicleGroupId)}
   createCheckout(input: CheckoutRequest) {
     return this.checkout.checkout(input);
