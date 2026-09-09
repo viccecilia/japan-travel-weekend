@@ -181,6 +181,17 @@ export class SupabaseDepartureRepository {
     }
   }
 }
+export type PublicCatalogRow={id:string;slug:string;title:string;content:Record<string,unknown>|null;hero_image_url:string|null;gallery:unknown;revision_number:number;updated_at:string};
+export class SupabaseCatalogRepository{
+  constructor(private readonly client:SupabaseClient|null){}
+  async listPublished(){
+    if(!this.client)return {data:[],error:'产品目录服务未配置'};
+    try{const {data,error}=await this.client.rpc('list_public_product_catalog');
+      if(error||!Array.isArray(data))return {data:[],error:'无法读取已发布产品目录'};
+      return {data:(data as PublicCatalogRow[]).map(row=>({id:row.id,slug:row.slug,title:row.title,content:row.content??{},heroImageUrl:row.hero_image_url,gallery:Array.isArray(row.gallery)?row.gallery.filter((item):item is string=>typeof item==='string'):[],revisionNumber:Number(row.revision_number),updatedAt:row.updated_at})),error:null};
+    }catch{return {data:[],error:'无法读取已发布产品目录'}}
+  }
+}
 export class SupabaseAuthRepository {
   constructor(
     private readonly client: SupabaseClient | null,
@@ -664,8 +675,8 @@ export class SupabaseStaffRepository {
   }
   async advanceToItineraryStop(vehicleGroupId:string,stopId:string,reason:string){if(!this.client)return null;try{const {data,error}=await this.client.rpc('advance_vehicle_group_to_itinerary_stop',{p_vehicle_group:vehicleGroupId,p_stop_id:stopId,p_reason:reason,p_idempotency_key:crypto.randomUUID()});return error?null:data?.[0]??null}catch{return null}}
   async startFreeTime(vehicleGroupId:string,stopName:string,minutes:number){if(!this.client)return false;try{const {data,error}=await this.client.rpc('start_vehicle_group_free_time',{p_vehicle_group:vehicleGroupId,p_stop_name:stopName,p_minutes:minutes,p_idempotency_key:crypto.randomUUID()});return !error&&data===true}catch{return false}}
-  async publishLocation(vehicleGroupId:string,latitude:number,longitude:number,accuracy:number|null){
-    if(!this.client)return false;const {error}=await this.client.rpc('publish_driver_location',{p_vehicle_group:vehicleGroupId,p_latitude:latitude,p_longitude:longitude,p_accuracy_meters:accuracy,p_minutes:15});return !error;
+  async publishLocation(vehicleGroupId:string,latitude:number,longitude:number,accuracy:number|null,recordedAt=new Date().toISOString(),sequence=1){
+    if(!this.client)return false;const {error}=await this.client.rpc('append_driver_location_point',{p_vehicle_group:vehicleGroupId,p_latitude:latitude,p_longitude:longitude,p_accuracy_meters:accuracy,p_recorded_at:recordedAt,p_sequence:sequence});return !error;
   }
   async stopLocation(vehicleGroupId:string){if(!this.client)return false;const {error}=await this.client.rpc('stop_driver_location',{p_vehicle_group:vehicleGroupId});return !error}
 }

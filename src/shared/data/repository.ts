@@ -1,4 +1,12 @@
 import {isSeedEnabled} from '../config/businessRules';import {trips} from './trips';import {seedDepartures,seedGroups,seedTripRoom} from './seed';import type {Departure,Trip,TripRoomData,VehicleGroup} from '../types';
+export type PublishedTripCatalogRow={id:string;slug:string;title:string;content:Record<string,unknown>;heroImageUrl:string|null;gallery:string[];revisionNumber:number;updatedAt:string};
+const baselineTrips=structuredClone(trips);
+const text=(value:unknown,fallback:string)=>typeof value==='string'&&value.trim()?value:fallback;
+const strings=(value:unknown,fallback:string[])=>Array.isArray(value)&&value.every(item=>typeof item==='string')?value:fallback;
+export function replacePublishedTripCatalog(rows:PublishedTripCatalogRow[]){
+  const next=rows.map(row=>{const base=baselineTrips.find(item=>item.slug===row.slug)??baselineTrips[0];const content=row.content??{};return {...base,id:row.id,slug:row.slug,title:row.title,shortTitle:text(content.shortTitle,row.title),subtitle:text(content.subtitle,base.subtitle),summary:text(content.summary,base.summary),description:text(content.description,base.description),region:text(content.region,base.region),duration:text(content.duration,base.duration),walkingLevel:text(content.walkingLevel,base.walkingLevel),heroImage:row.heroImageUrl??base.heroImage,gallery:row.gallery.length?row.gallery:[row.heroImageUrl??base.heroImage],highlights:strings(content.highlights,base.highlights),stops:strings(content.stops,base.stops),included:strings(content.included,base.included),excluded:strings(content.excluded,base.excluded),notices:strings(content.notices,base.notices)} as Trip});
+  trips.splice(0,trips.length,...next);
+}
 export interface TravelRepository{listTrips():Trip[];getTrip(slug:string):Trip|undefined;listDepartures():Departure[];getDeparture(id:string):Departure|undefined;getVehicleGroup(id:string):VehicleGroup|undefined;getTripRoomForGroup(id:string):TripRoomData|null}
 export function createMemoryRepository(seedEnabled=isSeedEnabled):TravelRepository{const departures=seedEnabled?seedDepartures:[];const groups=seedEnabled?seedGroups:[];const room=seedEnabled?seedTripRoom:null;return {listTrips:()=>trips,getTrip:slug=>trips.find(t=>t.slug===slug),listDepartures:()=>departures,getDeparture:id=>departures.find(d=>d.id===id),getVehicleGroup:id=>groups.find(g=>g.id===id),getTripRoomForGroup:id=>room?.vehicleGroupId===id?structuredClone(room):null}}
 export const travelRepository=createMemoryRepository();

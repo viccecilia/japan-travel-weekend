@@ -1,5 +1,5 @@
 import { Route, Routes, useLocation } from "react-router-dom";
-import {useEffect} from "react";
+import {lazy,Suspense,useEffect,type ReactNode} from "react";
 import {
   WebsiteLayout,
   Home,
@@ -46,10 +46,15 @@ import { AppPrivateGroups, MyTrip, TripRoom } from "../app/TripRoom";
 import { LegacyAppRedirect, RequireAccount, RequireStaff } from "../app/auth";
 import {RequireOperations} from "../app/auth";
 import {AccountStatus,AuthCallback,CreateAccount,ForgotPassword,ResetPassword} from "../app/AuthPages";
-import {OperationsDashboard} from "../app/OperationsDashboard";
 import {DesignLab} from "../app/DesignLab";
 import {StaffPortal,StaffTaskAction} from "../app/StaffPortal";
 import {AiGuide} from "../app/AiGuide";
+const OperationsDashboard=lazy(()=>import('../app/OperationsDashboard').then(module=>({default:module.OperationsDashboard})));
+const ProductCenter=lazy(()=>import('../app/operations/ProductCenter').then(module=>({default:module.ProductCenter})));
+const DepartureCenter=lazy(()=>import('../app/operations/DepartureCenter').then(module=>({default:module.DepartureCenter})));
+const RunCenter=lazy(()=>import('../app/operations/RunCenter').then(module=>({default:module.RunCenter})));
+const MarketingCenter=lazy(()=>import('../app/operations/MarketingCenter').then(module=>({default:module.MarketingCenter})));
+const OperationsPage=({children}:{children:ReactNode})=><RequireAccount><RequireOperations><Suspense fallback={<main className="operations-page"><p>正在加载管理功能…</p></main>}>{children}</Suspense></RequireOperations></RequireAccount>;
 function ScrollToTop(){const {pathname}=useLocation();useEffect(()=>{if(!navigator.userAgent.includes('jsdom'))window.scrollTo({top:0,left:0,behavior:'auto'});},[pathname]);return null;}
 export function Router() {
   return (
@@ -205,7 +210,11 @@ export function Router() {
         }
       />
       <Route path="/app-demo/*" element={<LegacyAppRedirect />} />
-      <Route path="/app/operations" element={<RequireAccount><RequireOperations><OperationsDashboard/></RequireOperations></RequireAccount>} />
+      <Route path="/app/operations" element={<OperationsPage><OperationsDashboard/></OperationsPage>} />
+      <Route path="/app/operations/products" element={<OperationsPage><ProductCenter/></OperationsPage>} />
+      <Route path="/app/operations/departures" element={<OperationsPage><DepartureCenter/></OperationsPage>} />
+      <Route path="/app/operations/run" element={<OperationsPage><RunCenter/></OperationsPage>} />
+      <Route path="/app/operations/marketing" element={<OperationsPage><MarketingCenter/></OperationsPage>} />
       <Route path="/staff" element={<RequireAccount><RequireStaff><StaffPortal/></RequireStaff></RequireAccount>} />
       <Route path="/staff/tasks/:assignmentId/:action" element={<RequireAccount><RequireStaff><StaffTaskAction/></RequireStaff></RequireAccount>} />
       <Route path="/design-lab" element={<DesignLab />} />

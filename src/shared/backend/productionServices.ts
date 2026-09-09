@@ -4,6 +4,7 @@ import {
   SupabaseAuthRepository,
   SupabaseAccountProfileRepository,
   SupabaseDepartureRepository,
+  SupabaseCatalogRepository,
   SupabaseOrderRepository,
   SupabaseStaffRepository,
   SupabaseTripRoomRepository,
@@ -14,6 +15,7 @@ export class ProductionBrowserServices {
   readonly auth;
   readonly orders;
   readonly departures;
+  readonly catalog;
   readonly checkout;
   readonly tripRoom;
   readonly realtime;
@@ -28,6 +30,7 @@ export class ProductionBrowserServices {
     this.auth = new SupabaseAuthRepository(client);
     this.orders = new SupabaseOrderRepository(client);
     this.departures = new SupabaseDepartureRepository(client);
+    this.catalog = new SupabaseCatalogRepository(client);
     this.tripRoom = new SupabaseTripRoomRepository(client);
     this.realtime = new SupabaseRealtimeAdapter(client);
     this.operations = new SupabaseOperationsRepository(client);
@@ -137,6 +140,7 @@ export class ProductionBrowserServices {
   loadSellableDepartures() {
     return this.departures.listSellable();
   }
+  loadPublishedCatalog(){return this.catalog.listPublished()}
   loadStaffTasks() {
     return this.staff.listTasks();
   }
@@ -165,7 +169,7 @@ export class ProductionBrowserServices {
   advanceStaffJourney(vehicleGroupId:string,action:'stop_arrived'|'trip_completed',stopName:string,reason:string){return this.staff.advanceJourney(vehicleGroupId,action,stopName,reason)}
   advanceStaffToItineraryStop(vehicleGroupId:string,stopId:string,reason:string){return this.staff.advanceToItineraryStop(vehicleGroupId,stopId,reason)}
   startStaffFreeTime(vehicleGroupId:string,stopName:string,minutes:number){return this.staff.startFreeTime(vehicleGroupId,stopName,minutes)}
-  publishStaffLocation(vehicleGroupId:string,latitude:number,longitude:number,accuracy:number|null){return this.staff.publishLocation(vehicleGroupId,latitude,longitude,accuracy)}
+  publishStaffLocation(vehicleGroupId:string,latitude:number,longitude:number,accuracy:number|null,recordedAt?:string,sequence?:number){return this.staff.publishLocation(vehicleGroupId,latitude,longitude,accuracy,recordedAt,sequence)}
   stopStaffLocation(vehicleGroupId:string){return this.staff.stopLocation(vehicleGroupId)}
   createCheckout(input: CheckoutRequest) {
     return this.checkout.checkout(input);

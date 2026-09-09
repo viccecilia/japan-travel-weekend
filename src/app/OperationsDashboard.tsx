@@ -130,6 +130,7 @@ function OperationsLiveDashboard() {
   const [busy, setBusy] = useState(false);
   const [referral,setReferral]=useState<OperationsReferralSummary|null>(null);
   const [systemStatus,setSystemStatus]=useState<{ok:boolean;mode:string;checks:Record<string,boolean>}|null>(null);
+  const [dashboardLoadedAt]=useState(()=>Date.now());
   const reload = useCallback(async () => {
     if (!services) return;
     const result = await services.operations.loadSnapshot();
@@ -246,7 +247,7 @@ function OperationsLiveDashboard() {
       else if(item.pendingOrders>0) alerts.push({level:"关注",title:`${item.tripTitle} 有待付款订单`,detail:`${item.pendingOrders} 笔订单尚未完成付款，不计入最终配车。`});
     });
     snapshot.dispatchTasks.filter(task=>task.status==="rejected"||task.status==="failed").forEach(task=>alerts.push({level:"紧急",title:"派单写入失败",detail:`${task.departureTitle??"未知班次"} · ${snapshot.drivers.find(driver=>driver.id===task.driverId)?.display_name??"司机未知"} · 请运营直接改派`}));
-    snapshot.departures.filter(item=>item.chatOpensAt&&new Date(item.chatOpensAt).getTime()<=Date.now()&&item.dispatchPlanningStatus!=="confirmed").forEach(item=>alerts.push({level:"紧急",title:"次日12点信息尚未公布",detail:`${item.tripTitle} · ${japanDate(item.departsAt)} · 请立即完成车辆、司导和分组确认。`}));
+    snapshot.departures.filter(item=>item.chatOpensAt&&new Date(item.chatOpensAt).getTime()<=dashboardLoadedAt&&item.dispatchPlanningStatus!=="confirmed").forEach(item=>alerts.push({level:"紧急",title:"次日12点信息尚未公布",detail:`${item.tripTitle} · ${japanDate(item.departsAt)} · 请立即完成车辆、司导和分组确认。`}));
     if(snapshot.notificationDeliveryIssues.length) alerts.push({level:"关注",title:"通知发送异常",detail:`${snapshot.notificationDeliveryIssues.length} 条通知需要检查或重试。`});
     if(snapshot.fulfilmentWorkItems.length) alerts.push({level:"关注",title:"履约队列待处理",detail:`${snapshot.fulfilmentWorkItems.length} 项付款或入组工作尚未完成。`});
     const pendingStaff=(snapshot.staffApplications??[]).filter(item=>item.status==="pending"||item.status==="needs_information");
@@ -260,7 +261,7 @@ function OperationsLiveDashboard() {
     if(inspectionVehicles.length) alerts.push({level:"紧急",title:"车辆需要完成车检",detail:`${inspectionVehicles.map(vehicle=>vehicle.registration_identifier).join("、")} 禁止进入派单。`});
     const unclassifiedVehicles=snapshot.vehicles.filter(vehicle=>vehicle.vehicle_type_key==="unclassified-manual"&&!vehicle.inspection_required);
     if(unclassifiedVehicles.length) alerts.push({level:"关注",title:"车辆座位数待确认",detail:`${unclassifiedVehicles.length} 辆车尚未确认核载座位，暂不参与自动派单。`});
-    const closingSoon=snapshot.departures.filter(item=>item.dispatchPlanningStatus==="collecting"&&item.bookingClosesAt&&new Date(item.bookingClosesAt).getTime()>Date.now()&&new Date(item.bookingClosesAt).getTime()-Date.now()<24*60*60_000);
+    const closingSoon=snapshot.departures.filter(item=>item.dispatchPlanningStatus==="collecting"&&item.bookingClosesAt&&new Date(item.bookingClosesAt).getTime()>dashboardLoadedAt&&new Date(item.bookingClosesAt).getTime()-dashboardLoadedAt<24*60*60_000);
     if(closingSoon.length) alerts.push({level:"提示",title:"班次即将截单",detail:`未来24小时有 ${closingSoon.length} 个班次截单，系统将在截单后进入自动配车。`});
     const runningStatuses=new Set(["en_route","arrived","passengers_onboard","in_progress"]);
     const stageCounts={
@@ -271,7 +272,7 @@ function OperationsLiveDashboard() {
       completed:new Set(snapshot.dispatchTasks.filter(task=>task.status==="completed").map(task=>task.departureId).filter(Boolean)).size,
     };
     return {activeTasks,assignedDrivers,assignedVehicles,alerts,stageCounts};
-  },[snapshot]);
+  },[snapshot,dashboardLoadedAt]);
   const selectDeparture = (id: string) => {
     setDepartureId(id);
     setManualDrivers({});
@@ -480,7 +481,7 @@ function OperationsLiveDashboard() {
           <h1>订单、车辆与司机调度</h1>
           <p>系统按报名人数自动匹配车辆与合格司导；运营确认后才下发到司导账号。</p>
         </div>
-        <a href="/app">返回乘客应用</a>
+        <div className="operations-task-actions"><a href="/app/operations/products">产品管理</a><a href="/app/operations/departures">班次与价格</a><a href="/app/operations/run">每日运行台</a><a href="/app/operations/marketing">首页与季节专题</a><a href="/app">返回乘客应用</a></div>
       </header>
       <section className="operations-section operations-test-accounts">
         <header>

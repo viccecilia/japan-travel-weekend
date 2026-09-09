@@ -11,6 +11,7 @@ import type { AppState, Booking, Departure, Order, UiPreferences } from "../shar
 import { isSeedEnabled } from "../shared/config/businessRules";
 import { createMemoryRepository } from "../shared/data/repository";
 import type { ProductionBrowserServices } from "../shared/backend/productionServices";
+import {replacePublishedTripCatalog} from '../shared/data/repository';
 const UI_KEY = "jtw-ui-preferences-v1";
 const loadUi = (): UiPreferences => {
   try {
@@ -61,6 +62,8 @@ export function AppProvider({
   const [departures,setDepartures]=useState<Departure[]>(()=>services?[]:repo.listDepartures());
   const [departuresResolved,setDeparturesResolved]=useState(!services);
   const [departuresError,setDeparturesError]=useState<string|null>(null);
+  const [,setCatalogRevision]=useState(0);
+  useEffect(()=>{let active=true;if(!services||typeof services.loadPublishedCatalog!=='function')return()=>{active=false};void services.loadPublishedCatalog().then(result=>{if(!active)return;if(!result.error){replacePublishedTripCatalog(result.data);setCatalogRevision(value=>value+1)}});return()=>{active=false}},[services]);
   useEffect(()=>{let active=true;if(!services)return()=>{active=false};void services.loadSellableDepartures().then(result=>{if(!active)return;setDepartures(result.data);setDeparturesError(result.error);setDeparturesResolved(true)});return()=>{active=false}},[services]);
   useEffect(() => {
     let active = true;
