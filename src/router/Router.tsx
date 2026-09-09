@@ -45,7 +45,7 @@ import {
 import { AppPrivateGroups, MyTrip, TripRoom } from "../app/TripRoom";
 import { LegacyAppRedirect, RequireAccount, RequireStaff } from "../app/auth";
 import {RequireOperations} from "../app/auth";
-import {AuthCallback,CreateAccount,ForgotPassword,ResetPassword} from "../app/AuthPages";
+import {AccountStatus,AuthCallback,CreateAccount,ForgotPassword,ResetPassword} from "../app/AuthPages";
 import {OperationsDashboard} from "../app/OperationsDashboard";
 import {DesignLab} from "../app/DesignLab";
 import {StaffPortal,StaffTaskAction} from "../app/StaffPortal";
@@ -87,6 +87,7 @@ export function Router() {
       <Route path="/app/forgot-password" element={<AppShell><ForgotPassword /></AppShell>} />
       <Route path="/app/reset-password" element={<AppShell><ResetPassword /></AppShell>} />
       <Route path="/app/auth/callback" element={<AppShell><AuthCallback /></AppShell>} />
+      <Route path="/app/account-status" element={<RequireAccount><AppShell><AccountStatus /></AppShell></RequireAccount>} />
       <Route
         path="/app"
         element={

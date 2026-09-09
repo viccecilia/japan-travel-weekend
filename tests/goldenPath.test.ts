@@ -18,11 +18,11 @@ describe('京都奈良支付前黄金路径',()=>{
     expect(trip.availableSeats).toBeNull();
     expect(trip.assistanceStatus).toContain('运营确认');
   });
-  it('按日本日历日计算取消比例边界',()=>{
+  it('按实际出发时间计算24小时取消边界',()=>{
     const departure=new Date('2026-09-10T00:00:00Z');
-    expect(refundPercentAt(departure,new Date('2026-09-05T14:59:00Z'))).toBe(100);
-    expect(refundPercentAt(departure,new Date('2026-09-06T15:01:00Z'))).toBe(50);
-    expect(refundPercentAt(departure,new Date('2026-09-08T15:01:00Z'))).toBe(0);
+    expect(refundPercentAt(departure,new Date('2026-09-09T00:00:00Z'))).toBe(100);
+    expect(refundPercentAt(departure,new Date('2026-09-09T00:00:01Z'))).toBe(0);
+    expect(refundPercentAt(departure,new Date('2026-09-08T23:59:59Z'))).toBe(100);
   });
   it('本人草稿只调用受控 RPC 且不触发支付或库存 RPC',async()=>{
     const rpc=vi.fn(async()=>({data:'draft-1',error:null}));

@@ -1,0 +1,571 @@
+{
+  "schemaVersion": 1,
+  "locale": "zh-CN",
+  "routes": [
+    {
+      "id": "01-kyoto-nara",
+      "referenceProductId": 128,
+      "referenceUrl": "https://www.gogoday.com/pages/dayTrip/index?id=128",
+      "referenceReadStatus": "unavailable",
+      "name": "京都奈良一日游",
+      "headline": "穿过京都的红色鸟居，遇见奈良的小鹿",
+      "summary": "想看古都，也想亲近自然？把清水寺的开阔风景、伏见稻荷的朱红鸟居和奈良的小鹿放进同一天，收藏第一次关西旅行中几张值得反复翻看的照片。",
+      "tags": [
+        "首次关西",
+        "古都经典",
+        "亲近自然"
+      ],
+      "season": "all_seasons_subject_to_operation",
+      "coverAssetId": "nara-01",
+      "publicationStatus": "draft",
+      "attractionIds": [
+        "kiyomizu",
+        "fushimi",
+        "nara"
+      ],
+      "itineraryOrderConfirmed": false,
+      "bookingCta": "查看出发日期",
+      "seasonNote": null
+    },
+    {
+      "id": "02-kyoto-classic",
+      "referenceProductId": 133,
+      "referenceUrl": "https://www.gogoday.com/pages/dayTrip/index?id=133",
+      "referenceReadStatus": "unavailable",
+      "name": "京都经典一日游",
+      "headline": "金色倒影、石板古街、千本鸟居——把向往的京都走一遍",
+      "summary": "如果你心里的京都，是古寺、町家和朱红鸟居，这条路线就从这些画面出发。看金阁映水，走清水古街，再穿过伏见稻荷的鸟居长廊，让一天拥有几种不同的古都表情。",
+      "tags": [
+        "古都建筑",
+        "古街散步",
+        "经典摄影"
+      ],
+      "season": "all_seasons_subject_to_operation",
+      "coverAssetId": "kinkaku-01",
+      "publicationStatus": "draft",
+      "attractionIds": [
+        "kinkaku",
+        "kiyomizu",
+        "sannenzaka",
+        "fushimi"
+      ],
+      "itineraryOrderConfirmed": false,
+      "bookingCta": "查看出发日期",
+      "seasonNote": null
+    },
+    {
+      "id": "03-amanohashidate-ine",
+      "referenceProductId": 179,
+      "referenceUrl": "https://www.gogoday.com/pages/dayTrip/index?id=179",
+      "referenceReadStatus": "unavailable",
+      "name": "天桥立与伊根舟屋",
+      "headline": "京都的另一面，是蓝色海湾和临水而居的生活",
+      "summary": "从大阪出发，去看看海边的京都。天桥立的松林沙洲、伊根湾的木造舟屋，还有迎面吹来的海风，让这一天的旅行相册换一种颜色。",
+      "tags": [
+        "海之京都",
+        "日本三景",
+        "海湾风光"
+      ],
+      "season": "all_seasons_subject_to_operation",
+      "coverAssetId": "ine-01",
+      "publicationStatus": "draft",
+      "attractionIds": [
+        "amanohashidate",
+        "ine",
+        "cruise"
+      ],
+      "itineraryOrderConfirmed": false,
+      "bookingCta": "查看出发日期",
+      "seasonNote": null
+    },
+    {
+      "id": "04-kobe-arima-rokko",
+      "referenceProductId": 190,
+      "referenceUrl": "https://www.gogoday.com/pages/dayTrip/index?id=190",
+      "referenceReadStatus": "unavailable",
+      "name": "神户、有马温泉与六甲山夜景",
+      "headline": "从港口的海风，到山上的灯火，神户越到晚上越动人",
+      "summary": "白天逛港口与异国风情街区，随后走进有马温泉乡，最后把目光交给六甲山下的灯光。喜欢城市散步，又想给自己一点放松时间，这一天值得留给神户。",
+      "tags": [
+        "港口散步",
+        "温泉乡",
+        "城市夜景"
+      ],
+      "season": "all_seasons_subject_to_operation",
+      "coverAssetId": "rokko-01",
+      "publicationStatus": "draft",
+      "attractionIds": [
+        "kobe",
+        "kitano",
+        "arima",
+        "rokko"
+      ],
+      "itineraryOrderConfirmed": false,
+      "bookingCta": "查看出发日期",
+      "seasonNote": null
+    },
+    {
+      "id": "05-wakayama-shirahama",
+      "referenceProductId": 200,
+      "referenceUrl": "https://www.gogoday.com/pages/dayTrip/index?id=200",
+      "referenceReadStatus": "unavailable",
+      "name": "和歌山猫站长与白滨",
+      "headline": "去猫咪车站收集可爱，再去白滨把心情交给海",
+      "summary": "从猫咪主题铁路的有趣细节，到海鲜市场的热闹香气，再到白滨开阔的海岸。这一天，有让人忍不住拍照的小可爱，也有让人舍不得离开的大海。",
+      "tags": [
+        "猫咪主题",
+        "海鲜美食",
+        "海岸风景"
+      ],
+      "season": "all_seasons_subject_to_operation",
+      "coverAssetId": "tama-01",
+      "publicationStatus": "draft",
+      "attractionIds": [
+        "tama",
+        "market",
+        "shirahama",
+        "onsen_wakayama"
+      ],
+      "itineraryOrderConfirmed": false,
+      "bookingCta": "查看出发日期",
+      "seasonNote": null
+    },
+    {
+      "id": "06-lake-biwa",
+      "referenceProductId": 189,
+      "referenceUrl": "https://www.gogoday.com/pages/dayTrip/index?id=189",
+      "referenceReadStatus": "unavailable",
+      "name": "琵琶湖露台、白须神社与 La Collina",
+      "headline": "去高处看湖，去湖畔看鸟居，再走进一座甜点童话",
+      "summary": "从约1,100米高处眺望琵琶湖，到湖中朱红鸟居，再到草屋顶下的甜点世界。喜欢开阔风景、设计感建筑和旅行小食的人，可以把这一天留给滋贺。",
+      "tags": [
+        "湖景露台",
+        "水上鸟居",
+        "建筑甜点"
+      ],
+      "season": "all_seasons_subject_to_operation",
+      "coverAssetId": "shirahige-01",
+      "publicationStatus": "draft",
+      "attractionIds": [
+        "terrace",
+        "shirahige",
+        "lacollina"
+      ],
+      "itineraryOrderConfirmed": false,
+      "bookingCta": "查看出发日期",
+      "seasonNote": null
+    },
+    {
+      "id": "07-katsuoji-otagi-arashiyama",
+      "referenceProductId": 293,
+      "referenceUrl": "https://www.gogoday.com/pages/dayTrip/index?id=293",
+      "referenceReadStatus": "unavailable",
+      "name": "胜尾寺、爱宕念佛寺与岚山",
+      "headline": "去找一尊让你微笑的罗汉，也为自己许一个愿望",
+      "summary": "红色达摩、表情各异的石像、向上生长的竹林——这条路线的乐趣，藏在值得仔细看的细节里。适合想拍出不同旅行照片，也愿意带着好奇心逛寺院的你。",
+      "tags": [
+        "达摩祈愿",
+        "趣味石像",
+        "竹林摄影"
+      ],
+      "season": "all_seasons_subject_to_operation",
+      "coverAssetId": "katsuoji-01",
+      "publicationStatus": "draft",
+      "attractionIds": [
+        "katsuoji",
+        "otagi",
+        "bamboo"
+      ],
+      "itineraryOrderConfirmed": false,
+      "bookingCta": "查看出发日期",
+      "seasonNote": null
+    },
+    {
+      "id": "08-nara-uji-onsen",
+      "referenceProductId": 176,
+      "referenceUrl": "https://www.gogoday.com/pages/dayTrip/index?id=176",
+      "referenceReadStatus": "unavailable",
+      "name": "奈良、宇治抹茶与温泉",
+      "headline": "和小鹿见个面，去宇治吃抹茶，再给自己一段泡汤时间",
+      "summary": "把亲近自然、古寺散步和抹茶甜点放进同一天，最后用温泉收尾。和家人一起出游，或约朋友度过一个不同于日常的周末，都能在这条路线里找到期待。",
+      "tags": [
+        "奈良小鹿",
+        "抹茶甜点",
+        "温泉时光"
+      ],
+      "season": "all_seasons_subject_to_operation",
+      "coverAssetId": "byodoin-01",
+      "publicationStatus": "draft",
+      "attractionIds": [
+        "nara",
+        "byodoin",
+        "matcha",
+        "onsen_uji"
+      ],
+      "itineraryOrderConfirmed": false,
+      "bookingCta": "查看出发日期",
+      "seasonNote": null
+    },
+    {
+      "id": "09-kyoto-autumn",
+      "referenceProductId": 300,
+      "referenceUrl": "https://www.gogoday.com/pages/dayTrip/index?id=300",
+      "referenceReadStatus": "unavailable",
+      "name": "红叶季限定：贵船、三千院与岚山",
+      "headline": "把一天留给京都的秋天：贵船灯笼、三千院庭园与岚山秋色",
+      "summary": "沿着山间石阶走进贵船，在三千院寻找红叶与苔庭相映的画面，再到岚山看河流与山色。这个秋天，给自己安排一天，亲眼看看京都如何换上季节的颜色。",
+      "tags": [
+        "红叶季限定",
+        "庭园赏秋",
+        "山水摄影"
+      ],
+      "season": "autumn",
+      "coverAssetId": "sanzenin-01",
+      "publicationStatus": "draft",
+      "attractionIds": [
+        "kifune",
+        "sanzenin",
+        "arashiyama_autumn"
+      ],
+      "itineraryOrderConfirmed": false,
+      "bookingCta": "查看出发日期",
+      "seasonNote": "红叶进度受气温、天气和地点影响，各景点可能处于不同观赏阶段；照片展示往年季节景观。"
+    }
+  ],
+  "attractions": {
+    "kiyomizu": {
+      "id": "kiyomizu",
+      "name": "清水寺",
+      "headline": "站在古都上方，把京都收入眼底",
+      "description": "沿着参道走向清水寺，古都的屋檐与山色逐渐展开。来到清水舞台，停下来看看远处的城市：照片里熟悉的京都，终于成了眼前的风景。",
+      "photoBrief": "清水舞台全景；古建筑与山色同框",
+      "assetIds": [
+        "kiyomizu-01",
+        "kiyomizu-02"
+      ],
+      "photoStatus": "candidate_selected_not_downloaded",
+      "confirmationNeeded": "需核对实际行程、门票与停留安排。"
+    },
+    "fushimi": {
+      "id": "fushimi",
+      "name": "伏见稻荷大社",
+      "headline": "走进一条朱红色的光影长廊",
+      "description": "一座座鸟居沿着参道延伸，阳光从缝隙落下，把石板路分成明暗相间的片段。沿路走一段，回头拍下同行人的身影，留住属于你们的京都记忆。",
+      "photoBrief": "千本鸟居纵深；鸟居内的人物背影",
+      "assetIds": [
+        "fushimi-01",
+        "fushimi-02"
+      ],
+      "photoStatus": "candidate_selected_not_downloaded",
+      "confirmationNeeded": "需核对实际行程、门票与停留安排。"
+    },
+    "nara": {
+      "id": "nara",
+      "name": "奈良公园",
+      "headline": "今天的惊喜，可能是一只路过的小鹿",
+      "description": "小鹿在草地与树影之间自在走动，也让普通的散步多了许多意外的小瞬间。可以按现场指引喂食鹿仙贝，或保持距离，拍下它们抬头张望的模样。大人和孩子，都有自己的快乐。",
+      "photoBrief": "鹿与草地；保持适当距离的自然互动",
+      "assetIds": [
+        "nara-01"
+      ],
+      "photoStatus": "candidate_selected_not_downloaded",
+      "confirmationNeeded": "需核对实际行程、门票与停留安排。"
+    },
+    "kinkaku": {
+      "id": "kinkaku",
+      "name": "金阁寺",
+      "headline": "亲眼看看，金色如何落进湖里",
+      "description": "金色楼阁立在池畔，周围是树木与山石。水面平静时，建筑与倒影相互映照；即使只是站着看一会儿，也足以感受这幅庭园风景的层次。",
+      "photoBrief": "金阁全景与完整倒影",
+      "assetIds": [
+        "kinkaku-01"
+      ],
+      "photoStatus": "candidate_selected_not_downloaded",
+      "confirmationNeeded": "需核对实际行程、门票与停留安排。"
+    },
+    "sannenzaka": {
+      "id": "sannenzaka",
+      "name": "二年坂·三年坂",
+      "headline": "把逛京都的快乐，留给这段石板路",
+      "description": "沿着起伏的石阶往前走，木格窗、店铺门帘和小巧的伴手礼轮流吸引目光。挑一件喜欢的小物，或自费买一份点心，让这段古街散步多一点自己的味道。",
+      "photoBrief": "石板坡道与町家；店铺细节",
+      "assetIds": [
+        "sannenzaka-01"
+      ],
+      "photoStatus": "candidate_selected_not_downloaded",
+      "confirmationNeeded": "需核对实际行程、门票与停留安排。"
+    },
+    "amanohashidate": {
+      "id": "amanohashidate",
+      "name": "天桥立",
+      "headline": "原来，海上真的有一条绿色长桥",
+      "description": "细长的沙洲伸展在海湾之间，松林像一笔绿色线条，把蓝色水面分出不同层次。亲眼看见这处“日本三景”，才会理解为什么人们愿意专程为它而来。",
+      "photoBrief": "实际安排的展望台俯瞰沙洲",
+      "assetIds": [
+        "amanohashidate-01",
+        "amanohashidate-02"
+      ],
+      "photoStatus": "candidate_selected_not_downloaded",
+      "confirmationNeeded": "需核对实际行程、门票与停留安排。"
+    },
+    "ine": {
+      "id": "ine",
+      "name": "伊根舟屋",
+      "headline": "沿着海湾，看看与船为邻的日常",
+      "description": "木造舟屋依水排列，船只停靠在屋前，海面映着房子的轮廓。沿公共道路看看海湾与街巷，感受这座渔村贴近海的生活，也把空间留给在这里居住的人。",
+      "photoBrief": "临水舟屋立面；海湾全景",
+      "assetIds": [
+        "ine-01",
+        "ine-02"
+      ],
+      "photoStatus": "candidate_selected_not_downloaded",
+      "confirmationNeeded": "需核对实际行程、门票与停留安排。"
+    },
+    "cruise": {
+      "id": "cruise",
+      "name": "海湾游船",
+      "headline": "换一个角度，让风景从眼前展开",
+      "description": "离开岸边，从水面看海湾，风景又有了新的层次。吹一会儿海风，看岸线缓缓移动；若恰好有海鸟掠过，别忘了抬头，精彩的瞬间不一定在手机屏幕里。",
+      "photoBrief": "实际航线上的甲板视角，待确认航线",
+      "assetIds": [],
+      "photoStatus": "missing",
+      "confirmationNeeded": "游船所在海湾、运营商、上下船点及是否含票未确认。"
+    },
+    "kobe": {
+      "id": "kobe",
+      "name": "神户港",
+      "headline": "先让海风，把出游的心情打开",
+      "description": "沿着港边走走，看船只、海面与城市建筑同框。开阔的水岸很适合拍一张旅行合照，也很适合什么都不安排，只享受终于出来玩的这一刻。",
+      "photoBrief": "白天港口与海面全景",
+      "assetIds": [
+        "kobe-01"
+      ],
+      "photoStatus": "candidate_selected_not_downloaded",
+      "confirmationNeeded": "需核对实际行程、门票与停留安排。"
+    },
+    "kitano": {
+      "id": "kitano",
+      "name": "北野异人馆街",
+      "headline": "在坡道与洋馆之间，发现神户的不同",
+      "description": "沿坡道缓步向上，风格各异的洋馆与街角细节陆续出现。看看建筑外观，寻找喜欢的门窗与转角，随手记录这座港口城市独特的街景。",
+      "photoBrief": "洋馆白天外观；坡道街景",
+      "assetIds": [
+        "kitano-01"
+      ],
+      "photoStatus": "candidate_selected_not_downloaded",
+      "confirmationNeeded": "需核对实际行程、门票与停留安排。"
+    },
+    "arima": {
+      "id": "arima",
+      "name": "有马温泉",
+      "headline": "把一天中的一段时间，留给自己",
+      "description": "温泉街的坡道、店铺与热气，让人自然想放慢脚步。按所选套餐享受泡汤，或在街区散步、自费尝一份当地小食，让旅途多一点舒展的时间。",
+      "photoBrief": "温泉街；实际入浴设施照片待确认",
+      "assetIds": [
+        "arima-01"
+      ],
+      "photoStatus": "candidate_selected_not_downloaded",
+      "confirmationNeeded": "需核对实际行程、门票与停留安排。"
+    },
+    "rokko": {
+      "id": "rokko",
+      "name": "六甲山夜景",
+      "headline": "等灯光亮起来，再看一次神户",
+      "description": "天色渐暗，城市灯光沿着海湾铺开，白天走过的神户变成眼前闪烁的风景。和同行的人并肩看一会儿，让这片灯火成为今天的最后一张记忆。",
+      "photoBrief": "实际观景台拍摄的城市夜景",
+      "assetIds": [
+        "rokko-01"
+      ],
+      "photoStatus": "candidate_selected_not_downloaded",
+      "confirmationNeeded": "需核对实际行程、门票与停留安排。"
+    },
+    "tama": {
+      "id": "tama",
+      "name": "猫咪主题铁路·车站",
+      "headline": "还没到海边，就先被可爱留住",
+      "description": "猫咪元素藏在车站与主题列车的设计里，等你一个个发现。看看特别的站房，寻找车厢里的趣味细节；若遇上猫站长当值，就安静欣赏它认真“上班”的模样。",
+      "photoBrief": "猫形站房；主题列车，核对运行车型",
+      "assetIds": [
+        "tama-01",
+        "tama-02"
+      ],
+      "photoStatus": "candidate_selected_not_downloaded",
+      "confirmationNeeded": "需核对实际行程、门票与停留安排。"
+    },
+    "market": {
+      "id": "market",
+      "name": "海鲜市场",
+      "headline": "今天的午餐，让眼睛先替你挑选",
+      "description": "逛逛海鲜摊位，看看琳琅满目的鱼贝与当地特产，再自费挑一份心仪的海鲜料理。把旅行中的这一餐，留给平时不常吃到的滋味。",
+      "photoBrief": "市场名称未确认，不能用其他市场代替",
+      "assetIds": [],
+      "photoStatus": "missing",
+      "confirmationNeeded": "实际海鲜市场未确认。"
+    },
+    "shirahama": {
+      "id": "shirahama",
+      "name": "白滨海岸",
+      "headline": "站到太平洋面前，让视线走远一点",
+      "description": "离开城市街道，眼前换成海天与不断涌来的浪。沿实际行程安排的海岸走走，听海、看浪、拍一张合照，把这片开阔带回日常。",
+      "photoBrief": "海岸停靠点未确认，不擅自加入圆月岛或千叠敷",
+      "assetIds": [],
+      "photoStatus": "missing",
+      "confirmationNeeded": "实际海岸停靠点未确认。"
+    },
+    "onsen_wakayama": {
+      "id": "onsen_wakayama",
+      "name": "温泉时光",
+      "headline": "让热汤，为出游的一天收尾",
+      "description": "如果选择包含入浴的套餐，就用一池温热的泉水，为今天画上柔软的句号。看过海、吃过喜欢的食物，再给自己一段不必赶路的时间。",
+      "photoBrief": "温泉名称未确认，需实际设施授权图",
+      "assetIds": [],
+      "photoStatus": "missing",
+      "confirmationNeeded": "实际温泉设施及是否含入浴未确认。"
+    },
+    "terrace": {
+      "id": "terrace",
+      "name": "琵琶湖露台",
+      "headline": "把视线放远，才知道湖可以这么辽阔",
+      "description": "来到山上的露台，琵琶湖与远处山峦在眼前展开。天气晴朗时，湖水的蓝、天空的蓝与山间绿色层层相接。停下来欣赏片刻，给旅行相册留一张足够开阔的风景。",
+      "photoBrief": "现代露台与湖景同框；不可拿2010年旧缆车照片代替",
+      "assetIds": [],
+      "photoStatus": "missing",
+      "confirmationNeeded": "缺少经确认的现代琵琶湖露台高清授权实景；官网https://www.biwako-valley.com/tips/biwako_terrace/，不能用旧缆车照片代替。"
+    },
+    "shirahige": {
+      "id": "shirahige",
+      "name": "白须神社",
+      "headline": "一座立在湖中的鸟居，让风景有了焦点",
+      "description": "朱红鸟居立在水面，与远山和天空组成简洁而鲜明的画面。随着光线与湖面的变化，同一处风景也有不同表情，值得你认真看一眼，再按下快门。",
+      "photoBrief": "琵琶湖水上鸟居；合法安全的观景位置",
+      "assetIds": [
+        "shirahige-01"
+      ],
+      "photoStatus": "candidate_selected_not_downloaded",
+      "confirmationNeeded": "需核对实际行程、门票与停留安排。"
+    },
+    "lacollina": {
+      "id": "lacollina",
+      "name": "La Collina 近江八幡",
+      "headline": "走近草屋顶，也走近甜点的香气",
+      "description": "覆满草的屋顶与周围绿意相连，建筑本身就让人想多看几眼。逛逛园区，再自费挑选年轮蛋糕或喜欢的点心，让这趟湖畔旅行留下一个甜甜的记号。",
+      "photoBrief": "草屋顶全景；年轮蛋糕需实际商品图",
+      "assetIds": [
+        "lacollina-01"
+      ],
+      "photoStatus": "candidate_selected_not_downloaded",
+      "confirmationNeeded": "需核对实际行程、门票与停留安排。"
+    },
+    "katsuoji": {
+      "id": "katsuoji",
+      "name": "胜尾寺",
+      "headline": "在达摩之间，为正在努力的自己许愿",
+      "description": "寺院里一尊尊红色达摩格外醒目，有的成排陈列，有的出现在不经意的角落。沿路寻找喜欢的画面，也借这趟旅行，给工作、学业或生活中的目标添一份鼓励。",
+      "photoBrief": "红色达摩陈列；寺院环境",
+      "assetIds": [
+        "katsuoji-01"
+      ],
+      "photoStatus": "candidate_selected_not_downloaded",
+      "confirmationNeeded": "需核对实际行程、门票与停留安排。"
+    },
+    "otagi": {
+      "id": "otagi",
+      "name": "爱宕念佛寺",
+      "headline": "这么多张面孔，你会先被哪一张逗笑？",
+      "description": "石雕罗汉有的微笑，有的神情专注，每一尊都值得多看一眼。沿着参拜路线寻找有趣的表情，感受石像、苔藓与山间寺院共同营造的氛围。",
+      "photoBrief": "罗汉表情特写；寺院石像群",
+      "assetIds": [
+        "otagi-01",
+        "otagi-02"
+      ],
+      "photoStatus": "candidate_selected_not_downloaded",
+      "confirmationNeeded": "需核对实际行程、门票与停留安排。"
+    },
+    "bamboo": {
+      "id": "bamboo",
+      "name": "岚山竹林",
+      "headline": "抬头，让绿色占满视线",
+      "description": "走进竹林小径，两侧竹子笔直向上，日光从叶间透下来。听一听风吹竹叶的声音，拍下人与高竹同框的画面，用清新的绿色延续这一天的发现。",
+      "photoBrief": "竹林纵深；人物与高竹的比例",
+      "assetIds": [
+        "bamboo-01"
+      ],
+      "photoStatus": "candidate_selected_not_downloaded",
+      "confirmationNeeded": "需核对实际行程、门票与停留安排。"
+    },
+    "byodoin": {
+      "id": "byodoin",
+      "name": "平等院",
+      "headline": "绕着池畔走走，欣赏古寺的水中倒影",
+      "description": "凤凰堂临池而立，建筑线条与水面倒影相互呼应。沿庭园换几个角度欣赏，留意屋顶与色彩的细节，让这段参观成为旅途中值得慢慢回味的一幕。",
+      "photoBrief": "凤凰堂与池水，优先修缮后照片",
+      "assetIds": [
+        "byodoin-01"
+      ],
+      "photoStatus": "candidate_selected_not_downloaded",
+      "confirmationNeeded": "需核对实际行程、门票与停留安排。"
+    },
+    "matcha": {
+      "id": "matcha",
+      "name": "宇治抹茶街",
+      "headline": "来到宇治，总想认真挑一份抹茶甜点",
+      "description": "抹茶冰淇淋、甜点、茶叶与伴手礼，让街边店铺都多了几分吸引力。利用自由活动时间，自费挑一份自己喜欢的味道，把宇治的记忆留在舌尖。",
+      "photoBrief": "宇治实际店铺及甜点，不能用便利店商品冒充",
+      "assetIds": [],
+      "photoStatus": "missing",
+      "confirmationNeeded": "缺少宇治实际店铺或甜点授权照片；不使用便利店商品或其他地区甜点冒充。"
+    },
+    "onsen_uji": {
+      "id": "onsen_uji",
+      "name": "温泉",
+      "headline": "今天最后一个安排，是好好放松",
+      "description": "散步之后，让温热泉水给身体一点休息的时间。按所选套餐享受入浴，把这一天从“去了几个地方”，变成一次真正属于自己的出游。",
+      "photoBrief": "温泉名称未确认，需实际设施授权图",
+      "assetIds": [],
+      "photoStatus": "missing",
+      "confirmationNeeded": "实际温泉设施及是否含入浴未确认。"
+    },
+    "kifune": {
+      "id": "kifune",
+      "name": "贵船神社",
+      "headline": "沿着朱红灯笼，走进山里的秋天",
+      "description": "石阶两侧的朱红灯笼向上延伸，枝叶在头顶交织。秋叶变色时，山间参道多了层次丰富的暖色；伴着附近溪流的声音，让这段参拜路成为秋日旅行的开场。",
+      "photoBrief": "白天红叶石阶与灯笼；不使用夏季图冒充红叶",
+      "assetIds": [
+        "kifune-01"
+      ],
+      "photoStatus": "candidate_selected_not_downloaded",
+      "confirmationNeeded": "需核对实际行程、门票与停留安排。"
+    },
+    "sanzenin": {
+      "id": "sanzenin",
+      "name": "三千院",
+      "headline": "红叶落在绿苔上，京都的秋天有了细节",
+      "description": "走进大原的三千院，沿庭园欣赏树木、苔地与寺院建筑。红叶映着绿苔，落叶又为地面添上细碎色彩。除了抬头赏枫，也别忘了看看脚边的风景，寻找庭园里可爱的石像。",
+      "photoBrief": "秋日苔庭；红叶与石像",
+      "assetIds": [
+        "sanzenin-01"
+      ],
+      "photoStatus": "candidate_selected_not_downloaded",
+      "confirmationNeeded": "需核对实际行程、门票与停留安排。"
+    },
+    "arashiyama_autumn": {
+      "id": "arashiyama_autumn",
+      "name": "岚山·渡月桥",
+      "headline": "把京都的秋色，放进一幅有河流的风景里",
+      "description": "秋日的岚山，山坡逐渐呈现红、黄、绿交织的色彩。沿河岸欣赏渡月桥与群山，换几个角度拍照，让开阔的山水为这趟赏枫之旅留下一张全景记忆。",
+      "photoBrief": "渡月桥与秋山横图；不擅自加入小火车",
+      "assetIds": [
+        "arashiyama_autumn-01"
+      ],
+      "photoStatus": "candidate_selected_not_downloaded",
+      "confirmationNeeded": "需核对实际行程、门票与停留安排。"
+    }
+  },
+  "notes": [
+    "文案依据用户列出的景点；未读到供应商详细行程。",
+    "顺序是内容展示顺序，不代表已确认的行车顺序。",
+    "未确认费用、班次、设施不得写成包含。",
+    "本初始包无照片二进制文件，下载器在用户电脑上获取原图。"
+  ]
+}

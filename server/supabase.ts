@@ -37,6 +37,7 @@ export class SupabaseServerPricingGateway{
     if(error||data?.status!=='open'||!Number.isSafeInteger(unit)||unit<1)return null;
     const amount=unit*seats;return Number.isSafeInteger(amount)?{amount,currency:'JPY' as const}:null;
   }
+  async applyCoupon(accountId:string,orderId:string,couponId:string,grossAmount:number){if(!this.client||!accountId||!orderId||!couponId||!Number.isSafeInteger(grossAmount)||grossAmount<1)return null;const {data,error}=await this.client.rpc('price_order_with_coupon',{p_account:accountId,p_order:orderId,p_coupon:couponId,p_expected_gross:grossAmount});const row=data?.[0];if(error||!row)return null;return {amount:Number(row.amount),grossAmount:Number(row.gross_amount),discountAmount:Number(row.discount_amount),discountPercent:Number(row.discount_percent)}}
 }
 
 export class SupabasePaymentIntentRecorder{

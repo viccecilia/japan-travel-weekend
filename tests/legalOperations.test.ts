@@ -4,8 +4,8 @@ import {cancellationPolicy,operatorProfile} from '../src/shared/config/legalOper
 describe('法律与运营集中配置',()=>{
   it('取消窗口无重叠并明确日本时间',()=>{
     expect(cancellationPolicy.timeZone).toBe('Asia/Tokyo');
-    expect(cancellationPolicy.tiers.map(t=>t.refundPercent)).toEqual([100,50,0]);
-    expect(cancellationPolicy.summary).toContain('出发前2～3天退款50%');
+    expect(cancellationPolicy.tiers.map(t=>t.refundPercent)).toEqual([100,0]);
+    expect(cancellationPolicy.summary).toContain('满24小时或以上可全额退款');
   });
   it('只公开官网已核对的公司与运输许可信息',()=>{
     expect(operatorProfile.legalNameJa).toBe('株式会社大寅');

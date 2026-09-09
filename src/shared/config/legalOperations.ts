@@ -13,17 +13,16 @@ export const operatorProfile={
   ],
 } as const;
 
-export const legalPublication={version:'draft-2026-09-03',status:'professional-review-required',effectiveAt:null,realBookingAllowed:false} as const;
+export const legalPublication={version:'draft-2026-09-05',status:'professional-review-required',effectiveAt:null,realBookingAllowed:false} as const;
 
 export const cancellationPolicy={
   timeZone:'Asia/Tokyo',
   cutoffLabel:'日本时间',
   tiers:[
-    {label:'出发日前第3天之前',refundPercent:100},
-    {label:'出发前2～3天',refundPercent:50},
-    {label:'出发前1天、出发当天及行程开始后',refundPercent:0},
+    {label:'出发时间24小时前（含正好24小时）',refundPercent:100},
+    {label:'距出发不足24小时及行程开始后',refundPercent:0},
   ],
-  summary:'出发日前第3天之前全额退款；出发前2～3天退款50%；出发前1天起原则上不退款。',
+  summary:'距出发时间满24小时或以上可全额退款；距出发不足24小时不退款。',
   rules:[
     '取消时间以系统成功受理时间为准，统一按日本时间计算。',
     '迟到、未出现或自行中途离团，原则上不退款。',
@@ -34,5 +33,4 @@ export const cancellationPolicy={
   ],
 } as const;
 
-const japanCalendarDay=(value:Date)=>{const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(value);const get=(type:string)=>Number(parts.find(part=>part.type===type)?.value);return Date.UTC(get('year'),get('month')-1,get('day'))};
-export function refundPercentAt(departure:Date,acceptedAt:Date){const days=Math.round((japanCalendarDay(departure)-japanCalendarDay(acceptedAt))/86_400_000);return days>3?100:days>=2?50:0}
+export function refundPercentAt(departure:Date,acceptedAt:Date){return departure.getTime()-acceptedAt.getTime()>=86_400_000?100:0}

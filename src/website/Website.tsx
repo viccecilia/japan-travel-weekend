@@ -1,24 +1,27 @@
 import { useEffect, type ReactNode } from "react";
 import { Link, NavLink, Outlet, useParams, useSearchParams } from "react-router-dom";
 import { travelRepository } from "../shared/data/repository";
-import { TripCard } from "../shared/components/TripCard";
+import { TripCard,localizedTrip } from "../shared/components/TripCard";
 import { businessRules } from "../shared/config/businessRules";
 import { cancellationPolicy, legalPublication, operatorProfile } from "../shared/config/legalOperations";
 import { LanguageSelect } from "../app/App";
+import {WebsiteTranslationBoundary,useWebsiteLocale,websiteLanguageTags} from './websiteLocale';
 const trips = travelRepository.listTrips();
+function PublicTripCard(props:Omit<Parameters<typeof TripCard>[0],'locale'>){const locale=useWebsiteLocale();return <TripCard {...props} locale={locale}/>}
 function Meta({ title, description }: { title: string; description: string }) {
+  const locale=useWebsiteLocale();
   useEffect(() => {
     document.title = `${title} | Japan Travel Weekend`;
-    document.documentElement.lang = "zh-CN";
+    document.documentElement.lang = websiteLanguageTags[locale];
     document
       .querySelector('meta[name="description"]')
       ?.setAttribute("content", description);
-  }, [title, description]);
+  }, [title, description,locale]);
   return null;
 }
 export function WebsiteLayout() {
   return (
-    <>
+    <WebsiteTranslationBoundary>
       <a className="skip" href="#content">
         跳到主要内容
       </a>
@@ -56,7 +59,7 @@ export function WebsiteLayout() {
         <div><Link to="/legal/company">公司信息</Link> · <Link to="/legal/commercial-transactions">特定商取引法</Link> · <Link to="/legal/privacy">隐私政策</Link> · <Link to="/legal/cancellation">取消政策</Link></div>
         <p className="muted">测试阶段：日期与价格尚未开放；取消规则已形成业务版本，正式上线前仍需法律审阅。</p>
       </footer>
-    </>
+    </WebsiteTranslationBoundary>
   );
 }
 export function Home() {
@@ -103,7 +106,7 @@ export function Home() {
         </div>
         <div className="card-grid">
           {trips.slice(0, 3).map((t) => (
-            <TripCard trip={t} key={t.id} />
+            <PublicTripCard trip={t} key={t.id} />
           ))}
         </div>
       </section>
@@ -145,7 +148,7 @@ export function TripsPage() {
       </header>
       <div className="route-catalog-controls"><div className="route-editorial-heading"><span>CURATED ROUTES</span><h2>这个周末，想看见怎样的关西？</h2><p>每条路线都标明时长、步行强度与主要停靠点。日期和价格以开放班次为准。</p></div><div className="layout-switch" aria-label="路线显示方式"><button className={layout==='list'?'active':''} aria-pressed={layout==='list'} onClick={()=>changeLayout('list')}>☷ 列表</button><button className={layout==='grid'?'active':''} aria-pressed={layout==='grid'} onClick={()=>changeLayout('grid')}>▦ 平铺</button></div></div>
       <div className={`card-grid route-showcase route-showcase--${layout}`}>
-        {trips.map((t,index) => <TripCard trip={t} showcaseIndex={index+1} key={t.id} />)}
+        {trips.map((t,index) => <PublicTripCard trip={t} showcaseIndex={index+1} key={t.id} />)}
       </div>
       <aside className="route-planning-note"><span>还没决定？</span><div><h2>先选风景，再选日期</h2><p>进入路线详情了解停靠点和步行强度；正式班次开放后，再确认日期、余位与最终价格。</p></div><Link className="button secondary" to="/how-it-works">了解预订流程</Link></aside>
     </section>
@@ -153,21 +156,26 @@ export function TripsPage() {
 }
 export function TripDetail() {
   const t = travelRepository.getTrip(useParams().slug || "");
+  const locale=useWebsiteLocale();
   if (!t)
     return (
       <section>
         <h1>未找到行程</h1>
       </section>
     );
+  const display=localizedTrip(locale,t);
+  const foreign=locale!=='zh-CN';
+  const visitLabel={en:'Visit',es:'Visita',ja:'観光',vi:'Tham quan',ne:'भ्रमण',ko:'방문','zh-TW':'遊覽','zh-CN':'游览'}[locale];
+  const routeTimeline=foreign?display.stops.map((stop,index)=>({title:stop,time:null,location:display.region,detail:`${visitLabel}: ${stop}`})):t.timeline;
   return (
     <>
-      <Meta title={t.title} description={t.summary} />
+      <Meta title={display.title} description={display.summary} />
       <section className="detail-hero">
         <img src={t.heroImage} alt={`${t.title}路线风景`} />
         <div>
-          <div className="eyebrow">{t.status} · {t.region}</div>
-          <h1>{t.title}</h1>
-          <p>{t.description}</p>
+          <div className="eyebrow">{t.status} · {display.region}</div>
+          <h1>{display.title}</h1>
+          <p>{display.summary}</p>
           <div className="chips">
             <span>{t.duration}</span>
             <span>步行强度：{t.walkingLevel}</span>
@@ -182,13 +190,13 @@ export function TripDetail() {
         <div>
           <h2>路线亮点</h2>
           <ul className="check-list">
-            {t.highlights.map((x) => (
+            {(foreign?display.stops:t.highlights).map((x) => (
               <li key={x}>{x}</li>
             ))}
           </ul>
           <h2>参考行程</h2>
           <div className="timeline">
-            {t.timeline.map((x, i) => (
+            {routeTimeline.map((x, i) => (
               <article key={x.title}>
                 <b>{i + 1}</b>
                 <div>
@@ -205,14 +213,14 @@ export function TripDetail() {
           {[
             ["集合点", "待公布"],
             ["出发／返回时间", "待公布"],
-            ["包含项目", t.included[0]],
-            ["不包含项目", t.excluded[0]],
-            ["餐食", t.mealOptions],
-            ["儿童规则", t.childPolicy],
-            ["行李规则", t.luggagePolicy],
-            ["取消规则", t.cancellationPolicy],
-            ["天气规则", t.weatherPolicy],
-            ["辅助服务", t.assistanceStatus],
+            ["包含项目", foreign?'Round-trip transport and trip service':t.included[0]],
+            ["不包含项目", foreign?'Meals, personal purchases and unlisted fees':t.excluded[0]],
+            ["餐食", foreign?'Meals are not included unless the departure states otherwise.':t.mealOptions],
+            ["儿童规则", foreign?'Every passenger uses one seat.':t.childPolicy],
+            ["行李规则", foreign?'This day trip is intended for passengers without large luggage.':t.luggagePolicy],
+            ["取消规则", foreign?'100% refund at least 24 hours before departure; no refund within 24 hours or after departure.':t.cancellationPolicy],
+            ["天气规则", foreign?'The order or duration of stops may change for weather, traffic or safety.':t.weatherPolicy],
+            ["辅助服务", foreign?'Contact operations before booking if assistance is required.':t.assistanceStatus],
           ].map(([a, b]) => (
             <div className="fact" key={a}>
               <b>{a}</b>
@@ -220,9 +228,9 @@ export function TripDetail() {
             </div>
           ))}
           <h3>适合人群</h3>
-          <ul>{t.suitableFor.map(item=><li key={item}>{item}</li>)}</ul>
+          <ul>{(foreign?['Travellers looking for a comfortable day trip from Osaka']:t.suitableFor).map(item=><li key={item}>{item}</li>)}</ul>
           <h3>注意事项</h3>
-          <ul>{t.notices.map(item=><li key={item}>{item}</li>)}</ul>
+          <ul>{(foreign?['Check the meeting point, weather and latest notice before departure.']:t.notices).map(item=><li key={item}>{item}</li>)}</ul>
         </aside>
       </section>
     </>

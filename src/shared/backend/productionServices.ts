@@ -64,9 +64,10 @@ export class ProductionBrowserServices {
   signIn(email: string, password: string) {
     return this.auth.signIn(email, password);
   }
-  signUp(email: string, password: string) {
-    return this.auth.signUp(email, password);
+  signUp(email: string, password: string, accountType:"passenger"|"driver"|"guide"="passenger",displayName="",referralCode="") {
+    return this.auth.signUp(email, password,accountType,displayName,referralCode);
   }
+  loadOwnReferralSummary(){return this.auth.loadOwnReferralSummary()}
   requestPasswordReset(email: string) {
     return this.auth.requestPasswordReset(email);
   }
@@ -81,6 +82,10 @@ export class ProductionBrowserServices {
   currentUser() {
     return this.auth.currentUser();
   }
+  currentAccessDestination(){return this.auth.currentAccessDestination()}
+  loadOwnStaffLeaves(){return this.auth.loadOwnStaffLeaves()}
+  submitOwnStaffLeave(startsAt:string,endsAt:string,reason:string){return this.auth.submitOwnStaffLeave(startsAt,endsAt,reason)}
+  cancelOwnStaffLeave(requestId:string){return this.auth.cancelOwnStaffLeave(requestId)}
   currentRole() {
     return this.auth.currentRole();
   }
@@ -104,6 +109,12 @@ export class ProductionBrowserServices {
   }
   loadOwnAccountProfile() {
     return this.accountProfile.loadOwn();
+  }
+  loadOwnDisplayName() {
+    return this.accountProfile.loadOwnDisplayName();
+  }
+  updateOwnDisplayName(displayName: string) {
+    return this.accountProfile.updateOwnDisplayName(displayName);
   }
   updateOwnAccountProfile(
     input: Parameters<SupabaseAccountProfileRepository["updateOwn"]>[0],

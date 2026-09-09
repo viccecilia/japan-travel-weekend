@@ -4,7 +4,7 @@ import {createSupabaseServerClient,SupabaseAccessTokenVerifier,SupabaseManualPay
 import {StripeCardPaymentSessionGateway,StripeTestAdapter} from './stripe.js';
 import {allowedCorsOrigin,parseAllowedOrigins} from './cors.js';
 import {SupabaseBoardingGateway} from './boarding.js';
-import {checkTestApiReadiness} from './readiness.js';
+import {checkApiReadiness} from './readiness.js';
 import {GoogleCloudTranslationProvider,isTranslationTarget,SupabaseMessageTranslationGateway,translateVehicleMessage} from './translation.js';
 import {apiSecurityHeaders,FixedWindowRateLimiter,readRequestBody,RequestBodyTooLargeError,requestRateKey,sendRateLimit} from './security.js';
 import {SignedNotificationReceiptHandler,SupabaseNotificationReceiptStore} from './notifications.js';
@@ -13,7 +13,7 @@ import {RefundEndpoint,SupabaseRefundGateway} from './refunds.js';
 const port=Number(process.env.PORT||8787);const allowedOrigins=parseAllowedOrigins(process.env.ALLOWED_ORIGIN||'');
 const supabase=createSupabaseServerClient({url:process.env.SUPABASE_URL||'',serviceRoleKey:process.env.SUPABASE_SERVICE_ROLE_KEY||''});
 const requestedPaymentMode=process.env.JTW_STRIPE_MODE==='live'?'live':'test';
-const paymentMode=requestedPaymentMode==='live'&&process.env.NODE_ENV==='production'?'live':'test';
+const paymentMode=requestedPaymentMode==='live'&&process.env.NODE_ENV==='production'&&process.env.JTW_PRODUCTION_PAYMENT_AUTHORIZED==='true'?'live':'test';
 const stripe=new StripeTestAdapter({secretKey:process.env.STRIPE_SECRET_KEY||'',webhookSecret:process.env.STRIPE_WEBHOOK_SECRET||'',mode:paymentMode});
 const checkout=new CheckoutEndpoint(new SupabaseAccessTokenVerifier(supabase),new SupabaseOrderInventoryGateway(supabase),new StripeCardPaymentSessionGateway(stripe,new SupabasePaymentIntentRecorder(supabase)),new SupabaseManualPaymentGateway(supabase),new SupabaseServerPricingGateway(supabase));
 const events=new SupabasePaymentEventStore(supabase);
@@ -26,7 +26,7 @@ const checkoutRate=new FixedWindowRateLimiter(30,60_000);const actionRate=new Fi
 function send(res:ServerResponse,status:number,body:unknown,corsOrigin:string|null=null,headers:Record<string,string>={}){res.writeHead(status,{...apiSecurityHeaders,'content-type':'application/json; charset=utf-8','cache-control':'no-store',...(corsOrigin?{'access-control-allow-origin':corsOrigin,'vary':'Origin'}:{}),...headers});res.end(JSON.stringify(body))}
 const server=createServer(async(req,res)=>{const corsOrigin=allowedCorsOrigin(req.headers.origin,allowedOrigins);try{
   if(req.method==='GET'&&req.url==='/health')return send(res,200,{ok:true,mode:paymentMode},corsOrigin);
-  if(req.method==='GET'&&req.url==='/ready'){const readiness=await checkTestApiReadiness(supabase,{STRIPE_SECRET_KEY:process.env.STRIPE_SECRET_KEY,STRIPE_WEBHOOK_SECRET:process.env.STRIPE_WEBHOOK_SECRET,NOTIFICATION_WEBHOOK_SECRET:process.env.NOTIFICATION_WEBHOOK_SECRET});return send(res,readiness.ok?200:503,readiness,corsOrigin)}
+  if(req.method==='GET'&&req.url==='/ready'){const readiness=await checkApiReadiness(supabase,{STRIPE_SECRET_KEY:process.env.STRIPE_SECRET_KEY,STRIPE_WEBHOOK_SECRET:process.env.STRIPE_WEBHOOK_SECRET,NOTIFICATION_WEBHOOK_SECRET:process.env.NOTIFICATION_WEBHOOK_SECRET,JTW_STRIPE_MODE:process.env.JTW_STRIPE_MODE,JTW_PRODUCTION_PAYMENT_AUTHORIZED:process.env.JTW_PRODUCTION_PAYMENT_AUTHORIZED});return send(res,readiness.ok?200:503,readiness,corsOrigin)}
   if(req.method==='OPTIONS'){if(req.headers.origin&&!corsOrigin)return send(res,403,{error:'origin_not_allowed'});res.writeHead(204,{...apiSecurityHeaders,...(corsOrigin?{'access-control-allow-origin':corsOrigin}:{ }),'access-control-allow-methods':'POST,OPTIONS','access-control-allow-headers':'authorization,content-type,stripe-signature,x-jtw-notification-signature','vary':'Origin'});return res.end()}
   if(req.headers.origin&&!corsOrigin)return send(res,403,{error:'origin_not_allowed'});
   if(req.method==='POST'&&req.url==='/v1/checkout'){const rate=checkoutRate.take(requestRateKey(req));if(!rate.allowed)return sendRateLimit(res,rate.retryAfterSeconds,corsOrigin,send);const body=JSON.parse((await readRequestBody(req,64_000)).toString('utf8'));const result=await checkout.post(req.headers.authorization,body);return send(res,result.status,result.body,corsOrigin)}
@@ -39,4 +39,7 @@ const server=createServer(async(req,res)=>{const corsOrigin=allowedCorsOrigin(re
   return send(res,404,{error:'not_found'});
 }catch(error){const tooLarge=error instanceof RequestBodyTooLargeError;return send(res,tooLarge?413:error instanceof SyntaxError?400:500,{error:tooLarge?'body_too_large':error instanceof SyntaxError?'invalid_json':'server_error'})}});
 server.requestTimeout=15_000;server.headersTimeout=10_000;server.keepAliveTimeout=5_000;server.maxRequestsPerSocket=100;
-server.listen(port,'127.0.0.1',()=>console.log(`Japan Travel Weekend test API listening on http://127.0.0.1:${port}`));
+let scheduleRunning=false;
+async function runLifecycleSchedule(){if(scheduleRunning||!supabase)return;scheduleRunning=true;try{const now=new Date().toISOString();for(const [name,params] of [['process_due_trip_room_openings',{p_now:now}],['process_due_departure_cutoffs',{p_now:now}],['enqueue_due_fulfilment_notifications',{p_now:now}]] as const){const {error}=await supabase.rpc(name,params);if(error)console.error(`lifecycle schedule ${name} failed`,error.code??'database_error')}}finally{scheduleRunning=false}}
+server.listen(port,'127.0.0.1',()=>{console.log(`Japan Travel Weekend test API listening on http://127.0.0.1:${port}`);void runLifecycleSchedule()});
+setInterval(()=>void runLifecycleSchedule(),60_000).unref();

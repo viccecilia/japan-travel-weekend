@@ -25,13 +25,13 @@ const driverId=await authUserId(process.env.DRIVER_EMAIL);
 const {data:profiles,error:profilesError}=await supabase.from('profiles').select('id,role').in('id',[ownerId,driverId]);fail('load fixture profiles',profilesError);
 if(profiles?.find(row=>row.id===ownerId)?.role!=='passenger'||profiles?.find(row=>row.id===driverId)?.role!=='driver')throw new Error('fixture account roles do not match');
 
-const tripMarker={slug:'kyoto-nara-classic',title:'TEST-京都与奈良客户签到验收',status:'published'};
-const {data:tripRows,error:tripError}=await supabase.from('trips').upsert(tripMarker,{onConflict:'slug'}).select('id');fail('upsert TEST trip',tripError);
-const trip=one(tripRows,'TEST trip');
+const {data:tripRows,error:tripError}=await supabase.from('trips').select('id').eq('slug','kyoto-nara-classic');fail('load published route for TEST fixture',tripError);
+const trip=one(tripRows,'published route for TEST fixture');
 
 let {data:departureRows,error:departureReadError}=await supabase.from('departures').select('id').eq('trip_id',trip.id).eq('meeting_name','TEST-UAT 客户签到集合点').limit(1);fail('load TEST departure',departureReadError);
 let departure=departureRows?.[0];
-const departureValues={trip_id:trip.id,departs_at:new Date(Date.now()+7*86400000).toISOString(),capacity:9,status:'open',meeting_name:'TEST-UAT 客户签到集合点',meeting_address:'TEST-虚构地址，仅用于验收',map_lat:null,map_lng:null,seat_price_jpy:100};
+const departsAt=new Date(Date.now()+7*86400000);
+const departureValues={trip_id:trip.id,departs_at:departsAt.toISOString(),ends_at:new Date(departsAt.getTime()+10*3600000).toISOString(),capacity:9,status:'open',meeting_name:'TEST-UAT 客户签到集合点',meeting_address:'TEST-虚构地址，仅用于验收',map_lat:34.666944,map_lng:135.506111,seat_price_jpy:100,sales_open_at:new Date(Date.now()-60000).toISOString(),sales_close_at:new Date(departsAt.getTime()-10*3600000).toISOString(),minimum_guests:1,currency:'JPY',tax_included:true};
 if(departure){const {error}=await supabase.from('departures').update(departureValues).eq('id',departure.id);fail('reset TEST departure',error)}
 else{const {data,error}=await supabase.from('departures').insert(departureValues).select('id');fail('create TEST departure',error);departure=one(data,'TEST departure')}
 
@@ -50,8 +50,8 @@ for(const display_name of ['TEST-同行乘客甲','TEST-同行乘客乙'])if(!ex
 
 let {data:groupRows,error:groupReadError}=await supabase.from('vehicle_groups').select('id,vehicle_assignment_id').eq('departure_id',departure.id).limit(1);fail('load TEST group',groupReadError);
 let group=groupRows?.[0];let assignmentId=group?.vehicle_assignment_id;
-if(!group){const {data,error}=await supabase.from('vehicle_assignments').insert({departure_id:departure.id,sequence:1,vehicle_type:'hiace-9',vehicle_label:'TEST-Hiace 客户签到验收车',capacity:9,booked_seats:2}).select('id');fail('create TEST assignment',error);assignmentId=one(data,'TEST assignment').id;const groupInsert=await supabase.from('vehicle_groups').insert({departure_id:departure.id,vehicle_assignment_id:assignmentId}).select('id,vehicle_assignment_id');fail('create TEST group',groupInsert.error);group=one(groupInsert.data,'TEST group')}
-else{const {error}=await supabase.from('vehicle_assignments').update({vehicle_type:'hiace-9',vehicle_label:'TEST-Hiace 客户签到验收车',capacity:9,booked_seats:2}).eq('id',assignmentId);fail('reset TEST assignment',error)}
+if(!group){const {data,error}=await supabase.from('vehicle_assignments').insert({departure_id:departure.id,sequence:1,vehicle_type:'vehicle-10',vehicle_label:'TEST-10座客户签到验收车',capacity:9,booked_seats:2}).select('id');fail('create TEST assignment',error);assignmentId=one(data,'TEST assignment').id;const groupInsert=await supabase.from('vehicle_groups').insert({departure_id:departure.id,vehicle_assignment_id:assignmentId}).select('id,vehicle_assignment_id');fail('create TEST group',groupInsert.error);group=one(groupInsert.data,'TEST group')}
+else{const {error}=await supabase.from('vehicle_assignments').update({vehicle_type:'vehicle-10',vehicle_label:'TEST-10座客户签到验收车',capacity:9,booked_seats:2}).eq('id',assignmentId);fail('reset TEST assignment',error)}
 
 const {error:groupOrderError}=await supabase.from('vehicle_group_orders').upsert({vehicle_group_id:group.id,order_id:order.id},{onConflict:'order_id'});fail('upsert TEST group order',groupOrderError);
 const {error:staffError}=await supabase.from('staff_assignments').upsert({vehicle_group_id:group.id,staff_id:driverId,role:'driver'},{onConflict:'vehicle_group_id,staff_id'});fail('upsert TEST driver',staffError);

@@ -15,9 +15,9 @@ try{
   const departures=expectOk(await operations.from('departures').select('id,departs_at').not('departs_at','is',null).order('departs_at').limit(1),'departure read');
   if(!departures?.length)throw new Error('no test departure');
   departureId=departures[0].id;const startsAt=new Date(departures[0].departs_at);const endsAt=new Date(startsAt.getTime()+12*60*60_000);const suffix=Date.now().toString(36).toUpperCase();
-  vehicleId=expectOk(await operations.rpc('operations_create_vehicle',{p_registration:`TEST-DISPATCH-${suffix}`,p_vehicle_type:'alphard-6',p_external_dispatch_id:`yuzu-test-${suffix}`}),'vehicle create');
-  driverId=expectOk(await operations.rpc('operations_create_driver',{p_display_name:`虚构派单司机-${suffix}`,p_external_dispatch_id:`yuzu-driver-test-${suffix}`,p_vehicle_types:['alphard-6'],p_languages:['zh-CN','ja'],p_available_from:new Date(startsAt.getTime()-60*60_000).toISOString(),p_available_until:new Date(startsAt.getTime()+72*60*60_000).toISOString()}),'driver create');
-  const tasks=[{sequence:sequences[0],vehicleType:'alphard-6',capacity:6,passengerCount:6,driverId,fleetVehicleId:vehicleId,startsAt:startsAt.toISOString(),endsAt:endsAt.toISOString(),operationalNotes:['TEST ONLY']}];
+  vehicleId=expectOk(await operations.rpc('operations_create_vehicle',{p_registration:`TEST-DISPATCH-${suffix}`,p_vehicle_type:'vehicle-10',p_external_dispatch_id:`yuzu-test-${suffix}`}),'vehicle create');
+  driverId=expectOk(await operations.rpc('operations_create_driver',{p_display_name:`虚构派单司机-${suffix}`,p_external_dispatch_id:`yuzu-driver-test-${suffix}`,p_vehicle_types:['vehicle-10'],p_languages:['zh-CN','ja'],p_available_from:new Date(startsAt.getTime()-60*60_000).toISOString(),p_available_until:new Date(startsAt.getTime()+72*60*60_000).toISOString()}),'driver create');
+  const tasks=[{sequence:sequences[0],vehicleType:'vehicle-10',capacity:9,passengerCount:9,driverId,fleetVehicleId:vehicleId,startsAt:startsAt.toISOString(),endsAt:endsAt.toISOString(),operationalNotes:['TEST ONLY']}];
   taskIds=expectOk(await operations.rpc('operations_save_dispatch_plan',{p_departure:departureId,p_tasks:tasks}),'draft save');
   if(taskIds.length!==1)throw new Error('draft count mismatch');
   expectOk(await operations.rpc('operations_confirm_dispatch_tasks',{p_task_ids:taskIds}),'confirm');

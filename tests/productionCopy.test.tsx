@@ -61,9 +61,9 @@ describe('production 用户可见文案',()=>{
     expect(await screen.findByText('本人订单')).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/测试环境订单|测试|开发|Demo/);
   });
-  it('账户中心提供订单辅助需求与行程消息入口',()=>{
+  it('账户中心提供订单与乘车资料及行程消息入口',()=>{
     render(<MemoryRouter><AppProvider><Profile/></AppProvider></MemoryRouter>);
-    expect(screen.getByRole('link',{name:'订单与辅助需求'})).toHaveAttribute('href','/app/orders');
+    expect(screen.getByRole('link',{name:'订单与乘车资料'})).toHaveAttribute('href','/app/orders');
     expect(screen.getByRole('link',{name:'行程消息'})).toHaveAttribute('href','/app/my-trip/room');
   });
 });

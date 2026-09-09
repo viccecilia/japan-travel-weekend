@@ -1,13 +1,14 @@
 import {describe,expect,it} from 'vitest';
 import {normalizePassengerLocale,passengerCoreCopy,passengerHomeCopy,passengerLocales} from '../src/shared/i18n/passengerLocale';
 
-describe('游客端七语界面',()=>{
-  it('完整列出七种游客语言',()=>{
-    expect(passengerLocales.map(item=>item.code)).toEqual(['zh-CN','zh-TW','ja','en','vi','ne','ko']);
+describe('游客端八语界面',()=>{
+  it('完整列出八种游客语言',()=>{
+    expect(passengerLocales.map(item=>item.code)).toEqual(['zh-CN','zh-TW','ja','en','vi','ne','ko','es']);
   });
   it('识别韩语与繁体中文系统语言',()=>{
     expect(normalizePassengerLocale('ko-KR')).toBe('ko');
     expect(normalizePassengerLocale('zh-Hant-HK')).toBe('zh-TW');
+    expect(normalizePassengerLocale('es-MX')).toBe('es');
   });
   it('每种语言都有核心和首页文案',()=>{
     for(const {code} of passengerLocales){

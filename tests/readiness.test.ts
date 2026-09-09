@@ -18,7 +18,7 @@ describe("测试 API 就绪探针", () => {
     })).resolves.toEqual({
       ok: true,
       mode: "test",
-      checks: { database: true, stripeTestMode: true, webhookSecret: true, notificationReceiptSecret: true },
+      checks: { database: true, stripeModeSafe: true, webhookSecret: true, notificationReceiptSecret: true },
     });
     expect(supabase.from).toHaveBeenCalledWith("trip_attendance_config");
   });
@@ -29,8 +29,13 @@ describe("测试 API 就绪探针", () => {
       STRIPE_WEBHOOK_SECRET: "",
     });
     expect(result.ok).toBe(false);
-    expect(result.checks).toEqual({ database: false, stripeTestMode: false, webhookSecret: false, notificationReceiptSecret: false });
+    expect(result.checks).toEqual({ database: false, stripeModeSafe: false, webhookSecret: false, notificationReceiptSecret: false });
     expect(JSON.stringify(result)).not.toContain("sk_live_forbidden");
+  });
+  it('正式密钥必须同时具备明确生产付款授权',async()=>{
+    const base={STRIPE_SECRET_KEY:'sk_live_example',STRIPE_WEBHOOK_SECRET:'whsec_example',NOTIFICATION_WEBHOOK_SECRET:'notification-secret-at-least-32-characters',JTW_STRIPE_MODE:'live'};
+    expect((await checkTestApiReadiness(client(),base)).checks.stripeModeSafe).toBe(false);
+    expect((await checkTestApiReadiness(client(),{...base,JTW_PRODUCTION_PAYMENT_AUTHORIZED:'true'})).checks.stripeModeSafe).toBe(true);
   });
 
   it("Supabase 客户端未创建时明确不就绪", async () => {

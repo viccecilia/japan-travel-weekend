@@ -2,6 +2,15 @@
 import {useEffect,useState,type ReactNode} from 'react';
 import {Navigate,useLocation} from 'react-router-dom';
 import {useApp} from './store';
+import {runtimeMode} from '../shared/config/businessRules';
+
+export const testGuestMode=runtimeMode==='demo';
+
+export const accessDestinationPath=(destination:string|null|undefined)=>destination==='operations'?'/app/operations':destination==='staff'?'/staff':destination==='staff_pending'||destination==='staff_blocked'?'/app/account-status':'/app';
+
+const passengerOnlyPaths=['/app/passengers','/app/checkout','/app/payment','/app/payment-result','/app/orders','/app/my-trip','/app/ai-guide','/app/private-groups','/app/boarding-pass','/app/rewards','/app/referral','/app/profile'];
+export const isPassengerOnlyPath=(value:string)=>passengerOnlyPaths.some(path=>value===path||value.startsWith(`${path}/`)||value.startsWith(`${path}?`));
+export const passengerAccountBoundaryPath=(returnTo:string)=>`/app/account-status?reason=passenger-required&returnTo=${encodeURIComponent(safeReturnTo(returnTo))}`;
 
 export function safeReturnTo(value:string|null|undefined){
   if(!value)return '/app';
@@ -21,15 +30,21 @@ export function referralCodeFromSearch(search:string){
 }
 
 export function RequireAccount({children}:{children:ReactNode}){
-  const {state,authResolved}=useApp();const location=useLocation();
+  const {state,authResolved,services}=useApp();const location=useLocation();const [destination,setDestination]=useState<string|null>(null);
+  useEffect(()=>{let active=true;if(authResolved&&state.user&&services)void services.currentAccessDestination().then(value=>{if(active)setDestination(value)});return()=>{active=false}},[authResolved,state.user,services]);
+  if(testGuestMode)return children;
   if(!authResolved)return <main className="empty-card" role="status"><b>正在恢复账户会话</b><p>请稍候，正在安全确认登录状态。</p></main>;
   if(!state.user){const returnTo=safeReturnTo(`${location.pathname}${location.search}`);return <Navigate replace to={`/app/login?returnTo=${encodeURIComponent(returnTo)}`}/>;}
+  if(services&&!destination)return <main className="empty-card" role="status"><b>正在验证账户类型</b><p>一个账户只能进入对应工作区。</p></main>;
+  const roleProtected=location.pathname.startsWith('/staff')||location.pathname==='/app/operations';
+  if(services&&!roleProtected&&location.pathname!=="/app/account-status"&&destination!=="passenger")return <Navigate replace to={passengerAccountBoundaryPath(`${location.pathname}${location.search}`)}/>;
   return children;
 }
 
 export function RequireOperations({children}:{children:ReactNode}){
   const {state,authResolved,services}=useApp();const location=useLocation();const [roleResult,setRoleResult]=useState<{account:string;role:'operations'|'denied'}|null>(null);const account=state.user?.email??'';
   useEffect(()=>{let active=true;if(!authResolved||!account||!services)return()=>{active=false};void services.currentRole().then(value=>{if(active)setRoleResult({account,role:value==='operations'?'operations':'denied'})});return()=>{active=false}},[authResolved,account,services]);
+  if(testGuestMode)return children;
   const role=roleResult?.account===account?roleResult.role:'loading';
   if(!authResolved||role==='loading')return <main className="empty-card" role="status"><b>正在验证运营权限</b><p>后台数据只对运营账户开放。</p></main>;
   if(!state.user){const returnTo=safeReturnTo(`${location.pathname}${location.search}`);return <Navigate replace to={`/app/login?returnTo=${encodeURIComponent(returnTo)}`}/>}
@@ -51,6 +66,7 @@ export function RequireStaff({children}:{children:ReactNode}){
     }).catch(()=>{if(active)setAccess({account,allowed:false});});
     return()=>{active=false};
   },[authResolved,account,services]);
+  if(testGuestMode)return children;
   if(!authResolved)return <main className="empty-card" role="status"><b>正在恢复账户会话</b><p>请稍候，正在安全确认登录状态。</p></main>;
   if(!state.user){const returnTo=safeReturnTo(`${location.pathname}${location.search}`);return <Navigate replace to={`/app/login?returnTo=${encodeURIComponent(returnTo)}`}/>;}
   if(!services)return <main className="empty-card"><b>无权访问工作人员端</b><p>本地乘客账户不能进入工作人员端。请使用由运营分配的工作人员账户登录。</p></main>;

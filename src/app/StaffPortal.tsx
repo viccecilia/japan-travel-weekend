@@ -132,6 +132,7 @@ const previewAttendance: AttendanceRow[] = [
 ];
 const roleLabel = (role: StaffTask["assignment_role"]) =>
   role === "driver" ? "司机" : role === "guide" ? "导游" : "运营协助";
+const japanDateTime=(value:string)=>new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Tokyo',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(value));
 const dayLabel = (value: string | null) => {
   if (!value) return "时间待确认";
   const target = new Date(value);
@@ -212,6 +213,11 @@ export function StaffPortal() {
   const [selected, setSelected] = useState<string | null>(null);
   const [workflowNotice, setWorkflowNotice] = useState("");
   const [workflowBusy, setWorkflowBusy] = useState(false);
+  const [leaves,setLeaves]=useState<Array<{id:string;starts_at:string;ends_at:string;reason:string;status:string;review_note:string}>>([]);
+  const [leaveOpen,setLeaveOpen]=useState(false);
+  const [leaveNotice,setLeaveNotice]=useState('');
+  useEffect(()=>{let mounted=true;if(services&&typeof services.loadOwnStaffLeaves==='function')void services.loadOwnStaffLeaves().then(value=>{if(mounted)setLeaves(value)});return()=>{mounted=false}},[services]);
+  const submitLeave=async(event:FormEvent<HTMLFormElement>)=>{event.preventDefault();const form=new FormData(event.currentTarget);const startsDate=new Date(String(form.get('startsAt')));const endsDate=new Date(String(form.get('endsAt')));if(!Number.isFinite(startsDate.getTime())||!Number.isFinite(endsDate.getTime())||endsDate<=startsDate){setLeaveNotice('请假结束时间必须晚于开始时间。');return}const reason=String(form.get('reason')).trim();setWorkflowBusy(true);const ok=services&&typeof services.submitOwnStaffLeave==='function'?await services.submitOwnStaffLeave(startsDate.toISOString(),endsDate.toISOString(),reason):true;setWorkflowBusy(false);setLeaveNotice(ok?'请假申请已提交，批准前仍需按原派单出勤。':'提交失败，请检查时间是否重复或联系运营。');if(ok){setLeaveOpen(false);if(services&&typeof services.loadOwnStaffLeaves==='function')setLeaves(await services.loadOwnStaffLeaves())}};
   const active = useMemo(
     () =>
       tasks.find((task) => task.staff_assignment_id === selected) ??
@@ -219,14 +225,10 @@ export function StaffPortal() {
       null,
     [tasks, selected],
   );
-  const execute = async (type: "task_accepted" | "meeting_started") => {
+  const execute = async (type: "meeting_started") => {
     if (!active) return;
     if (!services) {
-      setWorkflowNotice(
-        type === "task_accepted"
-          ? "本地预览：任务已接受。"
-          : "本地预览：已发起集合。",
-      );
+      setWorkflowNotice("本地预览：已发起集合。");
       return;
     }
     setWorkflowBusy(true);
@@ -235,13 +237,7 @@ export function StaffPortal() {
       type,
     );
     setWorkflowBusy(false);
-    setWorkflowNotice(
-      ok
-        ? type === "task_accepted"
-          ? "任务已接受并留下操作记录。"
-          : "已发起集合，游客端将显示“我已到达”。"
-        : "操作未保存，请确认任务权限和群聊开放状态。",
-    );
+    setWorkflowNotice(ok?"已发起集合，游客端将显示“我已到达”。":"操作未保存，请确认任务权限和群聊开放状态。");
   };
   if (!resolved)
     return (
@@ -263,6 +259,14 @@ export function StaffPortal() {
         <h1>今日履约</h1>
         <p>只显示分配给你的任务和本车乘客。</p>
       </header>
+      <section className="staff-actions staff-leave-panel">
+        <h2>出勤与请假</h2>
+        <p>无法出勤时必须提前在系统提交请假。后台批准后，该时段将停止自动派单；已有任务不会自动消失，请等待运营调整。</p>
+        <div><button type="button" onClick={()=>setLeaveOpen(value=>!value)}>{leaveOpen?'收起申请':'申请请假'}</button></div>
+        {leaveOpen&&<form className="staff-leave-form" onSubmit={submitLeave}><label>请假开始<input required name="startsAt" type="datetime-local"/></label><label>请假结束<input required name="endsAt" type="datetime-local"/></label><label>原因<textarea required name="reason" minLength={2} maxLength={300}/></label><button disabled={workflowBusy}>提交后台审核</button></form>}
+        {leaveNotice&&<p className="staff-result" role="status">{leaveNotice}</p>}
+        {leaves.length>0&&<div className="staff-leave-list">{leaves.slice(0,5).map(item=><article key={item.id}><b>{item.status==='pending'?'待审核':item.status==='approved'?'已批准':item.status==='rejected'?'已拒绝':'已取消'}</b><span>{japanDateTime(item.starts_at)} — {japanDateTime(item.ends_at)}</span><small>{item.reason}{item.review_note?` · ${item.review_note}`:''}</small>{item.status==='pending'&&<button type="button" onClick={async()=>{if(services&&typeof services.cancelOwnStaffLeave==='function'&&await services.cancelOwnStaffLeave(item.id)&&typeof services.loadOwnStaffLeaves==='function')setLeaves(await services.loadOwnStaffLeaves())}}>撤回</button>}</article>)}</div>}
+      </section>
       {error && (
         <StatusCard title="任务读取失败" alert>
           {error}
@@ -305,13 +309,7 @@ export function StaffPortal() {
           <section className="staff-actions">
             <h2>执行状态</h2>
             <div>
-              <button
-                type="button"
-                disabled={workflowBusy}
-                onClick={() => void execute("task_accepted")}
-              >
-                接受任务
-              </button>
+              <span className="staff-assignment-confirmed">已由运营确认排班</span>
               <button
                 type="button"
                 disabled={workflowBusy || active.room_status !== "open"}
@@ -1250,9 +1248,10 @@ function StaffFrame({
   children: ReactNode;
   task?: StaffTask | null;
 }) {
+  const { services } = useApp();
   const location = useLocation();
   const action = location.pathname.split("/").at(-1);
-  const passengerPath = task ? taskPath(task, "passengers") : "/staff#tasks";
+  const mapPath = task ? taskPath(task, "meeting") : "/staff#tasks";
   const chatPath = task ? taskPath(task, "chat") : "/staff#tasks";
   return (
     <div className="staff-stage">
@@ -1263,7 +1262,7 @@ function StaffFrame({
             <b>Japan Travel Weekend</b>
             <small>工作人员工作台</small>
           </div>
-          <Link to="/app">乘客端</Link>
+          <button type="button" onClick={()=>void services?.signOut()}>退出</button>
         </header>
         <div className="staff-content">{children}</div>
         <nav className="staff-nav" aria-label="工作人员导航">
@@ -1279,22 +1278,16 @@ function StaffFrame({
             className={location.hash === "#tasks" ? "active" : ""}
             to="/staff#tasks"
           >
-            任务
+            行程
           </Link>
           <Link
-            className={action === "passengers" ? "active" : ""}
-            to={passengerPath}
+            className={action === "meeting" ? "active" : ""}
+            to={mapPath}
           >
-            乘客
+            地图
           </Link>
           <Link className={action === "chat" ? "active" : ""} to={chatPath}>
             消息
-          </Link>
-          <Link
-            className={location.pathname === "/app/profile" ? "active" : ""}
-            to="/app/profile"
-          >
-            我的
           </Link>
         </nav>
       </main>

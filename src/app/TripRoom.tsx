@@ -17,13 +17,23 @@ import { useApp } from "./store";
 import { PassengerChatRoom } from "./PassengerChatRoom";
 import { passengerChatDemo } from "../shared/data/passengerChatDemo";
 import {projectItineraryStops} from "../shared/services/itineraryMeeting";
-const Empty = () => (
+import type {PassengerLocale} from '../shared/i18n/passengerLocale';
+const myTripCopy:Record<PassengerLocale,{empty:string;emptyText:string;browse:string;eyebrow:string;title:string}>={
+  'zh-CN':{empty:'暂无进行中的行程',emptyText:'正式环境不会自动生成车辆、司机、倒计时、聊天或位置数据。',browse:'浏览路线',eyebrow:'我的行程',title:'行程履约'},
+  'zh-TW':{empty:'目前沒有進行中的行程',emptyText:'正式環境不會自動產生車輛、司機、倒數、聊天或位置資料。',browse:'瀏覽路線',eyebrow:'我的行程',title:'行程服務'},
+  ja:{empty:'進行中の旅程はありません',emptyText:'本番環境では車両、ドライバー、カウントダウン、チャット、位置情報は自動生成されません。',browse:'ツアーを見る',eyebrow:'マイトリップ',title:'旅程サービス'},
+  en:{empty:'No active trips',emptyText:'Live service does not create vehicle, driver, countdown, chat or location data until a trip is assigned.',browse:'Browse trips',eyebrow:'My Trip',title:'Trip updates'},
+  es:{empty:'No hay viajes activos',emptyText:'El servicio en vivo no crea datos de vehículo, conductor, cuenta regresiva, chat o ubicación hasta que se asigna un viaje.',browse:'Explora Viajes',eyebrow:'Mi viaje',title:'Novedades sobre los viajes'},
+  vi:{empty:'Không có chuyến đang diễn ra',emptyText:'Dịch vụ chính thức không tạo dữ liệu xe, tài xế, đếm ngược, trò chuyện hoặc vị trí cho đến khi chuyến được phân công.',browse:'Xem các chuyến',eyebrow:'Chuyến đi của tôi',title:'Thông tin chuyến'},
+  ne:{empty:'कुनै सक्रिय यात्रा छैन',emptyText:'यात्रा तोकिएसम्म प्रत्यक्ष सेवाले गाडी, चालक, उल्टो गन्ती, च्याट वा स्थान डेटा बनाउँदैन।',browse:'यात्रा हेर्नुहोस्',eyebrow:'मेरो यात्रा',title:'यात्रा अपडेट'},
+  ko:{empty:'진행 중인 여행이 없습니다',emptyText:'여행이 배정되기 전에는 실제 서비스에서 차량, 기사, 카운트다운, 채팅 또는 위치 데이터를 생성하지 않습니다.',browse:'여행 둘러보기',eyebrow:'내 여행',title:'여행 안내'},
+};
+const Empty = ({locale}:{locale:PassengerLocale}) => {
+  const c=myTripCopy[locale]; return (
   <div className="empty-card">
-    <b>暂无进行中的行程</b>
-    <p>正式环境不会自动生成车辆、司机、倒计时、聊天或位置数据。</p>
-    <Link to="/app/trips">浏览路线 →</Link>
+    <b>{c.empty}</b><p>{c.emptyText}</p><Link to="/app/trips">{c.browse} →</Link>
   </div>
-);
+);};
 type OwnTripFulfilment = {
   departs_at: string;
   meeting_name: string | null;
@@ -34,6 +44,9 @@ type OwnTripFulfilment = {
 };
 export function MyTrip() {
   const { state, services } = useApp();
+  const locale=state.ui.locale??'zh-CN';
+  const mt=myTripCopy[locale];
+  const aiLabel={"zh-CN":"打开本次行程的 AI 随行","zh-TW":"開啟本次行程的 AI 隨行",ja:"この旅程のAI旅ガイドを開く",en:"Open AI companion for this trip",es:"Abrir el acompañante de IA para este viaje",vi:"Mở bạn đồng hành AI cho chuyến này",ne:"यस यात्राको AI सहयात्री खोल्नुहोस्",ko:"이 여행의 AI 동행 열기"}[state.ui.locale??"zh-CN"];
   const [remote, setRemote] = useState<{
     loading: boolean;
     error: string | null;
@@ -79,7 +92,7 @@ export function MyTrip() {
     if (remote.error)
       return <div className="empty-card"><b>暂时无法读取行程</b><p>{remote.error}</p></div>;
     if (!remote.order)
-      return <><div className="app-title"><div className="eyebrow">我的行程</div><h1>行程履约</h1></div><Empty /></>;
+      return <><div className="app-title"><div className="eyebrow">{mt.eyebrow}</div><h1>{mt.title}</h1></div><Empty locale={locale} /></>;
     const fulfilment = remote.fulfilment;
     return (
       <div className="my-trip-page">
@@ -96,6 +109,7 @@ export function MyTrip() {
           <div><span>集合地址</span><b>{fulfilment?.meeting_address ?? "等待运营确认"}</b></div>
         </div>
         <Link className="button secondary full" to={`/app/orders/${remote.order.id}`}>查看订单详情</Link>
+        <Link className="button full" to="/app/ai-guide">{aiLabel}</Link>
         {fulfilment?.vehicle_group_id && fulfilment.trip_room_id ? (
           <>
             <div className="trip-status">
@@ -116,10 +130,10 @@ export function MyTrip() {
     return (
       <>
         <div className="app-title">
-          <div className="eyebrow">我的行程</div>
-          <h1>行程履约</h1>
+          <div className="eyebrow">{mt.eyebrow}</div>
+          <h1>{mt.title}</h1>
         </div>
-        <Empty />
+        <Empty locale={locale} />
       </>
     );
   return (
@@ -155,6 +169,7 @@ export function MyTrip() {
           >
             查看订单详情
           </Link>
+          <Link className="button full" to="/app/ai-guide">{aiLabel}</Link>
         </>
       )}
       {state.tripRoom && (
@@ -188,7 +203,7 @@ export function TripRoom() {
       </div>
     );
   const room = state.tripRoom;
-  if (!room) return <Empty />;
+  if (!room) return <Empty locale={state.ui.locale??'zh-CN'} />;
   return <PassengerChatRoom {...passengerChatDemo} />;
 }
 
@@ -288,6 +303,9 @@ type RemoteRoom = {
   total_orders: number;
 };
 function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
+  const {state}=useApp();
+  const locale=state.ui.locale??'zh-CN';
+  const ui=(zh:string,en:string)=>locale==='en'?en:zh;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [room, setRoom] = useState<RemoteRoom | null>(null);
@@ -302,9 +320,6 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
   );
   const [autoTranslate, setAutoTranslate] = useState(true);
   const [followDeviceLanguage, setFollowDeviceLanguage] = useState(true);
-  const [projections, setProjections] = useState<
-    Array<Record<string, unknown>>
-  >([]);
   const [boardings, setBoardings] = useState<RemoteBoarding[]>([]);
   const [attendance, setAttendance] = useState<RemoteAttendance[]>([]);
   const [connection, setConnection] = useState<
@@ -327,13 +342,14 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
   const subscription = useRef<{
     close(): void;
   } | null>(null);
+  const photoInputRef=useRef<HTMLInputElement|null>(null);
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       const user = await services.currentUser();
       if (cancelled) return;
       if (!user) {
-        setError("请先登录账户。");
+        setError(ui("请先登录账户。","Please sign in first."));
         setLoading(false);
         return;
       }
@@ -393,11 +409,6 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
         currentRole === "guide" ||
         currentRole === "operations"
       ) {
-        setProjections(
-          (await services.tripRoom.loadStaffProjection()) as Array<
-            Record<string, unknown>
-          >,
-        );
         setBoardings(
           (await services.tripRoom.loadBoardingStatus(
             nextRoom.vehicle_group_id,
@@ -509,31 +520,31 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
   if (loading)
     return (
       <div className="empty-card">
-        <b>正在加载行程房间</b>
-        <p>正在验证本车成员权限。</p>
+        <b>{ui("正在加载行程房间","Loading trip room")}</b>
+        <p>{ui("正在验证本车成员权限。","Checking access for this vehicle.")}</p>
       </div>
     );
   if (error)
     return (
       <div className="empty-card">
-        <b>行程房间不可用</b>
+        <b>{ui("行程房间不可用","Trip room unavailable")}</b>
         <p>{error}</p>
       </div>
     );
-  if (!room) return <Empty />;
+  if (!room) return <Empty locale={locale} />;
   const access = remoteChatAvailability(room.room_status, connection);
   const staff = role === "driver" || role === "guide" || role === "operations";
   const driverPublisher = role === "driver" || role === "guide";
   const passenger = role === "passenger";
   const attendanceLabels: Record<RemoteAttendance["status"], string> = {
-    pending: "待签到",
-    confirmed_departure: "已确认出发",
-    at_meeting_point: "已到集合点",
-    boarded: "已登车",
-    needs_assistance: "需要协助",
-    contacting: "联系中",
-    unreachable: "暂未联系上",
-    no_show_confirmed: "运营已确认未到",
+    pending: ui("待签到","Pending check-in"),
+    confirmed_departure: ui("已确认出发","Departure confirmed"),
+    at_meeting_point: ui("已到集合点","At meeting point"),
+    boarded: ui("已登车","Boarded"),
+    needs_assistance: ui("需要协助","Needs assistance"),
+    contacting: ui("联系中","Contacting"),
+    unreachable: ui("暂未联系上","Not reached"),
+    no_show_confirmed: ui("运营已确认未到","No-show confirmed"),
   };
   const attendanceTotals = attendanceSummary(
     attendance.map((item) => item.status),
@@ -883,65 +894,65 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
       <div className="frozen-banner" role="status">
         <b>
           {room.room_status === "open"
-            ? "群组已开放"
+            ? ui("群组已开放","Group open")
             : room.room_status === "frozen"
-              ? "群组只读预览"
-              : "群组已关闭"}
+              ? ui("群组只读预览","Read-only preview")
+              : ui("群组已关闭","Group closed")}
         </b>
         <span>
-          实时连接：
+          {ui("实时连接：","Live connection: ")}
           {connection === "connected"
-            ? "已连接"
+            ? ui("已连接","Connected")
             : connection === "connecting"
-              ? "正在连接"
-              : "连接中断"}
+              ? ui("正在连接","Connecting")
+              : ui("连接中断","Disconnected")}
         </span>
       </div>
       <div className="room-head">
         <div>
-          <span>本车群组 · 第 {room.vehicle_sequence} 辆车</span>
+          <span>{ui("本车群组 · 第","Vehicle group · Vehicle")} {room.vehicle_sequence}</span>
           <h1>{room.vehicle_label ?? room.vehicle_type}</h1>
           <p>
-            当前角色：
+            {ui("当前角色：","Current role: ")}
             {role === "operations"
-              ? "运营人员"
+              ? ui("运营人员","Operations")
               : role === "driver"
-                ? "司机"
+                ? ui("司机","Driver")
                 : role === "guide"
-                  ? "司导"
-                  : "乘客"}
+                  ? ui("司导","Driver-guide")
+                  : ui("乘客","Passenger")}
           </p>
         </div>
       </div>
       <section className="fulfilment-summary fulfillment-pins">
-        <h2>置顶履约信息</h2>
+        <h2>{ui("置顶履约信息","Pinned trip information")}</h2>
         <div className="receipt">
           <div>
-            <span>出发时间</span>
+            <span>{ui("出发时间","Departure time")}</span>
             <b>
               {room.departs_at
-                ? new Date(room.departs_at).toLocaleString("zh-CN", {
+                ? new Date(room.departs_at).toLocaleString(locale, {
                     timeZone: "Asia/Tokyo",
                   })
-                : "待确认"}
+                : ui("待确认","To be confirmed")}
             </b>
           </div>
           <div>
-            <span>集合地点</span>
-            <b>{room.meeting_name ?? "待确认"}</b>
+            <span>{ui("集合地点","Meeting point")}</span>
+            <b>{room.meeting_name ?? ui("待确认","To be confirmed")}</b>
           </div>
           <div>
-            <span>集合地址</span>
-            <b>{room.meeting_address ?? "待确认"}</b>
+            <span>{ui("集合地址","Meeting address")}</span>
+            <b>{room.meeting_address ?? ui("待确认","To be confirmed")}</b>
           </div>
           <div>
-            <span>车辆人数</span>
+            <span>{ui("车辆人数","Vehicle capacity")}</span>
             <b>
-              {room.booked_seats} / {room.vehicle_capacity} 席
+              {room.booked_seats} / {room.vehicle_capacity} {ui("席","seats")}
             </b>
           </div>
           <div>
-            <span>订单返回／登车</span>
+            <span>{ui("订单返回／登车","Orders / boarded")}</span>
             <b>
               {room.boarded_orders} / {room.total_orders}
             </b>
@@ -954,11 +965,11 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
             target="_blank"
             rel="noreferrer"
           >
-            打开集合点步行导航
+            {ui("打开集合点步行导航","Open walking directions")}
           </a>
         ) : (
           <button className="button secondary full" disabled>
-            地图坐标待确认
+            {ui("地图坐标待确认","Map coordinates pending")}
           </button>
         )}
         {(() => {
@@ -987,42 +998,42 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
                 target="_blank"
                 rel="noreferrer"
               >
-                步行寻找司机
+                {ui("步行寻找司机","Walk to the driver")}
               </a>
               <p className="privacy">
-                司机位置更新于{" "}
+                {ui("司机位置更新于","Driver location updated at")} {" "}
                 {new Date(driverLocation!.updated_at).toLocaleTimeString(
-                  "zh-CN",
+                  locale,
                   { timeZone: "Asia/Tokyo" },
                 )}
-                ，精度约{" "}
+                {ui("，精度约","; accuracy approximately")} {" "}
                 {driverLocation!.accuracy_meters == null
-                  ? "未知"
-                  : `${Math.round(Number(driverLocation!.accuracy_meters))} 米`}
-                ；到期后自动隐藏。
+                  ? ui("未知","unknown")
+                  : `${Math.round(Number(driverLocation!.accuracy_meters))} ${ui("米","m")}`}
+                {ui("；到期后自动隐藏。","; it will be hidden automatically when it expires.")}
               </p>
             </>
           ) : (
             <>
               <button className="button secondary full" type="button" disabled>
-                步行寻找司机（位置未共享）
+                {ui("步行寻找司机（位置未共享）","Walk to the driver (location not shared)")}
               </button>
               <p className="privacy">
-                司机位置默认关闭；仅在本车工作人员主动共享且房间开放时显示，不生成虚假距离或移动轨迹。
+                {ui("司机位置默认关闭；仅在本车工作人员主动共享且房间开放时显示，不生成虚假距离或移动轨迹。","Driver location is off by default. It appears only when staff in this vehicle actively share it while the room is open.")}
               </p>
             </>
           );
         })()}
       </section>
       {driverPublisher && (
-        <section className="room-actions" aria-label="司机位置共享">
+        <section className="room-actions" aria-label={ui("司机位置共享","Driver location sharing")}>
           <button
             className="room-action"
             type="button"
             disabled={room.room_status !== "open" || locatingDriver}
             onClick={publishDriverLocation}
           >
-            {locatingDriver ? "正在获取定位…" : "共享司机位置 15 分钟"}
+            {locatingDriver ? ui("正在获取定位…","Getting location…") : ui("共享司机位置 15 分钟","Share driver location for 15 minutes")}
           </button>
           <button
             className="room-action"
@@ -1030,42 +1041,42 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
             disabled={room.room_status !== "open"}
             onClick={() => void stopDriverLocation()}
           >
-            停止司机位置共享
+            {ui("停止司机位置共享","Stop sharing driver location")}
           </button>
         </section>
       )}
       {passenger && room.room_status === "open" && (
-        <section className="room-actions" aria-label="位置共享">
+        <section className="room-actions" aria-label={ui("位置共享","Location sharing")}>
           <button
             className="room-action"
             onClick={() => void shareLocation(15)}
           >
-            共享位置 15 分钟
+            {ui("共享位置 15 分钟","Share location for 15 minutes")}
           </button>
           <button
             className="room-action"
             onClick={() => void shareLocation(30)}
           >
-            共享位置 30 分钟
+            {ui("共享位置 30 分钟","Share location for 30 minutes")}
           </button>
           <button className="room-action" onClick={() => void stopLocation()}>
-            停止共享
+            {ui("停止共享","Stop sharing")}
           </button>
         </section>
       )}
-      <section className="fulfilment-summary" aria-label="集合签到">
-        <h2>{staff ? "全员签到看板" : "我的同行乘客签到"}</h2>
+      <section className="fulfilment-summary" aria-label={ui("集合签到","Meeting check-in")}>
+        <h2>{staff ? ui("全员签到看板","Group check-in board") : ui("我的同行乘客签到","My group check-in")}</h2>
         <p className="notice">
-          已到集合点或已登车：{attendanceTotals.arrived} /{" "}
+          {ui("已到集合点或已登车：","At meeting point or boarded: ")}{attendanceTotals.arrived} /{" "}
           {attendanceTotals.total}
-          {attendanceTotals.allPresent ? " · 全员已到齐" : ""}
+          {attendanceTotals.allPresent ? ui(" · 全员已到齐"," · Everyone is present") : ""}
         </p>
         <div className="member-list">
           {attendance.map((item) => (
             <div key={item.passenger_id}>
               <span>
                 <b>{item.passenger_label}</b> · {attendanceLabels[item.status]}
-                {item.late_minutes ? ` · 预计迟到${item.late_minutes}${item.late_minutes===15?'分钟以上':'分钟'}` : ''}
+                {item.late_minutes ? ` · ${ui("预计迟到","Expected delay ")}${item.late_minutes}${item.late_minutes===15?ui('分钟以上','+ minutes'):ui('分钟',' minutes')}` : ''}
               </span>
               {passenger ? (
                 <div className="room-actions">
@@ -1079,7 +1090,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
                       )
                     }
                   >
-                    确认出发
+                    {ui("确认出发","Confirm departure")}
                   </button>
                   <button
                     type="button"
@@ -1091,7 +1102,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
                       )
                     }
                   >
-                    已到集合点
+                    {ui("已到集合点","At meeting point")}
                   </button>
                   <button
                     type="button"
@@ -1103,7 +1114,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
                       )
                     }
                   >
-                    需要协助
+                    {ui("需要协助","Need assistance")}
                   </button>
                 </div>
               ) : (
@@ -1118,7 +1129,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
                       )
                     }
                   >
-                    确认已到
+                    {ui("确认已到","Confirm arrival")}
                   </button>
                   <button
                     type="button"
@@ -1127,7 +1138,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
                       void updateStaffAttendance(item.passenger_id, "boarded")
                     }
                   >
-                    确认登车
+                    {ui("确认登车","Confirm boarding")}
                   </button>
                   {item.status !== "at_meeting_point" &&
                     item.status !== "boarded" && (
@@ -1136,7 +1147,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
                         className="room-action"
                         onClick={() => void requestContact(item.passenger_id)}
                       >
-                        请求电话联系
+                        {ui("请求电话联系","Request phone contact")}
                       </button>
                     )}
                 </div>
@@ -1146,48 +1157,19 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
         </div>
         {staff && (
           <p className="privacy">
-            电话号码不会展示在群组或看板中。超过集中配置的等待时间后，可请求运营通过受控电话能力联系；电话中继尚未连接时不会伪装已拨打。
+            {ui("电话号码不会展示在群组或看板中。超过集中配置的等待时间后，可请求运营通过受控电话能力联系；电话中继尚未连接时不会伪装已拨打。","Phone numbers are not shown in the group or board. After the configured wait time, operations can be asked to make controlled contact.")}
           </p>
         )}
       </section>
-      <section className="photo-preview">
-        <h2>发送周围照片</h2>
-        <label>
-          拍摄或选择图片
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            disabled={room.room_status !== "open"}
-            onChange={(event) => previewPhoto(event.target.files?.[0])}
-          />
-        </label>
-        {localPhoto && (
-          <>
-            <img src={localPhoto.url} alt="仅保存在当前浏览器会话的照片预览" />
-            <p>{localPhoto.name}</p>
-            <button
-              type="button"
-              className="button secondary full"
-              onClick={() => setLocalPhoto(null)}
-            >
-              移除本地预览
-            </button>
-          </>
-        )}
-        <p className="privacy">
-          当前仅在本机内存中预览，不上传外部服务，也不会假装已发送到群组。安全存储与内容审核接通后才开放正式发送。
-        </p>
-      </section>
       {staff && (
         <section className="staff-panel">
-          <h2>工作人员履约信息</h2>
+          <h2>{ui("工作人员履约信息","Staff trip information")}</h2>
           <div className="member-list">
             {boardings.map((item) => (
               <div key={item.order_id}>
                 <span>
-                  <b>{item.passenger_label}</b> · {item.seat_count} 席{" "}
-                  {item.location_shared ? "· 已主动共享位置" : ""}
+                  <b>{item.passenger_label}</b> · {item.seat_count} {ui("席","seats")}{" "}
+                  {item.location_shared ? ui("· 已主动共享位置","· Location shared") : ""}
                 </span>
                 <button
                   type="button"
@@ -1198,15 +1180,15 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
                   onClick={() => void markBoarded(item.order_id)}
                 >
                   {item.boarding_status === "boarded"
-                    ? "已登车"
+                    ? ui("已登车","Boarded")
                     : room.room_status === "open"
-                      ? "标记已登车"
-                      : "开放后可登车"}
+                      ? ui("标记已登车","Mark as boarded")
+                      : ui("开放后可登车","Available when room opens")}
                 </button>
               </div>
             ))}
           </div>
-          <h3>模板广播</h3>
+          <h3>{ui("模板广播","Message templates")}</h3>
           <div className="room-actions">
             {staffTemplates.map(([key, label]) => (
               <button
@@ -1216,23 +1198,22 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
                 disabled={room.room_status !== "open"}
                 onClick={() => void sendTemplate(key)}
               >
-                {label}
+                {ui(label,{introduce:'Introduce yourself',confirm_meeting:'Confirm tomorrow’s meeting',vehicle_arrived:'Vehicle has arrived',departing_10:'Departing in 10 minutes',departing_5:'Departing in 5 minutes',return_vehicle:'Please return to the vehicle',traffic_delay:'Traffic delay',meeting_changed:'Meeting point changed'}[key])}
               </button>
             ))}
           </div>
           <p className="privacy">
-            重要通知保存 Original 原文；Translation
-            字段已预留，当前不生成机器翻译。
+            {ui("重要通知保存 Original 原文；Translation 字段已预留，当前不生成机器翻译。","Important notices preserve the Original text. A Translation field is reserved; machine translation is not generated yet.")}
           </p>
-          <h3>核验登车凭证</h3>
+          <h3>{ui("核验登车凭证","Verify boarding pass")}</h3>
           <label>
-            扫描或粘贴凭证
+            {ui("扫描或粘贴凭证","Scan or paste pass")}
             <input
               value={boardingToken}
               disabled={room.room_status !== "open"}
               onChange={(event) => setBoardingToken(event.target.value)}
               placeholder={
-                room.room_status === "open" ? "bp_…" : "行程房间开放后可核验"
+                room.room_status === "open" ? "bp_…" : ui("行程房间开放后可核验","Verification opens with the trip room")
               }
             />
           </label>
@@ -1242,44 +1223,20 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
             disabled={room.room_status !== "open" || !boardingToken.trim()}
             onClick={() => void verifyBoarding()}
           >
-            核验并登记登车
+            {ui("核验并登记登车","Verify and record boarding")}
           </button>
           {boardingResult && (
             <p className="notice" role="status">
               {boardingResult}
             </p>
           )}
-          {projections.length ? (
-            projections.map((item, index) => (
-              <div className="receipt" key={String(item.order_id ?? index)}>
-                <div>
-                  <span>儿童座椅</span>
-                  <b>{String(item.child_seat_count ?? 0)}</b>
-                </div>
-                <div>
-                  <span>无障碍车辆</span>
-                  <b>
-                    {item.accessible_vehicle_required ? "需要确认" : "未提出"}
-                  </b>
-                </div>
-                <div>
-                  <span>工作人员协助</span>
-                  <b>
-                    {item.staff_assistance_required ? "需要确认" : "未提出"}
-                  </b>
-                </div>
-              </div>
-            ))
-          ) : (
-            <p>暂无可见的履约需求。</p>
-          )}
         </section>
       )}
       <section className="vehicle-chat fulfillment-chat">
-        <h2>本车消息</h2>
-        <p className="privacy">仅本车成员可见；断线时不会伪装发送成功。</p>
+        <h2>{ui("本车消息","Vehicle messages")}</h2>
+        <p className="privacy">{ui("仅本车成员可见；断线时不会伪装发送成功。","Visible only to members of this vehicle. Messages are never shown as sent while offline.")}</p>
         <fieldset className="translation-settings">
-          <legend>聊天翻译</legend>
+          <legend>{ui("聊天翻译","Chat translation")}</legend>
           <label>
             <input
               type="checkbox"
@@ -1292,10 +1249,10 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
                 )
               }
             />{" "}
-            跟随手机系统语言
+            {ui("跟随手机系统语言","Follow device language")}
           </label>
           <label>
-            翻译成
+            {ui("翻译成","Translate into")}
             <select
               value={translationLanguage}
               disabled={followDeviceLanguage}
@@ -1321,15 +1278,15 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
                 )
               }
             />{" "}
-            自动显示译文
+            {ui("自动显示译文","Show translations automatically")}
           </label>
           <p className="privacy">
-            当前目标：
+            {ui("当前目标：","Current target: ")}
             {
               chatLanguages.find((item) => item.code === translationLanguage)
                 ?.label
             }
-            。始终保留原文；重要模板使用预置译文，自由聊天需翻译服务连接后才生成译文。
+            {ui("。始终保留原文；重要模板使用预置译文，自由聊天需翻译服务连接后才生成译文。",". Original text is always preserved. Important templates use prepared translations; free chat is translated only when the translation service is connected.")}
           </p>
         </fieldset>
         {messages.map((m) => (
@@ -1338,11 +1295,11 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
             className={`${m.important ? "important " : ""}${!m.author_id ? "system-card" : m.author_id === currentUserId ? "self-message" : "member-message"}`}
           >
             <header>
-              <b>{m.author_id === currentUserId ? "我" : "本车成员"}</b>
+              <b>{m.author_id === currentUserId ? ui("我","Me") : ui("本车成员","Vehicle member")}</b>
             </header>
             <p>
               <small>
-                原文
+                {ui("原文","Original")}
                 {m.source_language && m.source_language !== "und"
                   ? ` · ${m.source_language}`
                   : ""}
@@ -1358,7 +1315,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
                       (item) => item.code === translationLanguage,
                     )?.label
                   }
-                  译文
+                  {ui("译文"," translation")}
                 </small>
                 <br />
                 {translatedMessage(m)}
@@ -1367,27 +1324,27 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
               translationLanguage !== "zh-CN" &&
               !m.template_key ? (
               <p className="translation-unavailable">
-                自由聊天翻译服务尚未连接，当前保留原文。
+                {ui("自由聊天翻译服务尚未连接，当前保留原文。","Free-chat translation is not connected; the original text is shown.")}
               </p>
             ) : null}
           </article>
         ))}
         <label>
-          发送消息
+          {ui("发送消息","Send message")}
           <textarea
             disabled={!access.enabled}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
-            placeholder={access.enabled ? "输入本车消息" : access.reason}
+            placeholder={access.enabled ? ui("输入本车消息","Enter a vehicle message") : access.reason}
           />
         </label>
-        <button
-          className="button full"
-          disabled={!access.enabled || !draft.trim()}
-          onClick={send}
-        >
-          {access.enabled ? "发送消息" : access.reason}
-        </button>
+        {localPhoto&&<div className="chat-photo-preview"><img src={localPhoto.url} alt={ui("仅保存在当前浏览器会话的照片预览","Photo preview stored only in this browser session")}/><span>{localPhoto.name}</span><button type="button" onClick={()=>setLocalPhoto(null)} aria-label={ui("移除本地预览","Remove photo")}>×</button></div>}
+        <div className="chat-composer-actions">
+          <input ref={photoInputRef} className="visually-hidden" type="file" accept="image/*" capture="environment" disabled={!access.enabled} onChange={(event)=>previewPhoto(event.target.files?.[0])}/>
+          <button type="button" className="chat-attachment-button" disabled={!access.enabled} onClick={()=>photoInputRef.current?.click()} aria-label={ui("拍摄或选择图片","Take or choose a photo")}>＋</button>
+          <button className="button chat-send-button" disabled={!access.enabled || !draft.trim()} onClick={send}>{access.enabled ? ui("发送消息","Send message") : access.reason}</button>
+        </div>
+        <p className="privacy">{ui("图片发送功能将在安全存储与内容审核接通后开放。","Photo sending will open after secure storage and moderation are connected.")}</p>
         {notice && (
           <p role="status" className="notice">
             {notice}

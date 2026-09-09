@@ -16,8 +16,31 @@ import type {
   OperationsDispatchTask,
   OperationsFulfilmentWorkItem,
   OperationsSnapshot,
+  OperationsReferralSummary,
 } from "../shared/integrations/supabaseOperations";
 import { useApp } from "./store";
+import {stripeMode} from '../shared/integrations/stripeClient';
+
+const testAccountEntrances = [
+  {
+    role: "游客 App 端",
+    account: "test1@daitora",
+    url: "https://weekend.japan-travel.info/app/login",
+    action: "打开游客端",
+  },
+  {
+    role: "司导 App 端",
+    account: "drtest1@daitora",
+    url: "https://weekend.japan-travel.info/staff",
+    action: "打开司导端",
+  },
+  {
+    role: "管理端后台",
+    account: "dadmin1@daitora",
+    url: "https://weekend.japan-travel.info/app/operations",
+    action: "打开管理端",
+  },
+] as const;
 
 const japanDate = (value: string | null) =>
   value
@@ -74,7 +97,26 @@ function CancellationReview({request,busy,onApprove,onReject}:{request:{id:strin
   </div>;
 }
 
-export function OperationsDashboard() {
+function OperationsDemoDashboard(){
+  return <main className="operations-dashboard">
+    <div className="operations-cutoff-alert">测试免登录模式 · 以下均为模拟数据，不会操作真实订单、付款或游客资料</div>
+    <header className="operations-head"><div><span>JT WEEKEND · OPERATIONS DEMO</span><h1>订单、车辆与司机调度</h1><p>用于检查后台信息结构与三端联动流程。</p></div><a href="/app">游客端</a></header>
+    <section className="operations-kpis"><Kpi label="明日班次" value={3}/><Kpi label="已付款订单" value={12}/><Kpi label="报名游客" value={21}/><Kpi label="待确认配车" value={1}/><Kpi label="出勤司导" value={3}/><Kpi label="测试成交额 JPY" value="¥144,900"/></section>
+    <section className="operations-section"><header><div><span>运行监控</span><h2>明日车辆安排</h2></div><small>自动推荐后由运营人工确认</small></header><div className="operations-dispatch-list">
+      <article><div><b>京都与奈良</b><span>9月10日 08:40 · 9人</span></div><strong>10座海狮 · 姚博</strong><small>已确认 · 聊天将于出发前一天12:00开放</small></article>
+      <article><div><b>天桥立与伊根</b><span>9月10日 08:00 · 11人</span></div><strong>14座海狮 · 李力</strong><small>已确认 · 车牌与集合资料已准备</small></article>
+      <article><div><b>琵琶湖M线</b><span>9月10日 08:00 · 1人</span></div><strong>等待人工确认</strong><small>报名人数较少，需要关注是否成团</small></article>
+    </div></section>
+    <section className="operations-section"><header><div><span>测试入口</span><h2>三端快速切换</h2></div></header><div className="operations-account-list"><article><div><span>游客端</span><strong>无需账号</strong></div><a href="/app">打开</a></article><article><div><span>司导端</span><strong>模拟任务</strong></div><a href="/staff">打开</a></article><article><div><span>管理端</span><strong>当前页面</strong></div><a href="/app/operations">刷新</a></article></div></section>
+  </main>;
+}
+
+export function OperationsDashboard(){
+  if(appConfig.runtimeMode==='demo')return <OperationsDemoDashboard/>;
+  return <OperationsLiveDashboard/>;
+}
+
+function OperationsLiveDashboard() {
   const { services } = useApp();
   const [snapshot, setSnapshot] = useState<OperationsSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -83,7 +125,11 @@ export function OperationsDashboard() {
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
   const [departureId, setDepartureId] = useState("");
+  const [manualDrivers,setManualDrivers]=useState<Record<number,string>>({});
+  const [manualVehicles,setManualVehicles]=useState<Record<number,string>>({});
   const [busy, setBusy] = useState(false);
+  const [referral,setReferral]=useState<OperationsReferralSummary|null>(null);
+  const [systemStatus,setSystemStatus]=useState<{ok:boolean;mode:string;checks:Record<string,boolean>}|null>(null);
   const reload = useCallback(async () => {
     if (!services) return;
     const result = await services.operations.loadSnapshot();
@@ -106,6 +152,8 @@ export function OperationsDashboard() {
       active = false;
     };
   }, [services]);
+  useEffect(()=>{let active=true;const loader=services?.operations.loadReferralSummary;if(loader)void loader.call(services.operations).then(value=>{if(active)setReferral(value)});return()=>{active=false}},[services]);
+  useEffect(()=>{let active=true;void fetch('/api/ready',{headers:{accept:'application/json'}}).then(async response=>({response,body:await response.json()})).then(({body})=>{if(active)setSystemStatus(body)}).catch(()=>{if(active)setSystemStatus({ok:false,mode:'unknown',checks:{api:false}})});return()=>{active=false}},[]);
   const totals = useMemo(
     () =>
       snapshot?.departures.reduce(
@@ -167,7 +215,9 @@ export function OperationsDashboard() {
           availableFrom: window?.starts_at ?? "",
           availableUntil: window?.ends_at ?? "",
           status: driver.status,
-          assignedWindows: [],
+          assignedWindows: (snapshot.staffLeaveRequests ?? [])
+            .filter((leave) => leave.accountId === driver.account_id && leave.status === "approved")
+            .map((leave) => ({ startsAt: leave.startsAt, endsAt: leave.endsAt })),
         };
       }),
       new Date(startsAt).toISOString(),
@@ -177,11 +227,55 @@ export function OperationsDashboard() {
   }, [snapshot, plan, startsAt, endsAt]);
   const allDriversMatched = Boolean(
     plan &&
-    recommendations.length === plan.assignments.length &&
-    recommendations.every((item) => item.driverId),
+    plan.assignments.every((assignment)=>{
+      const driverId=manualDrivers[assignment.sequence]??recommendations.find(item=>item.vehicleAssignmentId===assignment.id)?.driverId;
+      const vehicleId=manualVehicles[assignment.sequence]??snapshot?.vehicles.find(item=>item.status==='available'&&item.vehicle_type_key===assignment.vehicleType)?.id;
+      return Boolean(driverId&&vehicleId);
+    }),
   );
+  const command = useMemo(() => {
+    if (!snapshot) return null;
+    const activeTaskStatuses = new Set(["confirmed","sent","delivered","viewed","accepted","en_route","arrived","passengers_onboard","in_progress"]);
+    const activeTasks=snapshot.dispatchTasks.filter(task=>activeTaskStatuses.has(task.status));
+    const assignedDrivers=new Set(activeTasks.map(task=>task.driverId));
+    const assignedVehicles=new Set(activeTasks.map(task=>task.fleetVehicleId).filter(Boolean));
+    const alerts:Array<{level:"紧急"|"关注"|"提示";title:string;detail:string}>=[];
+    snapshot.departures.forEach(item=>{
+      if(item.requiresManualReview) alerts.push({level:"紧急",title:`${item.tripTitle} 报名不足`,detail:`${japanDate(item.departsAt)} · 当前 ${item.bookedSeats} 人，必须人工决定是否发车。`});
+      else if(item.dispatchPlanningStatus==="ready_for_planning") alerts.push({level:"紧急",title:`${item.tripTitle} 尚未配车`,detail:`${japanDate(item.departsAt)} · ${item.bookedSeats} 名游客等待车辆和司导。`});
+      else if(item.pendingOrders>0) alerts.push({level:"关注",title:`${item.tripTitle} 有待付款订单`,detail:`${item.pendingOrders} 笔订单尚未完成付款，不计入最终配车。`});
+    });
+    snapshot.dispatchTasks.filter(task=>task.status==="rejected"||task.status==="failed").forEach(task=>alerts.push({level:"紧急",title:"派单写入失败",detail:`${task.departureTitle??"未知班次"} · ${snapshot.drivers.find(driver=>driver.id===task.driverId)?.display_name??"司机未知"} · 请运营直接改派`}));
+    snapshot.departures.filter(item=>item.chatOpensAt&&new Date(item.chatOpensAt).getTime()<=Date.now()&&item.dispatchPlanningStatus!=="confirmed").forEach(item=>alerts.push({level:"紧急",title:"次日12点信息尚未公布",detail:`${item.tripTitle} · ${japanDate(item.departsAt)} · 请立即完成车辆、司导和分组确认。`}));
+    if(snapshot.notificationDeliveryIssues.length) alerts.push({level:"关注",title:"通知发送异常",detail:`${snapshot.notificationDeliveryIssues.length} 条通知需要检查或重试。`});
+    if(snapshot.fulfilmentWorkItems.length) alerts.push({level:"关注",title:"履约队列待处理",detail:`${snapshot.fulfilmentWorkItems.length} 项付款或入组工作尚未完成。`});
+    const pendingStaff=(snapshot.staffApplications??[]).filter(item=>item.status==="pending"||item.status==="needs_information");
+    if(pendingStaff.length) alerts.push({level:"关注",title:"工作人员账户等待审批",detail:`${pendingStaff.length} 个司机或导游申请需要处理。`});
+    const pendingLeaves=(snapshot.staffLeaveRequests??[]).filter(item=>item.status==="pending");
+    if(pendingLeaves.length) alerts.push({level:"关注",title:"司导请假等待审批",detail:`${pendingLeaves.length} 份请假申请需要核对排班。`});
+    (snapshot.staffLeaveRequests??[]).filter(item=>item.status==="approved"&&item.conflictingTasks>0).forEach(item=>alerts.push({level:"紧急",title:"已批准请假与派单冲突",detail:`${item.displayName||item.email} · ${japanDate(item.startsAt)} · 涉及 ${item.conflictingTasks} 个任务，请立即改派。`}));
+    const unlinkedDrivers=snapshot.drivers.filter(driver=>driver.status==="available"&&!driver.account_id);
+    if(unlinkedDrivers.length) alerts.push({level:"关注",title:"司导尚未绑定登录账号",detail:`${unlinkedDrivers.map(driver=>driver.display_name).join("、")} 无法在司导端接收任务。`});
+    const inspectionVehicles=snapshot.vehicles.filter(vehicle=>vehicle.inspection_required);
+    if(inspectionVehicles.length) alerts.push({level:"紧急",title:"车辆需要完成车检",detail:`${inspectionVehicles.map(vehicle=>vehicle.registration_identifier).join("、")} 禁止进入派单。`});
+    const unclassifiedVehicles=snapshot.vehicles.filter(vehicle=>vehicle.vehicle_type_key==="unclassified-manual"&&!vehicle.inspection_required);
+    if(unclassifiedVehicles.length) alerts.push({level:"关注",title:"车辆座位数待确认",detail:`${unclassifiedVehicles.length} 辆车尚未确认核载座位，暂不参与自动派单。`});
+    const closingSoon=snapshot.departures.filter(item=>item.dispatchPlanningStatus==="collecting"&&item.bookingClosesAt&&new Date(item.bookingClosesAt).getTime()>Date.now()&&new Date(item.bookingClosesAt).getTime()-Date.now()<24*60*60_000);
+    if(closingSoon.length) alerts.push({level:"提示",title:"班次即将截单",detail:`未来24小时有 ${closingSoon.length} 个班次截单，系统将在截单后进入自动配车。`});
+    const runningStatuses=new Set(["en_route","arrived","passengers_onboard","in_progress"]);
+    const stageCounts={
+      collecting:snapshot.departures.filter(item=>item.dispatchPlanningStatus==="collecting").length,
+      waiting:snapshot.departures.filter(item=>item.dispatchPlanningStatus==="ready_for_planning"||item.dispatchPlanningStatus==="needs_manual_review").length,
+      assigned:new Set(activeTasks.filter(task=>!runningStatuses.has(task.status)).map(task=>task.departureId).filter(Boolean)).size,
+      running:new Set(activeTasks.filter(task=>runningStatuses.has(task.status)).map(task=>task.departureId).filter(Boolean)).size,
+      completed:new Set(snapshot.dispatchTasks.filter(task=>task.status==="completed").map(task=>task.departureId).filter(Boolean)).size,
+    };
+    return {activeTasks,assignedDrivers,assignedVehicles,alerts,stageCounts};
+  },[snapshot]);
   const selectDeparture = (id: string) => {
     setDepartureId(id);
+    setManualDrivers({});
+    setManualVehicles({});
     const departure = snapshot?.departures.find((item) => item.id === id);
     if (!departure) return;
     setPassengers(departure.bookedSeats);
@@ -269,24 +363,27 @@ export function OperationsDashboard() {
     const tasks: DispatchPlanDraft[] = plan.assignments.map((vehicle) => {
       const index = usedByType.get(vehicle.vehicleType) ?? 0;
       usedByType.set(vehicle.vehicleType, index + 1);
-      const fleet = snapshot.vehicles.filter(
+      const automaticFleet = snapshot.vehicles.filter(
         (item) =>
           item.status === "available" &&
           item.vehicle_type_key === vehicle.vehicleType,
       )[index];
-      const driver = recommendations.find(
+      const automaticDriver = recommendations.find(
         (item) => item.vehicleAssignmentId === vehicle.id,
       )?.driverId;
+      const fleetVehicleId=manualVehicles[vehicle.sequence]??automaticFleet?.id??"";
+      const driverId=manualDrivers[vehicle.sequence]??automaticDriver??"";
       return {
         sequence: vehicle.sequence,
         vehicleType: vehicle.vehicleType,
         capacity: vehicle.capacity,
         passengerCount: vehicle.booked,
-        driverId: driver ?? "",
-        fleetVehicleId: fleet?.id ?? "",
+        driverId,
+        fleetVehicleId,
         startsAt: new Date(startsAt).toISOString(),
         endsAt: new Date(endsAt).toISOString(),
         operationalNotes: [],
+        planningSource: manualDrivers[vehicle.sequence]||manualVehicles[vehicle.sequence]?"manual_override" as const:"automatic" as const,
       };
     });
     if (tasks.some((task) => !task.driverId || !task.fleetVehicleId)) {
@@ -370,6 +467,9 @@ export function OperationsDashboard() {
     setBusy(false);
   };
   const reviewAccountDeletion=async(id:string,decision:"reviewing"|"rejected",note:string)=>{if(!services)return;setBusy(true);const result=await services.operations.reviewAccountDeletion(id,decision,note);setNotice(result.ok?(decision==="reviewing"?"删除申请已进入人工核对，尚未删除账户。":"删除申请已驳回并保留处理记录。"): `处理失败：${result.error??"请核对申请状态和运营权限"}`);if(result.ok)await reload();setBusy(false)};
+  const reviewStaffApplication=async(id:string,decision:"approved"|"rejected"|"needs_information"|"suspended")=>{if(!services)return;const note=window.prompt("审核说明（可简短填写）",decision==="approved"?"身份资料已核对":"请记录处理原因")??"";setBusy(true);const result=await services.operations.reviewStaffApplication(id,decision,note);setNotice(result.ok?(decision==="approved"?"工作人员账户已批准；下次登录将自动进入司导端。":"申请状态已更新。"):`审核失败：${result.error??"请检查账户状态与管理员权限"}`);if(result.ok)await reload();setBusy(false)};
+  const reviewStaffLeave=async(id:string,decision:"approved"|"rejected")=>{if(!services)return;const note=window.prompt("审批说明（可选）",decision==="approved"?"已核对排班，同意请假":"请说明无法批准的原因")??"";setBusy(true);const result=await services.operations.reviewStaffLeave(id,decision,note);setNotice(result.ok?(decision==="approved"?"请假已批准；该时段已从自动派单候选中排除。":"请假已拒绝并通知记录。"):`审批失败：${result.error??"请检查申请状态与管理员权限"}`);if(result.ok)await reload();setBusy(false)};
+  const saveReferral=async(event:FormEvent<HTMLFormElement>)=>{event.preventDefault();if(!services||!referral)return;const form=new FormData(event.currentTarget);setBusy(true);const result=await services.operations.updateReferralSettings(Number(form.get('discountPercent')),Number(form.get('validityDays')),form.get('active')==='on');setNotice(result.ok?'推荐优惠规则已更新；只影响之后成功注册的新推荐关系。':`推荐规则保存失败：${result.error??'请检查管理员权限'}`);if(result.ok)setReferral(await services.operations.loadReferralSummary());setBusy(false)};
   const approveCancellation=async(id:string,key:string)=>{if(!services)return;setBusy(true);const result=await services.executeOperationsRefund(id,key);setNotice(result?.accepted?"退款已由服务端提交 Stripe，当前为处理中；最终结果等待支付渠道回调。":"退款未提交：请核对运营权限、订单付款状态与服务端连接。");if(result?.accepted)await reload();setBusy(false)};
   const rejectCancellation=async(id:string,reason:string)=>{if(!services)return;setBusy(true);const result=await services.operations.rejectCancellationRequest(id,reason);setNotice(result.ok?"退款申请已拒绝并保存处理理由；订单付款状态未被修改。":`拒绝失败：${result.error??"请核对申请状态和运营权限"}`);if(result.ok)await reload();setBusy(false)};
   return (
@@ -378,10 +478,47 @@ export function OperationsDashboard() {
         <div>
           <span>JT WEEKEND · OPERATIONS</span>
           <h1>订单、车辆与司机调度</h1>
-          <p>运营数据来自 Supabase；配车与司机匹配只生成审核建议。</p>
+          <p>系统按报名人数自动匹配车辆与合格司导；运营确认后才下发到司导账号。</p>
         </div>
         <a href="/app">返回乘客应用</a>
       </header>
+      <section className="operations-section operations-test-accounts">
+        <header>
+          <div>
+            <span>测试工具</span>
+            <h2>测试账户与入口</h2>
+          </div>
+          <small>仅用于内部测试；密码请通过内部渠道单独保管</small>
+        </header>
+        <div className="operations-account-list">
+          {testAccountEntrances.map((item) => (
+            <article key={item.role}>
+              <div>
+                <span>{item.role}</span>
+                <strong>{item.account}</strong>
+              </div>
+              <a href={item.url} target="_blank" rel="noreferrer">
+                {item.action}
+              </a>
+              <small>{item.url}</small>
+            </article>
+          ))}
+        </div>
+      </section>
+      <section className="operations-section operations-system-status">
+        <header><div><span>上线安全</span><h2>系统环境状态</h2></div><small>当前固定为内部测试；正式收款需单独审批后才能开启</small></header>
+        <div className="operations-kpis">
+          <Kpi label="运行环境" value={systemStatus?.mode==='test'?'内部测试':'检查中'}/>
+          <Kpi label="数据库" value={systemStatus?.checks.database?'正常':'待检查'}/>
+          <Kpi label="Stripe" value={stripeMode==='test'&&systemStatus?.checks.stripeModeSafe?'测试模式':'已关闭/待配置'}/>
+          <Kpi label="支付回调" value={systemStatus?.checks.webhookSecret?'已配置':'未配置'}/>
+          <Kpi label="通知回执" value={systemStatus?.checks.notificationReceiptSecret?'已配置':'未配置'}/>
+          <Kpi label="Google 地点照片" value={import.meta.env.VITE_GOOGLE_PLACES_READY==='true'?'已验证':'未就绪'}/>
+          <Kpi label="邮件" value="未接通"/>
+          <Kpi label="搜索引擎" value="禁止收录"/>
+        </div>
+        <p className={systemStatus?.ok?'operations-ok':'operations-cutoff-alert'}>{systemStatus?.ok?'核心测试服务已就绪；真实付款仍保持关闭。':'核心测试服务尚未全部就绪，系统会保持支付关闭。'}</p>
+      </section>
       {!services || error ? (
         <section className="operations-error" role="alert">
           <h2>后台数据尚未就绪</h2>
@@ -414,6 +551,36 @@ export function OperationsDashboard() {
               <Kpi label="待审核派单" value={snapshot.dispatchDrafts} />
               <Kpi label="通知异常" value={snapshot.notificationDeliveryIssues.length} />
             </section>
+            {referral&&<section className="operations-section operations-referral-monitor">
+              <header><div><span>增长、复购与风控</span><h2>推荐优惠券监控</h2></div><small>直接邀请一层；推荐奖励在被推荐订单进入出发前24小时不可退款期后生效</small></header>
+              <form className="operations-controls" onSubmit={saveReferral}>
+                <label>优惠比例（%）<input name="discountPercent" type="number" min="1" max="50" defaultValue={referral.discountPercent}/></label>
+                <label>有效期（天）<input name="validityDays" type="number" min="1" max="365" defaultValue={referral.validityDays}/></label>
+                <label className="check"><input name="active" type="checkbox" defaultChecked={referral.active}/> 开启邀请活动</label>
+                <button disabled={busy}>保存邀请规则</button>
+              </form>
+              <div className="operations-kpis operations-referral-kpis">
+                <Kpi label="推荐注册" value={referral.successfulInvites}/><Kpi label="已付款新人" value={referral.paidInvitees}/><Kpi label="有效消费推荐" value={referral.qualifiedInvites}/><Kpi label="优惠券总数" value={referral.couponCounts.total}/><Kpi label="累计抵扣 JPY" value={referral.discountAmountJpy}/><Kpi label="异常告警" value={referral.alerts.length}/>
+              </div>
+              <div className="operations-stage-strip operations-coupon-status"><span>待解锁 <b>{referral.couponCounts.pending}</b></span><span>可使用 <b>{referral.couponCounts.active}</b></span><span>已锁定 <b>{referral.couponCounts.reserved}</b></span><span>已使用 <b>{referral.couponCounts.redeemed}</b></span><span>已失效 <b>{referral.couponCounts.void+referral.couponCounts.expired}</b></span><span>冻结追偿 <b>{referral.couponCounts.frozen}</b></span></div>
+              <div className={`operations-integrity ${referral.integrity.missingPairs||referral.integrity.orphanCoupons?'has-error':'is-ok'}`}><b>数量一致性检查</b><span>推荐关系 {referral.integrity.relationships} 条 · 应发 {referral.integrity.expectedCoupons} 张 · 实发 {referral.integrity.actualCoupons} 张</span><small>{referral.integrity.missingPairs||referral.integrity.orphanCoupons?`异常：${referral.integrity.missingPairs} 条关系缺券，${referral.integrity.orphanCoupons} 张孤立券`:'推荐关系与优惠券数量符合逻辑'}</small></div>
+              <div className="operations-command-grid">
+                <div><h3>风险与异常</h3>{referral.alerts.length===0?<p className="operations-ok">当前没有检测到优惠券逻辑异常。</p>:<div className="operations-attention-list">{referral.alerts.map(alert=><article key={`${alert.kind}-${alert.reference_id}`} data-level={alert.severity}><b>{alert.severity} · {alert.message}</b><p>{alert.kind} · {alert.reference_id.slice(-8)}</p><small>{japanDate(alert.created_at)}</small></article>)}</div>}<p className="operations-hint">设备指纹、注册IP、支付方式指纹尚未采集，因此目前不会把这些项目误报为“已检测”。</p></div>
+                <div><h3>推荐关系明细</h3>{referral.relations.length===0?<p className="operations-empty">暂无推荐关系。</p>:<div className="operations-dispatch-list operations-referral-list">{referral.relations.map(row=><article key={row.id}><div><b>{row.inviter_name||row.inviter_email} → {row.invitee_name||row.invitee_email}</b><span>{row.discount_percent}%</span></div><span>{row.trip_title??'尚未购买行程'} · {row.order_status??'尚未付款'}</span><small>新人券：{row.invitee_coupon_status??'缺失'} · 推荐券：{row.inviter_coupon_status??'缺失'}{row.available_at?` · ${japanDate(row.available_at)}解锁`:''}</small><small>订单 ¥{row.order_amount_jpy??0} · 优惠 ¥{row.order_discount_jpy??0} · 推荐码 {row.referral_code}</small></article>)}</div>}</div>
+              </div>
+            </section>}
+            {command&&<section className="operations-section operations-command-center">
+              <header><div><span>运营指挥中心</span><h2>报名、配车与司导出勤</h2></div><small>只统计已付款/已确认游客；刷新后读取最新状态</small></header>
+              <div className="operations-kpis operations-command-kpis">
+                <Kpi label="游客报名" value={totals.seats}/><Kpi label="已配车辆" value={command.assignedVehicles.size}/><Kpi label="出勤司导" value={command.assignedDrivers.size}/><Kpi label="待配班次" value={snapshot.departures.filter(item=>item.dispatchPlanningStatus==="ready_for_planning"||item.dispatchPlanningStatus==="needs_manual_review").length}/><Kpi label="需关注" value={command.alerts.length}/>
+              </div>
+              <h3>订单运行状态</h3>
+              <div className="operations-stage-strip"><span>报名中 <b>{command.stageCounts.collecting}</b></span><span>待配车 <b>{command.stageCounts.waiting}</b></span><span>已派单 <b>{command.stageCounts.assigned}</b></span><span>运行中 <b>{command.stageCounts.running}</b></span><span>已完成 <b>{command.stageCounts.completed}</b></span></div>
+              <div className="operations-command-grid">
+                <div><h3>司机与车辆安排</h3>{command.activeTasks.length===0?<p className="operations-empty">暂无已确认派单。</p>:<div className="operations-dispatch-list">{command.activeTasks.map(task=><article key={`command-${task.id}`}><div><b>{task.departureTitle??"班次待识别"}</b><span>{task.status}</span></div><span>{japanDate(task.departsAt)} · {task.vehicleSequence?`${task.vehicleSequence}号车 · `:""}{snapshot.vehicles.find(v=>v.id===task.fleetVehicleId)?.registration_identifier??"车辆待确认"}</span><small>司导：{snapshot.drivers.find(d=>d.id===task.driverId)?.display_name??"待确认"} · 游客 {Number(task.payload.passengerCount??0)}/{Number(task.payload.capacity??0)} 席</small></article>)}</div>}</div>
+                <div><h3>需要关注</h3>{command.alerts.length===0?<p className="operations-ok">目前没有需要人工介入的异常。</p>:<div className="operations-attention-list">{command.alerts.map((alert,index)=><article key={`${alert.title}-${index}`} data-level={alert.level}><b>{alert.level} · {alert.title}</b><p>{alert.detail}</p></article>)}</div>}</div>
+              </div>
+            </section>}
             <p className="operations-freshness">
               更新：
               {new Date(snapshot.loadedAt).toLocaleString("zh-CN", {
@@ -421,6 +588,13 @@ export function OperationsDashboard() {
               })}
               （日本时间）
             </p>
+            <section className="operations-section">
+              <header><div><span>基础档案</span><h2>司导与车辆清单</h2></div><small>内部电话仅管理端可见；未绑定账户的司导不能接单</small></header>
+              <div className="operations-registry-grid">
+                <div><h3>司导人员</h3><div className="operations-dispatch-list">{snapshot.drivers.map(driver=><article key={driver.id}><div><b>{driver.display_name}</b><span>{driver.employee_code?`编号 ${driver.employee_code}`:"编号待补"}</span></div><span>{driver.employment_base??"所属待补"} · {driver.private_phone??"电话待补"}</span><small>{driver.account_id?"已绑定登录账户":"尚未绑定登录账户"} · {driver.status}</small></article>)}</div></div>
+                <div><h3>运营车辆</h3><div className="operations-dispatch-list">{snapshot.vehicles.map(vehicle=><article key={vehicle.id}><div><b>{vehicle.registration_identifier}</b><span>{vehicle.model_name??"车型待补"}</span></div><span>{vehicle.public_color??"颜色待补"} · {vehicle.vehicle_type_key==="unclassified-manual"?"座位数待确认":vehicle.vehicle_type_key}</span><small>{vehicle.inspection_required?"需要车检，禁止派单":vehicle.status}{vehicle.operations_note?` · ${vehicle.operations_note}`:""}</small></article>)}</div></div>
+              </div>
+            </section>
             <section className="operations-section">
               <header>
                 <div>
@@ -490,6 +664,14 @@ export function OperationsDashboard() {
                   保存路线内容
                 </button>
               </form>
+            </section>
+            <section className="operations-section">
+              <header><div><span>账户与权限</span><h2>司机／导游申请审批</h2></div><small>一个账号只能有一个角色；批准后不可进入游客端</small></header>
+              {(snapshot.staffApplications??[]).length===0?<p className="operations-empty">暂无工作人员账户申请。</p>:<div className="operations-dispatch-list">{(snapshot.staffApplications??[]).map(item=><article key={item.id}><div><b>{item.applicantName||"未填写姓名"}</b><span>{item.requestedRole==="driver"?"司机":"导游"} · {item.status}</span></div><span>{item.email}</span><small>{japanDate(item.createdAt)}{item.reviewNote?` · ${item.reviewNote}`:""}</small><div className="operations-task-actions">{(item.status==="pending"||item.status==="needs_information")&&<><button disabled={busy} onClick={()=>void reviewStaffApplication(item.id,"approved")}>批准</button><button disabled={busy} onClick={()=>void reviewStaffApplication(item.id,"needs_information")}>补充资料</button><button disabled={busy} onClick={()=>void reviewStaffApplication(item.id,"rejected")}>拒绝</button></>}{item.status==="approved"&&<button disabled={busy} onClick={()=>void reviewStaffApplication(item.id,"suspended")}>暂停账号</button>}</div></article>)}</div>}
+            </section>
+            <section className="operations-section">
+              <header><div><span>出勤管理</span><h2>司导请假审批</h2></div><small>批准后自动派单将避开该时段；已有派单冲突必须人工改派</small></header>
+              {(snapshot.staffLeaveRequests??[]).length===0?<p className="operations-empty">暂无司导请假申请。</p>:<div className="operations-dispatch-list">{(snapshot.staffLeaveRequests??[]).map(item=><article key={item.id}><div><b>{item.displayName||"未填写姓名"}</b><span>{item.status==='pending'?'待审核':item.status==='approved'?'已批准':item.status==='rejected'?'已拒绝':'已取消'}</span></div><span>{japanDate(item.startsAt)} — {japanDate(item.endsAt)}<br/>{item.reason}</span><small>{item.email}{item.reviewNote?` · ${item.reviewNote}`:""}{item.conflictingTasks>0?` · 冲突任务 ${item.conflictingTasks} 个`:""}</small><div className="operations-task-actions">{item.status==='pending'&&<><button disabled={busy} onClick={()=>void reviewStaffLeave(item.id,'approved')}>批准</button><button disabled={busy} onClick={()=>void reviewStaffLeave(item.id,'rejected')}>拒绝</button></>}</div></article>)}</div>}
             </section>
             <section className="operations-section">
               <header><div><span>订单与支付</span><h2>取消／退款申请</h2></div><small>司机端不可见；退款以支付渠道回调为准</small></header>
@@ -595,12 +777,7 @@ export function OperationsDashboard() {
                           婴儿 <b>{draft.infants}</b>
                         </span>
                       </div>
-                      <p>
-                        辅助需求：{draft.operationalReviewStatus} · 儿童座椅{" "}
-                        {String(
-                          draft.assistanceSummary.childSeatStatus ?? "未提出",
-                        )}
-                      </p>
+                      <p>当前环节：{draft.draftStatus === "converted" ? "已转订单" : "等待付款或转换"}</p>
                     </article>
                   ))}
                 </div>
@@ -755,7 +932,7 @@ export function OperationsDashboard() {
                   <span>自动规划</span>
                   <h2>配车与司机推荐</h2>
                 </div>
-                <small>最终结果必须人工确认</small>
+                  <small>10座、14座自动分配；20座以上和大巴暂由人工安排</small>
               </header>
               <div className="operations-controls">
                 <label>
@@ -810,6 +987,10 @@ export function OperationsDashboard() {
                     plan={plan}
                     recommendations={recommendations}
                     snapshot={snapshot}
+                    manualDrivers={manualDrivers}
+                    manualVehicles={manualVehicles}
+                    onDriverChange={(sequence,value)=>setManualDrivers(current=>({...current,[sequence]:value}))}
+                    onVehicleChange={(sequence,value)=>setManualVehicles(current=>({...current,[sequence]:value}))}
                   />
                 )
               )}
@@ -818,7 +999,7 @@ export function OperationsDashboard() {
                 disabled={!allDriversMatched || !departureId || busy}
                 onClick={() => void savePlan()}
               >
-                保存待审核派单草稿
+                系统生成待确认派单
               </button>
               {plan && !allDriversMatched && (
                 <p className="operations-hint">
@@ -915,7 +1096,7 @@ export function OperationsDashboard() {
     </main>
   );
 }
-function Kpi({ label, value }: { label: string; value: number }) {
+function Kpi({ label, value }: { label: string; value: number|string }) {
   return (
     <article>
       <span>{label}</span>
@@ -927,6 +1108,10 @@ function Plan({
   plan,
   recommendations,
   snapshot,
+  manualDrivers,
+  manualVehicles,
+  onDriverChange,
+  onVehicleChange,
 }: {
   plan: FleetPlan;
   recommendations: {
@@ -935,6 +1120,10 @@ function Plan({
     reason: string[];
   }[];
   snapshot: OperationsSnapshot;
+  manualDrivers:Record<number,string>;
+  manualVehicles:Record<number,string>;
+  onDriverChange:(sequence:number,value:string)=>void;
+  onVehicleChange:(sequence:number,value:string)=>void;
 }) {
   return (
     <div className="operations-plan">
@@ -949,6 +1138,8 @@ function Plan({
         const profile = snapshot.drivers.find(
           (item) => item.id === driver?.driverId,
         );
+        const qualifiedDrivers=snapshot.drivers.filter(item=>item.status==='available'&&item.driver_vehicle_qualifications.some(q=>q.vehicle_type_key===vehicle.vehicleType));
+        const matchingVehicles=snapshot.vehicles.filter(item=>item.status==='available'&&item.vehicle_type_key===vehicle.vehicleType);
         return (
           <article key={vehicle.id}>
             <b>
@@ -967,6 +1158,16 @@ function Plan({
                   : driver.reason[0]
                 : "填写任务时间后推荐司机"}
             </small>
+            <label>人工调整司机
+              <select aria-label={`第${vehicle.sequence}车司机`} value={manualDrivers[vehicle.sequence]??driver?.driverId??''} onChange={event=>onDriverChange(vehicle.sequence,event.target.value)}>
+                {qualifiedDrivers.map(item=><option key={item.id} value={item.id}>{item.display_name}</option>)}
+              </select>
+            </label>
+            <label>人工调整车辆
+              <select aria-label={`第${vehicle.sequence}车车辆`} value={manualVehicles[vehicle.sequence]??matchingVehicles[0]?.id??''} onChange={event=>onVehicleChange(vehicle.sequence,event.target.value)}>
+                {matchingVehicles.map(item=><option key={item.id} value={item.id}>{item.registration_identifier}</option>)}
+              </select>
+            </label>
           </article>
         );
       })}

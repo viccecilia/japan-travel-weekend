@@ -35,6 +35,30 @@ describe('正式账户路由守卫',()=>{
     expect(await screen.findByText('无权访问工作人员端')).toBeInTheDocument();
     expect(screen.queryByText('今日履约')).not.toBeInTheDocument();
   });
+  it('工作人员会话进入游客预约流程时停在账户边界，不跳转 Staff',async()=>{
+    const user={id:'staff-1',email:'staff@example.invalid'};
+    const client={
+      auth:{getUser:async()=>({data:{user},error:null}),getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}}),signOut:async()=>({error:null})},
+      from:()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:{role:'driver'},error:null})})})}),
+      rpc:async(name:string)=>name==='get_own_access_destination'?{data:[{destination:'staff'}],error:null}:name==='get_staff_portal_tasks'?{data:[],error:null}:{data:null,error:null},
+    } as unknown as SupabaseClient;
+    renderRoute('/app/passengers',new ProductionBrowserServices(client,undefined));
+    await waitFor(()=>expect(screen.getByTestId('location').textContent).toContain('/app/account-status?reason=passenger-required'));
+    expect(screen.getByTestId('location').textContent).not.toBe('/staff');
+    expect(await screen.findByText('当前是工作人员账号，不能用于游客预约')).toBeInTheDocument();
+  });
+
+  it('工作人员从游客预约登录时显示账号切换提示，不跳转 Staff',async()=>{
+    const user={id:'staff-2',email:'staff2@example.invalid'};
+    const client={
+      auth:{getUser:async()=>({data:{user},error:null}),getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}}),signOut:async()=>({error:null})},
+      from:()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:{role:'driver'},error:null})})})}),
+      rpc:async(name:string)=>name==='get_own_access_destination'?{data:[{destination:'staff'}],error:null}:name==='get_staff_portal_tasks'?{data:[],error:null}:{data:null,error:null},
+    } as unknown as SupabaseClient;
+    renderRoute('/app/login?returnTo=%2Fapp%2Fpassengers',new ProductionBrowserServices(client,undefined));
+    await waitFor(()=>expect(screen.getByTestId('location').textContent).toContain('/app/account-status?reason=passenger-required'));
+    expect(screen.getByTestId('location').textContent).not.toBe('/staff');
+  });
   it('returnTo 只允许 App 内部路径',()=>{
     expect(safeReturnTo('/app/orders?tab=current')).toBe('/app/orders?tab=current');
     expect(safeReturnTo('/staff?day=tomorrow')).toBe('/staff?day=tomorrow');

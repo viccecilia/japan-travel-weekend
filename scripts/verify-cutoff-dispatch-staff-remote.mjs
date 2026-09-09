@@ -72,10 +72,11 @@ try{
   const cutoff=must(await admin.rpc('process_due_departure_cutoffs',{p_now:now.toISOString()}),'cutoff');
   const ownCutoff=cutoff?.find(row=>row.processed_departure_id===state.departureId);
   if(ownCutoff?.result!=='ready_for_planning'||Number(ownCutoff?.passenger_count)!==6)throw new Error(`six passengers not ready for planning: ${JSON.stringify(ownCutoff??cutoff)}`);
-  state.vehicleId=must(await operations.rpc('operations_create_vehicle_v2',{p_registration:`TEST-${Date.now().toString().slice(-6)}`,p_vehicle_type:'alphard-6',p_external_dispatch_id:null,p_public_color:'黑色',p_public_photo_url:null}),'vehicle');
-  state.driverResourceId=must(await operations.rpc('operations_create_driver_v2',{p_display_name:'虚构验收司机',p_external_dispatch_id:null,p_vehicle_types:['alphard-6'],p_languages:['zh-CN','ja'],p_available_from:new Date(departs.getTime()-60*60_000).toISOString(),p_available_until:new Date(ends.getTime()+60*60_000).toISOString(),p_service_role:'driver',p_public_phone:'000-0000-0000'}),'driver resource');
+  const vehicleType=must(await operations.from('vehicle_type_configs').select('type_key,sellable_capacity').eq('active',true).gte('sellable_capacity',6).order('sellable_capacity').limit(1).single(),'vehicle type');
+  state.vehicleId=must(await operations.rpc('operations_create_vehicle_v2',{p_registration:`TEST-${Date.now().toString().slice(-6)}`,p_vehicle_type:vehicleType.type_key,p_external_dispatch_id:null,p_public_color:'黑色',p_public_photo_url:null}),'vehicle');
+  state.driverResourceId=must(await operations.rpc('operations_create_driver_v2',{p_display_name:'虚构验收司机',p_external_dispatch_id:null,p_vehicle_types:[vehicleType.type_key],p_languages:['zh-CN','ja'],p_available_from:new Date(departs.getTime()-60*60_000).toISOString(),p_available_until:new Date(ends.getTime()+60*60_000).toISOString(),p_service_role:'driver',p_public_phone:'000-0000-0000'}),'driver resource');
   must(await operations.from('driver_resources').update({account_id:driverAccount.id}).eq('id',state.driverResourceId),'link driver account');
-  state.taskIds=must(await operations.rpc('operations_save_dispatch_plan',{p_departure:state.departureId,p_tasks:[{sequence:1,vehicleType:'alphard-6',capacity:6,passengerCount:6,driverId:state.driverResourceId,fleetVehicleId:state.vehicleId,startsAt:departs.toISOString(),endsAt:ends.toISOString(),operationalNotes:['TEST ONLY','截单后配车']}]}),'save plan');
+  state.taskIds=must(await operations.rpc('operations_save_dispatch_plan',{p_departure:state.departureId,p_tasks:[{sequence:1,vehicleType:vehicleType.type_key,capacity:vehicleType.sellable_capacity,passengerCount:6,driverId:state.driverResourceId,fleetVehicleId:state.vehicleId,startsAt:departs.toISOString(),endsAt:ends.toISOString(),operationalNotes:['TEST ONLY','截单后配车']}]}),'save plan');
   state.assignmentIds=must(await operations.from('dispatch_tasks').select('vehicle_assignment_id').in('id',state.taskIds),'assignments').map(row=>row.vehicle_assignment_id);
   must(await operations.rpc('operations_confirm_dispatch_tasks',{p_task_ids:state.taskIds}),'confirm dispatch');
   state.groupIds=must(await admin.from('vehicle_groups').select('id').eq('departure_id',state.departureId),'groups').map(row=>row.id);
@@ -108,8 +109,9 @@ try{
   const expiresAt=new Date(Date.now()+12*60*60_000).toISOString();
   const issued=must(await admin.rpc('issue_owner_boarding_credential',{p_order:state.orderId,p_account:passengerAccount.id,p_token_digest:digest(rawToken),p_expires_at:expiresAt}),'issue boarding credential')?.[0];
   if(!issued||issued.vehicle_group_id!==groupId)throw new Error('boarding credential was issued for the wrong vehicle group');
-  const firstScan=must(await admin.rpc('verify_boarding_credential',{p_token_digest:digest(rawToken),p_scanner_account:driverAccount.id,p_vehicle_group:groupId,p_idempotency_key:`${prefix}-scan-1`,p_now:new Date().toISOString()}),'first boarding scan')?.[0];
-  const secondScan=must(await admin.rpc('verify_boarding_credential',{p_token_digest:digest(rawToken),p_scanner_account:driverAccount.id,p_vehicle_group:groupId,p_idempotency_key:`${prefix}-scan-2`,p_now:new Date().toISOString()}),'duplicate boarding scan')?.[0];
+  const scanNow=new Date(Date.now()+60_000).toISOString();
+  const firstScan=must(await admin.rpc('verify_boarding_credential',{p_token_digest:digest(rawToken),p_scanner_account:driverAccount.id,p_vehicle_group:groupId,p_idempotency_key:`${prefix}-scan-1`,p_now:scanNow}),'first boarding scan')?.[0];
+  const secondScan=must(await admin.rpc('verify_boarding_credential',{p_token_digest:digest(rawToken),p_scanner_account:driverAccount.id,p_vehicle_group:groupId,p_idempotency_key:`${prefix}-scan-2`,p_now:scanNow}),'duplicate boarding scan')?.[0];
   if(firstScan?.result!=='valid'||secondScan?.result!=='used')throw new Error(`boarding replay protection mismatch: ${firstScan?.result}/${secondScan?.result}`);
   const meetingNotifications=must(await passenger.from('notification_outbox').select('event_type,status').eq('order_id',state.orderId).eq('event_type','meeting-started'),'meeting notifications');
   if(meetingNotifications.length!==1||meetingNotifications[0].status!=='pending')throw new Error(`meeting notification mismatch: ${JSON.stringify(meetingNotifications)}`);

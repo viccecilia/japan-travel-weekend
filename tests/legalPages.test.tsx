@@ -28,6 +28,7 @@ describe('正式法律入口',()=>{
   it('取消页使用集中配置的日本时间规则',()=>{
     render(<MemoryRouter><CancellationLegal/></MemoryRouter>);
     expect(screen.getByText(/所有时间统一按日本时间计算/)).toBeInTheDocument();
-    expect(screen.getByText(/出发前2～3天：退款 50%/)).toBeInTheDocument();
+    expect(screen.getByText(/出发时间24小时前（含正好24小时）：退款 100%/)).toBeInTheDocument();
+    expect(screen.getByText(/距出发不足24小时及行程开始后：退款 0%/)).toBeInTheDocument();
   });
 });

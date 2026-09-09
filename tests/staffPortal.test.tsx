@@ -81,13 +81,13 @@ describe("工作人员端", () => {
       "href",
       "/staff/tasks/assignment-1/support",
     );
-    expect(screen.getByRole("link", { name: "任务" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "行程" })).toHaveAttribute(
       "href",
       "/staff#tasks",
     );
-    expect(screen.getByRole("link", { name: "乘客" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "地图" })).toHaveAttribute(
       "href",
-      "/staff/tasks/assignment-1/passengers",
+      "/staff/tasks/assignment-1/meeting",
     );
     expect(screen.getByRole("link", { name: "消息" })).toHaveAttribute(
       "href",
@@ -203,7 +203,10 @@ describe("工作人员端", () => {
     ).toHaveAttribute("href", "tel:000-0000-0000");
     expect(calls).toContain("get_staff_passenger_contact");
     expect(screen.getByRole("status")).toHaveTextContent("本次查看已记录");
-    expect(screen.getByRole("link", { name: "乘客" })).toHaveClass("active");
+    expect(screen.getByRole("link", { name: "地图" })).toHaveAttribute(
+      "href",
+      "/staff/tasks/assignment-1/meeting",
+    );
   });
   it("异常上报写入审计队列并保留调度 API 边界", async () => {
     const client = {

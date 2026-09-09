@@ -206,21 +206,24 @@ export class SupabaseAuthRepository {
       return null;
     }
   }
-  async signUp(email: string, password: string) {
+  async signUp(email: string, password: string, accountType:"passenger"|"driver"|"guide"="passenger", displayName="", referralCode="") {
     if (!this.client) return null;
     const emailRedirectTo = this.redirect("/app/auth/callback");
     if (!emailRedirectTo) return null;
     try {
+      const cleanReferral=referralCode.trim().toUpperCase();
+      const options=accountType==='passenger'&&!displayName.trim()&&!cleanReferral?{emailRedirectTo}:{emailRedirectTo,data:{requested_account_type:accountType,display_name:displayName.trim(),referral_code:accountType==='passenger'?cleanReferral:''}};
       const { data, error } = await this.client.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo },
+        options,
       });
       return error ? null : data;
     } catch {
       return null;
     }
   }
+  async loadOwnReferralSummary(){if(!this.client)return null;try{const {data,error}=await this.client.rpc('get_own_referral_summary');return error?null:data as {code:string;active:boolean;discountPercent:number;validityDays:number;successfulInvites:number;completedInvites:number;pendingInvites:number;achievementKey:string;nextMilestone:number|null;coupons:Array<{id:string;discountPercent:number;status:string;expiresAt:string;recipientKind:string;activatedAt:string|null;availableAt:string|null;qualifyingTripStartsAt:string|null}>}}catch{return null}}
   async requestPasswordReset(email: string) {
     if (!this.client) return false;
     const redirectTo = this.redirect("/app/reset-password");
@@ -281,6 +284,21 @@ export class SupabaseAuthRepository {
       .maybeSingle();
     return error ? null : (data?.role ?? null);
   }
+  async currentAccessDestination():Promise<"passenger"|"staff"|"operations"|"staff_pending"|"staff_blocked"|null>{
+    if(!this.client)return null;
+    try{
+      if(typeof this.client.rpc==='function'){
+        const {data,error}=await this.client.rpc("get_own_access_destination");
+        const value=!error&&Array.isArray(data)?data[0]?.destination:null;
+        if(["passenger","staff","operations","staff_pending","staff_blocked"].includes(value))return value;
+      }
+      const role=await this.currentRole();
+      return role==='operations'?'operations':role==='driver'||role==='guide'?'staff':'passenger';
+    }catch{return 'passenger'}
+  }
+  async loadOwnStaffLeaves(){if(!this.client)return [];const {data,error}=await this.client.rpc('get_own_staff_leave_requests');return error?[]:(data??[]) as Array<{id:string;starts_at:string;ends_at:string;reason:string;status:string;review_note:string;created_at:string}>}
+  async submitOwnStaffLeave(startsAt:string,endsAt:string,reason:string){if(!this.client)return false;const {error}=await this.client.rpc('submit_own_staff_leave',{p_starts_at:startsAt,p_ends_at:endsAt,p_reason:reason});return !error}
+  async cancelOwnStaffLeave(requestId:string){if(!this.client)return false;const {data,error}=await this.client.rpc('cancel_own_staff_leave',{p_request:requestId});return !error&&data===true}
 }
 export class SupabaseOrderRepository {
   constructor(private readonly client: SupabaseClient | null) {}
@@ -450,6 +468,34 @@ export class SupabaseAccountProfileRepository {
   constructor(private readonly client: SupabaseClient | null) {}
   get available() {
     return this.client !== null;
+  }
+  async loadOwnDisplayName() {
+    if (!this.client) return { data: "", error: "账户资料服务未配置" };
+    try {
+      const user=await this.client.auth.getUser();
+      if(user.error||!user.data.user)return {data:"",error:"无法读取显示名"};
+      const { data, error } = await this.client.from("profiles").select("display_name").eq("id",user.data.user.id).maybeSingle();
+      return error
+        ? { data: "", error: "无法读取显示名" }
+        : { data: String(data?.display_name ?? ""), error: null };
+    } catch {
+      return { data: "", error: "无法读取显示名" };
+    }
+  }
+  async updateOwnDisplayName(displayName: string) {
+    if (!this.client) return { ok: false, error: "账户资料服务未配置" };
+    const normalized=displayName.trim();
+    if(!normalized||normalized.length>80)return {ok:false,error:"显示名未保存，请输入 1–80 个字符"};
+    try {
+      const { data, error } = await this.client.rpc("update_own_profile", {
+        p_display_name: normalized,
+      });
+      return error
+        ? { ok: false, error: "显示名未保存，请输入 1–80 个字符" }
+        : { ok: true, data: String(data?.display_name ?? normalized), error: null };
+    } catch {
+      return { ok: false, error: "显示名未保存，请稍后重试" };
+    }
   }
   async loadOwn() {
     if (!this.client) return { data: null, error: "账户资料服务未配置" };

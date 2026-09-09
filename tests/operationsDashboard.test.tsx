@@ -106,8 +106,10 @@ describe("运营派单界面", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: "载入配车规划" }),
     );
-    const save = screen.getByRole("button", { name: "保存待审核派单草稿" });
+    const save = screen.getByRole("button", { name: "系统生成待确认派单" });
     await waitFor(() => expect(save).toBeEnabled());
+    expect(screen.getByLabelText("第1车司机")).toHaveValue(snapshot.drivers[0].id);
+    expect(screen.getByLabelText("第1车车辆")).toHaveValue(snapshot.vehicles[0].id);
     fireEvent.click(save);
     await waitFor(() => expect(saveDispatchPlan).toHaveBeenCalledTimes(1));
     expect(saveDispatchPlan.mock.calls[0][0]).toBe(snapshot.departures[0].id);
