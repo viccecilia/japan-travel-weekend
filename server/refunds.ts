@@ -20,7 +20,7 @@ export class SupabaseRefundGateway implements RefundGateway{
     const {data,error}=await this.client.from('order_cancellation_requests').select('id,order_id,status,estimated_refund_amount,orders!inner(payment_intent_id,status)').eq('id',requestId).maybeSingle();
     if(error||!data)return null;
     const order=Array.isArray(data.orders)?data.orders[0]:data.orders;
-    if(!order||!['paid','confirmed','payment_review','cancelled','refunded'].includes(order.status)||!['requested','reviewing','refund_prepared','refund_processing','manual_refund_required','provider_result_unknown','refunded','cancelled_without_refund','closed'].includes(data.status))return null;
+    if(!order||!['paid','confirmed','payment_review','cancelled','refunded'].includes(order.status)||!['requested','reviewing','refund_prepared','refund_processing','provider_result_unknown','manual_refund_required','refunded','cancelled_without_refund','closed'].includes(data.status))return null;
     return {requestId:data.id as string,orderId:data.order_id as string,paymentIntentId:String(order.payment_intent_id??'')||null,amount:Number(data.estimated_refund_amount)};
   }
   async prepare(input:{requestId:string;accountId:string;clientRequestKey:string;channel:'stripe'|'manual'|'none'}){if(!this.client)return null;const {data,error}=await this.client.rpc('operations_prepare_refund',{p_request:input.requestId,p_actor:input.accountId,p_client_request_key:input.clientRequestKey,p_channel:input.channel});const row=Array.isArray(data)?data[0]:data;return error||!row?null:{operationId:String(row.operation_id),providerIdempotencyKey:String(row.provider_idempotency_key),status:String(row.operation_status)}}
