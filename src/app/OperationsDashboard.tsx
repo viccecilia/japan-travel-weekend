@@ -532,13 +532,14 @@ function OperationsLiveDashboard() {
         snapshot && (
           <>
             <section className="operations-kpis">
-              <Kpi label="班次" value={snapshot.departures.length} />
-              <Kpi label="订单" value={totals.orders} />
-              <Kpi label="已确认席位" value={totals.seats} />
-              <Kpi label="待付款" value={totals.pending} />
-              <Kpi label="测试成交额 JPY" value={totals.revenue} />
+              <Kpi label="班次" value={snapshot.departures.length} href="/app/operations/departures" />
+              <Kpi label="订单" value={totals.orders} href="#orders-overview" />
+              <Kpi label="已确认席位" value={totals.seats} href="#orders-overview" />
+              <Kpi label="待付款" value={totals.pending} href="#booking-drafts" />
+              <Kpi label="测试成交额 JPY" value={totals.revenue} href="#orders-overview" />
               <Kpi
                 label="可用车辆"
+                href="#resource-registry"
                 value={
                   snapshot.vehicles.filter((v) => v.status === "available")
                     .length
@@ -546,15 +547,16 @@ function OperationsLiveDashboard() {
               />
               <Kpi
                 label="可用司机"
+                href="#resource-registry"
                 value={
                   snapshot.drivers.filter((d) => d.status === "available")
                     .length
                 }
               />
-              <Kpi label="待审核派单" value={snapshot.dispatchDrafts} />
-              <Kpi label="通知异常" value={snapshot.notificationDeliveryIssues.length} />
+              <Kpi label="待审核派单" value={snapshot.dispatchDrafts} href="#dispatch-control" />
+              <Kpi label="通知异常" value={snapshot.notificationDeliveryIssues.length} href="#notification-issues" />
             </section>
-            {referral&&<section className="operations-section operations-referral-monitor">
+            {referral&&<section id="referral-monitor" className="operations-section operations-referral-monitor">
               <header><div><span>增长、复购与风控</span><h2>推荐优惠券监控</h2></div><small>直接邀请一层；推荐奖励在被推荐订单进入出发前24小时不可退款期后生效</small></header>
               <form className="operations-controls" onSubmit={saveReferral}>
                 <label>优惠比例（%）<input name="discountPercent" type="number" min="1" max="50" defaultValue={referral.discountPercent}/></label>
@@ -563,7 +565,7 @@ function OperationsLiveDashboard() {
                 <button disabled={busy}>保存邀请规则</button>
               </form>
               <div className="operations-kpis operations-referral-kpis">
-                <Kpi label="推荐注册" value={referral.successfulInvites}/><Kpi label="已付款新人" value={referral.paidInvitees}/><Kpi label="有效消费推荐" value={referral.qualifiedInvites}/><Kpi label="优惠券总数" value={referral.couponCounts.total}/><Kpi label="累计抵扣 JPY" value={referral.discountAmountJpy}/><Kpi label="异常告警" value={referral.alerts.length}/>
+                <Kpi label="推荐注册" value={referral.successfulInvites} href="#referral-monitor"/><Kpi label="已付款新人" value={referral.paidInvitees} href="#referral-monitor"/><Kpi label="有效消费推荐" value={referral.qualifiedInvites} href="#referral-monitor"/><Kpi label="优惠券总数" value={referral.couponCounts.total} href="#referral-monitor"/><Kpi label="累计抵扣 JPY" value={referral.discountAmountJpy} href="#referral-monitor"/><Kpi label="异常告警" value={referral.alerts.length} href="#referral-monitor"/>
               </div>
               <div className="operations-stage-strip operations-coupon-status"><span>待解锁 <b>{referral.couponCounts.pending}</b></span><span>可使用 <b>{referral.couponCounts.active}</b></span><span>已锁定 <b>{referral.couponCounts.reserved}</b></span><span>已使用 <b>{referral.couponCounts.redeemed}</b></span><span>已失效 <b>{referral.couponCounts.void+referral.couponCounts.expired}</b></span><span>冻结追偿 <b>{referral.couponCounts.frozen}</b></span></div>
               <div className={`operations-integrity ${referral.integrity.missingPairs||referral.integrity.orphanCoupons?'has-error':'is-ok'}`}><b>数量一致性检查</b><span>推荐关系 {referral.integrity.relationships} 条 · 应发 {referral.integrity.expectedCoupons} 张 · 实发 {referral.integrity.actualCoupons} 张</span><small>{referral.integrity.missingPairs||referral.integrity.orphanCoupons?`异常：${referral.integrity.missingPairs} 条关系缺券，${referral.integrity.orphanCoupons} 张孤立券`:'推荐关系与优惠券数量符合逻辑'}</small></div>
@@ -572,10 +574,10 @@ function OperationsLiveDashboard() {
                 <div><h3>推荐关系明细</h3>{referral.relations.length===0?<p className="operations-empty">暂无推荐关系。</p>:<div className="operations-dispatch-list operations-referral-list">{referral.relations.map(row=><article key={row.id}><div><b>{row.inviter_name||row.inviter_email} → {row.invitee_name||row.invitee_email}</b><span>{row.discount_percent}%</span></div><span>{row.trip_title??'尚未购买行程'} · {row.order_status??'尚未付款'}</span><small>新人券：{row.invitee_coupon_status??'缺失'} · 推荐券：{row.inviter_coupon_status??'缺失'}{row.available_at?` · ${japanDate(row.available_at)}解锁`:''}</small><small>订单 ¥{row.order_amount_jpy??0} · 优惠 ¥{row.order_discount_jpy??0} · 推荐码 {row.referral_code}</small></article>)}</div>}</div>
               </div>
             </section>}
-            {command&&<section className="operations-section operations-command-center">
+            {command&&<section id="dispatch-control" className="operations-section operations-command-center">
               <header><div><span>运营指挥中心</span><h2>报名、配车与司导出勤</h2></div><small>只统计已付款/已确认游客；刷新后读取最新状态</small></header>
               <div className="operations-kpis operations-command-kpis">
-                <Kpi label="游客报名" value={totals.seats}/><Kpi label="已配车辆" value={command.assignedVehicles.size}/><Kpi label="出勤司导" value={command.assignedDrivers.size}/><Kpi label="待配班次" value={snapshot.departures.filter(item=>item.dispatchPlanningStatus==="ready_for_planning"||item.dispatchPlanningStatus==="needs_manual_review").length}/><Kpi label="需关注" value={command.alerts.length}/>
+                <Kpi label="游客报名" value={totals.seats} href="#orders-overview"/><Kpi label="已配车辆" value={command.assignedVehicles.size} href="#dispatch-control"/><Kpi label="出勤司导" value={command.assignedDrivers.size} href="/app/operations/run"/><Kpi label="待配班次" value={snapshot.departures.filter(item=>item.dispatchPlanningStatus==="ready_for_planning"||item.dispatchPlanningStatus==="needs_manual_review").length} href="#dispatch-control"/><Kpi label="需关注" value={command.alerts.length} href="#dispatch-control"/>
               </div>
               <h3>订单运行状态</h3>
               <div className="operations-stage-strip"><span>报名中 <b>{command.stageCounts.collecting}</b></span><span>待配车 <b>{command.stageCounts.waiting}</b></span><span>已派单 <b>{command.stageCounts.assigned}</b></span><span>运行中 <b>{command.stageCounts.running}</b></span><span>已完成 <b>{command.stageCounts.completed}</b></span></div>
@@ -591,7 +593,7 @@ function OperationsLiveDashboard() {
               })}
               （日本时间）
             </p>
-            <section className="operations-section">
+            <section id="resource-registry" className="operations-section">
               <header><div><span>基础档案</span><h2>司导与车辆清单</h2></div><small>内部电话仅管理端可见；未绑定账户的司导不能接单</small></header>
               <div className="operations-registry-grid">
                 <div><h3>司导人员</h3><div className="operations-dispatch-list">{snapshot.drivers.map(driver=><article key={driver.id}><div><b>{driver.display_name}</b><span>{driver.employee_code?`编号 ${driver.employee_code}`:"编号待补"}</span></div><span>{driver.employment_base??"所属待补"} · {driver.private_phone??"电话待补"}</span><small>{driver.account_id?"已绑定登录账户":"尚未绑定登录账户"} · {driver.status}</small></article>)}</div></div>
@@ -681,7 +683,7 @@ function OperationsLiveDashboard() {
               <header><div><span>账户与隐私</span><h2>删除申请队列</h2></div><small>不显示联系方式、订单内容或私人资料</small></header>
               {(snapshot.accountDeletionRequests??[]).length===0?<p className="operations-empty">暂无账户删除申请。</p>:<div className="operations-dispatch-list">{(snapshot.accountDeletionRequests??[]).map(request=><article key={request.id}><div><b>{request.status==="deferred_active_booking"?"等待未结束行程":"账户删除申请"}</b><span>{request.status}</span></div><span>申请编号尾号 {request.id.slice(-6)}</span><small>{japanDate(request.requestedAt)}</small><AccountDeletionReview request={request} busy={busy} onReview={reviewAccountDeletion}/></article>)}</div>}
             </section>
-            <section className="operations-section">
+            <section id="notification-issues" className="operations-section">
               <header><div><span>履约通知</span><h2>发送异常与待回执</h2></div><small>不显示收件地址、通知正文或乘客隐私</small></header>
               {snapshot.notificationDeliveryIssues.length===0?<p className="operations-empty">暂无通知发送异常。</p>:<div className="operations-dispatch-list">
                 {snapshot.notificationDeliveryIssues.map(item=><article key={item.id}>
@@ -739,7 +741,7 @@ function OperationsLiveDashboard() {
                 </div>
               )}
             </section>
-            <section className="operations-section">
+            <section id="booking-drafts" className="operations-section">
               <header>
                 <div>
                   <span>支付前黄金路径</span>
@@ -783,7 +785,7 @@ function OperationsLiveDashboard() {
                 </div>
               )}
             </section>
-            <section className="operations-section">
+            <section id="orders-overview" className="operations-section">
               <header>
                 <div>
                   <span>订单与班次</span>
@@ -1096,13 +1098,12 @@ function OperationsLiveDashboard() {
     </main>
   );
 }
-function Kpi({ label, value }: { label: string; value: number|string }) {
-  return (
-    <article>
+function Kpi({ label, value,href }: { label: string; value: number|string;href?:string }) {
+  const card=(<>
       <span>{label}</span>
       <strong>{value.toLocaleString("zh-CN")}</strong>
-    </article>
-  );
+    </>);
+  return href?<a className="operations-kpi-link" href={href}>{card}<small>查看详情 →</small></a>:<article>{card}</article>;
 }
 function Plan({
   plan,
