@@ -28,6 +28,20 @@ export class SupabaseManualPaymentGateway{
   async markPending(orderId:string,amount:number){if(!this.client)return null;const {data,error}=await this.client.rpc('mark_bank_transfer_pending',{p_order:orderId,p_amount:amount});return !error&&typeof data==='string'?{dueAt:data}:null}
 }
 
+export class SupabaseCheckoutAttemptGateway{
+  constructor(private readonly client:SupabaseClient|null){}
+  async begin(accountId:string,input:{departureId:string;seats:number;idempotencyKey:string;paymentMethod:'card'|'bank_transfer';draftId?:string;quoteId?:string}){
+    if(!this.client)return null;
+    const {data,error}=await this.client.rpc('begin_checkout_attempt',{p_account:accountId,p_key:input.idempotencyKey,p_draft:input.draftId??null,p_departure:input.departureId,p_seats:input.seats,p_method:input.paymentMethod,p_quote:input.quoteId??null});
+    const row=Array.isArray(data)?data[0]:data;
+    return error||!row?null:{attemptId:String(row.attempt_id),status:String(row.attempt_status),orderId:row.attempt_order_id?String(row.attempt_order_id):null,response:row.response_payload&&typeof row.response_payload==='object'?row.response_payload as Record<string,unknown>:null};
+  }
+  async record(accountId:string,attemptId:string,orderId:string|null,status:string,response:Record<string,unknown>|null,errorCode?:string){
+    if(!this.client)return false;
+    const {data,error}=await this.client.rpc('record_checkout_attempt_result',{p_attempt:attemptId,p_account:accountId,p_order:orderId,p_status:status,p_response:response,p_error:errorCode??null});return !error&&data===true;
+  }
+}
+
 export class SupabaseServerPricingGateway{
   constructor(private readonly client:SupabaseClient|null){}
   async quote(departureId:string,seats:number){

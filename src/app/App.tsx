@@ -1872,13 +1872,15 @@ export function Payment() {
   const [submitting, setSubmitting] = useState(false);
   const [draftStatus, setDraftStatus] = useState("");
   const [draftKey] = useState(() => crypto.randomUUID());
-  const [checkoutKeys] = useState(()=>({card:crypto.randomUUID(),bank_transfer:crypto.randomUUID()}));
+  const [checkoutKeys,setCheckoutKeys] = useState(()=>({card:crypto.randomUUID(),bank_transfer:crypto.randomUUID()}));
   const [checkoutError,setCheckoutError]=useState("");
   const [cardSession,setCardSession]=useState<{orderId:string;clientSecret:string}|null>(null);
   const [couponSummary,setCouponSummary]=useState<Awaited<ReturnType<NonNullable<typeof services>['loadOwnReferralSummary']>>>(null);
   const [couponId,setCouponId]=useState('');
   const [serverQuote,setServerQuote]=useState<ServerQuote|null>(null);
   const [quoteStatus,setQuoteStatus]=useState('');
+  const [quoteRefresh,setQuoteRefresh]=useState(0);
+  const [quoteNeedsConfirmation,setQuoteNeedsConfirmation]=useState(false);
   const production = appConfig.runtimeMode === "production";
   const selectedDeparture = departures.find(
     (item) => item.id === state.booking?.departureId,
@@ -1892,7 +1894,7 @@ export function Payment() {
   const selectedCoupon=usableCoupons.find(item=>item.id===couponId);
   const localPrice=selectedDeparture?.price!=null&&selectedCoupon?singleSeatQuote({unitPrice:selectedDeparture.price,seats:seatImpact,discountPercent:selectedCoupon.discountPercent}):null;
   const discountAmount=serverQuote?.discountAmount??localPrice?.discountAmount??0;
-  const discountedTotal=serverQuote?.amountDue??(payableTotal==null?null:payableTotal-discountAmount);
+  const discountedTotal=serverQuote?.amountDue??(services?.checkoutAvailable?null:(payableTotal==null?null:payableTotal-discountAmount));
   const nav = useNavigate();
   const paymentReady = Boolean(
     state.booking?.passenger &&
@@ -1901,7 +1903,7 @@ export function Payment() {
     state.booking?.acceptedCancellation &&
     state.booking?.acceptedTerms,
   );
-  const checkoutReady=Boolean(services?.checkoutAvailable&&stripeClient&&state.booking?.draftId&&selectedDeparture&&seatImpact>0&&serverQuote);
+  const checkoutReady=Boolean(services?.checkoutAvailable&&state.booking?.draftId&&selectedDeparture&&seatImpact>0&&serverQuote&&!quoteNeedsConfirmation);
   useEffect(()=>{let active=true;void services?.loadOwnReferralSummary().then(value=>{if(active)setCouponSummary(value)});return()=>{active=false}},[services]);
   useEffect(()=>{
     let active=true;
@@ -1918,7 +1920,7 @@ export function Payment() {
       setQuoteStatus(`价格已由服务器确认，有效至 ${new Date(result.expiresAt).toLocaleTimeString(state.ui.locale??'zh-CN',{hour:'2-digit',minute:'2-digit'})}`);
     });
     return()=>{active=false};
-  },[services,selectedDeparture?.id,seatImpact,couponId,state.ui.locale]);
+  },[services,selectedDeparture?.id,seatImpact,couponId,state.ui.locale,quoteRefresh]);
   const saveDraft = async () => {
     if (
       !services ||
@@ -1959,12 +1961,13 @@ export function Payment() {
   };
   const startCheckout=async(paymentMethod:'card'|'bank_transfer')=>{
     if(!checkoutReady||!services||!state.booking?.draftId||!selectedDeparture)return;
+    if(paymentMethod==='card'&&discountedTotal!==0&&!stripeClient){setCheckoutError('银行卡支付服务暂不可用；可选择银行转账，零元订单仍可直接确认。');return}
     setSubmitting(true);setCheckoutError("");
     const result=await services.createCheckout({draftId:state.booking.draftId,departureId:selectedDeparture.id,seats:seatImpact,idempotencyKey:checkoutKeys[paymentMethod],paymentMethod,couponId:couponId||undefined,quoteId:serverQuote?.quoteId});
     setSubmitting(false);
     if(!result||result.status==='failed'){
       if(result?.status==='failed'&&result.error==='quote_changed'){
-        setServerQuote(null);setQuoteStatus('价格、班次或优惠已发生变化，请重新确认后再支付。');setCheckoutError('最终价格已变化，本次没有扣款。请稍后重新确认费用。');
+        setServerQuote(null);setQuoteNeedsConfirmation(true);setCheckoutKeys({card:crypto.randomUUID(),bank_transfer:crypto.randomUUID()});setQuoteStatus('价格、班次或优惠已发生变化。请获取新报价并再次确认。');setCheckoutError('最终价格已变化，本次没有扣款。');
       }else setCheckoutError(result?.status==='failed'?result.error:'测试支付服务不可用');
       return;
     }
@@ -1989,12 +1992,13 @@ export function Payment() {
         <h2>费用明细</h2>
         <div>
           <span>{travelRepository.getTrip(selectedDeparture?.tripSlug??state.booking?.tripSlug??'')?.shortTitle??'行程'}座位费</span>
-          <b>{selectedDeparture?.price==null?"待确认":`${seatImpact}席 × ¥${selectedDeparture.price.toLocaleString('ja-JP')}　¥${payableTotal?.toLocaleString('ja-JP')}`}</b>
+          <b>{serverQuote?`${serverQuote.seatCount}席 × ¥${serverQuote.unitPrice.toLocaleString('ja-JP')}　¥${serverQuote.baseFare.toLocaleString('ja-JP')}`:'等待服务器报价'}</b>
         </div>
         {usableCoupons.length>0&&<div><span>选择优惠券（每单限1张）</span><select aria-label="选择优惠券" value={couponId} onChange={event=>setCouponId(event.target.value)} disabled={submitting||Boolean(cardSession)}><option value="">不使用优惠券</option>{usableCoupons.map(item=><option value={item.id} key={item.id}>{item.discountPercent}% OFF · 仅优惠1席 · {new Date(item.expiresAt).toLocaleDateString(state.ui.locale??'zh-CN')}</option>)}</select></div>}
         {selectedCoupon&&<><div><span>{selectedCoupon.discountPercent}%优惠券（仅1席）</span><b>-¥{discountAmount.toLocaleString('ja-JP')}</b></div><p className="privacy">本券仅优惠1个席位，其余{Math.max(0,seatImpact-1)}个席位按原价计算，不与其他优惠叠加。</p></>}
         <div><span>应付合计（日元）</span><b>{discountedTotal==null?'待确认':`¥${discountedTotal.toLocaleString('ja-JP')}`}</b></div>
         {quoteStatus&&<p className="privacy" role="status">{quoteStatus}</p>}
+        {quoteNeedsConfirmation&&<button type="button" className="button secondary full" onClick={()=>{setQuoteNeedsConfirmation(false);setQuoteRefresh(value=>value+1)}}>获取新报价并重新确认</button>}
       </div>
       <div className="notice">
         {checkoutReady
@@ -2026,7 +2030,7 @@ export function Payment() {
       )}
       {state.booking?.draftId && (
         checkoutReady ? <section className="payment-methods" aria-label={stripeMode==='test'?"测试支付方式":"支付方式"}>
-          {!cardSession&&<>{discountedTotal===0?<button type="button" disabled={submitting} onClick={()=>void startCheckout('card')}><b>确认免费预订</b><small>无需创建支付请求</small></button>:<><button type="button" disabled={submitting} onClick={()=>void startCheckout('card')}><b>{`${stripeMode==='test'?'确认并测试支付':'确认并支付'} ¥${discountedTotal?.toLocaleString('ja-JP')}`}</b><small>{stripeMode==='test'?'仅接受 Stripe 测试卡':'由 Stripe 安全处理'}</small></button><button type="button" disabled={submitting} onClick={()=>void startCheckout('bank_transfer')}><b>{stripeMode==='test'?'银行转账测试流程':'银行转账'}</b><small>进入人工到账确认状态</small></button></>}</>}
+          {!cardSession&&<>{discountedTotal===0?<button type="button" disabled={submitting} onClick={()=>void startCheckout('card')}><b>确认免费预订</b><small>优惠券抵扣，无需付款；不连接 Stripe</small></button>:<><button type="button" disabled={submitting||!stripeClient} onClick={()=>void startCheckout('card')}><b>{`${stripeMode==='test'?'确认并测试支付':'确认并支付'} ¥${discountedTotal?.toLocaleString('ja-JP')}`}</b><small>{stripeClient?(stripeMode==='test'?'仅接受 Stripe 测试卡':'由 Stripe 安全处理'):'银行卡支付暂不可用'}</small></button><button type="button" disabled={submitting} onClick={()=>void startCheckout('bank_transfer')}><b>{stripeMode==='test'?'银行转账测试流程':'银行转账'}</b><small>进入人工到账确认状态</small></button></>}</>}
           {checkoutError&&<div className="danger" role="alert">{checkoutError}</div>}
           {cardSession&&stripeClient&&<Elements stripe={stripeClient} options={{clientSecret:cardSession.clientSecret}}><StripePaymentForm locale={state.ui.locale ?? 'zh-CN'} orderId={cardSession.orderId} onComplete={(orderId,status)=>nav(`/app/payment-result?order_id=${encodeURIComponent(orderId)}${status==='processing'?'&processing=1':''}`)}/></Elements>}
         </section> : <Link className="button secondary full" to="/app/orders">查看账户中的订单草稿</Link>
@@ -2379,6 +2383,7 @@ export function OrderDetail() {
   const [cancellationBusy,setCancellationBusy]=useState(false);
   const [cancellationFormOpen,setCancellationFormOpen]=useState(false);
   const [remoteResolved, setRemoteResolved] = useState(!services);
+  const [billing,setBilling]=useState<Awaited<ReturnType<NonNullable<typeof services>['loadOwnOrderBilling']>>>(null);
   useEffect(() => {
     if (!services || !id) return;
     let active = true;
@@ -2387,7 +2392,8 @@ export function OrderDetail() {
       services.loadOwnOrderFulfilment(id),
       services.loadOwnDrafts(),
       services.loadOwnCancellationRequest(id),
-    ]).then(([result, fulfilment,draftResult,cancellationResult]) => {
+      services.loadOwnOrderBilling(id),
+    ]).then(([result, fulfilment,draftResult,cancellationResult,billingResult]) => {
       if (!active) return;
       setRemoteOrder(
         (
@@ -2406,6 +2412,7 @@ export function OrderDetail() {
       const linked=(draftResult.data as Array<{converted_order_id?:string|null;operational_review_status:string;assistance_summary:Record<string,unknown>}>).find(item=>item.converted_order_id===id)??null;
       setRemoteDraft(linked);
       setCancellation(cancellationResult as typeof cancellation);
+      setBilling(billingResult);
       setRemoteResolved(true);
     });
     return () => {
@@ -2498,6 +2505,7 @@ export function OrderDetail() {
           <div><span>{c.fulfilmentNeeds}</span><b>{assistanceItems.length?assistanceItems.join(' · '):c.noneDeclared}</b></div>
           {remoteFulfilment?.details_published&&<><div><span>{journeyCopy.vehicle}</span><b>{remoteFulfilment.vehicle_label??c.pending}</b></div><div><span>{journeyCopy.staff}</span><b>{remoteFulfilment.staff_name??c.pending}</b></div></>}
         </div>
+        {billing&&<section className="receipt" aria-label="不可变订单账单"><h2>订单费用明细</h2>{billing.lineItems.map((item,index)=><div key={`${item.kind}-${index}`}><span>{item.label}{item.quantity>0?` · ${item.quantity}项`:''}</span><b>{item.amountJpy<0?'-':''}¥{Math.abs(item.amountJpy).toLocaleString('ja-JP')}</b></div>)}<div><span>订单原价</span><b>¥{billing.grossAmountJpy.toLocaleString('ja-JP')}</b></div>{billing.discountAmountJpy>0&&<div><span>优惠券抵扣（仅优惠一席）</span><b>-¥{billing.discountAmountJpy.toLocaleString('ja-JP')}</b></div>}<div><span>实际应付</span><b>¥{billing.amountPaidJpy.toLocaleString('ja-JP')}</b></div><div><span>付款方式</span><b>{billing.paymentKind==='coupon_covered'?'优惠券抵扣，无需付款':billing.paymentKind==='bank_transfer'?'银行转账':billing.paymentKind==='stripe'?'银行卡支付':'待确认'}</b></div>{billing.userConfirmedAt&&<div><span>确认费用时间</span><b>{new Date(billing.userConfirmedAt).toLocaleString(locale,{timeZone:'Asia/Tokyo'})}</b></div>}{billing.refunds.length>0&&<details><summary>退款流水（{billing.refunds.length}）</summary>{billing.refunds.map((refund,index)=><div key={index}><span>{refund.channel} · {refund.status}</span><b>{refund.amountJpy==null?'金额核对中':`¥${refund.amountJpy.toLocaleString('ja-JP')}`}</b></div>)}</details>}{!billing.snapshotAvailable&&<p className="notice">这是旧订单，部分历史合同字段当时尚未建立；系统不会使用当前价格补写旧账单。</p>}</section>}
         {['paid','confirmed'].includes(remoteOrder.status)&&(cancellation?<section className="empty-card" aria-live="polite"><b>{c.cancellationProcessing}</b><p>{c.currentStatus}：{cancellation.status} · {c.estimatedRefund} {cancellation.refund_percent}%（¥{cancellation.estimated_refund_amount}）。{c.refundDisclaimer}</p></section>:<details className="order-help-panel"><summary>{journeyCopy.help}</summary><p>{journeyCopy.helpText}</p><div className="order-help-actions"><Link className="button full" to="/app/support">{journeyCopy.consult}</Link><Link className="button secondary full" to="/app/support?topic=change-date">{journeyCopy.change}</Link><button type="button" className="text-action" onClick={()=>setCancellationFormOpen(true)}>{journeyCopy.continueCancel}</button></div>{cancellationFormOpen&&<form className="form cancellation-request-form" onSubmit={submitCancellation}><label>{c.cancelReason}<select name="reason" required defaultValue="plans_changed"><option value="plans_changed">{c.plansChanged}</option><option value="health">{c.health}</option><option value="transport">{c.transport}</option><option value="duplicate">{c.duplicate}</option><option value="other">{c.other}</option></select></label><label>{c.note}<textarea name="note" maxLength={500}/></label><button className="button secondary full" disabled={cancellationBusy}>{cancellationBusy?c.submitting:c.requestCancel}</button></form>}</details>)}
         {cancellationNotice&&<p className="notice" role="status">{cancellationNotice}</p>}
         {navigationUrl ? (

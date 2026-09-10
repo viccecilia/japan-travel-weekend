@@ -1,6 +1,6 @@
 import {createServer,type ServerResponse} from 'node:http';
 import {CheckoutEndpoint} from './api/checkout.js';
-import {createSupabaseServerClient,SupabaseAccessTokenVerifier,SupabaseManualPaymentGateway,SupabaseOrderInventoryGateway,SupabasePaymentEventStore,SupabasePaymentIntentRecorder,SupabaseServerPricingGateway} from './supabase.js';
+import {createSupabaseServerClient,SupabaseAccessTokenVerifier,SupabaseCheckoutAttemptGateway,SupabaseManualPaymentGateway,SupabaseOrderInventoryGateway,SupabasePaymentEventStore,SupabasePaymentIntentRecorder,SupabaseServerPricingGateway} from './supabase.js';
 import {StripeCardPaymentSessionGateway,StripeTestAdapter} from './stripe.js';
 import {allowedCorsOrigin,parseAllowedOrigins} from './cors.js';
 import {SupabaseBoardingGateway} from './boarding.js';
@@ -15,7 +15,7 @@ const supabase=createSupabaseServerClient({url:process.env.SUPABASE_URL||'',serv
 const requestedPaymentMode=process.env.JTW_STRIPE_MODE==='live'?'live':'test';
 const paymentMode=requestedPaymentMode==='live'&&process.env.NODE_ENV==='production'&&process.env.JTW_PRODUCTION_PAYMENT_AUTHORIZED==='true'?'live':'test';
 const stripe=new StripeTestAdapter({secretKey:process.env.STRIPE_SECRET_KEY||'',webhookSecret:process.env.STRIPE_WEBHOOK_SECRET||'',mode:paymentMode});
-const checkout=new CheckoutEndpoint(new SupabaseAccessTokenVerifier(supabase),new SupabaseOrderInventoryGateway(supabase),new StripeCardPaymentSessionGateway(stripe,new SupabasePaymentIntentRecorder(supabase)),new SupabaseManualPaymentGateway(supabase),new SupabaseServerPricingGateway(supabase));
+const checkout=new CheckoutEndpoint(new SupabaseAccessTokenVerifier(supabase),new SupabaseOrderInventoryGateway(supabase),new StripeCardPaymentSessionGateway(stripe,new SupabasePaymentIntentRecorder(supabase)),new SupabaseManualPaymentGateway(supabase),new SupabaseServerPricingGateway(supabase),undefined,new SupabaseCheckoutAttemptGateway(supabase));
 const events=new SupabasePaymentEventStore(supabase);
 const boarding=new SupabaseBoardingGateway(supabase);const sessions=new SupabaseAccessTokenVerifier(supabase);
 const translations=new SupabaseMessageTranslationGateway(supabase);const translationProvider=new GoogleCloudTranslationProvider(process.env.GOOGLE_TRANSLATION_API_KEY,process.env.JTW_TRANSLATION_ENABLED==='true');

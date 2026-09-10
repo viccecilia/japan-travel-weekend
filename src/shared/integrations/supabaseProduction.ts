@@ -334,6 +334,11 @@ export class SupabaseOrderRepository {
       ? { data: [], error: "订单读取失败" }
       : { data: data ?? [], error: null };
   }
+  async loadOwnOrderBilling(orderId:string){
+    if(!this.client)return null;
+    const {data,error}=await this.client.rpc('get_own_order_billing',{p_order:orderId});
+    return error||!data?null:data as {orderId:string;status:string;currency:string;amountPaidJpy:number;grossAmountJpy:number;discountAmountJpy:number;lineItems:Array<{kind:string;label:string;quantity:number;unitPriceJpy:number;amountJpy:number}>;paymentKind:string|null;paymentStatus:string|null;userConfirmedAt:string|null;title:string|null;departsAt:string|null;meetingName:string|null;meetingAddress:string|null;cancellationPolicy:string|null;cancellationPolicyVersion:string|null;refunds:Array<{status:string;amountJpy:number|null;completedAt:string|null;channel:string}>;snapshotAvailable:boolean};
+  }
   async loadOwnNotifications() {
     if (!this.client) return { data: [], error: "通知服务未配置" };
     try {

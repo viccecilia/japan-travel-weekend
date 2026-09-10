@@ -101,6 +101,7 @@ export class ProductionBrowserServices {
   loadOwnOrders() {
     return this.orders.loadOwnOrders();
   }
+  loadOwnOrderBilling(orderId:string){return this.orders.loadOwnOrderBilling(orderId)}
   loadOwnNotifications() {
     return this.orders.loadOwnNotifications();
   }
