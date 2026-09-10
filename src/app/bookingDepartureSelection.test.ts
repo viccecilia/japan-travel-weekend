@@ -40,7 +40,7 @@ describe("departure selection", () => {
       departure("c", "2026-10-01T00:00:00Z"),
     ], "zh-CN");
     expect(grouped).toHaveLength(2);
-    expect(grouped[0].days[0].departures.map((item) => item.id)).toEqual(["a", "b"]);
+    expect(grouped[0].days.find((day) => day.key === "2026-09-30")?.departures.map((item) => item.id)).toEqual(["a", "b"]);
     expect(grouped.map((item) => item.label)).toEqual(["2026年9月", "2026年10月"]);
   });
 });

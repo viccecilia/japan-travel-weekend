@@ -3,6 +3,31 @@ import { Link } from "react-router-dom";
 import { useApp } from "../store";
 import type { OperationsProduct, OperationsProductRevision } from "../../shared/integrations/supabaseOperations";
 
+type ItineraryStop = Record<string, unknown> & { title?: string; name?: string; description?: string; location?: string; time?: string; stayMinutes?: number; imageUrl?: string; tip?: string };
+
+function ItineraryEditor({ initial }: { initial: unknown }) {
+  const [items, setItems] = useState<ItineraryStop[]>(Array.isArray(initial) ? initial as ItineraryStop[] : []);
+  const update = (index: number, key: keyof ItineraryStop, value: string) => setItems((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: key === "stayMinutes" ? Number(value) || 0 : value } : item));
+  const move = (index: number, offset: number) => setItems((current) => { const target = index + offset; if (target < 0 || target >= current.length) return current; const next = [...current]; [next[index], next[target]] = [next[target], next[index]]; return next; });
+  return <fieldset className="operations-itinerary-editor">
+    <legend>景点图文与展示顺序</legend>
+    <input name="itinerary" type="hidden" value={JSON.stringify(items)} readOnly />
+    <input name="stops" type="hidden" value={items.map((item) => String(item.title ?? item.name ?? "")).filter(Boolean).join("\n")} readOnly />
+    {items.map((item, index) => <article key={`${index}:${String(item.title ?? item.name ?? "stop")}`}>
+      <header><b>{index + 1}. {String(item.title ?? item.name ?? "未命名景点")}</b><div className="operations-task-actions"><button type="button" onClick={() => move(index, -1)} disabled={index === 0}>上移</button><button type="button" onClick={() => move(index, 1)} disabled={index === items.length - 1}>下移</button><button type="button" onClick={() => setItems((current) => current.filter((_, itemIndex) => itemIndex !== index))}>删除</button></div></header>
+      <label>景点名称<input value={String(item.title ?? item.name ?? "")} onChange={(event) => update(index, "title", event.target.value)} required /></label>
+      <label>地点<input value={String(item.location ?? "")} onChange={(event) => update(index, "location", event.target.value)} /></label>
+      <label>预计时间<input value={String(item.time ?? "")} onChange={(event) => update(index, "time", event.target.value)} /></label>
+      <label>停留分钟<input type="number" min="0" value={Number(item.stayMinutes ?? 0)} onChange={(event) => update(index, "stayMinutes", event.target.value)} /></label>
+      <label>景点介绍<textarea value={String(item.description ?? "")} onChange={(event) => update(index, "description", event.target.value)} /></label>
+      <label>图片 URL<input type="url" value={String(item.imageUrl ?? "")} onChange={(event) => update(index, "imageUrl", event.target.value)} /></label>
+      <label>游览提示<textarea value={String(item.tip ?? "")} onChange={(event) => update(index, "tip", event.target.value)} /></label>
+    </article>)}
+    <button className="button secondary" type="button" onClick={() => setItems((current) => [...current, { title: "新景点", description: "" }])}>添加景点</button>
+    <small>可增删和调整顺序；原有 gallery、highlights 等扩展字段会原样保留。</small>
+  </fieldset>;
+}
+
 export function ProductCenter() {
   const { services, refreshCatalog } = useApp();
   const [products, setProducts] = useState<OperationsProduct[]>([]);
@@ -74,6 +99,22 @@ export function ProductCenter() {
       setNotice("保存失败：多语言或景点图文 JSON 格式不正确");
       return;
     }
+    let heroImageUrl = String(form.get("hero") ?? "").trim() || null;
+    const gallery = lines("gallery");
+    const heroFile = form.get("heroFile");
+    if (heroFile instanceof File && heroFile.size > 0) {
+      setNotice("正在上传主图…");
+      const upload = await services.operations.uploadProductImage(selected.id, heroFile);
+      if (upload.error) { setBusy(false); setNotice(`主图上传失败：${upload.error}`); return; }
+      heroImageUrl = upload.url;
+    }
+    const galleryFiles = form.getAll("galleryFiles").filter((item): item is File => item instanceof File && item.size > 0);
+    for (const [index, file] of galleryFiles.entries()) {
+      setNotice(`正在上传图库 ${index + 1}/${galleryFiles.length}…`);
+      const upload = await services.operations.uploadProductImage(selected.id, file);
+      if (upload.error) { setBusy(false); setNotice(`图库上传失败：${upload.error}`); return; }
+      if (upload.url) gallery.push(upload.url);
+    }
     const content = {
       ...selected.content,
       summary: String(form.get("summary") ?? ""),
@@ -103,8 +144,8 @@ export function ProductCenter() {
       expectedVersion: selected.catalogVersion,
       title: String(form.get("title") ?? ""),
       content,
-      heroImageUrl: String(form.get("hero") ?? "").trim() || null,
-      gallery: lines("gallery"),
+      heroImageUrl,
+      gallery,
     });
     setBusy(false);
     setNotice(
@@ -237,22 +278,7 @@ export function ProductCenter() {
                 }
               />
             </label>
-            <label>
-              景点图文 JSON（数组顺序即游客端展示顺序）
-              <input name="stops" type="hidden" value={Array.isArray(selected.content.stops)?selected.content.stops.join("\n"):""} readOnly />
-              <textarea
-                name="itinerary"
-                defaultValue={JSON.stringify(
-                  selected.content.itinerary ?? [],
-                  null,
-                  2,
-                )}
-                required
-              />
-              <small>
-                支持 title 或旧 name；可填写 description、location、time、stayMinutes、imageUrl、gallery、highlights、tip。
-              </small>
-            </label>
+            <ItineraryEditor initial={selected.content.itinerary} />
             <label>
               亮点（每行一项）
               <textarea
@@ -312,6 +338,7 @@ export function ProductCenter() {
               主图 URL
               <input name="hero" defaultValue={selected.heroImageUrl ?? ""} />
             </label>
+            <label>或上传主图（JPG / PNG / WebP，最大 10MB）<input name="heroFile" type="file" accept="image/jpeg,image/png,image/webp" /></label>
             <label>
               图库（每行一张）
               <textarea
@@ -319,6 +346,7 @@ export function ProductCenter() {
                 defaultValue={selected.gallery.join("\n")}
               />
             </label>
+            <label>追加图库文件<input name="galleryFiles" type="file" accept="image/jpeg,image/png,image/webp" multiple /></label>
             <div className="operations-task-actions">
               <button className="button" disabled={busy}>
                 保存草稿
