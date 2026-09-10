@@ -235,6 +235,8 @@ export class SupabaseAuthRepository {
     }
   }
   async loadOwnReferralSummary(){if(!this.client)return null;try{const {data,error}=await this.client.rpc('get_own_referral_summary');return error?null:data as {code:string;active:boolean;discountPercent:number;validityDays:number;successfulInvites:number;completedInvites:number;pendingInvites:number;achievementKey:string;nextMilestone:number|null;coupons:Array<{id:string;discountPercent:number;status:string;expiresAt:string;recipientKind:string;activatedAt:string|null;availableAt:string|null;qualifyingTripStartsAt:string|null}>}}catch{return null}}
+  async loadOwnCashCommissionSummary(){if(!this.client)return null;const {data,error}=await this.client.rpc('get_own_cash_commission_summary');return error?null:data as {availableJpy:number;lockedJpy:number;paidJpy:number;entries:Array<{id:string;sourceOrderId:string;basisAmountJpy:number;commissionPercent:number;amountJpy:number;status:string;unlockedAt:string}>;payouts:Array<{id:string;weekStart:string;amountJpy:number;status:string;requestedAt:string}>}}
+  async requestOwnCommissionPayout(idempotencyKey:string){if(!this.client)return {ok:false,error:'账户服务未配置'};const {error}=await this.client.rpc('request_own_commission_payout',{p_idempotency_key:idempotencyKey});return {ok:!error,error:error?.message??null}}
   async requestPasswordReset(email: string) {
     if (!this.client) return false;
     const redirectTo = this.redirect("/app/reset-password");

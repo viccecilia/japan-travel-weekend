@@ -71,6 +71,8 @@ export class ProductionBrowserServices {
     return this.auth.signUp(email, password,accountType,displayName,referralCode);
   }
   loadOwnReferralSummary(){return this.auth.loadOwnReferralSummary()}
+  loadOwnCashCommissionSummary(){return this.auth.loadOwnCashCommissionSummary()}
+  requestOwnCommissionPayout(idempotencyKey:string){return this.auth.requestOwnCommissionPayout(idempotencyKey)}
   requestPasswordReset(email: string) {
     return this.auth.requestPasswordReset(email);
   }

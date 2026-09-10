@@ -483,7 +483,7 @@ function OperationsLiveDashboard() {
           <h1>订单、车辆与司机调度</h1>
           <p>系统按报名人数自动匹配车辆与合格司导；运营确认后才下发到司导账号。</p>
         </div>
-        <div className="operations-task-actions"><a href="/app/operations/products">产品管理</a><a href="/app/operations/departures">班次与价格</a><a href="/app/operations/run">每日运行台</a><a href="/app/operations/marketing">首页与季节专题</a><a href="/app">返回乘客应用</a></div>
+        <div className="operations-task-actions"><a href="/app/operations/products">产品管理</a><a href="/app/operations/departures">班次与价格</a><a href="/app/operations/run">每日运行台</a><a href="/app/operations/commissions">佣金与提现</a><a href="/app/operations/marketing">首页与季节专题</a><a href="/app">返回乘客应用</a></div>
       </header>
       <section className="operations-section operations-test-accounts">
         <header>
