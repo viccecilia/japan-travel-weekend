@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useApp } from "../store";
-import type { OperationsProduct } from "../../shared/integrations/supabaseOperations";
+import type { OperationsProduct, OperationsProductRevision } from "../../shared/integrations/supabaseOperations";
 
 export function ProductCenter() {
   const { services, refreshCatalog } = useApp();
@@ -9,6 +9,7 @@ export function ProductCenter() {
   const [selected, setSelected] = useState<OperationsProduct | null>(null);
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const [revisions,setRevisions]=useState<OperationsProductRevision[]>([]);
   const reload = async () => {
     if (!services) return;
     const result = await services.operations.listProducts();
@@ -21,6 +22,10 @@ export function ProductCenter() {
         null,
     );
   };
+  useEffect(()=>{let active=true;if(services&&selected)void services.operations.listProductRevisions(selected.id).then(result=>{if(active)setRevisions(result.data)});return()=>{active=false}},[services,selected]);
+  const createProduct=async(event:FormEvent<HTMLFormElement>)=>{event.preventDefault();if(!services)return;const form=new FormData(event.currentTarget);setBusy(true);const result=await services.operations.createProduct({slug:String(form.get('newSlug')),title:String(form.get('newTitle'))});setBusy(false);setNotice(result.ok?'新产品草稿已建立，请完善内容后发布。':`新建失败：${result.error}`);if(result.ok){event.currentTarget.reset();await reload()}};
+  const copyProduct=async()=>{if(!services||!selected)return;const slug=window.prompt('新路线英文标识（例如 kyoto-autumn-day）');if(!slug)return;const title=window.prompt('新路线标题',`${selected.title} 副本`);if(!title)return;setBusy(true);const result=await services.operations.copyProduct({sourceId:selected.id,slug,title});setBusy(false);setNotice(result.ok?'已复制为独立草稿。':`复制失败：${result.error}`);if(result.ok)await reload()};
+  const lifecycle=async(action:'archive'|'restore',revision?:number)=>{if(!services||!selected)return;if(!window.confirm(action==='archive'?'下架后游客端将立即不可见，确认继续？':`确认把历史版本 v${revision} 恢复为新草稿？`))return;setBusy(true);const result=await services.operations.setProductStatus({id:selected.id,expectedVersion:selected.catalogVersion,action,restoreRevision:revision});setBusy(false);setNotice(result.ok?(action==='archive'?'产品已下架，历史订单不受影响。':'历史版本已复制为新草稿。'):`操作失败：${result.error}`);if(result.ok)await reload()};
   useEffect(() => {
     let active = true;
     if (services)
@@ -140,6 +145,7 @@ export function ProductCenter() {
         </Link>
       </header>
       {notice && <p className="operations-notice">{notice}</p>}
+      <section className="operations-section"><header><div><span>新产品</span><h2>建立路线草稿</h2></div><small>建立后不会直接出现在游客端</small></header><form className="operations-controls" onSubmit={createProduct}><label>路线英文标识<input name="newSlug" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="kyoto-autumn-day" required/></label><label>路线标题<input name="newTitle" minLength={3} required/></label><button className="button" disabled={busy}>新建产品草稿</button></form></section>
       <section className="operations-section">
         <header>
           <div>
@@ -331,8 +337,11 @@ export function ProductCenter() {
               >
                 发布草稿
               </button>
+              <button className="button secondary" type="button" disabled={busy} onClick={()=>void copyProduct()}>复制为新产品</button>
+              {selected.status!=='archived'&&<button className="button secondary" type="button" disabled={busy} onClick={()=>void lifecycle('archive')}>下架产品</button>}
             </div>
           </form>
+          <div className="operations-dispatch-list" aria-label="版本历史">{revisions.map(revision=><article key={revision.revisionNumber}><b>v{revision.revisionNumber} · {revision.state}</b><span>{revision.title}</span><small>{new Date(revision.createdAt).toLocaleString('zh-CN')}</small><button type="button" disabled={busy||revision.revisionNumber===selected.draftRevision} onClick={()=>void lifecycle('restore',revision.revisionNumber)}>恢复为新草稿</button></article>)}</div>
         </section>
       )}
     </main>
