@@ -18,5 +18,5 @@ export class TestBackendApi{
   issueBoardingCredential(orderId:string){return this.post<{token:string;expiresAt:string;vehicleGroupId:string}>('/v1/boarding/issue',{orderId})}
   verifyBoardingCredential(input:{token:string;vehicleGroupId:string;idempotencyKey:string}){return this.post<{status:string;boardingId:string|null;verifiedAt:string}>('/v1/boarding/verify',input)}
   translateMessage(input:{messageId:string;targetLanguage:'zh-CN'|'zh-TW'|'ja'|'en'|'vi'|'ne'|'ko'}){return this.post<{translated:true;cached:boolean}>('/v1/translations/message',input)}
-  executeRefund(input:{requestId:string;idempotencyKey:string}){return this.post<{accepted:true;requestId:string;status:'refund_processing'}>('/v1/operations/refunds',input)}
+  executeRefund(input:{requestId:string;idempotencyKey:string;manualReference?:string;actualAmount?:number;evidenceNote?:string}){return this.post<{accepted:true;requestId:string;status:'refund_processing'|'manual_refund_required'|'refund_completed'|'cancelled_without_refund'}>('/v1/operations/refunds',input)}
 }

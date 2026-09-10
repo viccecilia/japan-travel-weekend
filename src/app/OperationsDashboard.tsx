@@ -86,12 +86,14 @@ function AccountDeletionReview({request,busy,onReview}:{request:{id:string;statu
   </div>;
 }
 
-function CancellationReview({request,busy,onApprove,onReject}:{request:{id:string;estimatedRefundAmount:number;refundPercent:number};busy:boolean;onApprove:(id:string,key:string)=>Promise<void>;onReject:(id:string,reason:string)=>Promise<void>}){
+function CancellationReview({request,busy,onApprove,onReject}:{request:{id:string;status:string;estimatedRefundAmount:number;refundPercent:number};busy:boolean;onApprove:(id:string,key:string,manual?:{reference:string;actualAmount:number;evidenceNote:string})=>Promise<void>;onReject:(id:string,reason:string)=>Promise<void>}){
   const [reason,setReason]=useState('');
+  const [manualReference,setManualReference]=useState('');
+  const [evidenceNote,setEvidenceNote]=useState('');
   const [idempotencyKey]=useState(()=>crypto.randomUUID());
   return <div className="operations-bank-review">
     <small>{request.estimatedRefundAmount===0?'该申请无需退款；批准后取消订单并释放对应资源。':`系统将根据原付款渠道处理 ¥${request.estimatedRefundAmount.toLocaleString('ja-JP')}；原路、待核实或人工处理结果会分别显示。`}</small>
-    <button disabled={busy} onClick={()=>void onApprove(request.id,idempotencyKey)}>{request.estimatedRefundAmount===0?'批准取消（无需退款）':'批准并开始退款处理'}</button>
+    {request.status==='manual_refund_required'?<><label>退款凭证编号<input value={manualReference} onChange={event=>setManualReference(event.target.value)} placeholder="银行流水尾号或内部凭证号"/></label><label>核对说明<input value={evidenceNote} onChange={event=>setEvidenceNote(event.target.value)} placeholder="实际退款金额及核对过程"/></label><button disabled={busy||manualReference.trim().length<4||evidenceNote.trim().length<3} onClick={()=>void onApprove(request.id,idempotencyKey,{reference:manualReference.trim(),actualAmount:request.estimatedRefundAmount,evidenceNote:evidenceNote.trim()})}>登记凭证并完成人工退款</button></>:<button disabled={busy} onClick={()=>void onApprove(request.id,idempotencyKey)}>{request.estimatedRefundAmount===0?'批准取消（无需退款）':'批准并开始退款处理'}</button>}
     <label>拒绝原因<input value={reason} maxLength={500} onChange={event=>setReason(event.target.value)} placeholder="至少5个字符；游客可在订单中看到处理状态"/></label>
     <button className="secondary" disabled={busy||reason.trim().length<5} onClick={()=>void onReject(request.id,reason.trim())}>拒绝退款申请</button>
   </div>;
@@ -471,7 +473,7 @@ function OperationsLiveDashboard() {
   const reviewStaffApplication=async(id:string,decision:"approved"|"rejected"|"needs_information"|"suspended")=>{if(!services)return;const note=window.prompt("审核说明（可简短填写）",decision==="approved"?"身份资料已核对":"请记录处理原因")??"";setBusy(true);const result=await services.operations.reviewStaffApplication(id,decision,note);setNotice(result.ok?(decision==="approved"?"工作人员账户已批准；下次登录将自动进入司导端。":"申请状态已更新。"):`审核失败：${result.error??"请检查账户状态与管理员权限"}`);if(result.ok)await reload();setBusy(false)};
   const reviewStaffLeave=async(id:string,decision:"approved"|"rejected")=>{if(!services)return;const note=window.prompt("审批说明（可选）",decision==="approved"?"已核对排班，同意请假":"请说明无法批准的原因")??"";setBusy(true);const result=await services.operations.reviewStaffLeave(id,decision,note);setNotice(result.ok?(decision==="approved"?"请假已批准；该时段已从自动派单候选中排除。":"请假已拒绝并通知记录。"):`审批失败：${result.error??"请检查申请状态与管理员权限"}`);if(result.ok)await reload();setBusy(false)};
   const saveReferral=async(event:FormEvent<HTMLFormElement>)=>{event.preventDefault();if(!services||!referral)return;const form=new FormData(event.currentTarget);setBusy(true);const result=await services.operations.updateReferralSettings(Number(form.get('discountPercent')),Number(form.get('validityDays')),form.get('active')==='on');setNotice(result.ok?'推荐优惠规则已更新；只影响之后成功注册的新推荐关系。':`推荐规则保存失败：${result.error??'请检查管理员权限'}`);if(result.ok)setReferral(await services.operations.loadReferralSummary());setBusy(false)};
-  const approveCancellation=async(id:string,key:string)=>{if(!services)return;setBusy(true);const result=await services.executeOperationsRefund(id,key);setNotice(result?.accepted?"退款已由服务端提交 Stripe，当前为处理中；最终结果等待支付渠道回调。":"退款未提交：请核对运营权限、订单付款状态与服务端连接。");if(result?.accepted)await reload();setBusy(false)};
+  const approveCancellation=async(id:string,key:string,manual?:{reference:string;actualAmount:number;evidenceNote:string})=>{if(!services)return;setBusy(true);const result=await services.executeOperationsRefund(id,key,manual);setNotice(result?.accepted?(result.status==='refund_completed'?'退款已完成并写入账单流水。':result.status==='manual_refund_required'?'需要人工退款，请登记凭证和实际退款金额。':"退款已提交，最终结果等待支付渠道回调。"):'退款未提交：请核对运营权限、订单付款状态与服务端连接。');if(result?.accepted)await reload();setBusy(false)};
   const rejectCancellation=async(id:string,reason:string)=>{if(!services)return;setBusy(true);const result=await services.operations.rejectCancellationRequest(id,reason);setNotice(result.ok?"退款申请已拒绝并保存处理理由；订单付款状态未被修改。":`拒绝失败：${result.error??"请核对申请状态和运营权限"}`);if(result.ok)await reload();setBusy(false)};
   return (
     <main className="operations-dashboard">

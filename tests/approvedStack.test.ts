@@ -306,6 +306,8 @@ describe("已批准测试服务栈", () => {
     expect(mapStripeEvent("payment_intent.payment_failed")).toBe("failed");
     expect(mapStripeEvent("payment_intent.canceled")).toBe("cancelled");
     expect(mapStripeEvent("charge.refunded")).toBe("refund_updated");
+    expect(mapStripeEvent("refund.updated")).toBe("refund_updated");
+    expect(mapStripeEvent("refund.failed")).toBe("refund_updated");
   });
   it("Stripe 乱序事件不能回退已成功或已退款状态", () => {
     expect(

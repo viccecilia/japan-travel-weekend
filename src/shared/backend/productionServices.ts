@@ -195,5 +195,5 @@ export class ProductionBrowserServices {
   }) {
     return this.checkout.translateMessage(input);
   }
-  executeOperationsRefund(requestId:string,idempotencyKey:string){return this.checkout.executeRefund({requestId,idempotencyKey})}
+  executeOperationsRefund(requestId:string,idempotencyKey:string,manual?:{reference:string;actualAmount:number;evidenceNote:string}){return this.checkout.executeRefund({requestId,idempotencyKey,manualReference:manual?.reference,actualAmount:manual?.actualAmount,evidenceNote:manual?.evidenceNote})}
 }
