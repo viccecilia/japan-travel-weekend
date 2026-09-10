@@ -24,21 +24,22 @@ export function groupDeparturesByMonth(
     days.set(dayKey, [...(days.get(dayKey) ?? []), departure]);
     months.set(monthKey, days);
   }
-  return [...months.entries()].map(([key, days]) => ({
-    key,
-    label: new Intl.DateTimeFormat(locale, {
-      timeZone: "Asia/Tokyo",
-      year: "numeric",
-      month: "long",
-    }).format(new Date(`${key}-15T12:00:00+09:00`)),
-    days: [...days.entries()].map(([dayKey, values]) => ({
-      key: dayKey,
-      departures: values.sort(
-        (a, b) =>
-          new Date(a.departureTime!).getTime() - new Date(b.departureTime!).getTime(),
-      ),
-    })),
-  }));
+  return [...months.entries()].sort(([a],[b])=>a.localeCompare(b)).map(([key, days]) => {
+    const [year,month]=key.split('-').map(Number);
+    const dayCount=new Date(Date.UTC(year,month,0)).getUTCDate();
+    return {
+      key,
+      label: new Intl.DateTimeFormat(locale, {
+        timeZone: "Asia/Tokyo",
+        year: "numeric",
+        month: "long",
+      }).format(new Date(`${key}-15T12:00:00+09:00`)),
+      days:Array.from({length:dayCount},(_,index)=>{
+        const dayKey=`${key}-${String(index+1).padStart(2,'0')}`;
+        return {key:dayKey,departures:[...(days.get(dayKey)??[])].sort((a,b)=>new Date(a.departureTime!).getTime()-new Date(b.departureTime!).getTime())};
+      }),
+    };
+  });
 }
 
 export function resolveDepartureSelection(input: {
