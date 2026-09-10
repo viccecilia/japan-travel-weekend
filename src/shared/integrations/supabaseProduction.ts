@@ -685,7 +685,7 @@ export class SupabaseStaffRepository {
   async publishLocation(vehicleGroupId:string,sessionId:string,latitude:number,longitude:number,accuracy:number|null,recordedAt=new Date().toISOString(),sequence=1){
     if(!this.client)return false;const {error}=await this.client.rpc('append_driver_location_point',{p_vehicle_group:vehicleGroupId,p_session:sessionId,p_latitude:latitude,p_longitude:longitude,p_accuracy_meters:accuracy,p_sampled_at:recordedAt,p_sequence:sequence});return !error;
   }
-  async startLocation(vehicleGroupId:string){if(!this.client)return null;const {data,error}=await this.client.rpc('start_driver_location_session',{p_vehicle_group:vehicleGroupId,p_minutes:15});return error||!data?null:String(data)}
+  async startLocation(vehicleGroupId:string){if(!this.client)return null;const {data,error}=await this.client.rpc('start_driver_location_session_v2',{p_vehicle_group:vehicleGroupId,p_minutes:30});if(error||!data||typeof data!=='object')return null;const row=data as {sessionId?:unknown;expiresAt?:unknown};return typeof row.sessionId==='string'&&typeof row.expiresAt==='string'?{sessionId:row.sessionId,expiresAt:row.expiresAt}:null}
   async stopLocation(vehicleGroupId:string){if(!this.client)return false;const {error}=await this.client.rpc('stop_driver_location',{p_vehicle_group:vehicleGroupId});return !error}
 }
 export class SupabaseTripRoomRepository {
