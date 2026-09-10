@@ -6,7 +6,7 @@ describe('payment UI safety gate',()=>{
   const stripe=readFileSync('src/shared/integrations/stripeClient.ts','utf8');
   const paymentCopy=readFileSync('src/shared/i18n/passengerPayment.ts','utf8');
   const localeCopy=readFileSync('src/shared/i18n/passengerLocale.ts','utf8');
-  it('only mounts checkout after a saved draft and an explicitly approved Stripe client',()=>{expect(source).toContain('services?.checkoutAvailable&&stripeClient&&state.booking?.draftId');expect(source).toContain('draftId:state.booking.draftId')});
+  it('requires a saved draft and authoritative quote, while mounting Stripe only for a real card session',()=>{expect(source).toContain('services?.checkoutAvailable&&state.booking?.draftId&&selectedDeparture&&seatImpact>0&&serverQuote&&!quoteNeedsConfirmation');expect(source).toContain('cardSession&&stripeClient&&<Elements');expect(source).toContain('draftId:state.booking.draftId')});
   it('requires explicit authorization for a Stripe live publishable key',()=>{expect(stripe).toContain("mode==='live'&&liveEnabled==='true'&&isStripeLivePublishableKey(value)")});
   it('keeps production unavailable copy',()=>{expect(source).toContain('支付功能尚未开放。本页只安全保存订单草稿')});
   it('shows explicit payment review, refund and cancelled outcomes',()=>{for(const copy of ['付款需要人工确认','退款已发起','订单未完成','请勿重复付款'])expect(paymentCopy).toContain(copy);expect(source).toContain('paymentState(status,manual)')});
