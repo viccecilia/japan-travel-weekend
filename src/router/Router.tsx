@@ -49,13 +49,14 @@ import {AccountStatus,AuthCallback,CreateAccount,ForgotPassword,ResetPassword} f
 import {DesignLab} from "../app/DesignLab";
 import {StaffPortal,StaffTaskAction} from "../app/StaffPortal";
 import {AiGuide} from "../app/AiGuide";
+import {OperationsLayout} from "../app/operations/OperationsLayout";
 const OperationsDashboard=lazy(()=>import('../app/OperationsDashboard').then(module=>({default:module.OperationsDashboard})));
 const ProductCenter=lazy(()=>import('../app/operations/ProductCenter').then(module=>({default:module.ProductCenter})));
 const DepartureCenter=lazy(()=>import('../app/operations/DepartureCenter').then(module=>({default:module.DepartureCenter})));
 const RunCenter=lazy(()=>import('../app/operations/RunCenter').then(module=>({default:module.RunCenter})));
 const MarketingCenter=lazy(()=>import('../app/operations/MarketingCenter').then(module=>({default:module.MarketingCenter})));
 const CommissionCenter=lazy(()=>import('../app/operations/CommissionCenter').then(module=>({default:module.CommissionCenter})));
-const OperationsPage=({children}:{children:ReactNode})=><RequireAccount><RequireOperations><Suspense fallback={<main className="operations-page"><p>正在加载管理功能…</p></main>}>{children}</Suspense></RequireOperations></RequireAccount>;
+const OperationsPage=({children}:{children:ReactNode})=><RequireAccount><RequireOperations><OperationsLayout><Suspense fallback={<main className="operations-page"><p>正在加载管理功能…</p></main>}>{children}</Suspense></OperationsLayout></RequireOperations></RequireAccount>;
 function ScrollToTop(){const {pathname}=useLocation();useEffect(()=>{if(!navigator.userAgent.includes('jsdom'))window.scrollTo({top:0,left:0,behavior:'auto'});},[pathname]);return null;}
 export function Router() {
   return (
