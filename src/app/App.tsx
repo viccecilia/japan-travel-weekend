@@ -6,6 +6,7 @@ import {
   useLocation,
   useNavigate,
   useParams,
+  useSearchParams,
 } from "react-router-dom";
 import { travelRepository } from "../shared/data/repository";
 import { backend } from "../shared/backend";
@@ -221,7 +222,8 @@ export function AppShell({
 }) {
   const { pathname } = useLocation();
   const app=useOptionalApp();
-  const c=passengerCoreCopy[app?.state.ui.locale ?? "zh-CN"];
+  const locale=app?.state.ui.locale ?? "zh-CN";
+  const c=passengerCoreCopy[locale];
   const screen = pathname.split("/").filter(Boolean).slice(1, 2)[0] ?? "home";
   return (
     <div className="app-stage">
@@ -241,12 +243,12 @@ export function AppShell({
               ⌂<span>{c.home}</span>
             </NavLink>
             <NavLink to="/app/trips">
-              ◇<span>{c.trips}</span>
+              ◇<span>{locale === "zh-CN" ? "选路线" : locale === "zh-TW" ? "選路線" : c.trips}</span>
             </NavLink>
             <NavLink to="/app/orders">
               ▤<span>{c.orders}</span>
             </NavLink>
-            <NavLink to="/app/my-trip/room">
+            <NavLink to="/app/notifications">
               ◉<span>{c.messages}</span>
             </NavLink>
             <NavLink to="/app/profile">
@@ -644,11 +646,14 @@ const notificationCopy:Record<string,any>={
 
 export function AppNotifications() {
   const { services,state } = useApp();
+  const [searchParams,setSearchParams]=useSearchParams();
   const locale=state.ui.locale??'zh-CN';
   const n=notificationCopy[locale]??notificationCopy['zh-CN'];
-  const [filter, setFilter] = useState<"all" | "order" | "trip" | "system">(
-    "all",
-  );
+  const requestedFilter=searchParams.get('type');
+  const initialFilter=requestedFilter==='order'||requestedFilter==='trip'||requestedFilter==='system'?requestedFilter:'all';
+  const [filter, setFilter] = useState<"all" | "order" | "trip" | "system">(initialFilter);
+  const changeFilter=(value:"all"|"order"|"trip"|"system")=>{setFilter(value);const next=new URLSearchParams(searchParams);if(value==='all')next.delete('type');else next.set('type',value);setSearchParams(next,{replace:true})};
+  useEffect(()=>setFilter(initialFilter),[initialFilter]);
   const previewItems = n.preview.map(([type,title,text,time]:string[])=>({type,label:n.labels[type],title,text,time}));
   const [items, setItems] = useState(previewItems);
   const [loading, setLoading] = useState(Boolean(services));
@@ -764,6 +769,17 @@ export function AppNotifications() {
         title={n.title}
         text={n.intro}
       />
+      <section className="app-list" aria-label="消息分类">
+        <Link className="order-card" to="/app/notifications?type=trip">
+          <b>旅行通知</b><span>查看付款、集合、车辆、登车及变更通知</span>
+        </Link>
+        <Link className="order-card" to="/app/my-trip">
+          <b>本车群聊</b><span>先选择对应路线和日期，再进入已开放的本车群</span>
+        </Link>
+        <Link className="order-card" to="/app/support">
+          <b>客服</b><span>订单咨询与出发当天的可用联系渠道</span>
+        </Link>
+      </section>
       <div className="notification-filters">
         {(
           [
@@ -775,7 +791,7 @@ export function AppNotifications() {
         ).map(([key, label]) => (
           <button
             className={filter === key ? "active" : ""}
-            onClick={() => setFilter(key)}
+            onClick={() => changeFilter(key)}
             key={key}
           >
             {label}
