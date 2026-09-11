@@ -88,7 +88,7 @@ const tripSupplement:Record<string,Record<string,{name:string;region:string;dura
 };
 const localizedTripSummary=(locale:PassengerLocale,trip:typeof trips[number])=>{
  const published=trip.localizedContent?.[locale]??trip.localizedContent?.['zh-CN'];
- if(trip.catalogSource==='published')return {name:typeof published?.title==='string'?published.title:trip.shortTitle,region:typeof published?.region==='string'?published.region:trip.region,duration:typeof published?.duration==='string'?published.duration:trip.duration,stops:Array.isArray(published?.stops)?published.stops.filter((item):item is string=>typeof item==='string'):trip.stops};
+ if(trip.catalogSource==='published')return {name:typeof published?.title==='string'?published.title:trip.shortTitle,region:typeof published?.region==='string'?published.region:trip.region,duration:typeof published?.duration==='string'?published.duration:trip.duration,summary:typeof published?.summary==='string'&&published.summary.trim()?published.summary:trip.summary,stops:Array.isArray(published?.stops)?published.stops.filter((item):item is string=>typeof item==='string'):trip.stops};
  return tripHomeCopy[locale]?.[trip.slug]??tripSupplement[locale]?.[trip.slug]??expandedRouteSummary(locale,trip.slug)??{name:trip.shortTitle,region:trip.region,duration:trip.duration,stops:trip.stops};
 };
 const routePlaceQueries:Record<string,string[]>={

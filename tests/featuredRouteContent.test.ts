@@ -3,6 +3,7 @@ import {featuredRoutePitch,featuredRouteSpots} from '../src/shared/i18n/spotCont
 import {expandedRouteSlugs,expandedRouteSummary} from '../src/shared/i18n/routeExpansion';
 import {trips} from '../src/shared/data/trips';
 import {routePhotoAt} from '../src/shared/data/routePhotoCatalog';
+import {localizedTrip} from '../src/shared/components/TripCard';
 
 describe('featured tourist route content',()=>{
   it.each([
@@ -38,12 +39,22 @@ describe('featured tourist route content',()=>{
     expect(new Set(trips.map(trip=>trip.slug)).size).toBe(9);
   });
 
+  it('never renders an empty Chinese route introduction when published content is incomplete',()=>{
+    for(const trip of trips){
+      const incomplete={...trip,summary:'',description:'',catalogSource:'published' as const};
+      expect(localizedTrip('zh-CN',incomplete).summary.length).toBeGreaterThan(20);
+    }
+  });
+
   it('never shifts an attraction photo onto a different stop',()=>{
     expect(routePhotoAt('amanohashidate-ine',0)?.url).toContain('/amanohashidate/');
     expect(routePhotoAt('amanohashidate-ine',1)).toBeUndefined();
     expect(routePhotoAt('amanohashidate-ine',2)?.url).toContain('/ine/');
     expect(routePhotoAt('kobe-arima-rokko',0)?.url).toContain('/arima/');
     expect(routePhotoAt('kobe-arima-rokko',2)?.url).toContain('/kobe/');
+    expect(routePhotoAt('sanzenin-kibune-arashiyama-autumn',0)?.url).toContain('/kifune/');
+    expect(routePhotoAt('sanzenin-kibune-arashiyama-autumn',1)?.url).toContain('/sanzenin/');
+    expect(routePhotoAt('sanzenin-kibune-arashiyama-autumn',2)?.url).toContain('/arashiyama-autumn/');
   });
 
   it.each(['zh-CN','zh-TW','ja','en','es','vi','ko','ne'] as const)('localizes every expanded route in %s',(locale)=>{

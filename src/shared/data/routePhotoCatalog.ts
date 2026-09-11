@@ -14,6 +14,9 @@ const photos:Record<string,RoutePhotoAsset>={
   '神户港':{url:'/images/routes/kobe/kobe-01.webp',creditUrl:'https://commons.wikimedia.org/wiki/File:2022_Kobe_Meriken_Park_001.jpg',creditLabel:'Naokijp · CC BY-SA 4.0'},
   '北野异人馆街':{url:'/images/routes/kitano/kitano-01.webp',creditUrl:'https://commons.wikimedia.org/wiki/File:Kobe_kitano_thomas_house07_2816.jpg',creditLabel:'663highland · CC BY 2.5'},
   '有马温泉':{url:'/images/routes/arima/arima-01.webp',creditUrl:'https://commons.wikimedia.org/wiki/File:Arima_Onsen_Yumotozaka02s3872.jpg',creditLabel:'663highland · CC BY 2.5'},
+  '贵船神社':{url:'/images/routes/kifune/kifune-autumn-01.jpg',creditUrl:'https://commons.wikimedia.org/wiki/File:Kifune-jinja_Shint%C3%B4_Shrine_-_First_torii_(Ichi-no-torii).jpg',creditLabel:'Yanajin33 · CC BY-SA 4.0'},
+  '大原三千院':{url:'/images/routes/sanzenin/sanzenin-autumn-01.jpg',creditUrl:'https://commons.wikimedia.org/wiki/File:Fall_foliage_in_Sanzen-in.jpg',creditLabel:'Charlie fong · CC BY-SA 4.0'},
+  '岚山·渡月桥':{url:'/images/routes/arashiyama-autumn/togetsukyo-autumn-01.jpg',creditUrl:'https://commons.wikimedia.org/wiki/File:Togetsukyo_20211123.jpg',creditLabel:'Suicasmo · CC BY-SA 4.0'},
 };
 
 export const routePhotoFor=(name:string)=>photos[name];
@@ -27,7 +30,7 @@ const routePhotoNames:Record<string,string[]>={
   'uji-nara-onsen':['奈良公园','平等院','宇治抹茶街','温泉'],
   'miyama-katsuoji-arashiyama':['胜尾寺','爱宕念佛寺','岚山竹林'],
   'arashiyama-train-hozugawa':['金阁寺','清水寺','二年坂·三年坂','伏见稻荷大社'],
-  'sanzenin-kibune-arashiyama-autumn':['三千院','贵船神社','岚山·渡月桥'],
+  'sanzenin-kibune-arashiyama-autumn':['贵船神社','大原三千院','岚山·渡月桥'],
 };
 
 export const routePhotoAt=(slug:string,index:number)=>routePhotoFor(routePhotoNames[slug]?.[index]??'');
