@@ -1,4 +1,4 @@
-import {useEffect,useState,type ReactNode} from 'react';
+import {useState,type ReactNode} from 'react';
 import {Link,useLocation,useNavigate} from 'react-router-dom';
 import {useApp} from '../store';
 import {runtimeMode} from '../../shared/config/businessRules';
@@ -32,7 +32,6 @@ export function OperationsLayout({children}:{children:ReactNode}){
   const navigate=useNavigate();
   const [open,setOpen]=useState(false);
   const [signingOut,setSigningOut]=useState(false);
-  useEffect(()=>setOpen(false),[location.pathname,location.search]);
   const title=pageTitle(location.pathname,location.search);
   const signOut=async()=>{
     if(signingOut)return;
@@ -44,7 +43,7 @@ export function OperationsLayout({children}:{children:ReactNode}){
     <button className="operations-nav-scrim" aria-label="关闭后台导航" aria-hidden={!open} tabIndex={open?0:-1} data-open={open} onClick={()=>setOpen(false)}/>
     <aside className="operations-sidebar" data-open={open} aria-label="运营后台导航">
       <div className="operations-brand"><span>JT WEEKEND</span><b>运营管理后台</b></div>
-      <nav>{navigation.map(item=>{const active=item.match(location.pathname,location.search);return <Link key={item.label} aria-current={active?'page':undefined} className={active?'active':''} to={item.to}>{item.label}</Link>})}</nav>
+      <nav id="operations-navigation">{navigation.map(item=>{const active=item.match(location.pathname,location.search);return <Link key={item.label} aria-current={active?'page':undefined} className={active?'active':''} to={item.to} onClick={()=>setOpen(false)}>{item.label}</Link>})}</nav>
       <Link className="operations-passenger-link" to="/app">查看游客端</Link>
     </aside>
     <div className="operations-workspace">
