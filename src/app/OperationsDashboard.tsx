@@ -19,7 +19,7 @@ import type {
   OperationsReferralSummary,
 } from "../shared/integrations/supabaseOperations";
 import { useApp } from "./store";
-import {Link,useLocation} from 'react-router-dom';
+import {Link} from 'react-router-dom';
 
 const japanDate = (value: string | null) =>
   value
@@ -99,7 +99,7 @@ export function OperationsDashboard(){
 
 function OperationsLiveDashboard() {
   const { services } = useApp();
-  const location=useLocation();
+  const location=typeof window==='undefined'?{pathname:'',search:''}:window.location;
   const [snapshot, setSnapshot] = useState<OperationsSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
