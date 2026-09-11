@@ -73,9 +73,26 @@ const snapshot: OperationsSnapshot = {
   dispatchDrafts: 0,
   loadedAt: "2026-08-31T00:00:00Z",
 };
-afterEach(cleanup);
+afterEach(()=>{cleanup();window.history.replaceState({},'', '/')});
 
 describe("运营派单界面", () => {
+  it("后台首页只展示今日工作台，不堆叠完整档案和新增表单", async () => {
+    window.history.replaceState({},'', '/app/operations');
+    const operations = {
+      loadSnapshot: vi.fn(async () => ({ data: snapshot, error: null })),
+      loadReferralSummary: vi.fn(async () => null),
+    };
+    const services = {
+      operations,
+      onAuthStateChange: () => () => {},
+      currentUser: async () => null,
+    } as unknown as ProductionBrowserServices;
+    render(<AppProvider services={services}><OperationsDashboard /></AppProvider>);
+    expect(await screen.findByRole('heading',{name:'今日运营工作台'})).toBeInTheDocument();
+    expect(screen.getByRole('heading',{name:'业务数据'})).toBeInTheDocument();
+    expect(screen.queryByRole('button',{name:'新增车辆'})).not.toBeInTheDocument();
+    expect(screen.queryByRole('button',{name:'载入配车规划'})).not.toBeInTheDocument();
+  });
   it("从班次载入配车并保存完整草稿", async () => {
     const saveDispatchPlan = vi.fn(
       async (_departureId: string, _tasks: DispatchPlanDraft[]) => ({
