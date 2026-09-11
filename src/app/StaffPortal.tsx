@@ -10,6 +10,7 @@ import { Link, useLocation, useParams, useSearchParams } from "react-router-dom"
 import QRCode from "qrcode";
 import { isSeedEnabled } from "../shared/config/businessRules";
 import { useApp } from "./store";
+import {selectPrimaryStaffTask,taskPhase,taskSortTime,tokyoDay} from './staffTaskSelection';
 
 export type StaffTask = {
   staff_assignment_id: string;
@@ -164,18 +165,6 @@ const timeLabel = (value: string | null) =>
         hour12: false,
       }).format(new Date(value))
     : "--:--";
-const tokyoDay=(value:string|Date)=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo'}).format(typeof value==='string'?new Date(value):value);
-const taskPhase=(task:StaffTask)=>task.journey_status==='cancelled'?'cancelled' as const:task.journey_status==='completed'?'completed' as const:task.journey_status&&['meeting','in_progress'].includes(task.journey_status)?'active' as const:'pending' as const;
-const taskSortTime=(task:StaffTask)=>task.departs_at?new Date(task.departs_at).getTime():Number.MAX_SAFE_INTEGER;
-export const selectPrimaryStaffTask=(tasks:StaffTask[],now=new Date())=>{
-  const today=tokyoDay(now);
-  const eligible=tasks.filter(task=>taskPhase(task)!=='cancelled'&&taskPhase(task)!=='completed');
-  const running=eligible.filter(task=>taskPhase(task)==='active').sort((a,b)=>taskSortTime(a)-taskSortTime(b));
-  if(running[0])return running[0];
-  const todayPending=eligible.filter(task=>task.departs_at&&tokyoDay(task.departs_at)===today).sort((a,b)=>taskSortTime(a)-taskSortTime(b));
-  if(todayPending[0])return todayPending[0];
-  return eligible.filter(task=>taskSortTime(task)>=now.getTime()).sort((a,b)=>taskSortTime(a)-taskSortTime(b))[0]??null;
-};
 const taskPath = (task: StaffTask, action: StaffAction) =>
   `/staff/tasks/${encodeURIComponent(task.staff_assignment_id)}/${action}`;
 const statusLabel: Record<string, string> = {

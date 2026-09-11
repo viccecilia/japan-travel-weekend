@@ -1,5 +1,6 @@
 import {describe,expect,it} from 'vitest';
-import {selectPrimaryStaffTask,type StaffTask} from '../src/app/StaffPortal';
+import type {StaffTask} from '../src/app/StaffPortal';
+import {selectPrimaryStaffTask} from '../src/app/staffTaskSelection';
 
 const make=(id:string,departsAt:string,status:string):StaffTask=>({staff_assignment_id:id,assignment_role:'driver',vehicle_group_id:`group-${id}`,room_id:null,room_status:null,departure_id:`departure-${id}`,trip_title:id,departs_at:departsAt,chat_opens_at:null,meeting_name:null,meeting_address:null,map_lat:null,map_lng:null,vehicle_sequence:1,vehicle_type:'hiace',vehicle_label:null,vehicle_capacity:10,booked_seats:1,passenger_count:1,boarded_count:0,journey_status:status});
 
