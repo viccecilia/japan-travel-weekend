@@ -973,10 +973,6 @@ export function AppTrips() {
         title={r.title}
         text={r.text}
       />
-      <div className="catalog-intro">
-        <b>{trips.length} {r.selected}</b>
-        <span>{r.catalogMeta}</span>
-      </div>
       <div className="app-list route-card-list">
         {trips.map((t) => (
           <TripCard key={t.id} trip={t} app locale={state.ui.locale ?? 'zh-CN'} />
