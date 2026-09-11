@@ -218,6 +218,10 @@ export function Router() {
       <Route path="/app/operations/marketing" element={<OperationsPage><MarketingCenter/></OperationsPage>} />
       <Route path="/app/operations/commissions" element={<OperationsPage><CommissionCenter/></OperationsPage>} />
       <Route path="/staff" element={<RequireAccount><RequireStaff><StaffPortal/></RequireStaff></RequireAccount>} />
+      <Route path="/staff/schedule" element={<RequireAccount><RequireStaff><StaffPortal/></RequireStaff></RequireAccount>} />
+      <Route path="/staff/map" element={<RequireAccount><RequireStaff><StaffPortal/></RequireStaff></RequireAccount>} />
+      <Route path="/staff/messages" element={<RequireAccount><RequireStaff><StaffPortal/></RequireStaff></RequireAccount>} />
+      <Route path="/staff/profile" element={<RequireAccount><RequireStaff><StaffPortal/></RequireStaff></RequireAccount>} />
       <Route path="/staff/tasks/:assignmentId/:action" element={<RequireAccount><RequireStaff><StaffTaskAction/></RequireStaff></RequireAccount>} />
       <Route path="/design-lab" element={<DesignLab />} />
       <Route path="/app-demo" element={<LegacyAppRedirect />} />

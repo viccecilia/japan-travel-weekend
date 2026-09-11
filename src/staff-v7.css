@@ -1,0 +1,15 @@
+.staff-phone{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
+.staff-nav{pointer-events:auto;isolation:isolate}
+.staff-nav a{position:relative;z-index:1;min-height:48px}
+.staff-filter-panel,.staff-profile-card{display:grid;gap:12px;margin-top:18px;padding:16px;border:1px solid #dce7eb;border-radius:18px;background:#fff}
+.staff-filter-panel label{display:grid;gap:6px;color:#456270;font-size:.72rem;font-weight:800}
+.staff-filter-panel input{min-height:44px;padding:8px 10px;border:1px solid #cddce3;border-radius:11px;background:#fff}
+.staff-filter-panel>div{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.staff-filter-panel button{min-height:40px;border:1px solid #cddce3;border-radius:10px;color:#456270;background:#f7fafb;font-size:.65rem;font-weight:800}
+.staff-filter-panel button.active{color:#fff;border-color:#078d78;background:#078d78}
+.staff-view-list{display:grid;gap:10px;margin-top:16px}
+.staff-view-list article{display:grid;gap:7px;padding:16px;border:1px solid #dce7eb;border-radius:17px;background:#fff;box-shadow:0 8px 20px #0a35500c}
+.staff-view-list span{color:#078d78;font-size:.65rem;font-weight:850}.staff-view-list h2{margin:0;font-size:1rem}.staff-view-list p{margin:0;color:#657788;font-size:.72rem;line-height:1.5}
+.staff-view-list a{width:max-content;padding:8px 11px;border-radius:9px;color:#fff;background:#0d6980;font-size:.68rem;font-weight:800}.staff-view-list small{color:#80909d}
+.staff-profile-card h2{margin:0;font-size:1rem}.staff-profile-card p{margin:0;color:#657788;font-size:.72rem;line-height:1.5}.staff-profile-card>a,.staff-profile-card button{width:max-content;min-height:40px;padding:8px 11px;border:1px solid #0d6980;border-radius:9px;color:#0d6980;background:#fff;font-size:.68rem;font-weight:800}
+.staff-profile-card code{overflow-wrap:anywhere;padding:10px;border-radius:10px;background:#eef4f5;font-size:.62rem}.staff-profile-card>img{width:180px;height:180px;padding:8px;border:1px solid #dce7eb;border-radius:14px;background:#fff}.staff-profile-payouts{display:grid;gap:6px}

@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
+import QRCode from "qrcode";
 import { isSeedEnabled } from "../shared/config/businessRules";
 import { useApp } from "./store";
 
@@ -31,6 +32,7 @@ export type StaffTask = {
   booked_seats: number;
   passenger_count: number;
   boarded_count: number;
+  journey_status?: "pending" | "ready" | "meeting" | "in_progress" | "completed" | string;
 };
 type AttendanceRow = {
   passenger_id: string;
@@ -211,13 +213,21 @@ function useStaffTasks() {
 
 export function StaffPortal() {
   const { services, preview, tasks, resolved, error } = useStaffTasks();
+  const {state}=useApp();
+  const location=useLocation();
   const [selected, setSelected] = useState<string | null>(null);
+  const [scheduleStatus,setScheduleStatus]=useState<'all'|'pending'|'active'|'completed'>('all');
+  const [scheduleDate,setScheduleDate]=useState('');
+  const [staffReferral,setStaffReferral]=useState<{code:string;completedInvites:number;pendingInvites:number}|null>(null);
+  const [staffCommission,setStaffCommission]=useState<{pendingJpy?:number;availableJpy:number;lockedJpy:number;paidJpy:number;payouts:Array<{id:string;weekStart:string;amountJpy:number;status:string}>}|null>(null);
+  const [qrUrl,setQrUrl]=useState('');
   const [workflowNotice, setWorkflowNotice] = useState("");
   const [workflowBusy, setWorkflowBusy] = useState(false);
   const [leaves,setLeaves]=useState<Array<{id:string;starts_at:string;ends_at:string;reason:string;status:string;review_note:string}>>([]);
   const [leaveOpen,setLeaveOpen]=useState(false);
   const [leaveNotice,setLeaveNotice]=useState('');
   useEffect(()=>{let mounted=true;if(services&&typeof services.loadOwnStaffLeaves==='function')void services.loadOwnStaffLeaves().then(value=>{if(mounted)setLeaves(value)});return()=>{mounted=false}},[services]);
+  useEffect(()=>{let mounted=true;if(!services)return()=>{mounted=false};void Promise.all([services.loadOwnReferralSummary(),services.loadOwnCashCommissionSummary()]).then(([referral,commission])=>{if(!mounted)return;setStaffReferral(referral);setStaffCommission(commission);if(referral?.code){const link=`${window.location.origin}/app/register?ref=${encodeURIComponent(referral.code)}`;void QRCode.toDataURL(link,{width:220,margin:1,errorCorrectionLevel:'M'}).then(value=>{if(mounted)setQrUrl(value)})}});return()=>{mounted=false}},[services]);
   const submitLeave=async(event:FormEvent<HTMLFormElement>)=>{event.preventDefault();const form=new FormData(event.currentTarget);const startsDate=new Date(String(form.get('startsAt')));const endsDate=new Date(String(form.get('endsAt')));if(!Number.isFinite(startsDate.getTime())||!Number.isFinite(endsDate.getTime())||endsDate<=startsDate){setLeaveNotice('请假结束时间必须晚于开始时间。');return}const reason=String(form.get('reason')).trim();setWorkflowBusy(true);const ok=services&&typeof services.submitOwnStaffLeave==='function'?await services.submitOwnStaffLeave(startsDate.toISOString(),endsDate.toISOString(),reason):true;setWorkflowBusy(false);setLeaveNotice(ok?'请假申请已提交，批准前仍需按原派单出勤。':'提交失败，请检查时间是否重复或联系运营。');if(ok){setLeaveOpen(false);if(services&&typeof services.loadOwnStaffLeaves==='function')setLeaves(await services.loadOwnStaffLeaves())}};
   const active = useMemo(
     () =>
@@ -248,6 +258,16 @@ export function StaffPortal() {
         </StatusCard>
       </StaffFrame>
     );
+  const portalView=location.pathname==='/staff/schedule'?'schedule':location.pathname==='/staff/map'?'map':location.pathname==='/staff/messages'?'messages':location.pathname==='/staff/profile'?'profile':'today';
+  const taskPhase=(task:StaffTask)=>task.journey_status==='completed'?'completed' as const:task.journey_status&&['meeting','in_progress'].includes(task.journey_status)?'active' as const:'pending' as const;
+  const filteredTasks=tasks.filter(task=>(scheduleStatus==='all'||taskPhase(task)===scheduleStatus)&&(!scheduleDate||new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo'}).format(new Date(task.departs_at??0))===scheduleDate));
+  if(portalView==='schedule')return <StaffFrame task={active}><header className="staff-welcome"><span>工作人员端</span><h1>行程</h1><p>按日期和执行状态查看本人已分配任务。</p></header><section className="staff-filter-panel"><label>日期筛选<input aria-label="行程日期" type="date" value={scheduleDate} onChange={event=>setScheduleDate(event.target.value)}/></label><div role="group" aria-label="行程状态">{([['all','全部'],['pending','待执行'],['active','进行中'],['completed','已完成']] as const).map(([value,label])=><button type="button" key={value} className={scheduleStatus===value?'active':''} onClick={()=>setScheduleStatus(value)}>{label}</button>)}</div></section>{filteredTasks.length?<section className="staff-view-list">{filteredTasks.map(task=><article key={task.staff_assignment_id}><span>{dayLabel(task.departs_at)} · {timeLabel(task.departs_at)} · {taskPhase(task)==='pending'?'待执行':taskPhase(task)==='active'?'进行中':'已完成'}</span><h2>{task.trip_title}</h2><p>{task.meeting_name??'集合点待确认'} · {task.vehicle_label??task.vehicle_type}</p><Link to={taskPath(task,'journey')}>打开行程</Link></article>)}</section>:<StatusCard title="当前筛选没有行程">更改日期或状态后，可查看其他已分配任务。</StatusCard>}</StaffFrame>;
+  if(portalView==='map')return <StaffFrame task={active}><header className="staff-welcome"><span>工作人员端</span><h1>地图</h1><p>只显示当前账户获派任务的集合点与路线入口。</p></header>{tasks.length?<section className="staff-view-list">{tasks.map(task=><article key={task.staff_assignment_id}><span>{dayLabel(task.departs_at)} · {timeLabel(task.departs_at)}</span><h2>{task.trip_title}</h2><p>{task.meeting_name??'集合点待确认'}{task.meeting_address?` · ${task.meeting_address}`:''}</p>{task.map_lat!=null&&task.map_lng!=null?<a target="_blank" rel="noreferrer" href={`https://www.google.com/maps/dir/?api=1&destination=${task.map_lat},${task.map_lng}`}>导航到集合点</a>:<small>坐标待运营确认</small>}<Link to={taskPath(task,'journey')}>查看路线节点</Link></article>)}</section>:<StatusCard title="暂无可显示的任务地图">获得任务后，这里会显示本人任务的集合点、路线节点和导航入口。</StatusCard>}</StaffFrame>;
+  if(portalView==='messages')return <StaffFrame task={active}><header className="staff-welcome"><span>工作人员端</span><h1>消息</h1><p>仅列出有权访问的本车行程群与工作通知。</p></header>{tasks.some(task=>task.room_id)?<section className="staff-view-list">{tasks.filter(task=>task.room_id).map(task=><article key={task.staff_assignment_id}><span>{task.room_status==='open'?'群聊已开放':'群聊待开放'}</span><h2>{task.trip_title}</h2><p>{dayLabel(task.departs_at)} · {task.vehicle_label??task.vehicle_type}</p><Link to={taskPath(task,'chat')}>{task.room_status==='open'?'进入行程群':'查看开放时间'}</Link></article>)}</section>:<StatusCard title="暂无消息或行程群">运营通知和已授权的行程群开放后会显示在这里。</StatusCard>}</StaffFrame>;
+  if(portalView==='profile'){
+    const referralLink=staffReferral?.code?`${window.location.origin}/app/register?ref=${encodeURIComponent(staffReferral.code)}`:'';
+    return <StaffFrame task={active}><header className="staff-welcome"><span>工作人员端</span><h1>我的</h1><p>资料、推广链接、佣金与提现记录。</p></header><section className="staff-profile-card"><h2>账户资料</h2><p>{state.user?.email??'当前工作人员账户'}</p><Link to="/app/profile">维护允许修改的称呼与联系资料</Link></section><section className="staff-profile-card"><h2>固定推广链接</h2>{referralLink?<><code>{referralLink}</code><button type="button" onClick={()=>void navigator.clipboard.writeText(referralLink)}>复制链接</button>{qrUrl&&<img src={qrUrl} alt="本人固定推广链接二维码"/>}<div className="staff-kpis"><article><span>进行中</span><b>{staffReferral?.pendingInvites??0}</b><small>最近推荐状态</small></article><article><span>累计完成</span><b>{staffReferral?.completedInvites??0}</b><small>有效推荐</small></article></div></>:<p>推广资格或固定链接尚未开通，请联系运营确认。</p>}</section><section className="staff-profile-card"><h2>现金佣金</h2><div className="staff-kpis"><article><span>待结算</span><b>¥{(staffCommission?.pendingJpy??0).toLocaleString()}</b></article><article><span>提现处理中</span><b>¥{(staffCommission?.lockedJpy??0).toLocaleString()}</b></article><article><span>可提现</span><b>¥{(staffCommission?.availableJpy??0).toLocaleString()}</b></article><article><span>累计已付</span><b>¥{(staffCommission?.paidJpy??0).toLocaleString()}</b></article></div>{staffCommission?.payouts.length?<div className="staff-profile-payouts">{staffCommission.payouts.map(item=><p key={item.id}>{item.weekStart} · ¥{item.amountJpy.toLocaleString()} · {item.status}</p>)}</div>:<p>暂无提现记录。每个日本自然周最多申请一次。</p>}</section></StaffFrame>;
+  }
   return (
     <StaffFrame task={active}>
       {preview && (
@@ -1261,8 +1281,7 @@ function StaffFrame({
   const { services } = useApp();
   const location = useLocation();
   const action = location.pathname.split("/").at(-1);
-  const mapPath = task ? taskPath(task, "meeting") : "/staff#tasks";
-  const chatPath = task ? taskPath(task, "chat") : "/staff#tasks";
+  const tabPath=action==='meeting'?'/staff/map':action==='chat'?'/staff/messages':location.pathname;
   return (
     <div className="staff-stage">
       <main className="staff-phone">
@@ -1277,28 +1296,32 @@ function StaffFrame({
         <div className="staff-content">{children}</div>
         <nav className="staff-nav" aria-label="工作人员导航">
           <Link
+            aria-current={tabPath === "/staff" ? "page" : undefined}
             className={
-              location.pathname === "/staff" && !location.hash ? "active" : ""
+              tabPath === "/staff" ? "active" : ""
             }
             to="/staff"
           >
             今日
           </Link>
           <Link
-            className={location.hash === "#tasks" ? "active" : ""}
-            to="/staff#tasks"
+            aria-current={tabPath === "/staff/schedule" ? "page" : undefined}
+            className={tabPath === "/staff/schedule" ? "active" : ""}
+            to="/staff/schedule"
           >
             行程
           </Link>
           <Link
-            className={action === "meeting" ? "active" : ""}
-            to={mapPath}
+            aria-current={tabPath === "/staff/map" ? "page" : undefined}
+            className={tabPath === "/staff/map" ? "active" : ""}
+            to="/staff/map"
           >
             地图
           </Link>
-          <Link className={action === "chat" ? "active" : ""} to={chatPath}>
+          <Link aria-current={tabPath === "/staff/messages" ? "page" : undefined} className={tabPath === "/staff/messages" ? "active" : ""} to="/staff/messages">
             消息
           </Link>
+          <Link aria-current={tabPath === "/staff/profile" ? "page" : undefined} className={tabPath === "/staff/profile" ? "active" : ""} to="/staff/profile">我的</Link>
         </nav>
       </main>
     </div>

@@ -1,4 +1,4 @@
-import React from 'react';import ReactDOM from 'react-dom/client';import {BrowserRouter} from 'react-router-dom';import {AppProvider} from './app/store';import {Router} from './router/Router';import './styles.css';import './golden-path.css';
+import React from 'react';import ReactDOM from 'react-dom/client';import {BrowserRouter} from 'react-router-dom';import {AppProvider} from './app/store';import {Router} from './router/Router';import './styles.css';import './golden-path.css';import './staff-v7.css';
 import {runtimeMode} from './shared/config/businessRules';import {createSupabaseBrowserClient} from './shared/integrations/supabaseClient';import {ProductionBrowserServices} from './shared/backend/productionServices';
 document.documentElement.lang='zh-CN';
 if('serviceWorker' in navigator){

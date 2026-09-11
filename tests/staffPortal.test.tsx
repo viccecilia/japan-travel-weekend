@@ -83,16 +83,40 @@ describe("工作人员端", () => {
     );
     expect(screen.getByRole("link", { name: "行程" })).toHaveAttribute(
       "href",
-      "/staff#tasks",
+      "/staff/schedule",
     );
     expect(screen.getByRole("link", { name: "地图" })).toHaveAttribute(
       "href",
-      "/staff/tasks/assignment-1/meeting",
+      "/staff/map",
     );
     expect(screen.getByRole("link", { name: "消息" })).toHaveAttribute(
       "href",
-      "/staff/tasks/assignment-1/chat",
+      "/staff/messages",
     );
+    expect(screen.getByRole("link", { name: "我的" })).toHaveAttribute("href","/staff/profile");
+  });
+  it.each([
+    ['/staff','暂无已分配任务','今日'],
+    ['/staff/schedule','当前筛选没有行程','行程'],
+    ['/staff/map','暂无可显示的任务地图','地图'],
+    ['/staff/messages','暂无消息或行程群','消息'],
+    ['/staff/profile','固定推广链接','我的'],
+  ])('无任务时 %s 仍提供独立页面、空状态和正确高亮',async(path,empty,activeLabel)=>{
+    const client={auth:{getUser:async()=>({data:{user:{id:'staff-empty',email:'empty@example.invalid'}},error:null}),getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},rpc:async(name:string)=>name==='get_staff_portal_tasks'?{data:[],error:null}:{data:null,error:null}} as unknown as SupabaseClient;
+    render(<MemoryRouter initialEntries={[path]}><AppProvider services={new ProductionBrowserServices(client,undefined)}><Routes><Route path="/staff/*" element={<StaffPortal/>}/></Routes></AppProvider></MemoryRouter>);
+    expect(await screen.findByText(empty)).toBeInTheDocument();
+    expect(screen.getByRole('link',{name:activeLabel})).toHaveClass('active');
+    for(const [label,href] of [['今日','/staff'],['行程','/staff/schedule'],['地图','/staff/map'],['消息','/staff/messages'],['我的','/staff/profile']])expect(screen.getByRole('link',{name:label})).toHaveAttribute('href',href);
+  });
+  it.each([
+    ['pending','待执行'],
+    ['in_progress','进行中'],
+    ['completed','已完成'],
+  ])('行程页按服务端旅程状态显示 %s',async(journeyStatus,label)=>{
+    const client={auth:{getUser:async()=>({data:{user:{id:'staff-state',email:'state@example.invalid'}},error:null}),getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},rpc:async(name:string)=>name==='get_staff_portal_tasks'?{data:[{...task,journey_status:journeyStatus}],error:null}:{data:null,error:null}} as unknown as SupabaseClient;
+    render(<MemoryRouter initialEntries={['/staff/schedule']}><AppProvider services={new ProductionBrowserServices(client,undefined)}><Routes><Route path="/staff/*" element={<StaffPortal/>}/></Routes></AppProvider></MemoryRouter>);
+    expect(await screen.findByText(new RegExp(`· ${label}$`))).toBeInTheDocument();
+    expect(screen.getByRole('link',{name:'行程'})).toHaveAttribute('aria-current','page');
   });
   it("本车乘客点名仅显示最小必要字段并可保存状态", async () => {
     const calls: string[] = [];
@@ -205,7 +229,7 @@ describe("工作人员端", () => {
     expect(screen.getByRole("status")).toHaveTextContent("本次查看已记录");
     expect(screen.getByRole("link", { name: "地图" })).toHaveAttribute(
       "href",
-      "/staff/tasks/assignment-1/meeting",
+      "/staff/map",
     );
   });
   it("异常上报写入审计队列并保留调度 API 边界", async () => {
