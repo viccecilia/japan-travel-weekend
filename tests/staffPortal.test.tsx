@@ -27,6 +27,7 @@ const task = {
   booked_seats: 12,
   passenger_count: 12,
   boarded_count: 8,
+  journey_status: "in_progress",
 };
 
 describe("工作人员端", () => {
@@ -96,11 +97,11 @@ describe("工作人员端", () => {
     expect(screen.getByRole("link", { name: "我的" })).toHaveAttribute("href","/staff/profile");
   });
   it.each([
-    ['/staff','暂无已分配任务','今日'],
+    ['/staff','今天暂无已安排任务','今日'],
     ['/staff/schedule','当前筛选没有行程','行程'],
     ['/staff/map','暂无可显示的任务地图','地图'],
-    ['/staff/messages','暂无消息或行程群','消息'],
-    ['/staff/profile','固定推广链接','我的'],
+    ['/staff/messages','暂无有权访问的行程群。','消息'],
+    ['/staff/profile','我的推广','我的'],
   ])('无任务时 %s 仍提供独立页面、空状态和正确高亮',async(path,empty,activeLabel)=>{
     const client={auth:{getUser:async()=>({data:{user:{id:'staff-empty',email:'empty@example.invalid'}},error:null}),getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},rpc:async(name:string)=>name==='get_staff_portal_tasks'?{data:[],error:null}:{data:null,error:null}} as unknown as SupabaseClient;
     render(<MemoryRouter initialEntries={[path]}><AppProvider services={new ProductionBrowserServices(client,undefined)}><Routes><Route path="/staff/*" element={<StaffPortal/>}/></Routes></AppProvider></MemoryRouter>);
