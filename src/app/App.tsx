@@ -751,6 +751,7 @@ export function AppNotifications() {
           id:string;
           event_type: string;
           order_id:string|null;
+          payload?:Record<string,unknown>|null;
           created_at: string;
           status: string;
         }) => {
@@ -761,6 +762,8 @@ export function AppNotifications() {
             ...template,
             id:row.id,
             orderId:row.order_id,
+            departureId:typeof row.payload?.departure_id==='string'?row.payload.departure_id:null,
+            vehicleGroupId:typeof row.payload?.vehicle_group_id==='string'?row.payload.vehicle_group_id:null,
             time: new Intl.DateTimeFormat(locale, {
               timeZone: "Asia/Tokyo",
               month: "numeric",
@@ -786,7 +789,7 @@ export function AppNotifications() {
         text={n.intro}
       />
       <section className="app-list" aria-label={hub.label}>
-        <Link className="order-card" to="/app/notifications?type=trip">
+        <Link className="order-card" to="/app/notifications">
           <b>{hub.travel}</b><span>{hub.travelText}</span>
         </Link>
         <Link className="order-card" to="/app/my-trip">
@@ -843,7 +846,8 @@ export function AppNotifications() {
                       {n.delivery[item.deliveryStatus]??n.delivery.pending}
                     </small>
                   )}
-                  {item.orderId&&<Link className="text-link" to={`/app/orders/${encodeURIComponent(item.orderId)}`}>{item.type==='trip'?hub.openTrip:hub.openOrder}</Link>}
+                  {item.type==='order'&&item.orderId&&<Link className="text-link" to={`/app/orders/${encodeURIComponent(item.orderId)}`}>{hub.openOrder}</Link>}
+                  {item.type==='trip'&&(item.departureId||item.vehicleGroupId)&&<Link className="text-link" to={`/app/my-trip?${new URLSearchParams({...item.departureId?{departureId:item.departureId}:{},...item.vehicleGroupId?{vehicleGroupId:item.vehicleGroupId}:{}}).toString()}`}>{hub.openTrip}</Link>}
                 </div>
               </article>
             ))}

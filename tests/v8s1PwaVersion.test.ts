@@ -18,6 +18,9 @@ describe('V8-S.1 build observability and safe PWA update',()=>{
     expect(main).toContain('onNeedRefresh');
     expect(main).toContain('现在更新');
     expect(main).toContain('稍后');
+    expect(main).not.toContain('目标版本 ${__JTW_BUILD_SHA__');
+    expect(main).toContain('当前页面版本 ${__JTW_BUILD_SHA__');
+    expect(main).toContain("entry.textContent='有可用更新'");
     expect(main).not.toContain("addEventListener('controllerchange'");
   });
   it('checks the service worker again after focus, network recovery and elapsed time',()=>{

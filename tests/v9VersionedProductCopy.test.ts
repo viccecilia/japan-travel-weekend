@@ -11,7 +11,8 @@ describe('V9 versioned product copy',()=>{
   it('returns the new id and selects that draft after copy',()=>{
     expect(repository).toContain("rpc('operations_copy_product_versioned'");
     expect(repository).toContain('id:error?null:String(data)');
-    expect(ui).toContain('sourceVersion:selected.catalogVersion');
+    expect(ui).toContain('sourceVersion:copySource.catalogVersion');
+    expect(ui).toContain('sourceId:copySource.id');
     expect(ui).toContain('await reload(result.id)');
   });
 });
