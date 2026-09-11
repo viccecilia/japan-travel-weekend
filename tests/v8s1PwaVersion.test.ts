@@ -17,7 +17,17 @@ describe('V8-S.1 build observability and safe PWA update',()=>{
     const main=read('src/main.tsx');
     expect(main).toContain('onNeedRefresh');
     expect(main).toContain('现在更新');
+    expect(main).toContain('稍后');
     expect(main).not.toContain("addEventListener('controllerchange'");
+  });
+  it('checks the service worker again after focus, network recovery and elapsed time',()=>{
+    const main=read('src/main.tsx');
+    const checks=read('src/shared/pwaUpdate.ts');
+    expect(main).toContain('installServiceWorkerUpdateChecks(registration)');
+    expect(checks).toContain("addEventListener('focus',check)");
+    expect(checks).toContain("addEventListener('online',check)");
+    expect(checks).toContain("addEventListener('visibilitychange',onVisible)");
+    expect(checks).toContain('window.setInterval(check,intervalMs)');
   });
   it('reports frontend and API versions',()=>{
     expect(read('src/app/operations/SystemSettings.tsx')).toContain('前端版本');
