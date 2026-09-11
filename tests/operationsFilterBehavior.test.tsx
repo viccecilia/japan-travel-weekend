@@ -60,6 +60,11 @@ describe("运营筛选参数行为", () => {
       departureStatus:"published",vehicleGroupId:"vehicle-1",vehicleLabel:"大阪 500 あ 12-34",
       driverName:"测试司导",capacity:9,bookedSeats:6,arrived:5,boarded:4,journeyStatus:"boarding",
       currentStop:"京都站八条口",openIncidents:1,lastEventAt:"2026-09-11T08:20:00+09:00",
+    },{
+      departureId:"dep-11",tripTitle:"京都红叶一日游",departsAt:"2026-09-11T08:30:00+09:00",
+      departureStatus:"published",vehicleGroupId:"vehicle-2",vehicleLabel:"大阪 501 い 56-78",
+      driverName:"第二司导",capacity:8,bookedSeats:3,arrived:2,boarded:1,journeyStatus:"meeting",
+      currentStop:null,openIncidents:0,lastEventAt:null,
     }], error: null }));
     const services = {
       operations: { loadRunBoard, loadDriverStatistics:vi.fn(async()=>({data:[],error:null})) },
@@ -71,8 +76,10 @@ describe("运营筛选参数行为", () => {
 
     expect(await screen.findByRole("heading",{name:"班次运行详情"})).toBeInTheDocument();
     expect(screen.getByRole("heading",{name:"京都红叶一日游"})).toBeInTheDocument();
-    expect(screen.getByText("6 / 9")).toBeInTheDocument();
-    expect(screen.getByText("5 / 4")).toBeInTheDocument();
+    expect(screen.getByText("9 / 17")).toBeInTheDocument();
+    expect(screen.getByText("7 / 5")).toBeInTheDocument();
+    expect(screen.getByText("大阪 500 あ 12-34")).toBeInTheDocument();
+    expect(screen.getByText("大阪 501 い 56-78")).toBeInTheDocument();
     expect(screen.getByRole("link",{name:"编辑班次安排"})).toHaveAttribute("href","/app/operations/departures?date=2026-09-11&departure=dep-11");
     expect(screen.queryByText("本月司导运载统计")).not.toBeInTheDocument();
   });
