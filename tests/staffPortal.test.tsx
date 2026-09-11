@@ -31,6 +31,43 @@ const task = {
 };
 
 describe("工作人员端", () => {
+  const renderTodayWithTasks=(rows:Array<typeof task>)=>{
+    const client={auth:{getUser:async()=>({data:{user:{id:'staff-selection',email:'selection@example.invalid'}},error:null}),getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},rpc:async(name:string)=>name==='get_staff_portal_tasks'?{data:rows,error:null}:{data:null,error:null}} as unknown as SupabaseClient;
+    render(<MemoryRouter initialEntries={['/staff']}><AppProvider services={new ProductionBrowserServices(client,undefined)}><Routes><Route path="/staff/*" element={<StaffPortal/>}/></Routes></AppProvider></MemoryRouter>);
+  };
+  const atTokyoHour=(dayOffset:number,hour:number)=>{
+    const date=new Date();
+    const tokyo=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).format(date);
+    return new Date(`${tokyo}T${String(hour).padStart(2,'0')}:00:00+09:00`).getTime()+dayOffset*86_400_000;
+  };
+  it.each([
+    ['已完成+待执行','completed','pending'],
+    ['已取消+待执行','cancelled','pending'],
+  ])('首页组件在%s时只选择待执行任务',async(_case,terminal,pending)=>{
+    renderTodayWithTasks([
+      {...task,staff_assignment_id:'terminal',trip_title:'不可成为主任务',journey_status:terminal,departs_at:new Date(atTokyoHour(0,8)).toISOString()},
+      {...task,staff_assignment_id:'pending',trip_title:'今日正确任务',journey_status:pending,departs_at:new Date(atTokyoHour(0,10)).toISOString()},
+    ]);
+    expect(await screen.findByRole('heading',{name:'今日正确任务'})).toBeInTheDocument();
+    expect(screen.queryByRole('heading',{name:'不可成为主任务'})).not.toBeInTheDocument();
+  });
+  it('运行中任务优先于未来任务',async()=>{
+    renderTodayWithTasks([
+      {...task,staff_assignment_id:'future',trip_title:'未来任务',journey_status:'pending',departs_at:new Date(atTokyoHour(1,9)).toISOString()},
+      {...task,staff_assignment_id:'running',trip_title:'正在运行',journey_status:'in_progress',departs_at:new Date(atTokyoHour(-1,9)).toISOString()},
+    ]);
+    expect(await screen.findByRole('heading',{name:'正在运行'})).toBeInTheDocument();
+  });
+  it('只有历史任务时显示今日空状态且不冒充下一次出勤',async()=>{
+    renderTodayWithTasks([{...task,trip_title:'历史完成',journey_status:'completed',departs_at:new Date(atTokyoHour(-1,9)).toISOString()}]);
+    expect(await screen.findByText('今天暂无已安排任务')).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain('下一次出勤：');
+  });
+  it('只有未来任务时首页为空并显示下一次出勤',async()=>{
+    renderTodayWithTasks([{...task,trip_title:'明日出勤',journey_status:'pending',departs_at:new Date(atTokyoHour(1,9)).toISOString()}]);
+    expect(await screen.findByText('今天暂无已安排任务')).toBeInTheDocument();
+    expect(screen.getByText(/下一次出勤：/)).toHaveTextContent('明日出勤');
+  });
   it("只展示已进入本车的履约名单，不展示付款职责或支付凭据", async () => {
     const client = {
       auth: {
