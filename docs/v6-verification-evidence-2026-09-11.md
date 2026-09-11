@@ -5,7 +5,7 @@
 - GitHub 仓库：`https://github.com/viccecilia/japan-travel-weekend`
 - 用户指定提交：`0b6d997076a93b285f45ce0821c9e20379165b83`，已由普通 push 推送。
 - 本轮路线、缓存修复提交：`14f857bd64cbcd557ae0ef360a565572523e3879`，已由普通 push 推送。
-- 当前服务器已核实版本：`0b6d997`。`14f857b` 安装包已上传并校验到 `/home/ubuntu/jtw-v6-14f857b/bundle`，但切换 `/var/www`、更新 Nginx 和重启服务需要服务器 sudo，故在实际执行安装脚本前不得标记为“生产已部署”。
+- 当前服务器已核实：前端软链接 `/var/www/japan-travel-weekend-test` 指向 `jtw-v6-3a22a33`；API 服务使用 `14f857b` 构建并处于 active。Nginx 已安装无缓存应用壳规则及 `/api/ -> 127.0.0.1:18774/` 代理，`nginx -t` 成功。
 
 ## 健康检查与路由证据
 
@@ -16,7 +16,7 @@
 | 公网 `/api/health` | 200 | `application/json; charset=utf-8` | `{"ok":true,"mode":"test"}` |
 | 公网 `/api/ready` | 200 | `application/json; charset=utf-8` | `{"ok":true,"mode":"test","checks":{"database":true,"stripeModeSafe":true,"webhookSecret":true,"notificationReceiptSecret":true}}` |
 
-公网 `/`、`/app`、路线详情、`/staff`、`/app/operations` 均由 Nginx SPA fallback 返回 200 `text/html`。真实 Chromium 打开 `/app` 已渲染游客首页，并非服务器端 404。排查结论：Nginx 的 `try_files ... /index.html` 正常；旧手机仍看到前端“页面不存在”更符合旧 Service Worker/旧应用壳缓存或无效历史 URL。提交 `14f857b` 为 `index.html`、`sw.js`、`registerSW.js` 增加每次重新验证，带哈希静态资源继续长期缓存。
+公网 `/`、`/app`、路线详情、`/staff`、`/app/operations` 均由 Nginx SPA fallback 返回 200 `text/html`。真实 Chromium 打开 `/app` 已渲染游客首页，并非服务器端 404。排查中发现首次安装的 Nginx 片段缺少公网 `/api/` 代理，已在 `65f9fba` 修复并由 `f74b615` 增加防回归测试；修复后公网 health/ready 均为 200 JSON。旧手机缓存问题由 `14f857b` 的应用壳重新验证规则处理，带哈希静态资源继续长期缓存。
 
 ## V6 十组任务验收矩阵
 
@@ -43,3 +43,4 @@
 - 数据库：隔离项目应用 `202609110118_autumn_route_media.sql` 成功；随后 schema lint 返回 0 error。
 - 路线：任何已发布记录即使简介字段为空，九条中文卡片仍使用同路线的审核基线文案，不再显示空白，也不会借用其他路线内容。
 - 红叶照片 SHA-256：贵船 `BF4FEF...AA61`；三千院 `87E77F...2B28`；渡月桥 `D9E8CD...61D9`。数据库通过新 published revision 引用这三张图片，历史 revision 与订单快照不变。
+- 公网浏览器：红叶路线正文、三处景点标题及简介均可见；三千院图片 naturalWidth=1536、贵船=4128、渡月桥=5184。详情页展示顺序与照片映射由 `3a22a33` 修正并部署。
