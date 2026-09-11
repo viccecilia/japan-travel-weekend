@@ -1,5 +1,14 @@
 begin;
 
+alter table public.account_audit_events drop constraint if exists account_audit_events_action_check;
+alter table public.account_audit_events add constraint account_audit_events_action_check check(action in (
+  'profile_updated','draft_abandoned','draft_expired',
+  'staff_application_approved','staff_application_rejected','staff_application_needs_information','staff_application_suspended','staff_access_revoked',
+  'route_catalog_patched','product_draft_saved','product_published','product_created','product_archived','product_restored','product_copied',
+  'commission_payout_approved','commission_payout_rejected','commission_payout_paid',
+  'driver_resource_updated','fleet_vehicle_updated'
+));
+
 create or replace function public.operations_copy_product_versioned(
   p_source uuid,
   p_expected_catalog_version integer,

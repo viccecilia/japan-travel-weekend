@@ -7,6 +7,7 @@ describe('V9 versioned product copy',()=>{
     expect(sql).toContain('where id=p_source for update');
     expect(sql).toContain('v_source.catalog_version<>p_expected_catalog_version');
     expect(sql).toContain("'sourceCatalogVersion',p_expected_catalog_version");
+    expect(sql).toContain("'product_copied'");
   });
   it('returns the new id and selects that draft after copy',()=>{
     expect(repository).toContain("rpc('operations_copy_product_versioned'");
