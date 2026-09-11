@@ -6,6 +6,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { MemoryRouter } from "react-router-dom";
 import { OperationsDashboard } from "../src/app/OperationsDashboard";
 import { AppProvider } from "../src/app/store";
 import type { ProductionBrowserServices } from "../src/shared/backend/productionServices";
@@ -88,7 +89,7 @@ describe("运营派单界面", () => {
       onAuthStateChange: () => () => {},
       currentUser: async () => null,
     } as unknown as ProductionBrowserServices;
-    render(<AppProvider services={services}><OperationsDashboard /></AppProvider>);
+    render(<MemoryRouter initialEntries={['/app/operations']}><AppProvider services={services}><OperationsDashboard /></AppProvider></MemoryRouter>);
     expect(await screen.findByRole('heading',{name:'今日运营工作台'})).toBeInTheDocument();
     expect(screen.getByRole('heading',{name:'业务数据'})).toBeInTheDocument();
     expect(screen.queryByRole('button',{name:'新增车辆'})).not.toBeInTheDocument();
