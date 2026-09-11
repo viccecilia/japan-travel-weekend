@@ -88,7 +88,7 @@ const tripSupplement:Record<string,Record<string,{name:string;region:string;dura
 };
 const localizedTripSummary=(locale:PassengerLocale,trip:typeof trips[number])=>{
  const published=trip.localizedContent?.[locale]??trip.localizedContent?.['zh-CN'];
- if(trip.catalogSource==='published')return {name:typeof published?.title==='string'?published.title:trip.shortTitle,region:typeof published?.region==='string'?published.region:trip.region,duration:typeof published?.duration==='string'?published.duration:trip.duration,summary:typeof published?.summary==='string'&&published.summary.trim()?published.summary:trip.summary,stops:Array.isArray(published?.stops)?published.stops.filter((item):item is string=>typeof item==='string'):trip.stops};
+ if(trip.catalogSource==='published')return {name:typeof published?.title==='string'&&published.title.trim()?published.title:trip.shortTitle,region:typeof published?.region==='string'&&published.region.trim()?published.region:trip.region,duration:typeof published?.duration==='string'&&published.duration.trim()?published.duration:trip.duration,summary:typeof published?.summary==='string'&&published.summary.trim()?published.summary:trip.summary,stops:Array.isArray(published?.stops)&&published.stops.some(item=>typeof item==='string'&&item.trim())?published.stops.filter((item):item is string=>typeof item==='string'&&Boolean(item.trim())):trip.stops};
  return tripHomeCopy[locale]?.[trip.slug]??tripSupplement[locale]?.[trip.slug]??expandedRouteSummary(locale,trip.slug)??{name:trip.shortTitle,region:trip.region,duration:trip.duration,stops:trip.stops};
 };
 const routePlaceQueries:Record<string,string[]>={
@@ -211,6 +211,7 @@ export function LanguageSelect({ compact = false }: { compact?: boolean }) {
     </label>
   );
 }
+const compactTripMeta=(...parts:Array<string|undefined|null>)=>parts.map(value=>value?.trim()).filter(Boolean).join(' · ');
 export function AppShell({
   children,
   nav = false,
@@ -526,7 +527,7 @@ export function AppHome() {
             <img src={trip.heroImage} alt={display.name} />
             <div>
               <small>
-                {display.region} · {display.duration}
+                {compactTripMeta(display.region,display.duration)}
               </small>
               <h3>{display.name}</h3>
               <p>{display.stops.slice(0, 3).join(" → ")}</p>
@@ -1001,7 +1002,7 @@ export function AppTrip() {
         <img src={t.heroImage} alt={displayTrip.name} />
         <div className="route-detail-overlay">
           <span>
-            {displayTrip.region} · {displayTrip.duration}
+            {compactTripMeta(displayTrip.region,displayTrip.duration)}
           </span>
           <h1>{displayTrip.name}</h1>
           <p>{displayTrip.stops.join(' · ')}</p>
@@ -1281,7 +1282,7 @@ export function BookingPage() {
         <img src={t.heroImage} alt="" />
         <div>
           <span>
-            {displayTrip.region} · {displayTrip.duration}
+            {compactTripMeta(displayTrip.region,displayTrip.duration)}
           </span>
           <h1>{displayTrip.name}</h1>
           <p>{displayTrip.stops.join(" → ")}</p>
@@ -2887,7 +2888,7 @@ function ReferralPanel(){
     <div className="referral-rights"><h3>{achievementUi.levels}</h3>{levels.map(item=><article className={completed>=item.at?'earned':''} key={item.at}><span>{completed>=item.at?'✓':item.at}</span><div><b>{item.name}</b><small>{item.at===0?'':`${item.at} ${achievementUi.unit} · `}{item.benefit}</small></div></article>)}</div>
     <div className="referral-actions"><button className="button" onClick={()=>void share()}>{c.share}</button><button className="button secondary" onClick={()=>void copy()}>{c.copy}</button></div>{notice&&<p role="status" className="notice">{notice}</p>}
     <div className="app-stats"><article><small>{achievementUi.completed}</small><b>{completed}</b></article><article><small>{achievementUi.progress}</small><b>{summary.pendingInvites??0}</b></article><article><small>{c.coupons}</small><b>{activeCount}</b></article></div>
-    {commission&&<div className="referral-achievement"><small>推广现金佣金（新人首笔有效行程完成后解锁）</small><div className="app-stats"><article><small>可提现</small><b>¥{commission.availableJpy.toLocaleString()}</b></article><article><small>审核/打款中</small><b>¥{commission.lockedJpy.toLocaleString()}</b></article><article><small>累计已付</small><b>¥{commission.paidJpy.toLocaleString()}</b></article></div><button className="button" disabled={payoutBusy||commission.availableJpy<=0} onClick={async()=>{if(!services||!window.confirm(`确认申请提现 ¥${commission.availableJpy.toLocaleString()}？每周只能申请一次。`))return;setPayoutBusy(true);const result=await services.requestOwnCommissionPayout(crypto.randomUUID());setPayoutBusy(false);setNotice(result.ok?'提现申请已提交，余额已锁定等待审核。':`申请失败：${result.error}`);if(result.ok)setCommission(await services.loadOwnCashCommissionSummary())}}>{payoutBusy?'正在提交':'申请本周提现'}</button>{commission.payouts.length>0&&<div className="app-list">{commission.payouts.map(item=><article className="order-card" key={item.id}><b>¥{item.amountJpy.toLocaleString()} · {item.status}</b><small>{item.weekStart} 周申请</small></article>)}</div>}</div>}
+    {commission&&<div className="referral-achievement"><small>推广现金佣金（新人首笔有效行程完成后解锁）</small><div className="app-stats"><article><small>待结算</small><b>¥{commission.pendingJpy.toLocaleString()}</b></article><article><small>可提现</small><b>¥{commission.availableJpy.toLocaleString()}</b></article><article><small>审核/打款中</small><b>¥{commission.lockedJpy.toLocaleString()}</b></article><article><small>累计已付</small><b>¥{commission.paidJpy.toLocaleString()}</b></article></div>{commission.qualificationStatus!=='approved'&&<p className="privacy">现金推广资格：{commission.qualificationStatus==='pending'?'审核中':commission.qualificationStatus==='suspended'?'已暂停':'尚未获批'}。游客需申请并通过运营审核；获批司导自动开通。</p>}<button className="button" disabled={payoutBusy||commission.availableJpy<=0||commission.qualificationStatus!=='approved'} onClick={async()=>{if(!services||!window.confirm(`确认申请提现 ¥${commission.availableJpy.toLocaleString()}？每周只能申请一次。`))return;setPayoutBusy(true);const result=await services.requestOwnCommissionPayout(crypto.randomUUID());setPayoutBusy(false);setNotice(result.ok?'提现申请已提交，余额已锁定等待审核。':`申请失败：${result.error}`);if(result.ok)setCommission(await services.loadOwnCashCommissionSummary())}}>{payoutBusy?'正在提交':'申请本周提现'}</button>{commission.payouts.length>0&&<div className="app-list">{commission.payouts.map(item=><article className="order-card" key={item.id}><b>¥{item.amountJpy.toLocaleString()} · {item.status}</b><small>{item.weekStart} 周申请</small></article>)}</div>}</div>}
     <h2>{c.coupons}</h2><div className="coupon-filter-tabs" role="tablist">{(['all','active','pending','used','invalid'] as const).map(key=><button role="tab" aria-selected={couponFilter===key} className={couponFilter===key?'active':''} onClick={()=>setCouponFilter(key)} key={key}>{filterCopy[key]}</button>)}</div>{summary.coupons.length===0?<p className="privacy">{c.none}</p>:visibleCoupons.length===0?<p className="privacy">{c.none}</p>:<div className="app-list">{visibleCoupons.map(item=>{const waiting=item.status==='pending_trip_completion';const invalid=['void','frozen','expired'].includes(item.status);const used=['reserved','redeemed'].includes(item.status);const format=(value:string|null)=>value?new Date(value).toLocaleString(locale,{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Tokyo'}):null;return <article className={`order-card referral-coupon ${waiting?'is-pending':''} ${invalid?'is-invalid':''} ${used?'is-used':''}`} key={item.id}><b>{item.discountPercent}% OFF</b><span>{item.recipientKind==='inviter'?c.invites:c.title}</span>{invalid?<small>{c.invalid}</small>:waiting?<><small>{c.pending}</small>{item.qualifyingTripStartsAt&&<span>{c.tripStarts}：{format(item.qualifyingTripStartsAt)}</span>}{item.availableAt&&<span>{c.available}：{format(item.availableAt)}</span>}</>:used?<small>{filterCopy.usedStatus}</small>:<><small>{filterCopy.activeStatus}</small><span>{c.valid} {new Date(item.expiresAt).toLocaleDateString(locale)}</span></>}</article>})}</div>}
   </section>;
 }

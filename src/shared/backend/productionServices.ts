@@ -73,6 +73,7 @@ export class ProductionBrowserServices {
   loadOwnReferralSummary(){return this.auth.loadOwnReferralSummary()}
   loadOwnCashCommissionSummary(){return this.auth.loadOwnCashCommissionSummary()}
   requestOwnCommissionPayout(idempotencyKey:string){return this.auth.requestOwnCommissionPayout(idempotencyKey)}
+  applyForAmbassador(note=''){return this.auth.applyForAmbassador(note)}
   requestPasswordReset(email: string) {
     return this.auth.requestPasswordReset(email);
   }

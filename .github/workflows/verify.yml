@@ -37,3 +37,5 @@ jobs:
       - run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector
       - run: supabase db reset --local
       - run: supabase db lint --local --level error --fail-on error
+      - name: Run V7 financial business regression
+        run: psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/verification/v7_financial_convergence_regression.sql
