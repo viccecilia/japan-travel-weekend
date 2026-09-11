@@ -35,6 +35,7 @@ import {routePhotoAt} from '../shared/data/routePhotoCatalog';
 import {groupDeparturesByMonth, resolveDepartureSelection} from './bookingDepartureSelection';
 import {singleSeatQuote} from '../shared/services/singleSeatPricing';
 import type {ServerQuote} from '../shared/backend/testApi';
+import {isHomeSellableDeparture,selectUpcomingDepartures} from './homeUpcomingDepartures';
 const trips = travelRepository.listTrips();
 const orderStatusLabels:Record<string,Record<string,string>>={
  'zh-CN':{pending_payment:'等待在线支付',pending_manual_review:'等待人工确认到账',paid:'已支付',confirmed:'行程已确认',payment_review:'付款需要人工核对',refunded:'已退款',cancelled:'已取消',expired:'支付时限已过'},
@@ -460,15 +461,8 @@ export function AppHome() {
   const h=passengerHomeCopy[locale];
   const x=homeExtraCopy[locale];
   const localTrip=(trip:typeof trips[number])=>localizedTripSummary(locale,trip);
-  const featuredTrips = trips.slice(0, 4);
-  const visibleDepartures = deps.filter(
-    (departure) =>
-      !departure.dateLabel.includes("TEST-") &&
-      departure.departureTime !== null &&
-      departure.meetingPointName !== null &&
-      departure.price !== null &&
-      departure.availableSeats !== null,
-  );
+  const visibleDepartures=selectUpcomingDepartures(deps,trips.map(trip=>trip.slug));
+  const upcomingTitle:Record<PassengerLocale,string>={'zh-CN':'近期出发','zh-TW':'近期出發',ja:'近日出発',en:'Upcoming departures',es:'Próximas salidas',vi:'Chuyến đi sắp tới',ne:'आगामी प्रस्थान',ko:'다가오는 출발'};
   return (
     <div className="fulfillment-home passenger-home-v2">
       <section className="passenger-yellow-hero">
@@ -527,71 +521,38 @@ export function AppHome() {
         <b>{h.alertText}</b>
         <strong>›</strong>
       </Link>
-      <div className="passenger-section-heading">
+      <div className="passenger-section-heading passenger-upcoming-heading">
         <div>
-          <span>WEEKEND PICKS</span>
-          <h2>{h.picks}</h2>
+          <span>UPCOMING</span>
+          <h2>{upcomingTitle[locale]}</h2>
         </div>
         <Link to="/app/trips">{h.allRoutes}</Link>
-      </div>
-      <div className="passenger-route-rail">
-        {featuredTrips.map((trip) => {
-          const display=localTrip(trip);
-          return (
-          <Link to={`/app/trips/${trip.slug}`} key={trip.id}>
-            <img src={trip.heroImage} alt={display.name} />
-            <div>
-              <small>
-                {compactTripMeta(display.region,display.duration)}
-              </small>
-              <h3>{display.name}</h3>
-              <p>{display.stops.slice(0, 3).join(" → ")}</p>
-            </div>
-          </Link>
-        )})}
-      </div>
-      <div className="passenger-section-heading compact">
-        <div>
-          <span>AVAILABLE</span>
-          <h2>{h.available}</h2>
-        </div>
-        <Link to="/app/trips">{h.all}</Link>
       </div>
       {!departuresResolved ? (
         <Empty title={h.loadingTitle} text={h.loadingText} />
       ) : departuresError ? (
         <Empty title={h.errorTitle} text={h.errorText} />
       ) : visibleDepartures.length ? (
-        <div className="passenger-departure-list">
-          {visibleDepartures.slice(0, 3).map((departure) => {
+        <div className="passenger-upcoming-list">
+          {visibleDepartures.map((departure) => {
             const trip = travelRepository.getTrip(departure.tripSlug);
             if (!trip) return null;
             const display=localTrip(trip);
-            const weekendIndex=departure.weekend==='本周末'?0:departure.weekend==='下周末'?1:2;
             const dateLabel=departure.departureTime?new Intl.DateTimeFormat(locale,{timeZone:'Asia/Tokyo',month:'short',day:'numeric',weekday:'short'}).format(new Date(departure.departureTime)):departure.dateLabel;
             return (
               <Link
-                className="passenger-departure-row"
+                className="passenger-upcoming-card"
                 key={departure.id}
-                to={`/app/booking/${trip.slug}?departureId=${encodeURIComponent(departure.id)}`}
+                to={`/app/trips/${trip.slug}?departureId=${encodeURIComponent(departure.id)}`}
               >
-                <time>
-                  <b>{x.weekend[weekendIndex]}</b>
-                  <small>{dateLabel}</small>
-                </time>
+                <img src={trip.heroImage} alt="" />
                 <div>
                   <h3>{display.name}</h3>
                   <p>{display.stops.slice(0, 3).join(" → ")}</p>
-                  <span>
-                    {departure.price == null
-                      ? h.pricePending
-                      : `${h.perSeat} ¥${departure.price.toLocaleString(locale)}`}{" "}
-                    {departure.availableSeats == null
-                      ? ""
-                      : ` · ${h.seatsLeft} ${departure.availableSeats}`}
-                  </span>
+                  <time dateTime={departure.departureTime??undefined}>{dateLabel}</time>
+                  <strong>{h.perSeat} ¥{departure.price?.toLocaleString(locale)}</strong>
+                  <small>{h.seatsLeft} {departure.availableSeats}</small>
                 </div>
-                <strong>›</strong>
               </Link>
             );
           })}
@@ -1026,6 +987,7 @@ export function AppTrips() {
 }
 export function AppTrip() {
   const t = travelRepository.getTrip(useParams().slug || "");
+  const location=useLocation();
   const { departures,state } = useApp();
   const locale=state.ui.locale ?? 'zh-CN';
   const r=passengerRoutesCopy[locale];
@@ -1034,9 +996,9 @@ export function AppTrip() {
   >("highlights");
   if (!t) return <Empty title={r.notFound} />;
   const routeDepartures = departures.filter((item) => item.tripSlug === t.slug);
-  const sellable = routeDepartures.filter(
-    (item) => item.price != null && item.availableSeats !== 0,
-  );
+  const sellable = routeDepartures.filter(isHomeSellableDeparture);
+  const requestedDepartureId=new URLSearchParams(location.search).get('departureId');
+  const requestedDeparture=sellable.find(item=>item.id===requestedDepartureId)??null;
   const richSpots=featuredRouteSpots[t.slug]?.[locale]??null;
   const routePitch=t.catalogSource==='published'?null:featuredRoutePitch[t.slug]?.[locale]??null;
   const displayTrip=localizedTripSummary(locale,t);
@@ -1253,7 +1215,7 @@ export function AppTrip() {
               : detail.pending}
           </b>
         </div>
-        <Link className="button" to={`/app/booking/${t.slug}`}>
+        <Link className="button" to={`/app/booking/${t.slug}${requestedDeparture?`?departureId=${encodeURIComponent(requestedDeparture.id)}`:''}`}>
           {sellable.length ? r.book : r.availability}
         </Link>
       </div>
