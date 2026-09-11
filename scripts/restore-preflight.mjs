@@ -9,7 +9,7 @@ export const PROTECTED_PROJECT_REFS = new Set([
 
 const PROJECT_REF_PATTERN = /^[a-z]{20}$/;
 const MIGRATION_PATTERN = /^(\d{8})(\d{4})_.+\.sql$/;
-export const EXPECTED_MIGRATION_COUNT = 120;
+export const EXPECTED_MIGRATION_COUNT = 121;
 
 export function validateRestoreTarget({ projectRef, projectUrl, disposableConfirmation }) {
   if (!PROJECT_REF_PATTERN.test(projectRef ?? "")) {
