@@ -6,8 +6,26 @@ begin
  insert into auth.users(id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
  values(inviter,'00000000-0000-0000-0000-000000000000','authenticated','authenticated','v7-inviter-'||inviter||'@example.invalid',crypt('not-a-real-password',gen_salt('bf')),now(),'{}','{}',now(),now());
  insert into public.ambassador_qualifications(account_id,status,source,approved_at) values(inviter,'approved','operations',now());
- insert into public.trips(slug,title,status) values('v7-financial-'||txid_current(),'V7 fictional financial route','draft') returning id into trip_id;
- insert into public.departures(trip_id,capacity,status) values(trip_id,30,'open') returning id into departure_id;
+ insert into public.trips(slug,title,status,content)
+ values(
+  'v7-financial-'||txid_current(),'V7 fictional financial route','published',
+  jsonb_build_object(
+   'description','Fictional route used only by the rolled-back V7 database regression.',
+   'itinerary',jsonb_build_array('Test stop'),'included',jsonb_build_array('Transport'),
+   'excluded',jsonb_build_array('Personal expenses'),'childPolicy','Fictional child policy for regression.',
+   'luggagePolicy','Fictional luggage policy for regression.','accessibilityInfo','Fictional accessibility information.',
+   'mealInfo','Fictional meal information.','weatherPolicy','Fictional weather policy.',
+   'cancellationPolicyVersion','v7-test'
+  )
+ ) returning id into trip_id;
+ insert into public.departures(
+  trip_id,capacity,status,departs_at,ends_at,sales_open_at,sales_close_at,
+  minimum_guests,seat_price_jpy,currency,tax_included,meeting_name,meeting_address,map_lat,map_lng
+ ) values(
+  trip_id,30,'open',now()+interval '30 days',now()+interval '30 days 10 hours',
+  now()-interval '1 day',now()+interval '29 days',1,10000,'JPY',true,
+  'V7 test meeting point','1-1 Fictional Test Address',35.0,135.0
+ ) returning id into departure_id;
 
  for idx in 1..3 loop
   invitee:=gen_random_uuid();
