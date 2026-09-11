@@ -1,11 +1,13 @@
 -- Disposable local/CI database only. Fictional rows are rolled back.
 begin;
 do $$
-declare inviter uuid:=gen_random_uuid();invitee uuid;trip_id uuid;departure_id uuid;order_id uuid;relation_id uuid;entry_id uuid;state text;idx integer;
+declare inviter uuid:=gen_random_uuid();invitee uuid;trip_id uuid;departure_id uuid;order_id uuid;relation_id uuid;entry_id uuid;state text;idx integer;referral_code text;
 begin
  insert into auth.users(id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
  values(inviter,'00000000-0000-0000-0000-000000000000','authenticated','authenticated','v7-inviter-'||inviter||'@example.invalid',crypt('not-a-real-password',gen_salt('bf')),now(),'{}','{}',now(),now());
  insert into public.ambassador_qualifications(account_id,status,source,approved_at) values(inviter,'approved','operations',now());
+ referral_code:='V7'||upper(replace(left(inviter::text,10),'-',''));
+ insert into public.referral_codes(account_id,code) values(inviter,referral_code);
  insert into public.trips(slug,title,status,content)
  values(
   'v7-financial-'||txid_current(),'V7 fictional financial route','published',
@@ -31,7 +33,7 @@ begin
   invitee:=gen_random_uuid();
   insert into auth.users(id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
   values(invitee,'00000000-0000-0000-0000-000000000000','authenticated','authenticated','v7-invitee-'||idx||'-'||invitee||'@example.invalid',crypt('not-a-real-password',gen_salt('bf')),now(),'{}','{}',now(),now());
-  insert into public.referral_relationships(inviter_account_id,invitee_account_id,referral_code,discount_percent) values(inviter,invitee,'V7'||idx||replace(left(invitee::text,8),'-',''),10) returning id into relation_id;
+  insert into public.referral_relationships(inviter_account_id,invitee_account_id,referral_code,discount_percent) values(inviter,invitee,referral_code,10) returning id into relation_id;
   insert into public.orders(account_id,departure_id,idempotency_key,seat_count,status,amount,gross_amount,discount_amount) values(invitee,departure_id,'v7-order-'||idx||'-'||txid_current(),1,'pending_payment',9000,10000,1000) returning id into order_id;
   update public.orders set status='paid' where id=order_id;
   select id into entry_id from public.cash_commission_entries where source_order_id=order_id;
