@@ -45,7 +45,7 @@ const snapshot: OperationsSnapshot = {
       status: "available",
       driver_vehicle_qualifications: [{ vehicle_type_key: "alphard-6" }],
       driver_availability_windows: [
-        { starts_at: "2026-09-01T00:00:00Z", ends_at: "2026-09-03T00:00:00Z" },
+        { starts_at: "2099-09-01T00:00:00Z", ends_at: "2099-09-03T00:00:00Z" },
       ],
     },
   ],
@@ -53,7 +53,7 @@ const snapshot: OperationsSnapshot = {
     {
       id: "30000000-0000-4000-8000-000000000001",
       tripTitle: "测试京都奈良",
-      departsAt: "2026-09-02T00:00:00Z",
+      departsAt: "2099-09-02T00:00:00Z",
       capacity: 6,
       status: "confirmed",
       meetingName: "大阪站",
@@ -63,8 +63,8 @@ const snapshot: OperationsSnapshot = {
       pendingOrders: 0,
       grossAmountJpy: 60000,
       loadFactor: 100,
-      bookingClosesAt: "2026-09-01T00:00:00Z",
-      chatOpensAt: "2026-09-01T03:00:00Z",
+      bookingClosesAt: "2099-09-01T00:00:00Z",
+      chatOpensAt: "2099-09-01T03:00:00Z",
       dispatchPlanningStatus: "ready_for_planning",
       requiresManualReview: false,
     },
