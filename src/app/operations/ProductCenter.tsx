@@ -35,6 +35,9 @@ export function ProductCenter() {
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [revisions,setRevisions]=useState<OperationsProductRevision[]>([]);
+  const [copyOpen,setCopyOpen]=useState(false);
+  const [copySlug,setCopySlug]=useState("");
+  const [copyTitle,setCopyTitle]=useState("");
   const reload = async (selectId?: string | null) => {
     if (!services) return;
     const result = await services.operations.listProducts();
@@ -50,7 +53,8 @@ export function ProductCenter() {
   };
   useEffect(()=>{let active=true;if(services&&selected)void services.operations.listProductRevisions(selected.id).then(result=>{if(active)setRevisions(result.data)});return()=>{active=false}},[services,selected]);
   const createProduct=async(event:FormEvent<HTMLFormElement>)=>{event.preventDefault();if(!services||busy)return;const formElement=event.currentTarget;const form=new FormData(formElement);setBusy(true);try{const result=await services.operations.createProduct({slug:String(form.get('newSlug')),title:String(form.get('newTitle'))});setNotice(result.ok?'新产品草稿已建立，请完善内容后发布。':`新建失败：${result.error}`);if(result.ok){formElement.reset();await reload(result.id)}}catch(error){setNotice(`新建失败：${error instanceof Error?error.message:'未知错误'}`)}finally{setBusy(false)}};
-  const copyProduct=async()=>{if(!services||!selected)return;const slug=window.prompt('新路线英文标识（例如 kyoto-autumn-day）');if(!slug)return;const title=window.prompt('新路线标题',`${selected.title} 副本`);if(!title)return;setBusy(true);const result=await services.operations.copyProduct({sourceId:selected.id,slug,title});setBusy(false);setNotice(result.ok?'已复制为独立草稿。':`复制失败：${result.error}`);if(result.ok)await reload()};
+  const openCopy=()=>{if(!selected)return;setCopySlug(`${selected.slug}-copy`);setCopyTitle(`${selected.title} 副本`);setCopyOpen(true)};
+  const copyProduct=async(event:FormEvent<HTMLFormElement>)=>{event.preventDefault();if(!services||!selected||busy)return;setBusy(true);try{const result=await services.operations.copyProduct({sourceId:selected.id,slug:copySlug.trim(),title:copyTitle.trim()});setNotice(result.ok?'已复制为独立草稿。':`复制失败：${result.error}`);if(result.ok){setCopyOpen(false);await reload()}}finally{setBusy(false)}};
   const lifecycle=async(action:'archive'|'restore',revision?:number)=>{if(!services||!selected)return;if(!window.confirm(action==='archive'?'下架后游客端将立即不可见，确认继续？':`确认把历史版本 v${revision} 恢复为新草稿？`))return;setBusy(true);const result=await services.operations.setProductStatus({id:selected.id,expectedVersion:selected.catalogVersion,action,restoreRevision:revision});setBusy(false);setNotice(result.ok?(action==='archive'?'产品已下架，历史订单不受影响。':'历史版本已复制为新草稿。'):`操作失败：${result.error}`);if(result.ok)await reload()};
   useEffect(() => {
     let active = true;
@@ -366,10 +370,16 @@ export function ProductCenter() {
               >
                 发布草稿
               </button>
-              <button className="button secondary" type="button" disabled={busy} onClick={()=>void copyProduct()}>复制为新产品</button>
+              <button className="button secondary" type="button" disabled={busy} onClick={openCopy}>复制为新产品</button>
               {selected.status!=='archived'&&<button className="button secondary" type="button" disabled={busy} onClick={()=>void lifecycle('archive')}>下架产品</button>}
             </div>
           </form>
+          {copyOpen&&<form className="operations-controls operations-inline-editor" aria-label="复制产品" onSubmit={copyProduct}>
+            <header><div><span>复制产品</span><h3>建立独立草稿</h3></div><small>不会修改原产品或历史订单</small></header>
+            <label>新路线英文标识<input value={copySlug} onChange={event=>setCopySlug(event.target.value)} pattern="[a-z0-9]+(?:-[a-z0-9]+)*" required/></label>
+            <label>新路线标题<input value={copyTitle} onChange={event=>setCopyTitle(event.target.value)} minLength={3} required/></label>
+            <div className="operations-task-actions"><button className="button" disabled={busy}>确认复制</button><button className="button secondary" type="button" disabled={busy} onClick={()=>setCopyOpen(false)}>取消</button></div>
+          </form>}
           <div className="operations-dispatch-list" aria-label="版本历史">{revisions.map(revision=><article key={revision.revisionNumber}><b>v{revision.revisionNumber} · {revision.state}</b><span>{revision.title}</span><small>{new Date(revision.createdAt).toLocaleString('zh-CN')}</small><button type="button" disabled={busy||revision.revisionNumber===selected.draftRevision} onClick={()=>void lifecycle('restore',revision.revisionNumber)}>恢复为新草稿</button></article>)}</div>
         </section>
       )}
