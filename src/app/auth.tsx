@@ -6,6 +6,9 @@ import {runtimeMode} from '../shared/config/businessRules';
 
 export const testGuestMode=runtimeMode==='demo';
 
+export const isOperationsPath=(pathname:string)=>pathname==='/app/operations'||pathname.startsWith('/app/operations/');
+export const isStaffPath=(pathname:string)=>pathname==='/staff'||pathname.startsWith('/staff/');
+
 export const accessDestinationPath=(destination:string|null|undefined)=>destination==='operations'?'/app/operations':destination==='staff'?'/staff':destination==='staff_pending'||destination==='staff_blocked'?'/app/account-status':'/app';
 
 const passengerOnlyPaths=['/app/passengers','/app/checkout','/app/payment','/app/payment-result','/app/orders','/app/my-trip','/app/ai-guide','/app/private-groups','/app/boarding-pass','/app/rewards','/app/referral','/app/profile'];
@@ -30,20 +33,21 @@ export function referralCodeFromSearch(search:string){
 }
 
 export function RequireAccount({children}:{children:ReactNode}){
-  const {state,authResolved,services}=useApp();const location=useLocation();const [destination,setDestination]=useState<string|null>(null);
-  useEffect(()=>{let active=true;if(authResolved&&state.user&&services)void services.currentAccessDestination().then(value=>{if(active)setDestination(value)});return()=>{active=false}},[authResolved,state.user,services]);
+  const {state,authResolved,services}=useApp();const location=useLocation();const account=state.user?.email??'';const [destinationResult,setDestinationResult]=useState<{account:string;destination:string|null}|null>(null);
+  useEffect(()=>{let active=true;if(authResolved&&account&&services)void services.currentAccessDestination().then(value=>{if(active)setDestinationResult({account,destination:value})}).catch(()=>{if(active)setDestinationResult({account,destination:null})});return()=>{active=false}},[authResolved,account,services]);
   if(testGuestMode)return children;
   if(!authResolved)return <main className="empty-card" role="status"><b>正在恢复账户会话</b><p>请稍候，正在安全确认登录状态。</p></main>;
   if(!state.user){const returnTo=safeReturnTo(`${location.pathname}${location.search}`);return <Navigate replace to={`/app/login?returnTo=${encodeURIComponent(returnTo)}`}/>;}
+  const destination=destinationResult?.account===account?destinationResult.destination:null;
   if(services&&!destination)return <main className="empty-card" role="status"><b>正在验证账户类型</b><p>一个账户只能进入对应工作区。</p></main>;
-  const roleProtected=location.pathname.startsWith('/staff')||location.pathname==='/app/operations';
+  const roleProtected=isStaffPath(location.pathname)||isOperationsPath(location.pathname);
   if(services&&!roleProtected&&location.pathname!=="/app/account-status"&&destination!=="passenger")return <Navigate replace to={passengerAccountBoundaryPath(`${location.pathname}${location.search}`)}/>;
   return children;
 }
 
 export function RequireOperations({children}:{children:ReactNode}){
   const {state,authResolved,services}=useApp();const location=useLocation();const [roleResult,setRoleResult]=useState<{account:string;role:'operations'|'denied'}|null>(null);const account=state.user?.email??'';
-  useEffect(()=>{let active=true;if(!authResolved||!account||!services)return()=>{active=false};void services.currentRole().then(value=>{if(active)setRoleResult({account,role:value==='operations'?'operations':'denied'})});return()=>{active=false}},[authResolved,account,services]);
+  useEffect(()=>{let active=true;if(!authResolved||!account||!services)return()=>{active=false};void services.currentAccessDestination().then(value=>{if(active)setRoleResult({account,role:value==='operations'?'operations':'denied'})}).catch(()=>{if(active)setRoleResult({account,role:'denied'})});return()=>{active=false}},[authResolved,account,services]);
   if(testGuestMode)return children;
   const role=roleResult?.account===account?roleResult.role:'loading';
   if(!authResolved||role==='loading')return <main className="empty-card" role="status"><b>正在验证运营权限</b><p>后台数据只对运营账户开放。</p></main>;
@@ -60,9 +64,9 @@ export function RequireStaff({children}:{children:ReactNode}){
   useEffect(()=>{
     let active=true;
     if(!authResolved||!account||!services)return()=>{active=false};
-    void Promise.all([services.currentRole(),services.loadStaffTasks()]).then(([role,tasks])=>{
+    void services.currentAccessDestination().then(destination=>{
       if(!active)return;
-      setAccess({account,allowed:role==='driver'||role==='guide'||role==='operations'||tasks.data.length>0});
+      setAccess({account,allowed:destination==='staff'||destination==='operations'});
     }).catch(()=>{if(active)setAccess({account,allowed:false});});
     return()=>{active=false};
   },[authResolved,account,services]);
