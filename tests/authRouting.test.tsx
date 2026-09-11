@@ -1,4 +1,4 @@
-import {cleanup,render,screen,waitFor} from '@testing-library/react';
+import {cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {afterEach,describe,expect,it} from 'vitest';
 import type {SupabaseClient} from '@supabase/supabase-js';
 import {MemoryRouter,useLocation} from 'react-router-dom';
@@ -24,6 +24,21 @@ describe('正式账户路由守卫',()=>{
     renderRoute('/app/orders?tab=current');
     await waitFor(()=>expect(screen.getByTestId('location').textContent).toBe('/app/login?returnTo=%2Fapp%2Forders%3Ftab%3Dcurrent'));
     expect(screen.queryByText('暂无订单')).not.toBeInTheDocument();
+  });
+  it('司导与运营深链分别显示清晰的登录入口',async()=>{
+    renderRoute('/staff/messages');
+    expect(await screen.findByRole('heading',{name:'司导登录'})).toBeInTheDocument();
+    cleanup();
+    renderRoute('/app/operations/products');
+    expect(await screen.findByRole('heading',{name:'管理后台登录'})).toBeInTheDocument();
+  });
+  it('登录密码可显隐且保留密码管理器字段语义',async()=>{
+    renderRoute('/app/login');
+    const password=await screen.findByLabelText('密码');
+    expect(password).toHaveAttribute('type','password');
+    expect(password).toHaveAttribute('autocomplete','new-password');
+    fireEvent.click(screen.getByRole('button',{name:'显示密码'}));
+    expect(password).toHaveAttribute('type','text');
   });
   it('本地乘客账户不能进入工作人员端',async()=>{
     renderRoute('/staff');
