@@ -84,6 +84,7 @@ describe("运营派单界面", () => {
     };
     const services = {
       operations,
+      loadSellableDepartures: async () => ({ data: [], error: null }),
       onAuthStateChange: () => () => {},
       currentUser: async () => null,
     } as unknown as ProductionBrowserServices;
