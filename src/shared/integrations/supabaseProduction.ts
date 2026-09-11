@@ -348,7 +348,7 @@ export class SupabaseOrderRepository {
     try {
       const { data, error } = await this.client
         .from("notification_outbox")
-        .select("id,event_type,order_id,necessary,status,created_at,updated_at")
+        .select("id,event_type,order_id,necessary,status,payload,created_at,updated_at")
         .order("created_at", { ascending: false })
         .limit(100);
       return error

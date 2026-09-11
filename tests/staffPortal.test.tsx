@@ -146,6 +146,12 @@ describe("工作人员端", () => {
     expect(screen.getByRole('link',{name:activeLabel})).toHaveClass('active');
     for(const [label,href] of [['今日','/staff'],['行程','/staff/schedule'],['地图','/staff/map'],['消息','/staff/messages'],['我的','/staff/profile']])expect(screen.getByRole('link',{name:label})).toHaveAttribute('href',href);
   });
+  it('无任务时不显示假调度号码，有任务时进入可审计的调度请求',async()=>{
+    const emptyClient={auth:{getUser:async()=>({data:{user:{id:'staff-contact'}},error:null}),getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},rpc:async(name:string)=>name==='get_staff_portal_tasks'?{data:[],error:null}:{data:null,error:null}} as unknown as SupabaseClient;
+    render(<MemoryRouter initialEntries={['/staff/messages?channel=dispatch']}><AppProvider services={new ProductionBrowserServices(emptyClient,undefined)}><Routes><Route path="/staff/*" element={<StaffPortal/>}/></Routes></AppProvider></MemoryRouter>);
+    expect(await screen.findByText(/尚未配置通用调度电话或会话/)).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/0\d{1,4}-\d{2,4}-\d{3,4}/);
+  });
   it.each([
     ['pending','待执行'],
     ['in_progress','进行中'],
