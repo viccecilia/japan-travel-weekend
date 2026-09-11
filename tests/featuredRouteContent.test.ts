@@ -52,8 +52,8 @@ describe('featured tourist route content',()=>{
     expect(routePhotoAt('amanohashidate-ine',2)?.url).toContain('/ine/');
     expect(routePhotoAt('kobe-arima-rokko',0)?.url).toContain('/arima/');
     expect(routePhotoAt('kobe-arima-rokko',2)?.url).toContain('/kobe/');
-    expect(routePhotoAt('sanzenin-kibune-arashiyama-autumn',0)?.url).toContain('/kifune/');
-    expect(routePhotoAt('sanzenin-kibune-arashiyama-autumn',1)?.url).toContain('/sanzenin/');
+    expect(routePhotoAt('sanzenin-kibune-arashiyama-autumn',0)?.url).toContain('/sanzenin/');
+    expect(routePhotoAt('sanzenin-kibune-arashiyama-autumn',1)?.url).toContain('/kifune/');
     expect(routePhotoAt('sanzenin-kibune-arashiyama-autumn',2)?.url).toContain('/arashiyama-autumn/');
   });
 

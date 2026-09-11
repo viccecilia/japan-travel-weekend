@@ -30,7 +30,8 @@ const routePhotoNames:Record<string,string[]>={
   'uji-nara-onsen':['奈良公园','平等院','宇治抹茶街','温泉'],
   'miyama-katsuoji-arashiyama':['胜尾寺','爱宕念佛寺','岚山竹林'],
   'arashiyama-train-hozugawa':['金阁寺','清水寺','二年坂·三年坂','伏见稻荷大社'],
-  'sanzenin-kibune-arashiyama-autumn':['贵船神社','大原三千院','岚山·渡月桥'],
+  // The marketing detail page intentionally presents Sanzenin first.
+  'sanzenin-kibune-arashiyama-autumn':['大原三千院','贵船神社','岚山·渡月桥'],
 };
 
 export const routePhotoAt=(slug:string,index:number)=>routePhotoFor(routePhotoNames[slug]?.[index]??'');
