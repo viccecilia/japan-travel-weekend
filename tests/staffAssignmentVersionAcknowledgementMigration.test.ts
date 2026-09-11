@@ -17,4 +17,8 @@ describe("126 司导派班按版本确认", () => {
     expect(sql).toContain("public.is_vehicle_group_executable(sa.vehicle_group_id)");
     expect(sql).toContain("assignment is not available for acknowledgement");
   });
+  it("系统设置显示本次数据库迁移版本", () => {
+    expect(sql).toContain("get_operations_system_release_info");
+    expect(sql).toContain("'202609110126'");
+  });
 });
