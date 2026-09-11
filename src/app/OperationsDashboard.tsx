@@ -102,6 +102,8 @@ function OperationsLiveDashboard() {
   const location=typeof window==='undefined'?{pathname:'',search:''}:window.location;
   const [snapshot, setSnapshot] = useState<OperationsSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [paymentMetrics,setPaymentMetrics]=useState<{paidOrders:number;paidAmountJpy:number}|null>(null);
+  const [paymentMetricsError,setPaymentMetricsError]=useState<string|null>(null);
   const [notice, setNotice] = useState("");
   const [passengers, setPassengers] = useState(0);
   const [startsAt, setStartsAt] = useState("");
@@ -114,9 +116,12 @@ function OperationsLiveDashboard() {
   const [dashboardLoadedAt]=useState(()=>Date.now());
   const reload = useCallback(async () => {
     if (!services) return;
-    const result = await services.operations.loadSnapshot();
+    const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+    const paymentsRequest=typeof services.operations.loadPaymentMetrics==='function'?services.operations.loadPaymentMetrics(today):Promise.resolve({data:null,error:'付款统计接口未配置'});
+    const [result,payments]=await Promise.all([services.operations.loadSnapshot(),paymentsRequest]);
     setSnapshot(result.data);
     setError(result.error);
+    setPaymentMetrics(payments.data);setPaymentMetricsError(payments.error);
   }, [services]);
   const editDriver=async(driver:NonNullable<OperationsSnapshot['drivers']>[number])=>{if(!services)return;const displayName=window.prompt('司导显示名',driver.display_name);if(displayName===null)return;const status=window.prompt('状态：available / unavailable / suspended',driver.status);if(status===null)return;const serviceRole=window.prompt('职责：driver / guide / driver_guide',driver.service_role??'driver');if(serviceRole===null)return;const publicPhone=window.prompt('公开联系电话（可留空）',driver.public_phone??'');if(publicPhone===null)return;const internalPhone=window.prompt('内部联系电话（仅运营可见）',driver.private_phone??'');if(internalPhone===null)return;const operationsNote=window.prompt('内部备注（最多500字）',driver.operations_note??'');if(operationsNote===null)return;setBusy(true);const result=await services.operations.updateDriverResource({id:driver.id,displayName,status,serviceRole,publicPhone,internalPhone,operationsNote});setBusy(false);setNotice(result.ok?'司导资料已保存并记录审计。':`保存失败：${result.error}`);if(result.ok)await reload()};
   const editVehicle=async(vehicle:NonNullable<OperationsSnapshot['vehicles']>[number])=>{if(!services)return;const status=window.prompt('状态：available / assigned / in_service / maintenance / inactive',vehicle.status);if(status===null)return;const modelName=window.prompt('车型名称',vehicle.model_name??'');if(modelName===null)return;const color=window.prompt('公开颜色',vehicle.public_color??'');if(color===null)return;const photoUrl=window.prompt('车辆公开照片 URL',vehicle.public_photo_url??'');if(photoUrl===null)return;const inspectionRequired=window.confirm('该车辆当前是否需要车检？选择“确定”将禁止设为可用。');const operationsNote=window.prompt('内部备注（最多500字）',vehicle.operations_note??'');if(operationsNote===null)return;setBusy(true);const result=await services.operations.updateFleetVehicle({id:vehicle.id,status,color,photoUrl,modelName,inspectionRequired,operationsNote});setBusy(false);setNotice(result.ok?'车辆资料已保存并记录审计。':`保存失败：${result.error}`);if(result.ok)await reload()};
@@ -126,10 +131,13 @@ function OperationsLiveDashboard() {
       return () => {
         active = false;
       };
-    void services.operations.loadSnapshot().then((result) => {
+    const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+    const paymentsRequest=typeof services.operations.loadPaymentMetrics==='function'?services.operations.loadPaymentMetrics(today):Promise.resolve({data:null,error:'付款统计接口未配置'});
+    void Promise.all([services.operations.loadSnapshot(),paymentsRequest]).then(([result,payments]) => {
       if (active) {
         setSnapshot(result.data);
         setError(result.error);
+        setPaymentMetrics(payments.data);setPaymentMetricsError(payments.error);
       }
     });
     return () => {
@@ -463,17 +471,18 @@ function OperationsLiveDashboard() {
     const tokyoDay=(value:Date|string)=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value));
     const today=tokyoDay(new Date());
     const todayDepartures=snapshot.departures.filter(item=>item.departsAt&&tokyoDay(item.departsAt)===today);
+    const todayServiceDepartures=todayDepartures.filter(item=>item.status!=='cancelled');
     const todayIds=new Set(todayDepartures.map(item=>item.id));
     const todayTasks=command.activeTasks.filter(item=>item.departureId&&todayIds.has(item.departureId));
     const todayVehicles=new Set(todayTasks.map(item=>item.fleetVehicleId).filter(Boolean));
     const todayDrivers=new Set(todayTasks.map(item=>item.driverId).filter(Boolean));
-    const todayTotals=todayDepartures.reduce((sum,item)=>({seats:sum.seats+item.bookedSeats,orders:sum.orders+item.orderCount,amount:sum.amount+item.grossAmountJpy}),{seats:0,orders:0,amount:0});
+    const todayTotals=todayServiceDepartures.reduce((sum,item)=>({seats:sum.seats+item.bookedSeats,orders:sum.orders+item.orderCount,amount:sum.amount+item.grossAmountJpy}),{seats:0,orders:0,amount:0});
     const pendingRefunds=(snapshot.cancellationRequests??[]).filter(item=>!['completed','rejected','cancelled'].includes(item.status)).length;
     const pendingStaff=(snapshot.staffApplications??[]).filter(item=>item.status==='pending'||item.status==='needs_information').length;
     const pendingPayout='进入推广与财务查看';
     return <main className="operations-dashboard operations-today-dashboard">
       <header className="operations-head"><div><span>TODAY · ASIA/TOKYO</span><h1>今日运营工作台</h1><p>{today} · 这里只展示今天的业务、当前待办和需要立即处理的异常。</p></div><Link to="/app/operations/run">打开每日运行台</Link></header>
-      <section className="operations-section"><header><div><span>今日概况</span><h2>业务数据</h2></div><small>订单、旅客、车辆和司导分别统计</small></header><div className="operations-kpis"><Kpi label="出游人数" value={todayTotals.seats} href={`/app/operations?view=orders&date=${today}#orders-overview`}/><Kpi label="班次数" value={todayDepartures.length} href={`/app/operations/departures?date=${today}`}/><Kpi label="已配车辆" value={todayVehicles.size} href={`/app/operations/run?date=${today}`}/><Kpi label="当班司导" value={todayDrivers.size} href={`/app/operations/run?date=${today}`}/><Kpi label="付款订单" value={todayTotals.orders} href={`/app/operations?view=orders&date=${today}#orders-overview`}/><Kpi label="付款金额 JPY" value={todayTotals.amount} href={`/app/operations?view=orders&date=${today}#orders-overview`}/></div><p className="operations-hint">新注册人数尚无经过数据库验收的统计接口，因此本版不显示虚构的 0。</p></section>
+      <section className="operations-section"><header><div><span>今日概况</span><h2>业务数据</h2></div><small>服务日与付款发生日使用不同口径</small></header><div className="operations-kpis"><Kpi label="今日出游人数" value={todayTotals.seats} href={`/app/operations?view=orders&serviceDate=${today}#orders-overview`}/><Kpi label="今日服务班次" value={todayServiceDepartures.length} href={`/app/operations/departures?date=${today}`}/><Kpi label="今日已配车辆" value={todayVehicles.size} href={`/app/operations/run?date=${today}`}/><Kpi label="今日当班司导" value={todayDrivers.size} href={`/app/operations/run?date=${today}`}/>{paymentMetricsError?<article className="operations-kpi-error"><span>今日付款笔数</span><b>读取失败</b><small>{paymentMetricsError}</small></article>:<><Kpi label="今日付款笔数" value={paymentMetrics?.paidOrders??0} href={`/app/operations?view=orders&paidDate=${today}#orders-overview`}/><Kpi label="今日付款金额 JPY" value={paymentMetrics?.paidAmountJpy??0} href={`/app/operations?view=orders&paidDate=${today}#orders-overview`}/></>}</div><p className="operations-hint">“今日出游”按班次服务日期；“今日付款”按支付事件发生日期。停售班次仍计入履约，取消班次单独显示。</p></section>
       <section className="operations-section"><header><div><span>待办</span><h2>需要运营处理</h2></div><small>点击后保留对应筛选条件</small></header><div className="operations-kpis"><Kpi label="待配车" value={todayDepartures.filter(item=>item.dispatchPlanningStatus==='ready_for_planning'||item.dispatchPlanningStatus==='needs_manual_review').length} href={`/app/operations?view=resources&date=${today}#dispatch-control`}/><Kpi label="待派单审核" value={snapshot.dispatchDrafts} href={`/app/operations?view=resources&date=${today}#dispatch-control`}/><Kpi label="待退款处理" value={pendingRefunds} href="/app/operations?view=orders&afterSale=refund_pending"/><Kpi label="待工作人员审核" value={pendingStaff} href="/app/operations?view=resources&queue=staff"/><Kpi label="待提现审核" value={pendingPayout} href="/app/operations/commissions?queue=payout"/><Kpi label="通知异常" value={snapshot.notificationDeliveryIssues.length} href="/app/operations?view=orders&queue=notification#notification-issues"/></div></section>
       <section className="operations-section"><header><div><span>当前异常</span><h2>今天及未来需要关注</h2></div><small>历史遗留事项不混入本列表</small></header>{command.alerts.length?<div className="operations-attention-list">{command.alerts.slice(0,8).map((alert,index)=><article key={`${alert.title}-${index}`} data-level={alert.level}><b>{alert.level} · {alert.title}</b><p>{alert.detail}</p><Link to="/app/operations/run">进入处理页面</Link></article>)}</div>:<p className="operations-ok">当前没有需要人工介入的异常。</p>}{command.historicalDepartures.length>0&&<div className="operations-history"><b>历史遗留事项</b><p>{command.historicalDepartures.length} 个历史班次仍保留记录，不计入当前紧急提醒。</p><Link to="/app/operations/departures?range=past">查看历史班次</Link></div>}</section>
       <section className="operations-section"><header><div><span>当日发车表</span><h2>今天的班次</h2></div><small>实际登车人数请在每日运行台查看</small></header>{todayDepartures.length?<div className="operations-dispatch-list">{todayDepartures.map(item=>{const task=todayTasks.find(value=>value.departureId===item.id);return <article key={item.id}><div><b>{item.tripTitle}</b><span>{japanDate(item.departsAt)}</span></div><span>报名 {item.bookedSeats} 人 · {snapshot.vehicles.find(value=>value.id===task?.fleetVehicleId)?.registration_identifier??'未配车'}</span><small>{snapshot.drivers.find(value=>value.id===task?.driverId)?.display_name??'未分配司导'} · {item.dispatchPlanningStatus}</small><Link to={`/app/operations/run?date=${today}&departure=${item.id}`}>详情</Link></article>})}</div>:<p className="operations-empty">今天暂无班次。</p>}</section>
@@ -489,7 +498,7 @@ function OperationsLiveDashboard() {
           <h1>订单、车辆与司机调度</h1>
           <p>系统按报名人数自动匹配车辆与合格司导；运营确认后才下发到司导账号。</p>
         </div>
-        <div className="operations-task-actions"><a href="/app/operations/products">产品管理</a><a href="/app/operations/departures">班次与价格</a><a href="/app/operations/run">每日运行台</a><a href="/app/operations/commissions">佣金与提现</a><a href="/app/operations/marketing">首页与季节专题</a><a href="/app">返回乘客应用</a></div>
+        <div className="operations-task-actions"><a href="/app/operations/products">产品管理</a><a href="/app/operations/departures">班次与价格</a><a href="/app/operations/run">每日运行台</a><a href="/app/operations/commissions">佣金与提现</a><a href="/app/operations/marketing">首页与季节专题</a><a href="/app" target="_blank" rel="noreferrer">预览游客端</a></div>
       </header>
       {!services || error ? (
         <section className="operations-error" role="alert">
