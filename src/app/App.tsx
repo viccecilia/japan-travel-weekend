@@ -644,11 +644,23 @@ const notificationCopy:Record<string,any>={
   ko:{eyebrow:'메시지 센터',title:'알림',intro:'예약, 출발 및 계정 보안과 관련된 중요한 정보만 표시합니다.',filters:{all:'전체',order:'예약',trip:'여행',system:'시스템'},icons:{order:'예',trip:'여',system:'계'},loading:'알림 불러오는 중',loadingText:'예약에 필요한 알림을 확인하고 있습니다.',unavailable:'알림을 이용할 수 없습니다',empty:'알림 없음',emptyText:'결제, 집합, 차량 및 탑승 상태가 변경되면 여기에 표시됩니다.',footer:'기사와 가이드의 내부 업무 알림 및 광고는 승객 알림에 표시되지 않습니다.',delivery:{delivered:'전달 완료',submitted:'전송됨·전달 확인 대기',failed:'전송 실패',suppressed:'알림 없음',pending:'생성됨·외부 전달 대기'},labels:{order:'예약 알림',refund:'환불 알림',trip:'여행 알림',system:'시스템 알림'},events:{'order-confirmed':['예약이 확정되었습니다','결제가 접수되어 여행 준비를 시작했습니다. 집합 및 차량 정보를 확인하세요.'],'refund-completed':['원래 결제 수단으로 환불했습니다','환불 처리가 완료되었습니다. 실제 입금 시점은 은행 또는 카드사에 따라 다릅니다.'],'bank-transfer-pending':['계좌이체 확인 중','확인 요청을 받았습니다. 은행 입금과 예약 확정은 서로 다른 상태입니다.'],'meeting-updated':['집합 정보가 변경되었습니다','여행 페이지에서 최신 시간, 장소 및 도보 길찾기를 확인하세요.'],'trip-room-opened':['여행방이 열렸습니다','기사, 가이드 및 같은 차량의 승객이 당일 운행 정보를 확인할 수 있습니다.'],'departure-reminder':['곧 출발합니다','집합 시간, 장소, 차량 정보 및 준비물을 확인하세요.'],'departure-delayed':['지연이 예상됩니다','여행 페이지에서 지연 사유와 변경된 일정을 확인하세요.'],'boarding-completed':['탑승 확인 완료','직원이 탑승 상태를 확인했습니다.'],fallback:['서비스 상태 업데이트','예약 또는 여행 페이지에서 최신 상태를 확인하세요.']},preview:[['order','예약 정보를 저장했습니다','승객 정보와 취소 규정을 확인할 수 있습니다. 아직 결제되지 않았습니다.','방금'],['trip','출발 하루 전에 집합 알림이 열립니다','확정된 집합 장소, 차량 및 직원 정보가 내 여행에 표시됩니다.','오늘'],['system','다국어 번역 준비 중','여행 메시지는 원문을 유지하면서 휴대전화 언어의 번역을 표시합니다.','8월 30일']]}
 };
 
+const notificationHubCopy:Record<string,{label:string;travel:string;travelText:string;group:string;groupText:string;support:string;supportText:string;openOrder:string;openTrip:string}>={
+  'zh-CN':{label:'消息分类',travel:'旅行通知',travelText:'查看付款、集合、车辆、登车及变更通知',group:'本车群聊',groupText:'先选择对应路线和日期，再进入已开放的本车群',support:'客服',supportText:'订单咨询与出发当天的可用联系渠道',openOrder:'查看相关订单',openTrip:'查看相关行程'},
+  'zh-TW':{label:'訊息分類',travel:'旅行通知',travelText:'查看付款、集合、車輛、登車及變更通知',group:'本車群聊',groupText:'先選擇對應路線和日期，再進入已開放的本車群組',support:'客服',supportText:'訂單諮詢及出發當天可用的聯絡管道',openOrder:'查看相關訂單',openTrip:'查看相關行程'},
+  ja:{label:'メッセージ分類',travel:'ツアーのお知らせ',travelText:'支払い、集合、車両、乗車、変更のお知らせを確認',group:'車両別チャット',groupText:'ツアーと日付を選び、開設済みのチャットに入ります',support:'サポート',supportText:'予約相談と出発当日の連絡先',openOrder:'予約を確認',openTrip:'旅程を確認'},
+  en:{label:'Message categories',travel:'Trip notifications',travelText:'Payment, meeting, vehicle, boarding and change updates',group:'Vehicle chat',groupText:'Choose the trip and date before entering an open vehicle chat',support:'Support',supportText:'Order questions and available day-of-travel contacts',openOrder:'View related order',openTrip:'View related trip'},
+  es:{label:'Categorías de mensajes',travel:'Avisos del viaje',travelText:'Pagos, encuentro, vehículo, embarque y cambios',group:'Chat del vehículo',groupText:'Elige el viaje y la fecha antes de entrar al chat disponible',support:'Soporte',supportText:'Consultas del pedido y contactos disponibles el día del viaje',openOrder:'Ver pedido relacionado',openTrip:'Ver viaje relacionado'},
+  vi:{label:'Nhóm tin nhắn',travel:'Thông báo chuyến đi',travelText:'Thanh toán, điểm hẹn, xe, lên xe và thay đổi',group:'Trò chuyện cùng xe',groupText:'Chọn chuyến đi và ngày trước khi vào phòng trò chuyện đã mở',support:'Hỗ trợ',supportText:'Hỏi về đơn hàng và liên hệ trong ngày khởi hành',openOrder:'Xem đơn liên quan',openTrip:'Xem chuyến đi liên quan'},
+  ne:{label:'सन्देशका प्रकार',travel:'यात्रा सूचना',travelText:'भुक्तानी, भेट्ने स्थान, सवारी, चढ्ने र परिवर्तन सूचना',group:'सवारी समूह च्याट',groupText:'खुला च्याटमा जानुअघि यात्रा र मिति छान्नुहोस्',support:'सहायता',supportText:'अर्डर प्रश्न र यात्राको दिन उपलब्ध सम्पर्क',openOrder:'सम्बन्धित अर्डर हेर्नुहोस्',openTrip:'सम्बन्धित यात्रा हेर्नुहोस्'},
+  ko:{label:'메시지 분류',travel:'여행 알림',travelText:'결제, 집합, 차량, 탑승 및 변경 알림',group:'차량 채팅',groupText:'여행과 날짜를 선택한 후 열린 차량 채팅에 입장하세요',support:'고객 지원',supportText:'예약 문의 및 출발 당일 연락처',openOrder:'관련 예약 보기',openTrip:'관련 여행 보기'},
+};
+
 export function AppNotifications() {
   const { services,state } = useApp();
   const [searchParams,setSearchParams]=useSearchParams();
   const locale=state.ui.locale??'zh-CN';
   const n=notificationCopy[locale]??notificationCopy['zh-CN'];
+  const hub=notificationHubCopy[locale]??notificationHubCopy['zh-CN'];
   const requestedFilter=searchParams.get('type');
   const initialFilter=requestedFilter==='order'||requestedFilter==='trip'||requestedFilter==='system'?requestedFilter:'all';
   const [filter, setFilter] = useState<"all" | "order" | "trip" | "system">(initialFilter);
@@ -736,7 +748,9 @@ export function AppNotifications() {
       void copy;
       setItems(
         result.data.map((row: {
+          id:string;
           event_type: string;
+          order_id:string|null;
           created_at: string;
           status: string;
         }) => {
@@ -745,6 +759,8 @@ export function AppNotifications() {
           const template = {type,label:row.event_type==='refund-completed'?n.labels.refund:n.labels[type],title:event[0],text:event[1]};
           return {
             ...template,
+            id:row.id,
+            orderId:row.order_id,
             time: new Intl.DateTimeFormat(locale, {
               timeZone: "Asia/Tokyo",
               month: "numeric",
@@ -769,15 +785,15 @@ export function AppNotifications() {
         title={n.title}
         text={n.intro}
       />
-      <section className="app-list" aria-label="消息分类">
+      <section className="app-list" aria-label={hub.label}>
         <Link className="order-card" to="/app/notifications?type=trip">
-          <b>旅行通知</b><span>查看付款、集合、车辆、登车及变更通知</span>
+          <b>{hub.travel}</b><span>{hub.travelText}</span>
         </Link>
         <Link className="order-card" to="/app/my-trip">
-          <b>本车群聊</b><span>先选择对应路线和日期，再进入已开放的本车群</span>
+          <b>{hub.group}</b><span>{hub.groupText}</span>
         </Link>
         <Link className="order-card" to="/app/support">
-          <b>客服</b><span>订单咨询与出发当天的可用联系渠道</span>
+          <b>{hub.support}</b><span>{hub.supportText}</span>
         </Link>
       </section>
       <div className="notification-filters">
@@ -827,6 +843,7 @@ export function AppNotifications() {
                       {n.delivery[item.deliveryStatus]??n.delivery.pending}
                     </small>
                   )}
+                  {item.orderId&&<Link className="text-link" to={`/app/orders/${encodeURIComponent(item.orderId)}`}>{item.type==='trip'?hub.openTrip:hub.openOrder}</Link>}
                 </div>
               </article>
             ))}
