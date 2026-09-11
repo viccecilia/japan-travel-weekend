@@ -13,7 +13,7 @@ function ItineraryEditor({ initial }: { initial: unknown }) {
     <legend>景点图文与展示顺序</legend>
     <input name="itinerary" type="hidden" value={JSON.stringify(items)} readOnly />
     <input name="stops" type="hidden" value={items.map((item) => String(item.title ?? item.name ?? "")).filter(Boolean).join("\n")} readOnly />
-    {items.map((item, index) => <article key={`${index}:${String(item.title ?? item.name ?? "stop")}`}>
+    {items.map((item, index) => <article key={index}>
       <header><b>{index + 1}. {String(item.title ?? item.name ?? "未命名景点")}</b><div className="operations-task-actions"><button type="button" onClick={() => move(index, -1)} disabled={index === 0}>上移</button><button type="button" onClick={() => move(index, 1)} disabled={index === items.length - 1}>下移</button><button type="button" onClick={() => setItems((current) => current.filter((_, itemIndex) => itemIndex !== index))}>删除</button></div></header>
       <label>景点名称<input value={String(item.title ?? item.name ?? "")} onChange={(event) => update(index, "title", event.target.value)} required /></label>
       <label>地点<input value={String(item.location ?? "")} onChange={(event) => update(index, "location", event.target.value)} /></label>
@@ -35,20 +35,21 @@ export function ProductCenter() {
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [revisions,setRevisions]=useState<OperationsProductRevision[]>([]);
-  const reload = async () => {
+  const reload = async (selectId?: string | null) => {
     if (!services) return;
     const result = await services.operations.listProducts();
     setProducts(result.data);
     setNotice(result.error ?? "");
     setSelected(
       (current) =>
+        result.data.find((item) => item.id === selectId) ??
         result.data.find((item) => item.id === current?.id) ??
         result.data[0] ??
         null,
     );
   };
   useEffect(()=>{let active=true;if(services&&selected)void services.operations.listProductRevisions(selected.id).then(result=>{if(active)setRevisions(result.data)});return()=>{active=false}},[services,selected]);
-  const createProduct=async(event:FormEvent<HTMLFormElement>)=>{event.preventDefault();if(!services)return;const form=new FormData(event.currentTarget);setBusy(true);const result=await services.operations.createProduct({slug:String(form.get('newSlug')),title:String(form.get('newTitle'))});setBusy(false);setNotice(result.ok?'新产品草稿已建立，请完善内容后发布。':`新建失败：${result.error}`);if(result.ok){event.currentTarget.reset();await reload()}};
+  const createProduct=async(event:FormEvent<HTMLFormElement>)=>{event.preventDefault();if(!services||busy)return;const formElement=event.currentTarget;const form=new FormData(formElement);setBusy(true);try{const result=await services.operations.createProduct({slug:String(form.get('newSlug')),title:String(form.get('newTitle'))});setNotice(result.ok?'新产品草稿已建立，请完善内容后发布。':`新建失败：${result.error}`);if(result.ok){formElement.reset();await reload(result.id)}}catch(error){setNotice(`新建失败：${error instanceof Error?error.message:'未知错误'}`)}finally{setBusy(false)}};
   const copyProduct=async()=>{if(!services||!selected)return;const slug=window.prompt('新路线英文标识（例如 kyoto-autumn-day）');if(!slug)return;const title=window.prompt('新路线标题',`${selected.title} 副本`);if(!title)return;setBusy(true);const result=await services.operations.copyProduct({sourceId:selected.id,slug,title});setBusy(false);setNotice(result.ok?'已复制为独立草稿。':`复制失败：${result.error}`);if(result.ok)await reload()};
   const lifecycle=async(action:'archive'|'restore',revision?:number)=>{if(!services||!selected)return;if(!window.confirm(action==='archive'?'下架后游客端将立即不可见，确认继续？':`确认把历史版本 v${revision} 恢复为新草稿？`))return;setBusy(true);const result=await services.operations.setProductStatus({id:selected.id,expectedVersion:selected.catalogVersion,action,restoreRevision:revision});setBusy(false);setNotice(result.ok?(action==='archive'?'产品已下架，历史订单不受影响。':'历史版本已复制为新草稿。'):`操作失败：${result.error}`);if(result.ok)await reload()};
   useEffect(() => {
