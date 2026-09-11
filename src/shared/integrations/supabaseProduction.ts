@@ -35,6 +35,7 @@ export type StaffTaskRow = {
   trip_title: string;
   departs_at: string | null;
   chat_opens_at: string | null;
+  meeting_at?: string | null;
   meeting_name: string | null;
   meeting_address: string | null;
   map_lat: number | null;
@@ -47,6 +48,10 @@ export type StaffTaskRow = {
   passenger_count: number;
   boarded_count: number;
   journey_status?: "pending" | "meeting" | "in_progress" | "completed" | string;
+  driver_name?: string | null;
+  guide_name?: string | null;
+  assignment_acknowledged?: boolean;
+  assignment_acknowledged_at?: string | null;
 };
 export type VehicleGroupMeetingRow = {
   vehicle_group_id: string;
@@ -594,6 +599,13 @@ export class SupabaseStaffRepository {
     } catch {
       return { data: [] as StaffTaskRow[], error: "无法读取已分配任务" };
     }
+  }
+  async acknowledgeAssignment(staffAssignmentId:string) {
+    if (!this.client) return {ok:false,error:"工作人员任务服务未配置"};
+    try {
+      const {data,error}=await this.client.rpc("acknowledge_own_staff_assignment",{p_staff_assignment:staffAssignmentId});
+      return error||!data?{ok:false,error:"任务确认失败，请刷新后重试"}:{ok:true,acknowledgedAt:String(data),error:null};
+    } catch { return {ok:false,error:"任务确认失败，请检查网络后重试"}; }
   }
   async recordExecution(
     vehicleGroupId: string,

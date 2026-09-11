@@ -22,6 +22,7 @@ export type StaffTask = {
   trip_title: string;
   departs_at: string | null;
   chat_opens_at: string | null;
+  meeting_at?: string | null;
   meeting_name: string | null;
   meeting_address: string | null;
   map_lat: number | null;
@@ -34,6 +35,10 @@ export type StaffTask = {
   passenger_count: number;
   boarded_count: number;
   journey_status?: "pending" | "ready" | "meeting" | "in_progress" | "completed" | string;
+  driver_name?: string | null;
+  guide_name?: string | null;
+  assignment_acknowledged?: boolean;
+  assignment_acknowledged_at?: string | null;
 };
 type AttendanceRow = {
   passenger_id: string;
@@ -195,6 +200,7 @@ function useStaffTasks() {
   );
   const [resolved, setResolved] = useState(!services);
   const [error, setError] = useState<string | null>(null);
+  const [refreshKey,setRefreshKey]=useState(0);
   useEffect(() => {
     let active = true;
     if (!services)
@@ -216,12 +222,12 @@ function useStaffTasks() {
       window.clearInterval(timer);
       document.removeEventListener('visibilitychange',refresh);
     };
-  }, [services]);
-  return { services, preview, tasks, resolved, error };
+  }, [services,refreshKey]);
+  return { services, preview, tasks, resolved, error, retry:()=>{setResolved(false);setError(null);setRefreshKey(value=>value+1)} };
 }
 
 export function StaffPortal() {
-  const { services, preview, tasks, resolved, error } = useStaffTasks();
+  const { services, preview, tasks, resolved, error, retry } = useStaffTasks();
   const {state}=useApp();
   const location=useLocation();
   const [searchParams,setSearchParams]=useSearchParams();
@@ -272,6 +278,15 @@ export function StaffPortal() {
     setWorkflowBusy(false);
     setWorkflowNotice(ok?"已发起集合，游客端将显示“我已到达”。":"操作未保存，请确认任务权限和群聊开放状态。");
   };
+  const acknowledgeAssignment=async()=>{
+    if(!active||workflowBusy)return;
+    if(!services){setWorkflowNotice('本地预览：任务确认不会写入数据库。');return}
+    setWorkflowBusy(true);
+    const result=await services.acknowledgeStaffAssignment(active.staff_assignment_id);
+    setWorkflowBusy(false);
+    setWorkflowNotice(result.ok?'任务已确认，运营后台可查看确认时间。':result.error??'任务确认失败。');
+    if(result.ok)retry();
+  };
   if (!resolved)
     return (
       <StaffFrame>
@@ -284,6 +299,10 @@ export function StaffPortal() {
   const scheduleRange=searchParams.get('range')??'';
   const updateSchedule=(key:'date'|'range'|'status',value:string)=>{const next=new URLSearchParams(searchParams);if(value)next.set(key,value);else next.delete(key);if(key==='date')next.delete('range');if(key==='range')next.delete('date');setSearchParams(next,{replace:true})};
   const nowDate=selectionClock;const todayKey=tokyoDay(nowDate);const tomorrowKey=tokyoDay(new Date(nowDate.getTime()+86_400_000));const week=tokyoWeekBounds(nowDate);
+  const todayTasks=tasks.filter(task=>task.departs_at&&tokyoDay(task.departs_at)===todayKey&&taskPhase(task)!=='cancelled');
+  const todayPassengerCount=todayTasks.reduce((total,task)=>total+task.passenger_count,0);
+  const activeConflicts=tasks.filter(task=>taskPhase(task)==='active');
+  const upcomingTasks=tasks.filter(task=>isExecutableStaffTask(task)&&task.departs_at&&tokyoDay(task.departs_at)>todayKey).sort((a,b)=>taskSortTime(a)-taskSortTime(b)).slice(0,2);
   const filteredTasks=tasks.filter(task=>{if(scheduleStatus!=='all'&&taskPhase(task)!==scheduleStatus)return false;if(!task.departs_at)return !scheduleDate&&!scheduleRange;const key=tokyoDay(task.departs_at);if(scheduleDate)return key===scheduleDate;if(scheduleRange==='week'){const time=new Date(task.departs_at).getTime();return time>=week.start.getTime()&&time<week.end.getTime()}return true}).sort((a,b)=>taskSortTime(a)-taskSortTime(b));
   if(portalView==='schedule')return <StaffFrame task={active}><header className="staff-welcome"><span>工作人员端</span><h1>行程</h1><p>按日期和执行状态查看本人已分配任务。</p></header><section className="staff-filter-panel"><div role="group" aria-label="日期快捷选择"><button className={scheduleDate===todayKey?'active':''} onClick={()=>updateSchedule('date',todayKey)}>今天</button><button className={scheduleDate===tomorrowKey?'active':''} onClick={()=>updateSchedule('date',tomorrowKey)}>明天</button><button className={scheduleRange==='week'?'active':''} onClick={()=>updateSchedule('range','week')}>本周</button></div><label>日历选择<input aria-label="行程日期" type="date" value={scheduleDate} onChange={event=>updateSchedule('date',event.target.value)}/></label><div role="group" aria-label="行程状态">{([['all','全部'],['pending','待执行'],['active','进行中'],['completed','已完成'],['cancelled','已取消']] as const).map(([value,label])=><button type="button" key={value} className={scheduleStatus===value?'active':''} onClick={()=>updateSchedule('status',value)}>{label}</button>)}</div></section>{filteredTasks.length?<section className="staff-view-list">{filteredTasks.map(task=><article key={task.staff_assignment_id} data-status={taskPhase(task)}><span>{dayLabel(task.departs_at)} · {timeLabel(task.departs_at)} · {taskPhase(task)==='pending'?'待执行':taskPhase(task)==='active'?'进行中':taskPhase(task)==='cancelled'?'已取消':'已完成'}</span><h2>{task.trip_title}</h2><p>{task.meeting_name??'集合点待确认'} · {task.vehicle_label??task.vehicle_type}</p><p>{roleLabel(task.assignment_role)} · 本车 {task.passenger_count} 人</p>{taskPhase(task)==='cancelled'?<small>任务已取消，执行操作已关闭。</small>:<Link to={taskPath(task,'journey')}>打开行程</Link>}</article>)}</section>:<StatusCard title="当前筛选没有行程">更改日期或状态后，可查看其他已分配任务。</StatusCard>}</StaffFrame>;
   if(portalView==='map')return <StaffFrame task={active}><header className="staff-welcome"><span>工作人员端</span><h1>地图</h1><p>只显示当前账户获派任务的集合点与路线入口。</p></header>{tasks.length&&active?<><section className="staff-filter-panel"><label>当前任务<select aria-label="地图任务" value={active.staff_assignment_id} onChange={event=>setSelected(event.target.value)}>{tasks.filter(task=>taskPhase(task)!=='cancelled').map(task=><option value={task.staff_assignment_id} key={task.staff_assignment_id}>{dayLabel(task.departs_at)} {timeLabel(task.departs_at)} · {task.trip_title}</option>)}</select></label></section>{active.map_lat!=null&&active.map_lng!=null?<section className="staff-map-panel"><iframe title={`${active.trip_title}集合点地图`} loading="lazy" src={`https://www.google.com/maps?q=${active.map_lat},${active.map_lng}&output=embed`}/><article><span>当前目的地</span><h2>{active.meeting_name??'集合点'}</h2><p>{active.meeting_address??'地址待运营确认'}</p><a className="button full" target="_blank" rel="noreferrer" href={`https://www.google.com/maps/dir/?api=1&destination=${active.map_lat},${active.map_lng}`}>导航至集合点</a><Link to={taskPath(active,'journey')}>路线节点与位置共享</Link><Link to={taskPath(active,'support')}>联系调度</Link></article></section>:<StatusCard title="集合点坐标尚未确认">不会使用假坐标。地址：{active.meeting_address??'尚未提供'}。请联系调度补充坐标后再导航。</StatusCard>}</>:<StatusCard title="暂无可显示的任务地图">获得任务后，这里会显示本人任务的集合点、路线节点和导航入口。</StatusCard>}</StaffFrame>;
@@ -302,19 +321,25 @@ export function StaffPortal() {
       )}
       <header className="staff-welcome">
         <span>{staffDisplayName||'工作人员'} · {new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Tokyo',month:'long',day:'numeric',weekday:'short'}).format(new Date())}</span>
-        <h1>今日履约</h1>
-        <p><Link to="/staff/messages">查看工作通知</Link> · <Link to="/staff/profile">个人中心</Link></p>
+        <h1>今日工作台</h1>
+        <p>{activeConflicts.length?'行程执行中':todayTasks.length?'今日已排班':'等待排班'} · <Link to="/staff/messages">查看通知</Link> · <Link to="/staff/profile">个人入口</Link></p>
       </header>
       {error && (
         <StatusCard title="任务读取失败" alert>
-          {error}
+          {error} <button type="button" onClick={retry}>重新读取</button>
         </StatusCard>
       )}
-      {!active ? (
+      {!error&&<section className="staff-today-kpis" aria-label="今日概况">
+        <Link to={`/staff/schedule?date=${todayKey}`}><span>今日任务</span><b>{todayTasks.length}</b><small>日本时间当天</small></Link>
+        <Link to={`/staff/schedule?date=${todayKey}`}><span>负责乘客</span><b>{todayPassengerCount}</b><small>各任务实际名单</small></Link>
+        <Link to={active?taskPath(active,'passengers'):`/staff/schedule?date=${todayKey}`}><span>当前登车</span><b>{active?`${active.boarded_count}/${active.passenger_count}`:'—'}</b><small>{active?`待登车 ${Math.max(0,active.passenger_count-active.boarded_count)}`:'暂无当前任务'}</small></Link>
+      </section>}
+      {activeConflicts.length>1&&<div className="staff-conflict" role="alert"><b>发现 {activeConflicts.length} 个同时进行中的任务</b><p>请先联系调度确认当前负责车辆；系统不会静默隐藏其他进行中任务。</p></div>}
+      {!error&&!active ? (
         <StatusCard title="今天暂无已安排任务">
-          {nextTask?<>下一次出勤：{dayLabel(nextTask.departs_at)} {timeLabel(nextTask.departs_at)} · {nextTask.trip_title}。<br/></>:null}无任务不代表休息或请假，请查看排班或联系调度。<br/><Link to="/staff/schedule">查看排班</Link> · <Link to="/staff/messages?channel=dispatch">联系调度</Link>
+          {nextTask?<>下一次出勤：{dayLabel(nextTask.departs_at)} {timeLabel(nextTask.departs_at)} · {nextTask.trip_title}。<br/></>:null}无任务不代表休息或请假，请查看排班或联系调度。<br/><Link to="/staff/schedule">查看排班</Link> · <Link to="/staff/messages?channel=dispatch">联系调度</Link> · <Link to="/staff/profile#promotion">我的推广码</Link>
         </StatusCard>
-      ) : (
+      ) : !error&&active ? (
         <>
           <section
             id="tasks"
@@ -344,12 +369,12 @@ export function StaffPortal() {
             ))}
           </section>
           <TaskSummary task={active} />
-          <section className="staff-next-action"><span>下一步</span>{taskPhase(active)==='active'?<><h2>{active.journey_status==='meeting'?'核对乘客并完成登车':'查看下一站与行程进度'}</h2><Link className="button full" to={taskPath(active,active.journey_status==='meeting'?'passengers':'journey')}>{active.journey_status==='meeting'?'打开乘客名单':'打开行程控制台'}</Link></>:active.map_lat!=null&&active.map_lng!=null?<><h2>按计划前往集合点</h2><a className="button full" target="_blank" rel="noreferrer" href={`https://www.google.com/maps/dir/?api=1&destination=${active.map_lat},${active.map_lng}`}>导航至集合点</a></>:<><h2>查看并核对任务安排</h2><Link className="button full" to={taskPath(active,'journey')}>查看任务详情</Link></>}</section>
+          <section className="staff-next-action"><span>下一步</span>{taskPhase(active)==='pending'&&!active.assignment_acknowledged?<><h2>查看并确认本次派班</h2><button className="button full" disabled={workflowBusy} onClick={()=>void acknowledgeAssignment()}>{workflowBusy?'正在确认':'确认任务'}</button></>:taskPhase(active)==='active'?<><h2>{active.journey_status==='meeting'?'核对乘客并完成登车':'查看下一站与行程进度'}</h2><Link className="button full" to={taskPath(active,active.journey_status==='meeting'?'passengers':'journey')}>{active.journey_status==='meeting'?'打开乘客名单':'打开行程控制台'}</Link></>:active.map_lat!=null&&active.map_lng!=null?<><h2>按计划前往集合点</h2><a className="button full" target="_blank" rel="noreferrer" href={`https://www.google.com/maps/dir/?api=1&destination=${active.map_lat},${active.map_lng}`}>导航至集合点</a></>:<><h2>查看并核对任务安排</h2><Link className="button full" to={taskPath(active,'journey')}>查看任务详情</Link></>}</section>
           <ol className="staff-progress" aria-label="行程进度">{['待确认','集合','登车','游览','完成'].map((label,index)=>{const current=active.journey_status==='completed'?4:active.journey_status==='in_progress'?3:active.journey_status==='meeting'?1:0;return <li className={index<=current?'active':''} aria-current={index===current?'step':undefined} key={label}>{label}</li>})}</ol>
           <section className="staff-actions">
             <h2>执行状态</h2>
             <div>
-              <span className="staff-assignment-confirmed">已由运营确认排班</span>
+              <span className="staff-assignment-confirmed">{active.assignment_acknowledged?`司导已确认${active.assignment_acknowledged_at?` · ${japanDateTime(active.assignment_acknowledged_at)}`:''}`:'等待司导确认派班'}</span>
               <button
                 type="button"
                 disabled={workflowBusy || active.room_status !== "open"}
@@ -420,7 +445,9 @@ export function StaffPortal() {
             </p>
           </section>
         </>
-      )}
+      ):null}
+      {!error&&workNotifications.length>0&&<section className="staff-home-notices"><header><span>IMPORTANT</span><h2>重要通知</h2></header>{workNotifications.slice(0,3).map(item=><article key={item.id}><b>{item.event_type==='departure-rescheduled'?'班次时间已变更':item.event_type==='departure-cancelled'?'任务已取消':item.event_type==='meeting-updated'?'集合信息已变更':'工作状态更新'}</b><small>{japanDateTime(item.updated_at??item.created_at)} · 已读不代表已确认</small><Link to="/staff/messages">查看通知</Link></article>)}</section>}
+      {!error&&<section className="staff-upcoming"><header><span>NEXT</span><h2>后续安排</h2></header>{upcomingTasks.length?upcomingTasks.map(task=><article key={task.staff_assignment_id}><b>{dayLabel(task.departs_at)} {timeLabel(task.departs_at)} · {task.trip_title}</b><small>{task.meeting_name??'集合点待确认'} · {task.vehicle_label??'车辆待确认'}</small></article>):<p>当前没有后续已派任务。</p>}<Link to="/staff/schedule">查看全部行程</Link></section>}
     </StaffFrame>
   );
 }
@@ -1253,7 +1280,7 @@ function TaskSummary({ task }: { task: StaffTask }) {
     <section className="staff-active-card">
       <div>
         <span>
-          {dayLabel(task.departs_at)} {timeLabel(task.departs_at)} ·{" "}
+          {dayLabel(task.departs_at)} {timeLabel(task.departs_at)} · 集合 {timeLabel(task.meeting_at??task.departs_at)} ·{" "}
           {roleLabel(task.assignment_role)}
         </span>
         <h2>{task.trip_title}</h2>
@@ -1261,7 +1288,8 @@ function TaskSummary({ task }: { task: StaffTask }) {
           {task.meeting_name ?? "集合点待确认"}
           {task.meeting_address ? ` · ${task.meeting_address}` : ""}
         </p>
-        <p>{task.vehicle_label??task.vehicle_type} · 本车 {task.passenger_count} 人 · 已登车 {task.boarded_count} · 待登车 {Math.max(0,task.passenger_count-task.boarded_count)}</p>
+        <p>{task.vehicle_label??task.vehicle_type} · 本车 {task.passenger_count} 人 / {task.vehicle_capacity} 席 · 空余 {Math.max(0,task.vehicle_capacity-task.booked_seats)} 席 · 已登车 {task.boarded_count} · 待登车 {Math.max(0,task.passenger_count-task.boarded_count)}</p>
+        <p>司机：{task.driver_name??'未配司机'} · 导游：{task.guide_name??'未配导游'}</p>
         {task.chat_opens_at && task.room_status !== "open" && (
           <p>团队聊天将于 {dayLabel(task.chat_opens_at)} {timeLabel(task.chat_opens_at)} 开放</p>
         )}

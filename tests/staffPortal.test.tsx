@@ -57,6 +57,34 @@ describe("工作人员端", () => {
       {...task,staff_assignment_id:'running',trip_title:'正在运行',journey_status:'in_progress',departs_at:new Date(atTokyoHour(-1,9)).toISOString()},
     ]);
     expect(await screen.findByRole('heading',{name:'正在运行'})).toBeInTheDocument();
+    expect(screen.getByRole('heading',{name:'今日工作台'})).toBeInTheDocument();
+    expect(screen.getByRole('region',{name:'今日概况'})).toHaveTextContent('当前登车');
+  });
+  it('多个运行中任务显示冲突，不静默隐藏',async()=>{
+    renderTodayWithTasks([
+      {...task,staff_assignment_id:'running-a',trip_title:'运行任务A',journey_status:'in_progress'},
+      {...task,staff_assignment_id:'running-b',trip_title:'运行任务B',journey_status:'meeting'},
+    ]);
+    expect(await screen.findByRole('alert')).toHaveTextContent('2 个同时进行中的任务');
+    expect(screen.getAllByText('运行任务A').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('运行任务B').length).toBeGreaterThan(0);
+  });
+  it('读取失败只显示失败和重试，不伪装成无任务',async()=>{
+    const client={auth:{getUser:async()=>({data:{user:{id:'staff-error',email:'error@example.invalid'}},error:null}),getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},rpc:async(name:string)=>name==='get_staff_portal_tasks'?{data:null,error:{message:'offline'}}:{data:null,error:null}} as unknown as SupabaseClient;
+    render(<MemoryRouter initialEntries={['/staff']}><AppProvider services={new ProductionBrowserServices(client,undefined)}><Routes><Route path="/staff/*" element={<StaffPortal/>}/></Routes></AppProvider></MemoryRouter>);
+    expect(await screen.findByText('任务读取失败')).toBeInTheDocument();
+    expect(screen.getByRole('button',{name:'重新读取'})).toBeInTheDocument();
+    expect(screen.queryByText('今天暂无已安排任务')).not.toBeInTheDocument();
+  });
+  it('待执行任务由真实 RPC 确认并重新读取',async()=>{
+    const calls:string[]=[];
+    const client={auth:{getUser:async()=>({data:{user:{id:'staff-ack'}},error:null}),getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},rpc:async(name:string)=>{calls.push(name);if(name==='get_staff_portal_tasks')return {data:[{...task,departs_at:new Date(atTokyoHour(0,10)).toISOString(),journey_status:'pending',assignment_acknowledged:false}],error:null};if(name==='acknowledge_own_staff_assignment')return {data:new Date().toISOString(),error:null};return {data:null,error:null}}} as unknown as SupabaseClient;
+    render(<MemoryRouter initialEntries={['/staff']}><AppProvider services={new ProductionBrowserServices(client,undefined)}><Routes><Route path="/staff/*" element={<StaffPortal/>}/></Routes></AppProvider></MemoryRouter>);
+    const button=await screen.findByRole('button',{name:'确认任务'});
+    fireEvent.click(button);
+    expect(await screen.findByText(/任务已确认/)).toBeInTheDocument();
+    expect(calls).toContain('acknowledge_own_staff_assignment');
+    expect(calls.filter(value=>value==='get_staff_portal_tasks').length).toBeGreaterThan(1);
   });
   it('只有历史任务时显示今日空状态且不冒充下一次出勤',async()=>{
     renderTodayWithTasks([{...task,trip_title:'历史完成',journey_status:'completed',departs_at:new Date(atTokyoHour(-1,9)).toISOString()}]);

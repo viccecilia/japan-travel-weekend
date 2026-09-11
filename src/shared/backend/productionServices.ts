@@ -150,6 +150,7 @@ export class ProductionBrowserServices {
   loadStaffTasks() {
     return this.staff.listTasks();
   }
+  acknowledgeStaffAssignment(staffAssignmentId:string){return this.staff.acknowledgeAssignment(staffAssignmentId)}
   recordStaffExecution(
     vehicleGroupId: string,
     eventType: Parameters<SupabaseStaffRepository["recordExecution"]>[1],
