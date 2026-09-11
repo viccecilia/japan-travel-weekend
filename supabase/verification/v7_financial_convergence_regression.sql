@@ -6,8 +6,8 @@ begin
  insert into auth.users(id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
  values(inviter,'00000000-0000-0000-0000-000000000000','authenticated','authenticated','v7-inviter-'||inviter||'@example.invalid',crypt('not-a-real-password',gen_salt('bf')),now(),'{}','{}',now(),now());
  insert into public.ambassador_qualifications(account_id,status,source,approved_at) values(inviter,'approved','operations',now());
- referral_code:='V7'||upper(replace(left(inviter::text,10),'-',''));
- insert into public.referral_codes(account_id,code) values(inviter,referral_code);
+ select code into referral_code from public.referral_codes where account_id=inviter;
+ if referral_code is null then raise exception 'FAIL referral code was not provisioned';end if;
  insert into public.trips(slug,title,status,content)
  values(
   'v7-financial-'||txid_current(),'V7 fictional financial route','published',
