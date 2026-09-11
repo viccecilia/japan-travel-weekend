@@ -27,7 +27,7 @@ const pageTitle=(pathname:string,search:string)=>{
 };
 
 export function OperationsLayout({children}:{children:ReactNode}){
-  const {state,services,reset}=useApp();
+  const {state,services,clearIdentity}=useApp();
   const location=useLocation();
   const navigate=useNavigate();
   const [open,setOpen]=useState(false);
@@ -36,7 +36,7 @@ export function OperationsLayout({children}:{children:ReactNode}){
   const signOut=async()=>{
     if(signingOut)return;
     setSigningOut(true);
-    try{if(services)await services.signOut();reset();navigate('/app/login?returnTo=%2Fapp%2Foperations',{replace:true});}
+    try{if(services)await services.signOut();clearIdentity();navigate('/app/login?returnTo=%2Fapp%2Foperations',{replace:true});}
     finally{setSigningOut(false)}
   };
   return <div className="operations-shell">

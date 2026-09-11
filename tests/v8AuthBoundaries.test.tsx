@@ -48,7 +48,7 @@ describe('V8 角色边界与深链',()=>{
     expect(await screen.findByText('司导页面已授权')).toBeInTheDocument();
     cleanup();
     staffAt('/staff/profile','staff_blocked');
-    expect(await screen.findByText('无权访问工作人员端')).toBeInTheDocument();
+    expect(await screen.findByText('司导账号已停用')).toBeInTheDocument();
   });
 
   it('游客不能进入司导页面，运营仍可进入受控工作人员页面',async()=>{

@@ -3,7 +3,7 @@ import {afterEach,describe,expect,it} from 'vitest';
 import type {SupabaseClient} from '@supabase/supabase-js';
 import {MemoryRouter,useLocation} from 'react-router-dom';
 import {AppProvider} from '../src/app/store';
-import {referralCodeFromSearch,safeReturnTo} from '../src/app/auth';
+import {loginSurfaceForReturnTo,referralCodeFromSearch,safeReturnTo} from '../src/app/auth';
 import {Router} from '../src/router/Router';
 import {ProductionBrowserServices} from '../src/shared/backend/productionServices';
 
@@ -15,6 +15,11 @@ function clientWithUser(user:{id:string;email:string}|null,getUser?:()=>Promise<
 }
 
 describe('正式账户路由守卫',()=>{
+  it('按 returnTo 识别游客、司导和管理登录入口',()=>{
+    expect(loginSurfaceForReturnTo('/app/orders')).toBe('passenger');
+    expect(loginSurfaceForReturnTo('/staff/messages')).toBe('staff');
+    expect(loginSurfaceForReturnTo('/app/operations/products')).toBe('operations');
+  });
   it('未登录访问私有页面重定向登录并保存内部 returnTo',async()=>{
     renderRoute('/app/orders?tab=current');
     await waitFor(()=>expect(screen.getByTestId('location').textContent).toBe('/app/login?returnTo=%2Fapp%2Forders%3Ftab%3Dcurrent'));

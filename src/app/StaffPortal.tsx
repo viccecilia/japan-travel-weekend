@@ -1299,7 +1299,7 @@ function StaffFrame({
   children: ReactNode;
   task?: StaffTask | null;
 }) {
-  const { services } = useApp();
+  const { services,clearIdentity } = useApp();
   const location = useLocation();
   const action = location.pathname.split("/").at(-1);
   const tabPath=location.pathname.startsWith('/staff/tasks/')?(action==='chat'?'/staff/messages':action==='meeting'||action==='journey'?'/staff/map':'/staff'):location.pathname;
@@ -1312,7 +1312,7 @@ function StaffFrame({
             <b>Japan Travel Weekend</b>
             <small>工作人员工作台</small>
           </div>
-          <button type="button" onClick={()=>void services?.signOut()}>退出</button>
+          <button type="button" onClick={()=>void (async()=>{await services?.signOut();clearIdentity();window.location.assign('/app/login?returnTo=%2Fstaff')})()}>退出</button>
         </header>
         <div className="staff-content">{children}</div>
         <nav className="staff-nav" aria-label="工作人员导航">

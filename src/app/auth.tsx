@@ -9,6 +9,12 @@ export const testGuestMode=runtimeMode==='demo';
 export const isOperationsPath=(pathname:string)=>pathname==='/app/operations'||pathname.startsWith('/app/operations/');
 export const isStaffPath=(pathname:string)=>pathname==='/staff'||pathname.startsWith('/staff/');
 
+export type LoginSurface='passenger'|'staff'|'operations';
+export function loginSurfaceForReturnTo(returnTo:string):LoginSurface{
+  const pathname=new URL(safeReturnTo(returnTo),'https://app.local.invalid').pathname;
+  return isOperationsPath(pathname)?'operations':isStaffPath(pathname)?'staff':'passenger';
+}
+
 export const accessDestinationPath=(destination:string|null|undefined)=>destination==='operations'?'/app/operations':destination==='staff'?'/staff':destination==='staff_pending'||destination==='staff_blocked'?'/app/account-status':'/app';
 
 const passengerOnlyPaths=['/app/passengers','/app/checkout','/app/payment','/app/payment-result','/app/orders','/app/my-trip','/app/ai-guide','/app/private-groups','/app/boarding-pass','/app/rewards','/app/referral','/app/profile'];
@@ -60,14 +66,14 @@ export function RequireStaff({children}:{children:ReactNode}){
   const {state,authResolved,services}=useApp();
   const location=useLocation();
   const account=state.user?.email??'';
-  const [access,setAccess]=useState<{account:string;allowed:boolean}|null>(null);
+  const [access,setAccess]=useState<{account:string;destination:string|null}|null>(null);
   useEffect(()=>{
     let active=true;
     if(!authResolved||!account||!services)return()=>{active=false};
     void services.currentAccessDestination().then(destination=>{
       if(!active)return;
-      setAccess({account,allowed:destination==='staff'||destination==='operations'});
-    }).catch(()=>{if(active)setAccess({account,allowed:false});});
+      setAccess({account,destination});
+    }).catch(()=>{if(active)setAccess({account,destination:null});});
     return()=>{active=false};
   },[authResolved,account,services]);
   if(testGuestMode)return children;
@@ -75,7 +81,9 @@ export function RequireStaff({children}:{children:ReactNode}){
   if(!state.user){const returnTo=safeReturnTo(`${location.pathname}${location.search}`);return <Navigate replace to={`/app/login?returnTo=${encodeURIComponent(returnTo)}`}/>;}
   if(!services)return <main className="empty-card"><b>无权访问工作人员端</b><p>本地乘客账户不能进入工作人员端。请使用由运营分配的工作人员账户登录。</p></main>;
   if(access?.account!==account)return <main className="empty-card" role="status"><b>正在验证工作人员权限</b><p>只会读取当前账户被分配的车辆与团组。</p></main>;
-  if(!access.allowed)return <main className="empty-card"><b>无权访问工作人员端</b><p>当前账户没有司机、导游或运营任务。请使用由运营分配的工作人员账户登录。</p></main>;
+  if(access.destination==='staff_pending')return <main className="empty-card"><b>司导资格正在审核</b><p>审核通过后即可进入司导端。如需了解进度，请联系运营调度。</p><a className="button full" href="/app/support">联系运营</a></main>;
+  if(access.destination==='staff_blocked')return <main className="empty-card"><b>司导账号已停用</b><p>该账号当前不能查看任务或执行履约操作。如有疑问，请联系运营调度。</p><a className="button full" href="/app/support">联系运营</a></main>;
+  if(access.destination!=='staff'&&access.destination!=='operations')return <main className="empty-card"><b>无权访问工作人员端</b><p>当前账户没有已批准的司导权限。请切换至获批司导账号。</p></main>;
   return children;
 }
 

@@ -67,15 +67,15 @@ export class ProductionBrowserServices {
   signIn(email: string, password: string) {
     return this.auth.signIn(email, password);
   }
-  signUp(email: string, password: string, accountType:"passenger"|"driver"|"guide"="passenger",displayName="",referralCode="") {
-    return this.auth.signUp(email, password,accountType,displayName,referralCode);
+  signUp(email: string, password: string, accountType:"passenger"|"driver"|"guide"="passenger",displayName="",referralCode="",returnTo="/app") {
+    return this.auth.signUp(email, password,accountType,displayName,referralCode,returnTo);
   }
   loadOwnReferralSummary(){return this.auth.loadOwnReferralSummary()}
   loadOwnCashCommissionSummary(){return this.auth.loadOwnCashCommissionSummary()}
   requestOwnCommissionPayout(idempotencyKey:string){return this.auth.requestOwnCommissionPayout(idempotencyKey)}
   applyForAmbassador(note=''){return this.auth.applyForAmbassador(note)}
-  requestPasswordReset(email: string) {
-    return this.auth.requestPasswordReset(email);
+  requestPasswordReset(email: string,returnTo="/app") {
+    return this.auth.requestPasswordReset(email,returnTo);
   }
   updatePassword(password: string) {
     return this.auth.updatePassword(password);

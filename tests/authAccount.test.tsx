@@ -46,6 +46,12 @@ describe('正式账户服务契约',()=>{
     expect(await unavailable.updatePassword('SecurePassword1')).toBe(false);
     expect(await unavailable.signUp('missing@example.invalid','SecurePassword1')).toBeNull();
   });
+  it('账户权限 RPC 失败时关闭访问，不回退到可能过期的资料角色',async()=>{
+    const client=authClient() as unknown as {auth:Record<string,unknown>;rpc?:unknown;from?:unknown};
+    client.rpc=vi.fn(async()=>({data:null,error:{message:'temporarily unavailable'}}));
+    client.from=vi.fn(()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:{role:'operations'},error:null})})})}));
+    expect(await new SupabaseAuthRepository(client as unknown as SupabaseClient).currentAccessDestination()).toBeNull();
+  });
   it('订阅会话失效并可解除订阅',()=>{
     const unsubscribe=vi.fn();let listener:((event:string,session:{user:{email:string}}|null)=>void)|undefined;
     const client=authClient({onAuthStateChange:vi.fn((callback)=>{listener=callback;return {data:{subscription:{unsubscribe}}}})});

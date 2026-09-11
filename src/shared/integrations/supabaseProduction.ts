@@ -203,7 +203,7 @@ export class SupabaseAuthRepository {
   get available() {
     return this.client !== null;
   }
-  private redirect(path: "/app/auth/callback" | "/app/reset-password") {
+  private redirect(path: string) {
     try {
       const origin = new URL(this.appOrigin);
       if (
@@ -213,14 +213,16 @@ export class SupabaseAuthRepository {
         origin.hash
       )
         return null;
-      return new URL(path, origin.origin).toString();
+      const target=new URL(path,origin.origin);
+      if(target.origin!==origin.origin||!['/app/auth/callback','/app/reset-password'].includes(target.pathname)||target.hash)return null;
+      return target.toString();
     } catch {
       return null;
     }
   }
-  async signUp(email: string, password: string, accountType:"passenger"|"driver"|"guide"="passenger", displayName="", referralCode="") {
+  async signUp(email: string, password: string, accountType:"passenger"|"driver"|"guide"="passenger", displayName="", referralCode="", returnTo="/app") {
     if (!this.client) return null;
-    const emailRedirectTo = this.redirect("/app/auth/callback");
+    const emailRedirectTo = this.redirect(`/app/auth/callback${returnTo==='/app'?'':`?returnTo=${encodeURIComponent(returnTo)}`}`);
     if (!emailRedirectTo) return null;
     try {
       const cleanReferral=referralCode.trim().toUpperCase();
@@ -239,9 +241,9 @@ export class SupabaseAuthRepository {
   async loadOwnCashCommissionSummary(){if(!this.client)return null;const {data,error}=await this.client.rpc('get_own_cash_commission_summary');return error?null:data as {qualificationStatus:string;pendingJpy:number;availableJpy:number;lockedJpy:number;paidJpy:number;recoveryDueJpy:number;entries:Array<{id:string;sourceOrderId:string;basisAmountJpy:number;commissionPercent:number;amountJpy:number;status:string;unlockedAt:string|null}>;payouts:Array<{id:string;weekStart:string;amountJpy:number;status:string;requestedAt:string}>}}
   async applyForAmbassador(note=''){if(!this.client)return {ok:false,error:'账户服务未配置'};const {error}=await this.client.rpc('apply_for_ambassador',{p_note:note});return {ok:!error,error:error?.message??null}}
   async requestOwnCommissionPayout(idempotencyKey:string){if(!this.client)return {ok:false,error:'账户服务未配置'};const {error}=await this.client.rpc('request_own_commission_payout',{p_idempotency_key:idempotencyKey});return {ok:!error,error:error?.message??null}}
-  async requestPasswordReset(email: string) {
+  async requestPasswordReset(email: string, returnTo="/app") {
     if (!this.client) return false;
-    const redirectTo = this.redirect("/app/reset-password");
+    const redirectTo = this.redirect(`/app/reset-password${returnTo==='/app'?'':`?returnTo=${encodeURIComponent(returnTo)}`}`);
     if (!redirectTo) return false;
     try {
       await this.client.auth.resetPasswordForEmail(email, { redirectTo });
@@ -304,6 +306,7 @@ export class SupabaseAuthRepository {
     try{
       if(typeof this.client.rpc==='function'){
         const {data,error}=await this.client.rpc("get_own_access_destination");
+        if(error)return null;
         const value=!error&&Array.isArray(data)?data[0]?.destination:null;
         if(["passenger","staff","operations","staff_pending","staff_blocked"].includes(value))return value;
       }

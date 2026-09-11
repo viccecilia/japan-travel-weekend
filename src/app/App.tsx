@@ -19,7 +19,7 @@ import {
 import type { ChildSeatChoice } from "../shared/types";
 import { GoogleMapsAdapter } from "../shared/integrations/googleMaps";
 import { useApp, useOptionalApp } from "./store";
-import { accessDestinationPath, isPassengerOnlyPath, passengerAccountBoundaryPath, referralCodeFromSearch, safeReturnTo } from "./auth";
+import { accessDestinationPath, isPassengerOnlyPath, loginSurfaceForReturnTo, passengerAccountBoundaryPath, referralCodeFromSearch, safeReturnTo } from "./auth";
 import { seatOrderTotal } from "../shared/services/pricing";
 import { Elements } from "@stripe/react-stripe-js";
 import { stripeClient,stripeMode } from "../shared/integrations/stripeClient";
@@ -294,7 +294,7 @@ const BookingSteps = ({ current }: { current: 1 | 2 | 3 | 4 }) => {
   </ol>;
 };
 export function Login() {
-  const { state, setState, services, authResolved } = useApp();
+  const { state, setState, services, authResolved, clearIdentity } = useApp();
   const nav = useNavigate();
   const location = useLocation();
   const returnTo = safeReturnTo(
@@ -302,6 +302,14 @@ export function Login() {
   );
   const referralCode = referralCodeFromSearch(location.search);
   const [error, setError] = useState("");
+  const [busy,setBusy]=useState(false);
+  const [showPassword,setShowPassword]=useState(false);
+  const surface=loginSurfaceForReturnTo(returnTo);
+  const createAccountSearch=new URLSearchParams();
+  if(returnTo!=='/app')createAccountSearch.set('returnTo',returnTo);
+  if(referralCode)createAccountSearch.set('ref',referralCode);
+  const createAccountHref=`/app/create-account${createAccountSearch.size?`?${createAccountSearch.toString()}`:''}`;
+  const forgotPasswordHref=`/app/forgot-password${returnTo!=='/app'?`?returnTo=${encodeURIComponent(returnTo)}`:''}`;
   const c=passengerCoreCopy[state.ui.locale ?? "zh-CN"];
   const a=passengerLoginCopy[state.ui.locale ?? "zh-CN"];
   const connected = backend.connected || services?.authAvailable === true;
@@ -320,10 +328,13 @@ export function Login() {
   }, [authResolved, state.user, nav, returnTo,services]);
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if(busy)return;
     setError("");
+    setBusy(true);
     const f = new FormData(e.currentTarget);
     try {
       if (services) {
+        clearIdentity();
         const result = await services.signIn(
           String(f.get("email")),
           String(f.get("password")),
@@ -341,6 +352,8 @@ export function Login() {
       if(!services)nav(returnTo, { replace: true });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : a.serviceError);
+    } finally {
+      setBusy(false);
     }
   };
   if (!authResolved)
@@ -353,8 +366,8 @@ export function Login() {
   return (
     <>
       <AppTitle
-        eyebrow={c.welcome}
-        title={c.loginTitle}
+        eyebrow={surface==='operations'?'运营工作区':surface==='staff'?'工作人员工作区':c.welcome}
+        title={surface==='operations'?'管理后台登录':surface==='staff'?'司导登录':c.loginTitle}
         text={
           services
             ? production
@@ -379,13 +392,13 @@ export function Login() {
         </label>
         <label>
           {c.password}
-          <input
-            required
-            name="password"
-            type="password"
-            autoComplete={services ? "current-password" : "new-password"}
-            placeholder={a.passwordRule}
-          />
+          <span className="password-input-row"><input
+              required
+              name="password"
+              type={showPassword?'text':'password'}
+              autoComplete={services ? "current-password" : "new-password"}
+              placeholder={a.passwordRule}
+            /><button type="button" className="text-button" aria-pressed={showPassword} onClick={()=>setShowPassword(value=>!value)}>{showPassword?'隐藏密码':'显示密码'}</button></span>
         </label>
         {!services && !production && (
           <label>
@@ -406,8 +419,8 @@ export function Login() {
             {error}
           </div>
         )}
-        <button className="button full" disabled={!connected}>
-          {services
+        <button className="button full" disabled={!connected||busy}>
+          {busy?'正在登录…':services
             ? production
               ? a.submit
               : a.testSubmit
@@ -426,8 +439,8 @@ export function Login() {
         </p>
         {production && services?.authAvailable && (
           <div className="auth-links">
-            <Link to="/app/create-account">{a.createAccount}</Link>
-            <Link to="/app/forgot-password">{a.forgotPassword}</Link>
+            <Link to={createAccountHref}>{a.createAccount}</Link>
+            <Link to={forgotPasswordHref}>{a.forgotPassword}</Link>
           </div>
         )}
       </form>
@@ -2904,7 +2917,7 @@ function TravelShareCampaign(){
   return <section className="form"><h2>旅行分享活动</h2><p className="privacy">仅提交外部帖子链接。帖子需关联本人已完成的行程并 @ 对应平台官方账号；转载授权不等同于音乐或同行者肖像授权。活动先人工核验，不自动抓取或保存视频。</p><form onSubmit={submit}><label>已完成订单<select name="orderId" required><option value="">请选择</option>{data.orders.map(order=><option value={String(order.id)} key={String(order.id)}>{String(order.id).slice(0,8)} · {String(order.status)}</option>)}</select></label><label>平台<select name="platform" required><option value="tiktok">TikTok</option><option value="instagram">Instagram</option><option value="facebook">Facebook</option></select></label><label>本人平台账号<input name="platformAccount" required minLength={2}/></label><label>公开帖子链接<input name="url" required type="url" placeholder="https://…"/></label><label className="check"><input type="checkbox" required/><span>我确认内容属于本人，并授权官方账号按活动说明转载该帖子链接所指内容；付费广告或扩大用途需另行确认。</span></label><button className="button full" disabled={busy||data.orders.length===0}>{busy?'正在提交':'提交链接等待核验'}</button></form>{notice&&<p className="notice" role="status">{notice}</p>}{data.submissions.length>0&&<div className="app-list">{data.submissions.map(item=><article className="order-card" key={String(item.id)}><b>{String(item.platform)}</b><span>{String(item.platform_account)} · {String(item.status)}</span><a href={String(item.post_url)} target="_blank" rel="noreferrer">查看已提交链接</a></article>)}</div>}</section>;
 }
 export function Profile() {
-  const { state, setUi, reset, services } = useApp();
+  const { state, setUi, reset, clearIdentity, services } = useApp();
   const locale=state.ui.locale??'zh-CN';
   const pc=profileCopy[locale];
   const nav = useNavigate();
@@ -2985,7 +2998,7 @@ export function Profile() {
   };
   const logout = async () => {
     if (services) await services.signOut();
-    reset();
+    clearIdentity();
     nav("/app/login");
   };
   return (

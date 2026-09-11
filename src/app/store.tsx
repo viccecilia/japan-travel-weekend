@@ -62,6 +62,7 @@ type Ctx = {
   addOrder: (o: Order) => void;
   setUi: (ui: UiPreferences) => void;
   reset: () => void;
+  clearIdentity: () => void;
 };
 const Context = createContext<Ctx | null>(null);
 export function AppProvider({
@@ -139,6 +140,11 @@ export function AppProvider({
       reset: () => {
         localStorage.removeItem(UI_KEY);
         setState(initialState());
+      },
+      clearIdentity: () => {
+        authGeneration.current+=1;
+        setState((current)=>stateForIdentity(current.ui,null));
+        window.dispatchEvent(new CustomEvent('jtw:identity-cleared'));
       },
     }),
     [state, services, authResolved, departures, departuresResolved, departuresError, catalogRevision, refreshCatalog],
