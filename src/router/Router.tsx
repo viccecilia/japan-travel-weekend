@@ -56,6 +56,7 @@ const DepartureCenter=lazy(()=>import('../app/operations/DepartureCenter').then(
 const RunCenter=lazy(()=>import('../app/operations/RunCenter').then(module=>({default:module.RunCenter})));
 const MarketingCenter=lazy(()=>import('../app/operations/MarketingCenter').then(module=>({default:module.MarketingCenter})));
 const CommissionCenter=lazy(()=>import('../app/operations/CommissionCenter').then(module=>({default:module.CommissionCenter})));
+const SystemSettings=lazy(()=>import('../app/operations/SystemSettings').then(module=>({default:module.SystemSettings})));
 const OperationsPage=({children}:{children:ReactNode})=><RequireAccount><RequireOperations><OperationsLayout><Suspense fallback={<main className="operations-page"><p>正在加载管理功能…</p></main>}>{children}</Suspense></OperationsLayout></RequireOperations></RequireAccount>;
 function ScrollToTop(){const {pathname}=useLocation();useEffect(()=>{if(!navigator.userAgent.includes('jsdom'))window.scrollTo({top:0,left:0,behavior:'auto'});},[pathname]);return null;}
 export function Router() {
@@ -218,6 +219,7 @@ export function Router() {
       <Route path="/app/operations/run" element={<OperationsPage><RunCenter/></OperationsPage>} />
       <Route path="/app/operations/marketing" element={<OperationsPage><MarketingCenter/></OperationsPage>} />
       <Route path="/app/operations/commissions" element={<OperationsPage><CommissionCenter/></OperationsPage>} />
+      <Route path="/app/operations/settings" element={<OperationsPage><SystemSettings/></OperationsPage>} />
       <Route path="/staff" element={<RequireAccount><RequireStaff><StaffPortal/></RequireStaff></RequireAccount>} />
       <Route path="/staff/schedule" element={<RequireAccount><RequireStaff><StaffPortal/></RequireStaff></RequireAccount>} />
       <Route path="/staff/map" element={<RequireAccount><RequireStaff><StaffPortal/></RequireStaff></RequireAccount>} />

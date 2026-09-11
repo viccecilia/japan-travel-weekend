@@ -11,7 +11,7 @@ const navigation=[
   {label:'司导与车辆',to:'/app/operations?view=resources#resource-registry',match:(_:string,search:string)=>search.includes('view=resources')},
   {label:'推广与财务',to:'/app/operations/commissions',match:(path:string)=>path.startsWith('/app/operations/commissions')},
   {label:'内容与营销',to:'/app/operations/marketing',match:(path:string)=>path.startsWith('/app/operations/marketing')},
-  {label:'系统设置',to:'/app/operations?view=settings#environment-status',match:(_:string,search:string)=>search.includes('view=settings')},
+  {label:'系统设置',to:'/app/operations/settings',match:(path:string)=>path.startsWith('/app/operations/settings')},
 ] as const;
 
 const pageTitle=(pathname:string,search:string)=>{
@@ -20,9 +20,9 @@ const pageTitle=(pathname:string,search:string)=>{
   if(pathname.startsWith('/app/operations/run'))return '每日运行';
   if(pathname.startsWith('/app/operations/commissions'))return '推广与财务';
   if(pathname.startsWith('/app/operations/marketing'))return '内容与营销';
+  if(pathname.startsWith('/app/operations/settings'))return '系统设置';
   if(search.includes('view=orders'))return '订单与售后';
   if(search.includes('view=resources'))return '司导与车辆';
-  if(search.includes('view=settings'))return '系统设置';
   return '工作台';
 };
 

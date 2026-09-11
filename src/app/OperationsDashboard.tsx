@@ -19,28 +19,6 @@ import type {
   OperationsReferralSummary,
 } from "../shared/integrations/supabaseOperations";
 import { useApp } from "./store";
-import {stripeMode} from '../shared/integrations/stripeClient';
-
-const testAccountEntrances = [
-  {
-    role: "游客 App 端",
-    account: "test1@daitora",
-    url: "https://weekend.japan-travel.info/app/login",
-    action: "打开游客端",
-  },
-  {
-    role: "司导 App 端",
-    account: "drtest1@daitora",
-    url: "https://weekend.japan-travel.info/staff",
-    action: "打开司导端",
-  },
-  {
-    role: "管理端后台",
-    account: "dadmin1@daitora",
-    url: "https://weekend.japan-travel.info/app/operations",
-    action: "打开管理端",
-  },
-] as const;
 
 const japanDate = (value: string | null) =>
   value
@@ -131,7 +109,6 @@ function OperationsLiveDashboard() {
   const [manualVehicles,setManualVehicles]=useState<Record<number,string>>({});
   const [busy, setBusy] = useState(false);
   const [referral,setReferral]=useState<OperationsReferralSummary|null>(null);
-  const [systemStatus,setSystemStatus]=useState<{ok:boolean;mode:string;checks:Record<string,boolean>}|null>(null);
   const [dashboardLoadedAt]=useState(()=>Date.now());
   const reload = useCallback(async () => {
     if (!services) return;
@@ -158,10 +135,9 @@ function OperationsLiveDashboard() {
     };
   }, [services]);
   useEffect(()=>{let active=true;const loader=services?.operations.loadReferralSummary;if(loader)void loader.call(services.operations).then(value=>{if(active)setReferral(value)});return()=>{active=false}},[services]);
-  useEffect(()=>{let active=true;void fetch('/api/ready',{headers:{accept:'application/json'}}).then(async response=>({response,body:await response.json()})).then(({body})=>{if(active)setSystemStatus(body)}).catch(()=>{if(active)setSystemStatus({ok:false,mode:'unknown',checks:{api:false}})});return()=>{active=false}},[]);
   const totals = useMemo(
     () =>
-      snapshot?.departures.reduce(
+      snapshot?.departures.filter(item=>item.departsAt&&new Date(item.departsAt).getTime()>=dashboardLoadedAt).reduce(
         (value, item) => ({
           orders: value.orders + item.orderCount,
           seats: value.seats + item.bookedSeats,
@@ -170,7 +146,7 @@ function OperationsLiveDashboard() {
         }),
         { orders: 0, seats: 0, revenue: 0, pending: 0 },
       ) ?? { orders: 0, seats: 0, revenue: 0, pending: 0 },
-    [snapshot],
+    [snapshot,dashboardLoadedAt],
   );
   const plan = useMemo(() => {
     if (!snapshot || passengers < 1) return null;
@@ -240,18 +216,20 @@ function OperationsLiveDashboard() {
   );
   const command = useMemo(() => {
     if (!snapshot) return null;
+    const futureDepartures=snapshot.departures.filter(item=>item.departsAt&&new Date(item.departsAt).getTime()>=dashboardLoadedAt);
+    const historicalDepartures=snapshot.departures.filter(item=>!item.departsAt||new Date(item.departsAt).getTime()<dashboardLoadedAt);
     const activeTaskStatuses = new Set(["confirmed","sent","delivered","viewed","accepted","en_route","arrived","passengers_onboard","in_progress"]);
     const activeTasks=snapshot.dispatchTasks.filter(task=>activeTaskStatuses.has(task.status));
     const assignedDrivers=new Set(activeTasks.map(task=>task.driverId));
     const assignedVehicles=new Set(activeTasks.map(task=>task.fleetVehicleId).filter(Boolean));
     const alerts:Array<{level:"紧急"|"关注"|"提示";title:string;detail:string}>=[];
-    snapshot.departures.forEach(item=>{
+    futureDepartures.forEach(item=>{
       if(item.requiresManualReview) alerts.push({level:"紧急",title:`${item.tripTitle} 报名不足`,detail:`${japanDate(item.departsAt)} · 当前 ${item.bookedSeats} 人，必须人工决定是否发车。`});
       else if(item.dispatchPlanningStatus==="ready_for_planning") alerts.push({level:"紧急",title:`${item.tripTitle} 尚未配车`,detail:`${japanDate(item.departsAt)} · ${item.bookedSeats} 名游客等待车辆和司导。`});
       else if(item.pendingOrders>0) alerts.push({level:"关注",title:`${item.tripTitle} 有待付款订单`,detail:`${item.pendingOrders} 笔订单尚未完成付款，不计入最终配车。`});
     });
     snapshot.dispatchTasks.filter(task=>task.status==="rejected"||task.status==="failed").forEach(task=>alerts.push({level:"紧急",title:"派单写入失败",detail:`${task.departureTitle??"未知班次"} · ${snapshot.drivers.find(driver=>driver.id===task.driverId)?.display_name??"司机未知"} · 请运营直接改派`}));
-    snapshot.departures.filter(item=>item.chatOpensAt&&new Date(item.chatOpensAt).getTime()<=dashboardLoadedAt&&item.dispatchPlanningStatus!=="confirmed").forEach(item=>alerts.push({level:"紧急",title:"次日12点信息尚未公布",detail:`${item.tripTitle} · ${japanDate(item.departsAt)} · 请立即完成车辆、司导和分组确认。`}));
+    futureDepartures.filter(item=>item.chatOpensAt&&new Date(item.chatOpensAt).getTime()<=dashboardLoadedAt&&item.dispatchPlanningStatus!=="confirmed").forEach(item=>alerts.push({level:"紧急",title:"次日12点信息尚未公布",detail:`${item.tripTitle} · ${japanDate(item.departsAt)} · 请立即完成车辆、司导和分组确认。`}));
     if(snapshot.notificationDeliveryIssues.length) alerts.push({level:"关注",title:"通知发送异常",detail:`${snapshot.notificationDeliveryIssues.length} 条通知需要检查或重试。`});
     if(snapshot.fulfilmentWorkItems.length) alerts.push({level:"关注",title:"履约队列待处理",detail:`${snapshot.fulfilmentWorkItems.length} 项付款或入组工作尚未完成。`});
     const pendingStaff=(snapshot.staffApplications??[]).filter(item=>item.status==="pending"||item.status==="needs_information");
@@ -269,13 +247,13 @@ function OperationsLiveDashboard() {
     if(closingSoon.length) alerts.push({level:"提示",title:"班次即将截单",detail:`未来24小时有 ${closingSoon.length} 个班次截单，系统将在截单后进入自动配车。`});
     const runningStatuses=new Set(["en_route","arrived","passengers_onboard","in_progress"]);
     const stageCounts={
-      collecting:snapshot.departures.filter(item=>item.dispatchPlanningStatus==="collecting").length,
-      waiting:snapshot.departures.filter(item=>item.dispatchPlanningStatus==="ready_for_planning"||item.dispatchPlanningStatus==="needs_manual_review").length,
+      collecting:futureDepartures.filter(item=>item.dispatchPlanningStatus==="collecting").length,
+      waiting:futureDepartures.filter(item=>item.dispatchPlanningStatus==="ready_for_planning"||item.dispatchPlanningStatus==="needs_manual_review").length,
       assigned:new Set(activeTasks.filter(task=>!runningStatuses.has(task.status)).map(task=>task.departureId).filter(Boolean)).size,
       running:new Set(activeTasks.filter(task=>runningStatuses.has(task.status)).map(task=>task.departureId).filter(Boolean)).size,
       completed:new Set(snapshot.dispatchTasks.filter(task=>task.status==="completed").map(task=>task.departureId).filter(Boolean)).size,
     };
-    return {activeTasks,assignedDrivers,assignedVehicles,alerts,stageCounts};
+    return {activeTasks,assignedDrivers,assignedVehicles,alerts,stageCounts,historicalDepartures};
   },[snapshot,dashboardLoadedAt]);
   const selectDeparture = (id: string) => {
     setDepartureId(id);
@@ -487,43 +465,6 @@ function OperationsLiveDashboard() {
         </div>
         <div className="operations-task-actions"><a href="/app/operations/products">产品管理</a><a href="/app/operations/departures">班次与价格</a><a href="/app/operations/run">每日运行台</a><a href="/app/operations/commissions">佣金与提现</a><a href="/app/operations/marketing">首页与季节专题</a><a href="/app">返回乘客应用</a></div>
       </header>
-      <section className="operations-section operations-test-accounts">
-        <header>
-          <div>
-            <span>测试工具</span>
-            <h2>测试账户与入口</h2>
-          </div>
-          <small>仅用于内部测试；密码请通过内部渠道单独保管</small>
-        </header>
-        <div className="operations-account-list">
-          {testAccountEntrances.map((item) => (
-            <article key={item.role}>
-              <div>
-                <span>{item.role}</span>
-                <strong>{item.account}</strong>
-              </div>
-              <a href={item.url} target="_blank" rel="noreferrer">
-                {item.action}
-              </a>
-              <small>{item.url}</small>
-            </article>
-          ))}
-        </div>
-      </section>
-      <section className="operations-section operations-system-status">
-        <header><div><span>上线安全</span><h2>系统环境状态</h2></div><small>当前固定为内部测试；正式收款需单独审批后才能开启</small></header>
-        <div className="operations-kpis">
-          <Kpi label="运行环境" value={systemStatus?.mode==='test'?'内部测试':'检查中'}/>
-          <Kpi label="数据库" value={systemStatus?.checks.database?'正常':'待检查'}/>
-          <Kpi label="Stripe" value={stripeMode==='test'&&systemStatus?.checks.stripeModeSafe?'测试模式':'已关闭/待配置'}/>
-          <Kpi label="支付回调" value={systemStatus?.checks.webhookSecret?'已配置':'未配置'}/>
-          <Kpi label="通知回执" value={systemStatus?.checks.notificationReceiptSecret?'已配置':'未配置'}/>
-          <Kpi label="Google 地点照片" value={import.meta.env.VITE_GOOGLE_PLACES_READY==='true'?'已验证':'未就绪'}/>
-          <Kpi label="邮件" value="未接通"/>
-          <Kpi label="搜索引擎" value="禁止收录"/>
-        </div>
-        <p className={systemStatus?.ok?'operations-ok':'operations-cutoff-alert'}>{systemStatus?.ok?'核心测试服务已就绪；真实付款仍保持关闭。':'核心测试服务尚未全部就绪，系统会保持支付关闭。'}</p>
-      </section>
       {!services || error ? (
         <section className="operations-error" role="alert">
           <h2>后台数据尚未就绪</h2>
@@ -534,7 +475,7 @@ function OperationsLiveDashboard() {
         snapshot && (
           <>
             <section className="operations-kpis">
-              <Kpi label="班次" value={snapshot.departures.length} href="/app/operations/departures" />
+              <Kpi label="未来班次" value={snapshot.departures.filter(item=>item.departsAt&&new Date(item.departsAt).getTime()>=dashboardLoadedAt).length} href="/app/operations/departures?range=future" />
               <Kpi label="订单" value={totals.orders} href="#orders-overview" />
               <Kpi label="已确认席位" value={totals.seats} href="#orders-overview" />
               <Kpi label="待付款" value={totals.pending} href="#booking-drafts" />
@@ -579,7 +520,7 @@ function OperationsLiveDashboard() {
             {command&&<section id="dispatch-control" className="operations-section operations-command-center">
               <header><div><span>运营指挥中心</span><h2>报名、配车与司导出勤</h2></div><small>只统计已付款/已确认游客；刷新后读取最新状态</small></header>
               <div className="operations-kpis operations-command-kpis">
-                <Kpi label="游客报名" value={totals.seats} href="#orders-overview"/><Kpi label="已配车辆" value={command.assignedVehicles.size} href="#dispatch-control"/><Kpi label="出勤司导" value={command.assignedDrivers.size} href="/app/operations/run"/><Kpi label="待配班次" value={snapshot.departures.filter(item=>item.dispatchPlanningStatus==="ready_for_planning"||item.dispatchPlanningStatus==="needs_manual_review").length} href="#dispatch-control"/><Kpi label="需关注" value={command.alerts.length} href="#dispatch-control"/>
+                <Kpi label="游客报名" value={totals.seats} href="#orders-overview"/><Kpi label="已配车辆" value={command.assignedVehicles.size} href="#dispatch-control"/><Kpi label="出勤司导" value={command.assignedDrivers.size} href="/app/operations/run"/><Kpi label="待配班次" value={command.stageCounts.waiting} href="#dispatch-control"/><Kpi label="需关注" value={command.alerts.length} href="#dispatch-control"/>
               </div>
               <h3>订单运行状态</h3>
               <div className="operations-stage-strip"><span>报名中 <b>{command.stageCounts.collecting}</b></span><span>待配车 <b>{command.stageCounts.waiting}</b></span><span>已派单 <b>{command.stageCounts.assigned}</b></span><span>运行中 <b>{command.stageCounts.running}</b></span><span>已完成 <b>{command.stageCounts.completed}</b></span></div>
@@ -587,6 +528,7 @@ function OperationsLiveDashboard() {
                 <div><h3>司机与车辆安排</h3>{command.activeTasks.length===0?<p className="operations-empty">暂无已确认派单。</p>:<div className="operations-dispatch-list">{command.activeTasks.map(task=><article key={`command-${task.id}`}><div><b>{task.departureTitle??"班次待识别"}</b><span>{task.status}</span></div><span>{japanDate(task.departsAt)} · {task.vehicleSequence?`${task.vehicleSequence}号车 · `:""}{snapshot.vehicles.find(v=>v.id===task.fleetVehicleId)?.registration_identifier??"车辆待确认"}</span><small>司导：{snapshot.drivers.find(d=>d.id===task.driverId)?.display_name??"待确认"} · 游客 {Number(task.payload.passengerCount??0)}/{Number(task.payload.capacity??0)} 席</small></article>)}</div>}</div>
                 <div><h3>需要关注</h3>{command.alerts.length===0?<p className="operations-ok">目前没有需要人工介入的异常。</p>:<div className="operations-attention-list">{command.alerts.map((alert,index)=><article key={`${alert.title}-${index}`} data-level={alert.level}><b>{alert.level} · {alert.title}</b><p>{alert.detail}</p></article>)}</div>}</div>
               </div>
+              {command.historicalDepartures.length>0&&<details className="operations-history"><summary>历史遗留事项（{command.historicalDepartures.length} 个班次）</summary><p>历史数据仍然保留，但不会再计入今天或未来发车紧急提醒。</p><a href="/app/operations/departures?range=past">进入历史班次列表处理</a></details>}
             </section>}
             <p className="operations-freshness">
               更新：
@@ -795,13 +737,13 @@ function OperationsLiveDashboard() {
                 </div>
                 <small>80%仅为内部目标</small>
               </header>
-              {snapshot.departures.length === 0 ? (
+              {snapshot.departures.filter(item=>item.departsAt&&new Date(item.departsAt).getTime()>=dashboardLoadedAt).length === 0 ? (
                 <p className="operations-empty">
                   暂无可读取班次，不生成虚构订单统计。
                 </p>
               ) : (
                 <div className="operations-departures">
-                  {snapshot.departures.map((item) => (
+                  {snapshot.departures.filter(item=>item.departsAt&&new Date(item.departsAt).getTime()>=dashboardLoadedAt).map((item) => (
                     <article key={item.id}>
                       <header>
                         <div>
