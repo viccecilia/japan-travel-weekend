@@ -19,6 +19,7 @@ import type {
   OperationsReferralSummary,
 } from "../shared/integrations/supabaseOperations";
 import { useApp } from "./store";
+import {Link,useLocation} from 'react-router-dom';
 
 const japanDate = (value: string | null) =>
   value
@@ -98,6 +99,7 @@ export function OperationsDashboard(){
 
 function OperationsLiveDashboard() {
   const { services } = useApp();
+  const location=useLocation();
   const [snapshot, setSnapshot] = useState<OperationsSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
@@ -455,6 +457,30 @@ function OperationsLiveDashboard() {
   const saveReferral=async(event:FormEvent<HTMLFormElement>)=>{event.preventDefault();if(!services||!referral)return;const form=new FormData(event.currentTarget);setBusy(true);const result=await services.operations.updateReferralSettings(Number(form.get('discountPercent')),Number(form.get('validityDays')),form.get('active')==='on');setNotice(result.ok?'推荐优惠规则已更新；只影响之后成功注册的新推荐关系。':`推荐规则保存失败：${result.error??'请检查管理员权限'}`);if(result.ok)setReferral(await services.operations.loadReferralSummary());setBusy(false)};
   const approveCancellation=async(id:string,key:string,manual?:{reference:string;actualAmount:number;evidenceNote:string})=>{if(!services)return;setBusy(true);const result=await services.executeOperationsRefund(id,key,manual);setNotice(result?.accepted?(result.status==='refund_completed'?'退款已完成并写入账单流水。':result.status==='manual_refund_required'?'需要人工退款，请登记凭证和实际退款金额。':"退款已提交，最终结果等待支付渠道回调。"):'退款未提交：请核对运营权限、订单付款状态与服务端连接。');if(result?.accepted)await reload();setBusy(false)};
   const rejectCancellation=async(id:string,reason:string)=>{if(!services)return;setBusy(true);const result=await services.operations.rejectCancellationRequest(id,reason);setNotice(result.ok?"退款申请已拒绝并保存处理理由；订单付款状态未被修改。":`拒绝失败：${result.error??"请核对申请状态和运营权限"}`);if(result.ok)await reload();setBusy(false)};
+  if(location.pathname==='/app/operations'&&!location.search){
+    if(!services||error)return <main className="operations-dashboard"><section className="operations-error" role="alert"><h2>后台数据读取失败</h2><p>{error??'运营数据服务未配置'}</p><button type="button" onClick={()=>void reload()}>重新读取</button></section></main>;
+    if(!snapshot||!command)return <main className="operations-dashboard"><p className="operations-empty" role="status">正在读取今天的运营数据…</p></main>;
+    const tokyoDay=(value:Date|string)=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value));
+    const today=tokyoDay(new Date());
+    const todayDepartures=snapshot.departures.filter(item=>item.departsAt&&tokyoDay(item.departsAt)===today);
+    const todayIds=new Set(todayDepartures.map(item=>item.id));
+    const todayTasks=command.activeTasks.filter(item=>item.departureId&&todayIds.has(item.departureId));
+    const todayVehicles=new Set(todayTasks.map(item=>item.fleetVehicleId).filter(Boolean));
+    const todayDrivers=new Set(todayTasks.map(item=>item.driverId).filter(Boolean));
+    const todayTotals=todayDepartures.reduce((sum,item)=>({seats:sum.seats+item.bookedSeats,orders:sum.orders+item.orderCount,amount:sum.amount+item.grossAmountJpy}),{seats:0,orders:0,amount:0});
+    const pendingRefunds=(snapshot.cancellationRequests??[]).filter(item=>!['completed','rejected','cancelled'].includes(item.status)).length;
+    const pendingStaff=(snapshot.staffApplications??[]).filter(item=>item.status==='pending'||item.status==='needs_information').length;
+    const pendingPayout='进入推广与财务查看';
+    return <main className="operations-dashboard operations-today-dashboard">
+      <header className="operations-head"><div><span>TODAY · ASIA/TOKYO</span><h1>今日运营工作台</h1><p>{today} · 这里只展示今天的业务、当前待办和需要立即处理的异常。</p></div><Link to="/app/operations/run">打开每日运行台</Link></header>
+      <section className="operations-section"><header><div><span>今日概况</span><h2>业务数据</h2></div><small>订单、旅客、车辆和司导分别统计</small></header><div className="operations-kpis"><Kpi label="出游人数" value={todayTotals.seats} href={`/app/operations?view=orders&date=${today}#orders-overview`}/><Kpi label="班次数" value={todayDepartures.length} href={`/app/operations/departures?date=${today}`}/><Kpi label="已配车辆" value={todayVehicles.size} href={`/app/operations/run?date=${today}`}/><Kpi label="当班司导" value={todayDrivers.size} href={`/app/operations/run?date=${today}`}/><Kpi label="付款订单" value={todayTotals.orders} href={`/app/operations?view=orders&date=${today}#orders-overview`}/><Kpi label="付款金额 JPY" value={todayTotals.amount} href={`/app/operations?view=orders&date=${today}#orders-overview`}/></div><p className="operations-hint">新注册人数尚无经过数据库验收的统计接口，因此本版不显示虚构的 0。</p></section>
+      <section className="operations-section"><header><div><span>待办</span><h2>需要运营处理</h2></div><small>点击后保留对应筛选条件</small></header><div className="operations-kpis"><Kpi label="待配车" value={todayDepartures.filter(item=>item.dispatchPlanningStatus==='ready_for_planning'||item.dispatchPlanningStatus==='needs_manual_review').length} href={`/app/operations?view=resources&date=${today}#dispatch-control`}/><Kpi label="待派单审核" value={snapshot.dispatchDrafts} href={`/app/operations?view=resources&date=${today}#dispatch-control`}/><Kpi label="待退款处理" value={pendingRefunds} href="/app/operations?view=orders&afterSale=refund_pending"/><Kpi label="待工作人员审核" value={pendingStaff} href="/app/operations?view=resources&queue=staff"/><Kpi label="待提现审核" value={pendingPayout} href="/app/operations/commissions?queue=payout"/><Kpi label="通知异常" value={snapshot.notificationDeliveryIssues.length} href="/app/operations?view=orders&queue=notification#notification-issues"/></div></section>
+      <section className="operations-section"><header><div><span>当前异常</span><h2>今天及未来需要关注</h2></div><small>历史遗留事项不混入本列表</small></header>{command.alerts.length?<div className="operations-attention-list">{command.alerts.slice(0,8).map((alert,index)=><article key={`${alert.title}-${index}`} data-level={alert.level}><b>{alert.level} · {alert.title}</b><p>{alert.detail}</p><Link to="/app/operations/run">进入处理页面</Link></article>)}</div>:<p className="operations-ok">当前没有需要人工介入的异常。</p>}{command.historicalDepartures.length>0&&<div className="operations-history"><b>历史遗留事项</b><p>{command.historicalDepartures.length} 个历史班次仍保留记录，不计入当前紧急提醒。</p><Link to="/app/operations/departures?range=past">查看历史班次</Link></div>}</section>
+      <section className="operations-section"><header><div><span>当日发车表</span><h2>今天的班次</h2></div><small>实际登车人数请在每日运行台查看</small></header>{todayDepartures.length?<div className="operations-dispatch-list">{todayDepartures.map(item=>{const task=todayTasks.find(value=>value.departureId===item.id);return <article key={item.id}><div><b>{item.tripTitle}</b><span>{japanDate(item.departsAt)}</span></div><span>报名 {item.bookedSeats} 人 · {snapshot.vehicles.find(value=>value.id===task?.fleetVehicleId)?.registration_identifier??'未配车'}</span><small>{snapshot.drivers.find(value=>value.id===task?.driverId)?.display_name??'未分配司导'} · {item.dispatchPlanningStatus}</small><Link to={`/app/operations/run?date=${today}&departure=${item.id}`}>详情</Link></article>})}</div>:<p className="operations-empty">今天暂无班次。</p>}</section>
+      <section className="operations-section"><header><div><span>快捷操作</span><h2>常用入口</h2></div></header><div className="operations-quick-actions"><Link to="/app/operations/products?action=create">新建产品</Link><Link to="/app/operations/departures?action=create">创建班次</Link><Link to="/app/operations?view=orders#orders-overview">查看订单</Link><Link to="/app/operations/run">进入调度</Link></div></section>
+      <p className="operations-freshness">更新：{new Date(snapshot.loadedAt).toLocaleString('zh-CN',{timeZone:'Asia/Tokyo'})}（日本时间）</p>
+    </main>;
+  }
   return (
     <main className="operations-dashboard">
       <header className="operations-head">
