@@ -54,6 +54,7 @@ const OperationsDashboard=lazy(()=>import('../app/OperationsDashboard').then(mod
 const ProductCenter=lazy(()=>import('../app/operations/ProductCenter').then(module=>({default:module.ProductCenter})));
 const DepartureCenter=lazy(()=>import('../app/operations/DepartureCenter').then(module=>({default:module.DepartureCenter})));
 const RunCenter=lazy(()=>import('../app/operations/RunCenter').then(module=>({default:module.RunCenter})));
+const IncidentCenter=lazy(()=>import('../app/operations/IncidentCenter').then(module=>({default:module.IncidentCenter})));
 const MarketingCenter=lazy(()=>import('../app/operations/MarketingCenter').then(module=>({default:module.MarketingCenter})));
 const CommissionCenter=lazy(()=>import('../app/operations/CommissionCenter').then(module=>({default:module.CommissionCenter})));
 const SystemSettings=lazy(()=>import('../app/operations/SystemSettings').then(module=>({default:module.SystemSettings})));
@@ -218,6 +219,7 @@ export function Router() {
       <Route path="/app/operations/products" element={<OperationsPage><ProductCenter/></OperationsPage>} />
       <Route path="/app/operations/departures" element={<OperationsPage><DepartureCenter/></OperationsPage>} />
       <Route path="/app/operations/run" element={<OperationsPage><RunCenter/></OperationsPage>} />
+      <Route path="/app/operations/incidents" element={<OperationsPage><IncidentCenter/></OperationsPage>} />
       <Route path="/app/operations/marketing" element={<OperationsPage><MarketingCenter/></OperationsPage>} />
       <Route path="/app/operations/commissions" element={<OperationsPage><CommissionCenter/></OperationsPage>} />
       <Route path="/app/operations/settings" element={<OperationsPage><SystemSettings/></OperationsPage>} />

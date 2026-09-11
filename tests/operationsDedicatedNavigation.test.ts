@@ -24,7 +24,7 @@ describe("运营后台专属导航和筛选", () => {
   it("班次和运行页面将 URL 日期实际传入查询", () => {
     expect(departures).toContain("searchParams.get('date')");
     expect(departures).toContain("listEditableDepartures(window?.from,window?.to)");
-    expect(run).toContain("searchParams.get('date')");
+    expect(run).toMatch(/searchParams\.get\(["']date["']\)/);
     expect(run).toContain("loadRunBoard(date)");
   });
 });

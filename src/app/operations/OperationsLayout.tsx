@@ -7,7 +7,7 @@ const navigation=[
   {label:'工作台',to:'/app/operations',match:(path:string)=>path==='/app/operations'},
   {label:'产品与班次',to:'/app/operations/products',match:(path:string)=>path.startsWith('/app/operations/products')||path.startsWith('/app/operations/departures')},
   {label:'订单与售后',to:'/app/operations?view=orders#orders-overview',match:(_:string,search:string)=>search.includes('view=orders')},
-  {label:'调度与运行',to:'/app/operations/run',match:(path:string)=>path.startsWith('/app/operations/run')},
+  {label:'调度与运行',to:'/app/operations/run',match:(path:string)=>path.startsWith('/app/operations/run')||path.startsWith('/app/operations/incidents')},
   {label:'司导与车辆',to:'/app/operations?view=resources#resource-registry',match:(_:string,search:string)=>search.includes('view=resources')},
   {label:'推广与财务',to:'/app/operations/commissions',match:(path:string)=>path.startsWith('/app/operations/commissions')},
   {label:'内容与营销',to:'/app/operations/marketing',match:(path:string)=>path.startsWith('/app/operations/marketing')},
@@ -18,6 +18,7 @@ const pageTitle=(pathname:string,search:string)=>{
   if(pathname.startsWith('/app/operations/products'))return '产品管理';
   if(pathname.startsWith('/app/operations/departures'))return '班次与价格';
   if(pathname.startsWith('/app/operations/run'))return '每日运行';
+  if(pathname.startsWith('/app/operations/incidents'))return '运行异常';
   if(pathname.startsWith('/app/operations/commissions'))return '推广与财务';
   if(pathname.startsWith('/app/operations/marketing'))return '内容与营销';
   if(pathname.startsWith('/app/operations/settings'))return '系统设置';
