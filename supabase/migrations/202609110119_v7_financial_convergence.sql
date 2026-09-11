@@ -39,12 +39,12 @@ create or replace function public.commission_basis_for_order(p_order uuid) retur
 language sql stable security definer set search_path=public,pg_temp as $$
  select greatest(0,coalesce((
    select sum((item->>'amountJpy')::integer)
-   from public.order_snapshots s,cross join lateral jsonb_array_elements(coalesce(s.line_items,'[]'::jsonb)) item
+   from public.order_snapshots s cross join lateral jsonb_array_elements(coalesce(s.line_items,'[]'::jsonb)) item
    where s.order_id=p_order and item->>'kind' in('base_fare','coupon')
  ),(select greatest(coalesce(o.gross_amount,o.amount,0)-coalesce(o.discount_amount,0),0) from public.orders o where o.id=p_order))
  -least(coalesce((select refunded_amount_jpy from public.orders where id=p_order),0),coalesce((
    select sum((item->>'amountJpy')::integer)
-   from public.order_snapshots s,cross join lateral jsonb_array_elements(coalesce(s.line_items,'[]'::jsonb)) item
+   from public.order_snapshots s cross join lateral jsonb_array_elements(coalesce(s.line_items,'[]'::jsonb)) item
    where s.order_id=p_order and item->>'kind' in('base_fare','coupon')
  ),(select greatest(coalesce(o.gross_amount,o.amount,0)-coalesce(o.discount_amount,0),0) from public.orders o where o.id=p_order))))::integer
 $$;
