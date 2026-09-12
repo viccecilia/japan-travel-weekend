@@ -17,8 +17,38 @@ const navigation:NavigationGroup[]=[
   {label:'数据统计',children:[{label:'经营 Dashboard',to:'/app/operations/analytics'}]},
   {label:'系统设置',children:[{label:'系统状态与版本',to:'/app/operations/settings'}]},
 ];
-const childActive=(item:NavigationChild,pathname:string,search:string)=>{if(item.match)return item.match(pathname,search);const [targetPath,targetQuery='']=item.to.split('?');if(targetPath==='/app/operations')return pathname===targetPath&&!search;if(pathname!==targetPath)return false;if(!targetQuery){const params=new URLSearchParams(search);return !params.has('panel')&&!params.has('queue');}return targetQuery.split('#')[0].split('&').every(pair=>search.includes(pair));};
-const pageTitle=(pathname:string,search:string)=>{for(const group of navigation){const active=group.children.find(item=>childActive(item,pathname,search));if(active)return {group:group.label,page:active.label};}return {group:'运营后台',page:'管理页面'};};
+const childActive=(item:NavigationChild,pathname:string,search:string)=>{
+  if(item.match)return item.match(pathname,search);
+  const [targetPath,targetQuery='']=item.to.split('?');
+  if(pathname === targetPath){
+    if(!targetQuery){
+      const params = new URLSearchParams(search);
+      return !params.has('panel') && !params.has('queue');
+    }
+    return targetQuery.split('#')[0].split('&').every((pair) => search.includes(pair));
+  }
+  if(targetPath === '/app/operations/products' && pathname.startsWith('/app/operations/products/')) return true;
+  return false;
+};
+const titleFromPath=(pathname:string,search:string)=>{
+  for(const entry of normalizedTitleMap){
+    if(entry.test(pathname,search)) return {group:entry.group,page:entry.page};
+  }
+  for(const group of navigation){
+    const active = group.children.find((item) => childActive(item, pathname, search));
+    if (active) return {group:group.label,page:active.label};
+  }
+  return {group:'运营后台',page:'管理页面'};
+};
+const pageTitle=(pathname:string,search:string)=>titleFromPath(pathname,search);
+const normalizedTitleMap: Array<{test:(pathname:string,search:string)=>boolean;group:string;page:string}> = [
+  {test:(pathname)=>pathname.startsWith('/app/operations/products/'),group:'产品与班次',page:'产品管理'},
+  {
+    test:(pathname,search)=>pathname === '/app/operations/orders' && new URLSearchParams(search).has('afterSale'),
+    group:'订单与售后',
+    page:'取消退款',
+  },
+];
 
 export function OperationsLayout({children}:{children:ReactNode}){
   const {state,services,clearIdentity}=useApp();const location=useLocation();const navigate=useNavigate();

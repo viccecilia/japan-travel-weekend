@@ -32,4 +32,10 @@ describe('V10 运营后台分组导航',()=>{
     expect(screen.getAllByRole('link').filter(link=>link.getAttribute('aria-current')==='page')).toHaveLength(1);
     expect(screen.getByText('运营后台 / 订单与售后 / 取消退款')).toBeInTheDocument();
   });
+ 
+  it('产品编辑页沿用产品管理导航路径并显示一致标题',()=>{
+    renderLayout('/app/operations/products/route-kyoto/edit');
+    expect(screen.getByRole('link',{name:'产品管理'})).toHaveAttribute('aria-current','page');
+    expect(screen.getByText('运营后台 / 产品与班次 / 产品管理')).toBeInTheDocument();
+  });
 });
