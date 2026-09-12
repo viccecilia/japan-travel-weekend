@@ -24,4 +24,12 @@ describe('V10 运营后台分组导航',()=>{
     expect(screen.getByRole('link',{name:'首页推荐'})).toBeInTheDocument();
     expect(screen.getByRole('link',{name:/预览游客端/})).toHaveAttribute('target','_blank');
   });
+
+  it('订单与退款使用同一路由时仍只高亮当前入口',()=>{
+    renderLayout('/app/operations/orders?afterSale=refund_pending');
+    expect(screen.getByRole('link',{name:'取消退款'})).toHaveAttribute('aria-current','page');
+    expect(screen.getByRole('link',{name:'全部订单'})).not.toHaveAttribute('aria-current');
+    expect(screen.getAllByRole('link').filter(link=>link.getAttribute('aria-current')==='page')).toHaveLength(1);
+    expect(screen.getByText('运营后台 / 订单与售后 / 取消退款')).toBeInTheDocument();
+  });
 });
