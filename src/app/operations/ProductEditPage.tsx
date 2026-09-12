@@ -1,4 +1,4 @@
-import {FormEvent, useEffect, useMemo, useState} from 'react';
+import {FormEvent, useEffect, useMemo, useRef, useState} from 'react';
 import {Link, NavigateFunction, useLocation, useNavigate, useParams, useSearchParams} from 'react-router-dom';
 import {useApp} from '../store';
 import type {OperationsProduct, OperationsProductRevision} from '../../shared/integrations/supabaseOperations';
@@ -154,11 +154,18 @@ export function ProductEditPage() {
   const [itinerary, setItinerary] = useState<ItineraryStop[]>([]);
   const returnTo = buildReturnUrl(searchParams, navigate, '/app/operations/products');
   const [dirty, setDirty] = useState(false);
+  const requestVersion = useRef(0);
 
   const reload = async (targetId?: string) => {
     if (!services) return;
+    const request = ++requestVersion.current;
     setBusy(true);
+    setProduct(null);
+    setRevisions([]);
+    setNotice('');
+    try {
     const list = await services.operations.listProducts();
+    if (request !== requestVersion.current) return;
     if (list.error) {
       setNotice(list.error);
       setBusy(false);
@@ -177,17 +184,22 @@ export function ProductEditPage() {
     setRevisions([]);
     setDirty(false);
     const history = await services.operations.listProductRevisions(target.id);
+    if (request !== requestVersion.current) return;
     if (!history.error) setRevisions(history.data);
-    setBusy(false);
+    else setNotice(`版本记录读取失败：${history.error}`);
+    } catch (error) {
+      if (request === requestVersion.current) setNotice(`读取失败：${error instanceof Error ? error.message : '网络异常，请重试'}`);
+    } finally {
+      if (request === requestVersion.current) setBusy(false);
+    }
   };
 
   useEffect(() => {
-    const release = () => {
+    const release = (event: BeforeUnloadEvent) => {
       const hasDraft = dirty;
       if (!hasDraft) return;
-      const message = '有未保存修改，确定离开本页？';
-      if (!window.confirm(message)) return false;
-      return true;
+      event.preventDefault();
+      event.returnValue = '';
     };
     window.addEventListener('beforeunload', release);
     return () => {
@@ -312,6 +324,7 @@ export function ProductEditPage() {
   const titleText = useMemo(() => `${product?.title ?? ''}${product ? '（' : ''}${product ? statusLabel(product) : ''}${product ? '）' : ''}`, [product]);
   useEffect(() => {
     void reload();
+    return () => { requestVersion.current += 1; };
   }, [services, productId]);
 
   if (!productId) {
@@ -327,7 +340,8 @@ export function ProductEditPage() {
       <main className="operations-page">
         <section className="operations-section">
           <p>{notice || '路线不存在或无访问权限。'}</p>
-          <Link to="/app/operations/products">返回产品列表</Link>
+          <button type="button" onClick={() => void reload()}>重新读取</button>
+          <Link to={returnTo}>返回产品列表</Link>
         </section>
       </main>
     );
@@ -345,9 +359,9 @@ export function ProductEditPage() {
           <Link className="button secondary" to={returnTo}>
             返回产品列表
           </Link>
-          <Link className="button secondary" to={`/app/trips/${product.slug}`} target="_blank">
+          {product.status === 'published' && product.publishedRevision != null && <Link className="button secondary" to={`/app/trips/${product.slug}`} target="_blank">
             查看当前公开页
-          </Link>
+          </Link>}
         </div>
       </header>
       {notice && <p className="operations-notice">{notice}</p>}
@@ -490,4 +504,3 @@ export function ProductEditPage() {
     </main>
   );
 }
-
