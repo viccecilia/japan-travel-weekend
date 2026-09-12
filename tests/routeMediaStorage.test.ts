@@ -3,7 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 import { SupabaseOperationsRepository } from "../src/shared/integrations/supabaseOperations";
 
 const sql = readFileSync("supabase/migrations/202609100117_route_media_storage.sql", "utf8");
-const ui = readFileSync("src/app/operations/ProductCenter.tsx", "utf8");
+const ui = [
+  readFileSync("src/app/operations/ProductCenter.tsx", "utf8"),
+  readFileSync("src/app/operations/ProductEditPage.tsx", "utf8"),
+].join("\n");
 
 describe("路线图片和景点维护", () => {
   it("图片桶公开读取且只有运营账号能写入", () => {

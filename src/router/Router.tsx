@@ -54,6 +54,7 @@ import {AiGuide} from "../app/AiGuide";
 import {OperationsLayout} from "../app/operations/OperationsLayout";
 const OperationsDashboard=lazy(()=>import('../app/OperationsDashboard').then(module=>({default:module.OperationsDashboard})));
 const ProductCenter=lazy(()=>import('../app/operations/ProductCenter').then(module=>({default:module.ProductCenter})));
+const ProductEditPage=lazy(()=>import('../app/operations/ProductEditPage').then(module=>({default:module.ProductEditPage})));
 const DepartureCenter=lazy(()=>import('../app/operations/DepartureCenter').then(module=>({default:module.DepartureCenter})));
 const RunCenter=lazy(()=>import('../app/operations/RunCenter').then(module=>({default:module.RunCenter})));
 const IncidentCenter=lazy(()=>import('../app/operations/IncidentCenter').then(module=>({default:module.IncidentCenter})));
@@ -220,6 +221,7 @@ export function Router() {
       <Route path="/app-demo/*" element={<LegacyAppRedirect />} />
       <Route path="/app/operations" element={<OperationsPage><OperationsDashboard/></OperationsPage>} />
       <Route path="/app/operations/products" element={<OperationsPage><ProductCenter/></OperationsPage>} />
+      <Route path="/app/operations/products/:productId/edit" element={<OperationsPage><ProductEditPage/></OperationsPage>} />
       <Route path="/app/operations/departures" element={<OperationsPage><DepartureCenter/></OperationsPage>} />
       <Route path="/app/operations/run" element={<OperationsPage><RunCenter/></OperationsPage>} />
       <Route path="/app/operations/incidents" element={<OperationsPage><IncidentCenter/></OperationsPage>} />

@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 const app=readFileSync('src/app/App.tsx','utf8');
 const store=readFileSync('src/app/store.tsx','utf8');
 const center=readFileSync('src/app/operations/ProductCenter.tsx','utf8');
+const edit=readFileSync('src/app/operations/ProductEditPage.tsx','utf8');
 
 describe('V3-B published product flow',()=>{
   it('makes database content authoritative over built-in route marketing copy',()=>{
@@ -14,10 +15,10 @@ describe('V3-B published product flow',()=>{
   it('exposes catalog refresh through context and refreshes after publish',()=>{
     expect(store).toMatch(/catalogRevision: number/);
     expect(store).toMatch(/window\.addEventListener\('focus',onFocus\)/);
-    expect(center).toMatch(/await refreshCatalog\(\)/);
+    expect(edit).toMatch(/await refreshCatalog\(\)/);
   });
   it('edits operational content instead of replacing the revision with two fields',()=>{
-    for(const field of ['stops','highlights','included','excluded','notices','locales'])expect(center).toContain(`name="${field}"`);
-    expect(center).toContain('...selected.content');
+    for(const field of ['itinerary','highlights','included','excluded','notices','locales'])expect(edit).toContain(`name="${field}"`);
+    expect(edit).toContain('...product.content');
   });
 });

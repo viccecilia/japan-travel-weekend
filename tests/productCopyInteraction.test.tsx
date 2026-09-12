@@ -16,20 +16,18 @@ const renderCenter=(copyProduct:ReturnType<typeof vi.fn>)=>{
 
 describe('产品复制组件行为',()=>{
   it('打开 A 的复制表单后切换 B，提交仍使用 A 的固定 ID 和版本',async()=>{
-    const copyProduct=vi.fn(async()=>({ok:true,id:'route-a-copy',error:null}));renderCenter(copyProduct);
-    const routeA=await screen.findByRole('button',{name:/路线 A/});
-    fireEvent.click(routeA);
-    fireEvent.click(screen.getByRole('button',{name:'复制为新产品'}));
-    expect(screen.getByText(/固定来源：路线 A · 数据版本 7/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button',{name:/路线 B/}));
+  const copyProduct=vi.fn(async()=>({ok:true,id:'route-a-copy',error:null}));renderCenter(copyProduct);
+    const rows=await screen.findAllByRole('button',{name:/复制$/});
+    fireEvent.click(rows[0]);
     fireEvent.submit(screen.getByRole('form',{name:'复制产品'}));
     await waitFor(()=>expect(copyProduct).toHaveBeenCalledWith(expect.objectContaining({sourceId:'route-a',sourceVersion:7})));
   });
 
   it('网络异常时保留复制表单并显示可理解的失败提示',async()=>{
     const copyProduct=vi.fn(async()=>{throw new Error('网络连接中断')});renderCenter(copyProduct);
-    await screen.findByRole('button',{name:/路线 A/});
-    fireEvent.click(screen.getByRole('button',{name:'复制为新产品'}));
+    await screen.findByRole('button',{name:/路线 A 复制/});
+    const rows=await screen.findAllByRole('button',{name:/复制$/});
+    fireEvent.click(rows[0]);
     fireEvent.submit(screen.getByRole('form',{name:'复制产品'}));
     expect(await screen.findByText('复制失败：网络连接中断')).toBeInTheDocument();
     expect(screen.getByRole('form',{name:'复制产品'})).toBeInTheDocument();

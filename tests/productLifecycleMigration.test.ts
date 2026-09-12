@@ -16,6 +16,7 @@ describe("产品全生命周期",()=>{
     expect(sql).toContain("current_draft_revision_id=v_new_id");
   });
   it("运营界面提供真实生命周期动作",()=>{
-    for(const label of ["新建产品草稿","复制为新产品","下架产品","恢复为新草稿"])expect(ui).toContain(label);
+    const edit=readFileSync("src/app/operations/ProductEditPage.tsx","utf8");
+    for(const label of ["新建产品草稿","复制","下架产品","恢复为新草稿","发布草稿"])expect(ui+edit).toContain(label);
   });
 });
