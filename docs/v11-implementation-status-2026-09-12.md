@@ -13,7 +13,7 @@
 | 新建复制原生弹窗 | `e88ef17` | 隔离管理员真实新建/复制成功，失败提示保留在弹窗内；8 项产品行为测试通过 | 代码/测试/正常路径浏览器通过 |
 | 移动抽屉、工具栏、单主标题 | `c8baa21` | 1440×900、1366×768、390×844 页面均无横向溢出，导航唯一 aria-current；390 抽屉打开和关闭成功 | 管理员真实读取验收通过 |
 | 游客/司导独立登录越权验收 | 安全配置现有账号 | 游客独立浏览器登录未离开登录页，30 秒等待超时；未到达权限断言，司导尚未执行 | 阻塞，不能记为越权测试通过；未修改密码 |
-| 新版本部署和服务器实操 | 本批未部署 | 当前页面证据来自 127.0.0.1:5178 本地源码前端及真实隔离后端 | 未部署，不能视为服务器验收 |
+| 新版本部署和服务器实操 | 前端版本 `a232eeb` | 已发布到 `/var/www/jtw-test-releases/jtw-v11-ui-a-a232eeb`；公网管理员登录后复测产品列表、两条编辑深链、刷新、390/1366/1440布局 | 测试服务器实际读取验收通过；写入未在部署后重复执行 |
 
 自动验证：全量 168 个测试文件、705 项通过；随后新增编辑深链4项通过；最后导航+产品定向12项通过。前端构建、后端构建、内容检查通过；上线门禁7项通过、5项待完成，交易保持 locked。检查过 diff，无空白错误。没有将测试数量代替业务验收。
 
@@ -28,7 +28,16 @@
 - `RoutePlacePhoto.tsx` SHA256 `FD78E1A6D066206AC29BDB601C7F631401E524BB564B579A5B07E5A134C716C4`
 - 原有素材、历史验证输出继续保留。
 
-A3 尚未全部完成：游客/司导登录权限实操、所有失败分支浏览器验收及服务器新版验收待补。三栏预览、视频、翻译、财务等仍属于后续批次，原清单不删除。
+A3 尚未全部完成：游客/司导登录权限实操及所有失败分支浏览器验收待补。三栏预览、视频、翻译、财务等仍属于后续批次，原清单不删除。
+
+### 测试服务器部署证据（2026-09-12）
+
+- 当前发布：`/var/www/jtw-test-releases/jtw-v11-ui-a-a232eeb`；回滚版本：`/var/www/jtw-test-releases/jtw-v11-864cd43`。
+- `RELEASE_SHA`：`a232eeb01929095a999bc24217c40366025efa91`；服务器 `index.html` SHA256 `551A0CF3FDF7A6E3D9B9AB98DFE05F6652E254A29F25684724BE2D42FA3F870E`，`sw.js` SHA256 `D4928B6FEED44666311C6F7F9A736021EEA4A9796D71F9B40EB8ECB54FA75CB5`，与本地构建一致。
+- Nginx 配置检查成功并完成 reload；Nginx 与 `japan-travel-weekend-api.service` 均为 active，Nginx error log 无新增内容。API warning 日志仅返回 8 月历史记录，本次未重启 API。
+- 服务器内部 HTTP、服务器内部 HTTPS 及公网 `/api/health`、`/api/ready` 均为 200、`application/json; charset=utf-8`。`ready` 返回 database、Stripe 测试模式、Webhook secret、通知回执 secret 均为 true。
+- `/app/operations/products` 为 200 `text/html`、`Cache-Control: no-cache`；`/sw.js` 为 200 `application/javascript`、`Cache-Control: no-cache`。API 路径未被应用壳接管。
+- 公网管理员真实页面复测：1440、1366、390 均无页面级横向溢出，唯一导航高亮；两条产品编辑深链刷新后仍为指定产品，编辑页无列表，浏览器无 pageerror。
 
 ## 基线与边界
 
