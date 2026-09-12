@@ -9,9 +9,9 @@ const tokyoToday = () =>
   new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo" }).format(
     new Date(),
   );
-const locationState = (value: string | null) => {
+export const locationState = (value: string | null, now = Date.now()) => {
   if (!value) return "暂无真实定位";
-  const age = Date.now() - new Date(value).getTime();
+  const age = now - new Date(value).getTime();
   const time = new Date(value).toLocaleString("zh-CN", {
     timeZone: "Asia/Tokyo",
   });
