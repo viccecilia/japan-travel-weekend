@@ -1,5 +1,5 @@
 import {cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
-import {afterEach,describe,expect,it,vi} from 'vitest';
+import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {MemoryRouter, useLocation} from 'react-router-dom';
 import {ProductCenter} from '../src/app/operations/ProductCenter';
 import {AppProvider} from '../src/app/store';
@@ -7,6 +7,7 @@ import type {OperationsProduct} from '../src/shared/integrations/supabaseOperati
 import type {ProductionBrowserServices} from '../src/shared/backend/productionServices';
 
 afterEach(()=>cleanup());
+beforeEach(()=>{HTMLDialogElement.prototype.showModal=function(){this.setAttribute('open','');};});
 const product=(id:string,title:string,version:number):OperationsProduct=>({id,slug:id,status:'draft',catalogVersion:version,publishedRevision:null,draftRevision:1,title,content:{itinerary:[]},heroImageUrl:null,gallery:[],updatedAt:'2026-09-11T00:00:00Z'});
 function CurrentLocation(){const location=useLocation();return <output aria-label="当前地址">{location.pathname}{location.search}</output>}
 const renderCenter=(copyProduct:ReturnType<typeof vi.fn>, initial='/app/operations/products', listProducts?:ReturnType<typeof vi.fn>)=>{

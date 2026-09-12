@@ -1,9 +1,19 @@
-import {FormEvent, useEffect, useState} from 'react';
+import {FormEvent, useEffect, useRef, useState, type ReactNode} from 'react';
 import {Link, useLocation, useNavigate, useSearchParams} from 'react-router-dom';
 import {useApp} from '../store';
 import type {OperationsProduct} from '../../shared/integrations/supabaseOperations';
 
 type ProductStatusFilter = 'all' | 'published' | 'draft' | 'archived';
+
+function ProductDialog({title, busy, onClose, children}: {title: string; busy: boolean; onClose: () => void; children: ReactNode}) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    dialog.current?.showModal?.();
+  }, []);
+  return <dialog ref={dialog} aria-label={title} onCancel={event => { event.preventDefault(); if (!busy) onClose(); }} style={{width:560,maxWidth:'calc(100vw - 32px)',maxHeight:'85dvh',overflow:'auto',border:0,borderRadius:12,padding:24}}>
+    <h2>{title}</h2>{children}
+  </dialog>;
+}
 
 type CopyFormState = {
   sourceId: string | null;
@@ -187,7 +197,7 @@ export function ProductCenter() {
         </button>
       </header>
 
-      {notice && <p className="operations-notice">{notice}</p>}
+      {notice && !createOpen && !copyForm && <p className="operations-notice">{notice}</p>}
 
       <section className="operations-section">
         <div className="operations-section-head">
@@ -221,6 +231,8 @@ export function ProductCenter() {
           <div className="operations-hint">草稿中可编辑，发布后游客页同步更新。</div>
         </div>
         {createOpen && (
+          <ProductDialog title="新建路线" busy={busy} onClose={() => setCreateOpen(false)}>
+          {notice && <p role="alert">{notice}</p>}
           <form className="operations-controls" onSubmit={createProduct}>
             <label>
               路线英文标识（slug）
@@ -250,6 +262,7 @@ export function ProductCenter() {
               <button
                 className="button secondary"
                 type="button"
+                disabled={busy}
                 onClick={() => {
                   setCreateOpen(false);
                   setNewSlug('');
@@ -260,8 +273,11 @@ export function ProductCenter() {
               </button>
             </div>
           </form>
+          </ProductDialog>
         )}
         {copyForm && (
+          <ProductDialog title="复制路线" busy={busy} onClose={closeCopy}>
+          {notice && <p role="alert">{notice}</p>}
           <form className="operations-controls" aria-label="复制产品" onSubmit={copyProduct}>
             <header className="operations-inline-header">
               <span>复制为新路线</span>
@@ -293,6 +309,7 @@ export function ProductCenter() {
               </button>
             </div>
           </form>
+          </ProductDialog>
         )}
 
         {busy && products.length === 0 && <p className="operations-hint">正在读取产品目录…</p>}
