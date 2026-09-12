@@ -11,7 +11,7 @@ const navigation:NavigationGroup[]=[
   {label:'素材与营销',children:[{label:'首页推荐',to:'/app/operations/marketing'},{label:'季节专题',to:'/app/operations/marketing?panel=seasonal'}]},
   {label:'订单与售后',children:[{label:'全部订单',to:'/app/operations?view=orders#orders-overview',match:(_,search)=>search.includes('view=orders')&&!search.includes('afterSale=')},{label:'取消退款',to:'/app/operations?view=orders&afterSale=refund_pending',match:(_,search)=>search.includes('afterSale=')}]},
   {label:'调度与运行',children:[{label:'当日运行',to:'/app/operations/run'},{label:'异常工单',to:'/app/operations/incidents'}]},
-  {label:'司导与车辆',children:[{label:'司导档案',to:'/app/operations?view=resources&resource=staff#resource-registry',match:(_,search)=>search.includes('view=resources')&&search.includes('resource=staff')},{label:'车辆档案',to:'/app/operations?view=resources&resource=vehicles#resource-registry',match:(_,search)=>search.includes('view=resources')&&search.includes('resource=vehicles')},{label:'申请与请假',to:'/app/operations?view=resources&queue=staff',match:(_,search)=>search.includes('view=resources')&&search.includes('queue=staff')}]},
+  {label:'司导与车辆',children:[{label:'司导档案',to:'/app/operations/staff'},{label:'车辆档案',to:'/app/operations/vehicles'},{label:'申请与请假',to:'/app/operations/staff-requests'}]},
   {label:'推广与财务',children:[{label:'推广与佣金',to:'/app/operations/commissions'},{label:'提现与对账',to:'/app/operations/commissions?queue=payout'}]},
   {label:'数据统计',children:[{label:'运营统计',to:'/app/operations?view=analytics',match:(_,search)=>search.includes('view=analytics')}]},
   {label:'系统设置',children:[{label:'系统状态与版本',to:'/app/operations/settings'}]},
