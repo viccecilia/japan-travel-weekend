@@ -36,6 +36,7 @@ import {groupDeparturesByMonth, resolveDepartureSelection} from './bookingDepart
 import {singleSeatQuote} from '../shared/services/singleSeatPricing';
 import type {ServerQuote} from '../shared/backend/testApi';
 import {isHomeSellableDeparture,selectUpcomingDepartures} from './homeUpcomingDepartures';
+import {composePassengerDisplayName,splitPassengerDisplayName,type PassengerSalutation} from './passengerDisplayName';
 const trips = travelRepository.listTrips();
 const orderStatusLabels:Record<string,Record<string,string>>={
  'zh-CN':{pending_payment:'等待在线支付',pending_manual_review:'等待人工确认到账',paid:'已支付',confirmed:'行程已确认',payment_review:'付款需要人工核对',refunded:'已退款',cancelled:'已取消',expired:'支付时限已过'},
@@ -2927,6 +2928,7 @@ export function Profile() {
   >(services ? "loading" : "unavailable");
   const [profileNotice, setProfileNotice] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [salutation,setSalutation]=useState<PassengerSalutation>("");
   const [displayNameNotice, setDisplayNameNotice] = useState("");
   const [displayNameSaving, setDisplayNameSaving] = useState(false);
   const [accountRole,setAccountRole]=useState<string|null>(null);
@@ -2951,7 +2953,9 @@ export function Profile() {
           emergencyName: result.data.emergency_name,
           emergencyPhone: result.data.emergency_phone,
         });
-      setDisplayName(nameResult.data || result.data?.display_name || "");
+      const identity=splitPassengerDisplayName(nameResult.data || result.data?.display_name || "");
+      setDisplayName(identity.name);
+      setSalutation(identity.salutation);
       if(nameResult.error)setDisplayNameNotice(nameResult.error);
       setProfileState("ready");
     });
@@ -2963,10 +2967,12 @@ export function Profile() {
     event.preventDefault();
     if (!services) return;
     setDisplayNameSaving(true);
-    const result=await services.updateOwnDisplayName(displayName);
+    if(!salutation)return;
+    const publicDisplayName=composePassengerDisplayName(displayName,salutation);
+    const result=await services.updateOwnDisplayName(publicDisplayName);
     setDisplayNameSaving(false);
     setDisplayNameNotice(result.error ?? pc.saved);
-    if(result.ok)setDisplayName(result.data ?? displayName.trim());
+    if(result.ok){const identity=splitPassengerDisplayName(result.data ?? publicDisplayName);setDisplayName(identity.name);setSalutation(identity.salutation)}
   };
   const saveProfile = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -2974,7 +2980,7 @@ export function Profile() {
     const form = new FormData(event.currentTarget);
     setProfileState("saving");
     const result = await services.updateOwnAccountProfile({
-      displayName,
+      displayName:salutation?composePassengerDisplayName(displayName,salutation):displayName,
       phone: String(form.get("phone")),
       emergencyName: String(form.get("emergencyName")),
       emergencyPhone: String(form.get("emergencyPhone")),
@@ -2985,7 +2991,7 @@ export function Profile() {
     setProfileNotice(result.error ?? pc.saved);
     if (result.ok)
       setProfile({
-        displayName,
+        displayName:salutation?composePassengerDisplayName(displayName,salutation):displayName,
         phone: String(form.get("phone")),
         emergencyName: String(form.get("emergencyName")),
         emergencyPhone: String(form.get("emergencyPhone")),
@@ -3047,10 +3053,17 @@ export function Profile() {
       {services && (
         <form className="form" onSubmit={saveDisplayName}>
           <h2>{pc.name}</h2>
-          <label>
-            {pc.name} *
-            <input required maxLength={80} value={displayName} onChange={(event)=>setDisplayName(event.target.value)}/>
-          </label>
+          <div className="passenger-name-row">
+            <label>
+              {pc.name} *
+              <input required maxLength={78} value={displayName} onChange={(event)=>setDisplayName(event.target.value)}/>
+            </label>
+            <fieldset>
+              <legend>称谓 *</legend>
+              <label><input required type="radio" name="salutation" value="先生" checked={salutation==="先生"} onChange={()=>setSalutation("先生")}/><span>先生</span></label>
+              <label><input required type="radio" name="salutation" value="女士" checked={salutation==="女士"} onChange={()=>setSalutation("女士")}/><span>女士</span></label>
+            </fieldset>
+          </div>
           <button className="button full" disabled={displayNameSaving}>{displayNameSaving?pc.saving:pc.save}</button>
           {displayNameNotice&&<p className="notice" role="status">{displayNameNotice}</p>}
         </form>
