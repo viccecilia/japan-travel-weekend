@@ -26,6 +26,15 @@ function staffAt(path:string,destination:Destination){
   return render(<MemoryRouter initialEntries={[path]}><AppProvider services={servicesFor(destination)}><RequireAccount><RequireStaff><div>司导页面已授权</div></RequireStaff></RequireAccount></AppProvider></MemoryRouter>);
 }
 
+function failingServicesFor(){
+  return {
+    currentUser:async()=>({id:'account-id',email:'account@example.invalid'}),
+    currentAccessDestination:async()=>{throw new Error('network down');},
+    onAuthStateChange:()=>()=>undefined,
+    loadSellableDepartures:async()=>({data:[],error:null}),
+  } as unknown as ProductionBrowserServices;
+}
+
 describe('V8 角色边界与深链',()=>{
   it('后台首页和全部子路径使用同一运营边界',()=>{
     for(const path of ['/app/operations','/app/operations/products','/app/operations/departures','/app/operations/run','/app/operations/commissions','/app/operations/orders/one'])expect(isOperationsPath(path)).toBe(true);
@@ -49,6 +58,12 @@ describe('V8 角色边界与深链',()=>{
     cleanup();
     staffAt('/staff/profile','staff_blocked');
     expect(await screen.findByText('司导账号已停用')).toBeInTheDocument();
+  });
+
+  it('权限接口异常时不应一直显示“正在验证账户类型”',async()=>{
+    render(<MemoryRouter initialEntries={['/app/profile']}><AppProvider services={failingServicesFor()}><RequireAccount><div>可访问</div></RequireAccount></AppProvider></MemoryRouter>);
+    expect(await screen.findByText('账户类型校验失败')).toBeInTheDocument();
+    expect(screen.queryByText('正在验证账户类型')).not.toBeInTheDocument();
   });
 
   it('游客不能进入司导页面，运营仍可进入受控工作人员页面',async()=>{

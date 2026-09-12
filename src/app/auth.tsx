@@ -40,12 +40,29 @@ export function referralCodeFromSearch(search:string){
 
 export function RequireAccount({children}:{children:ReactNode}){
   const {state,authResolved,services}=useApp();const location=useLocation();const account=state.user?.email??'';const [destinationResult,setDestinationResult]=useState<{account:string;destination:string|null}|null>(null);
-  useEffect(()=>{let active=true;if(authResolved&&account&&services)void services.currentAccessDestination().then(value=>{if(active)setDestinationResult({account,destination:value})}).catch(()=>{if(active)setDestinationResult({account,destination:null})});return()=>{active=false}},[authResolved,account,services]);
+  const [destinationResolved,setDestinationResolved]=useState<boolean>(false);
+  useEffect(()=>{
+    let active=true;
+    setDestinationResolved(false);
+    if(authResolved&&account&&services){
+      void services.currentAccessDestination().then(value=>{
+        if(!active)return;
+        setDestinationResult({account,destination:value});
+        setDestinationResolved(true);
+      }).catch(()=>{
+        if(!active)return;
+        setDestinationResult({account,destination:null});
+        setDestinationResolved(true);
+      });
+    }
+    return()=>{active=false};
+  },[authResolved,account,services]);
   if(testGuestMode)return children;
   if(!authResolved)return <main className="empty-card" role="status"><b>正在恢复账户会话</b><p>请稍候，正在安全确认登录状态。</p></main>;
   if(!state.user){const returnTo=safeReturnTo(`${location.pathname}${location.search}`);return <Navigate replace to={`/app/login?returnTo=${encodeURIComponent(returnTo)}`}/>;}
   const destination=destinationResult?.account===account?destinationResult.destination:null;
-  if(services&&!destination)return <main className="empty-card" role="status"><b>正在验证账户类型</b><p>一个账户只能进入对应工作区。</p></main>;
+  if(services&&!destinationResolved)return <main className="empty-card" role="status"><b>正在验证账户类型</b><p>一个账户只能进入对应工作区。</p></main>;
+  if(services&&destination===null)return <main className="empty-card" role="status"><b>账户类型校验失败</b><p>暂时无法确认当前账户访问权限，请稍后重试或重新登录。</p></main>;
   const roleProtected=isStaffPath(location.pathname)||isOperationsPath(location.pathname);
   if(services&&!roleProtected&&location.pathname!=="/app/account-status"&&destination!=="passenger")return <Navigate replace to={passengerAccountBoundaryPath(`${location.pathname}${location.search}`)}/>;
   return children;

@@ -60,7 +60,7 @@
 | R4 | Dashboard 日期未传后端且默认范围截断 | `AnalyticsCenter.tsx`、`loadSnapshot(from,to)`、迁移 129 `get_operations_dashboard_departures` | 周/月/季/年东京日期范围传入 RPC，不再依赖 -30/+365 默认窗口 | 组件行为测试验证年度范围实际传给数据层 | 代码及自动测试完成；数据库/浏览器未验证 |
 | R5 | 下钻参数只写 URL 未参与查询 | `OrdersCenter.tsx`、`listOrders`、`get_operations_orders` | `from`、`to`、`status`、`order` 已参与订单查询；班次快照同步使用日期范围 | 组件行为测试覆盖四个参数；`metric`、大使和推荐关系筛选尚未全部接入 | 部分完成 |
 | R6 | 推荐关系树依赖姓名/邮箱拼接 | `AnalyticsCenter.tsx`、现有推荐汇总 RPC | 当前仍为展示层基础树，稳定账号 ID 与渠道层级查询尚未补齐 | 未有数据库行为证据 | 未完成 |
-| R7 | 账户权限 RPC 失败时永久加载 | `auth.tsx` 待整改 | 尚未修改 | 尚未测试网络错误/服务不可用 | 未完成 |
+| R7 | 账户权限 RPC 失败时永久加载 | `auth.tsx` | 已修复：增加失败兜底态与无永久加载路径 | 新增组件行为测试覆盖 `currentAccessDestination` 抛错场景 | 代码与自动测试完成；数据库/浏览器验收待执行 |
 | R8 | 后台菜单可能重复高亮 | 现有 OperationsLayout/专属订单路由 | 独立订单路由已减少旧综合页匹配冲突；尚需真实浏览器逐项点击复核 | 路由测试已有，登录后浏览器验收尚未完成 | 部分完成 |
 | R9 | 行程结束时间固定加12小时 | `OperationsDeparture.endsAt`、Dashboard RPC、`buildDispatchPlanDrafts` | 优先使用数据库班次 `ends_at`；仅旧数据缺失时兼容回退 | 行为测试验证真实结束时间进入派车草稿 | 代码及自动测试完成；数据库/浏览器未验证 |
 
