@@ -13,7 +13,7 @@ const navigation:NavigationGroup[]=[
   {label:'调度与运行',children:[{label:'当日运行',to:'/app/operations/run'},{label:'异常工单',to:'/app/operations/incidents'}]},
   {label:'司导与车辆',children:[{label:'司导档案',to:'/app/operations/staff'},{label:'车辆档案',to:'/app/operations/vehicles'},{label:'申请与请假',to:'/app/operations/staff-requests'}]},
   {label:'推广与财务',children:[{label:'推广与佣金',to:'/app/operations/commissions'},{label:'提现与对账',to:'/app/operations/commissions?queue=payout'}]},
-  {label:'数据统计',children:[{label:'运营统计',to:'/app/operations?view=analytics',match:(_,search)=>search.includes('view=analytics')}]},
+  {label:'数据统计',children:[{label:'经营 Dashboard',to:'/app/operations/analytics'}]},
   {label:'系统设置',children:[{label:'系统状态与版本',to:'/app/operations/settings'}]},
 ];
 const childActive=(item:NavigationChild,pathname:string,search:string)=>{if(item.match)return item.match(pathname,search);const [targetPath,targetQuery='']=item.to.split('?');if(targetPath==='/app/operations')return pathname===targetPath&&!search;if(pathname!==targetPath)return false;if(!targetQuery){const params=new URLSearchParams(search);return !params.has('panel')&&!params.has('queue');}return targetQuery.split('#')[0].split('&').every(pair=>search.includes(pair));};
