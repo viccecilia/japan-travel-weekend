@@ -1,5 +1,5 @@
 import {FormEvent, useEffect, useState} from 'react';
-import {Link, useLocation} from 'react-router-dom';
+import {Link, useLocation, useNavigate, useSearchParams} from 'react-router-dom';
 import {useApp} from '../store';
 import type {OperationsProduct} from '../../shared/integrations/supabaseOperations';
 
@@ -36,12 +36,21 @@ function normalizeStatus(item: OperationsProduct): string {
 export function ProductCenter() {
   const {services} = useApp();
   const location = useLocation();
+  const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
   const [products, setProducts] = useState<OperationsProduct[]>([]);
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
-  const [search, setSearch] = useState('');
-  const [status, setStatus] = useState<ProductStatusFilter>('all');
-  const [page, setPage] = useState(1);
+  const search = params.get('q') ?? '';
+  const status = STATUS_OPTIONS.some((option) => option.value === params.get('status')) ? params.get('status') as ProductStatusFilter : 'all';
+  const requestedPage = Number(params.get('page') ?? 1);
+  const [loadError, setLoadError] = useState('');
+  const updateFilter = (key: string, value: string) => {
+    const next = new URLSearchParams(params);
+    next.set(key, value);
+    if (key !== 'page') next.delete('page');
+    setParams(next);
+  };
   const [copyForm, setCopyForm] = useState<CopyFormState | null>(null);
   const [copySlug, setCopySlug] = useState('');
   const [copyTitle, setCopyTitle] = useState('');
@@ -60,18 +69,23 @@ export function ProductCenter() {
   });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const page = Math.min(totalPages, Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1);
   const pageStart = (page - 1) * pageSize;
   const pageRows = filtered.slice(pageStart, pageStart + pageSize);
 
   const reload = async () => {
     if (!services) return;
     setBusy(true);
-    const result = await services.operations.listProducts();
-    setBusy(false);
-    setNotice(result.error ?? '');
-    if (!result.error) {
+    setLoadError('');
+    try {
+      const result = await services.operations.listProducts();
+      if (result.error) throw new Error(result.error);
       setProducts(result.data);
       setTotalCount(result.data.length);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : '网络异常，请重试');
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -83,16 +97,21 @@ export function ProductCenter() {
     const title = String(form.get('title') ?? '').trim();
     if (!slug || !title) return;
     setBusy(true);
+    try {
     const result = await services.operations.createProduct({slug, title});
-    setBusy(false);
-    if (result.ok) {
+    if (result.ok && result.id) {
       setNotice('新产品草稿已建立，请完善内容后发布。');
       setCreateOpen(false);
       setNewSlug('');
       setNewTitle('');
-      await reload();
+      navigate(`/app/operations/products/${encodeURIComponent(result.id)}/edit?returnTo=${returnTo}`);
     } else {
       setNotice(`新建失败：${result.error ?? '请检查输入后重试'}`);
+    }
+    } catch (error) {
+      setNotice(`新建失败：${error instanceof Error ? error.message : '网络异常，请重试'}`);
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -130,9 +149,9 @@ export function ProductCenter() {
           ? '已复制并进入新产品草稿。'
           : `复制失败：${result.error ?? '请检查网络后重试'}`,
       );
-      if (result.ok) {
+      if (result.ok && result.id) {
         closeCopy();
-        await reload();
+        navigate(`/app/operations/products/${encodeURIComponent(result.id)}/edit?returnTo=${returnTo}`);
       }
     } catch (error) {
       setNotice(`复制失败：${error instanceof Error ? error.message : '网络异常，请稍后重试'}`);
@@ -144,10 +163,6 @@ export function ProductCenter() {
   useEffect(() => {
     void reload();
   }, [services]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [search, status]);
 
   const hasData = filtered.length > 0;
   const activeItemsCount = products.filter((item) => item.status !== 'archived').length;
@@ -180,7 +195,7 @@ export function ProductCenter() {
             <span>路线总览</span>
             <h2>路线产品</h2>
           </div>
-          <small>共 {totalCount} 条，当前显示 {filtered.length} 条</small>
+          <small>{loadError ? '目录读取失败' : busy ? '正在读取…' : `共 ${totalCount} 条，当前显示 ${filtered.length} 条`}</small>
         </div>
         <div className="operations-toolbar" role="search">
           <label>
@@ -188,14 +203,14 @@ export function ProductCenter() {
             <input
               type="text"
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => updateFilter('q', event.target.value)}
               placeholder="路线名称 / 标识"
               aria-label="搜索路线"
             />
           </label>
           <label>
             状态
-            <select value={status} onChange={(event) => setStatus(event.target.value as ProductStatusFilter)} aria-label="状态筛选">
+            <select value={status} onChange={(event) => updateFilter('status', event.target.value)} aria-label="状态筛选">
               {STATUS_OPTIONS.map((item) => (
                 <option key={item.value} value={item.value}>
                   {item.label}
@@ -281,7 +296,8 @@ export function ProductCenter() {
         )}
 
         {busy && products.length === 0 && <p className="operations-hint">正在读取产品目录…</p>}
-        {!busy && !hasData && (
+        {loadError && <div role="alert">读取失败：{loadError}<button type="button" disabled={busy} onClick={() => void reload()}>重试</button></div>}
+        {!busy && !loadError && !hasData && (
           <p className="operations-empty">
             当前筛选下无匹配路线。可清空筛选条件后重试，或确认是否已存在权限内测试路线。
           </p>
@@ -331,9 +347,9 @@ export function ProductCenter() {
                       >
                         编辑
                       </Link>
-                      <a href={`/app/trips/${item.slug}`} target="_blank" rel="noreferrer" className="button secondary">
+                      {item.status === 'published' && item.publishedRevision != null && <a href={`/app/trips/${item.slug}`} target="_blank" rel="noreferrer" className="button secondary">
                         预览
-                      </a>
+                      </a>}
                       <button
                         className="button secondary"
                         type="button"
@@ -354,14 +370,14 @@ export function ProductCenter() {
             <button
               type="button"
               disabled={page <= 1}
-              onClick={() => setPage((value) => Math.max(1, value - 1))}
+              onClick={() => updateFilter('page', String(page - 1))}
             >
               上一页
             </button>
             <small>
               {page} / {totalPages}
             </small>
-            <button type="button" disabled={page >= totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))}>
+            <button type="button" disabled={page >= totalPages} onClick={() => updateFilter('page', String(page + 1))}>
               下一页
             </button>
           </div>
