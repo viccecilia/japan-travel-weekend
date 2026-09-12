@@ -35,6 +35,7 @@ const snapshot: OperationsSnapshot = {
       vehicle_type_key: "alphard-6",
       external_dispatch_id: null,
       status: "available",
+      sellable_capacity: 6,
     },
   ],
   drivers: [
@@ -55,6 +56,7 @@ const snapshot: OperationsSnapshot = {
       id: "30000000-0000-4000-8000-000000000001",
       tripTitle: "测试京都奈良",
       departsAt: "2099-09-02T00:00:00Z",
+      endsAt: "2099-09-02T10:00:00Z",
       capacity: 6,
       status: "confirmed",
       meetingName: "大阪站",

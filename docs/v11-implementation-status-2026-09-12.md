@@ -47,3 +47,23 @@
 - 增量配车、整单分车、逐日价格日历、内容编辑、MD 翻译、VIP/接驳和三端独立身份验收。
 
 未实操或未执行隔离数据库行为测试的项目不得视为通过。
+
+## V11 代码审查 R1–R9 统一清单
+
+审查来源：`JTW-V11-Code-Review-20260912.md`。本表与上方 V11 清单共同维护；后续登录浏览器发现的问题继续追加，不另建重复任务。
+
+| 编号 | 问题 | 修改位置 | 当前结果 | 行为/数据库证据 | 状态 |
+|---|---|---|---|---|---|
+| R1 | 后台缺少真实订单列表与对象详情 | `OrdersCenter.tsx`、`supabaseOperations.ts`、迁移 129 的 `get_operations_orders` | 日期、状态、订单 ID 实际传入查询；列表可分页并进入订单详情，展示人数、金额、退款、推荐、车辆和司机 | 组件行为测试验证查询参数及指定订单渲染；隔离库尚未执行迁移 | 代码及自动测试完成；数据库/浏览器未验证 |
+| R2 | 车辆没有实车可售容量 | 迁移 129 `fleet_vehicles.sellable_capacity`、`ResourceCenter.tsx` | 车辆档案独立维护实车容量，配车校验读取具体车辆容量，不再只看车型 | 自动测试覆盖45席车辆计划40人、46人拒绝；隔离库未执行 | 代码及自动测试完成；数据库/浏览器未验证 |
+| R3 | 分车发布使用物理容量而非每车计划人数 | 迁移 129 `vehicle_assignments.planned_passengers`、最终版 `operations_save_dispatch_plan`、`finalize_dispatch_departure`、`try_allocate_paid_order` | 物理容量与计划人数分列；发布前计划人数总和必须等于已承诺席位；整单按每车计划剩余人数分配且不拆单 | 草稿构造行为测试验证 capacity=45、passengerCount=40；最终数据库函数已在迁移末端重定义，但隔离库执行待补 | 代码及自动测试完成；数据库未验证 |
+| R4 | Dashboard 日期未传后端且默认范围截断 | `AnalyticsCenter.tsx`、`loadSnapshot(from,to)`、迁移 129 `get_operations_dashboard_departures` | 周/月/季/年东京日期范围传入 RPC，不再依赖 -30/+365 默认窗口 | 组件行为测试验证年度范围实际传给数据层 | 代码及自动测试完成；数据库/浏览器未验证 |
+| R5 | 下钻参数只写 URL 未参与查询 | `OrdersCenter.tsx`、`listOrders`、`get_operations_orders` | `from`、`to`、`status`、`order` 已参与订单查询；班次快照同步使用日期范围 | 组件行为测试覆盖四个参数；`metric`、大使和推荐关系筛选尚未全部接入 | 部分完成 |
+| R6 | 推荐关系树依赖姓名/邮箱拼接 | `AnalyticsCenter.tsx`、现有推荐汇总 RPC | 当前仍为展示层基础树，稳定账号 ID 与渠道层级查询尚未补齐 | 未有数据库行为证据 | 未完成 |
+| R7 | 账户权限 RPC 失败时永久加载 | `auth.tsx` 待整改 | 尚未修改 | 尚未测试网络错误/服务不可用 | 未完成 |
+| R8 | 后台菜单可能重复高亮 | 现有 OperationsLayout/专属订单路由 | 独立订单路由已减少旧综合页匹配冲突；尚需真实浏览器逐项点击复核 | 路由测试已有，登录后浏览器验收尚未完成 | 部分完成 |
+| R9 | 行程结束时间固定加12小时 | `OperationsDeparture.endsAt`、Dashboard RPC、`buildDispatchPlanDrafts` | 优先使用数据库班次 `ends_at`；仅旧数据缺失时兼容回退 | 行为测试验证真实结束时间进入派车草稿 | 代码及自动测试完成；数据库/浏览器未验证 |
+
+### 本批数据库函数最终生效顺序
+
+迁移 129 在当前迁移序列末端重定义 `operations_save_dispatch_plan`、`finalize_dispatch_departure`、`try_allocate_paid_order`、`get_operations_dashboard_departures`，并新增 `get_operations_orders` 与 `operations_update_fleet_vehicle_v2`。源码层已确认这些是仓库中最后定义；只有隔离数据库实际应用迁移并执行业务 RPC 后，才可标记数据库通过。
