@@ -42,6 +42,7 @@ import {
   Profile,
   NotFound,
 } from "../app/App";
+import {OrdersCenter} from '../app/operations/OrdersCenter';
 import { AppPrivateGroups, MyTrip, TripRoom } from "../app/TripRoom";
 import { LegacyAppRedirect, RequireAccount, RequireStaff } from "../app/auth";
 import {RequireOperations} from "../app/auth";
@@ -227,6 +228,7 @@ export function Router() {
       <Route path="/app/operations/staff" element={<OperationsPage><ResourceCenter kind="staff"/></OperationsPage>} />
       <Route path="/app/operations/vehicles" element={<OperationsPage><ResourceCenter kind="vehicles"/></OperationsPage>} />
       <Route path="/app/operations/staff-requests" element={<OperationsPage><ResourceCenter kind="requests"/></OperationsPage>} />
+      <Route path="/app/operations/orders" element={<OperationsPage><OrdersCenter/></OperationsPage>} />
       <Route path="/app/operations/*" element={<OperationsPage><OperationsNotFound/></OperationsPage>} />
       <Route path="/staff" element={<RequireAccount><RequireStaff><StaffPortal/></RequireStaff></RequireAccount>} />
       <Route path="/staff/schedule" element={<RequireAccount><RequireStaff><StaffPortal/></RequireStaff></RequireAccount>} />
