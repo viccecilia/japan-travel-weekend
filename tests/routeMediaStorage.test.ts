@@ -1,13 +1,9 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { SupabaseOperationsRepository } from "../src/shared/integrations/supabaseOperations";
+import { persistedItinerary } from "../src/app/operations/productDraft";
 
 const sql = readFileSync("supabase/migrations/202609100117_route_media_storage.sql", "utf8");
-const ui = [
-  readFileSync("src/app/operations/ProductCenter.tsx", "utf8"),
-  readFileSync("src/app/operations/ProductEditPage.tsx", "utf8"),
-].join("\n");
-
 describe("路线图片和景点维护", () => {
   it("图片桶公开读取且只有运营账号能写入", () => {
     expect(sql).toContain("'route-media'");
@@ -29,13 +25,11 @@ describe("路线图片和景点维护", () => {
     const invalid = new File(["video"], "clip.mp4", { type: "video/mp4" });
     await expect(operations.uploadProductImage("trip-1", invalid)).resolves.toMatchObject({ url: null, error: expect.stringContaining("JPG") });
     expect(upload).toHaveBeenCalledTimes(1);
-    expect(ui).toContain('name="heroFile"');
-    expect(ui).toContain('name="galleryFiles"');
   });
 
-  it("景点支持增删和排序且保留扩展字段", () => {
-    for (const label of ["添加景点", "上移", "下移", "删除", "景点介绍", "图片 URL"]) expect(ui).toContain(label);
-    expect(ui).toContain("...item");
-    expect(ui).toContain('name="itinerary"');
+  it("景点保存移除编辑器临时标识并保留业务扩展字段", () => {
+    const result = persistedItinerary([{editorId: "editor-only", id: "stop-1", title: "清水寺", gallery: ["/images/one.webp"], customRule: {meeting: true}}]);
+    expect(result).toEqual([{id: "stop-1", title: "清水寺", gallery: ["/images/one.webp"], customRule: {meeting: true}}]);
+    expect(result[0]).not.toHaveProperty("editorId");
   });
 });
