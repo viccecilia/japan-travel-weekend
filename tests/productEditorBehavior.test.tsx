@@ -122,3 +122,13 @@ it('站内返回在未保存时需要确认，取消后留在编辑页', async (
   expect(screen.getByDisplayValue('未保存')).toBeInTheDocument();
   confirm.mockRestore();
 });
+
+it('窄屏编辑与预览是明确的面板切换状态', async () => {
+  open();
+  await screen.findByLabelText('移动端编辑预览切换');
+  expect(document.querySelector('.product-editor-layout')).toHaveAttribute('data-mobile-view', 'edit');
+  fireEvent.click(screen.getByRole('button', {name: '预览'}));
+  expect(document.querySelector('.product-editor-layout')).toHaveAttribute('data-mobile-view', 'preview');
+  fireEvent.click(screen.getByRole('button', {name: '编辑'}));
+  expect(document.querySelector('.product-editor-layout')).toHaveAttribute('data-mobile-view', 'edit');
+});
