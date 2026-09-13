@@ -132,3 +132,19 @@ it('窄屏编辑与预览是明确的面板切换状态', async () => {
   fireEvent.click(screen.getByRole('button', {name: '编辑'}));
   expect(document.querySelector('.product-editor-layout')).toHaveAttribute('data-mobile-view', 'edit');
 });
+
+it('手机底栏保留保存发布并通过更多菜单承载次要操作', async () => {
+  open();
+  await screen.findByRole('button', {name: '保存草稿'});
+  const savebar = document.querySelector('.product-editor-savebar') as HTMLElement;
+  expect(within(savebar).getByRole('button', {name: '保存草稿'})).toHaveClass('product-editor-save-primary');
+  expect(within(savebar).getByRole('button', {name: '发布草稿'})).toHaveClass('product-editor-save-primary');
+  const more = within(savebar).getByRole('button', {name: '更多'});
+  expect(more).toHaveAttribute('aria-expanded', 'false');
+  fireEvent.click(more);
+  expect(more).toHaveAttribute('aria-expanded', 'true');
+  expect(document.getElementById('product-editor-more-actions')).toHaveAttribute('data-open', 'true');
+  expect(within(savebar).getByRole('button', {name: '放弃修改'})).toBeInTheDocument();
+  expect(within(savebar).getByRole('button', {name: '下架'})).toBeInTheDocument();
+  expect(within(savebar).getByRole('button', {name: '返回'})).toBeInTheDocument();
+});
