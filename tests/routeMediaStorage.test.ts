@@ -4,6 +4,7 @@ import { SupabaseOperationsRepository } from "../src/shared/integrations/supabas
 import { persistedItinerary } from "../src/app/operations/productDraft";
 
 const sql = readFileSync("supabase/migrations/202609100117_route_media_storage.sql", "utf8");
+const nginx = readFileSync("deploy/nginx/weekend-test-common.conf", "utf8");
 describe("路线图片和景点维护", () => {
   it("图片桶公开读取且只有运营账号能写入", () => {
     expect(sql).toContain("'route-media'");
@@ -11,6 +12,7 @@ describe("路线图片和景点维护", () => {
     expect(sql).toContain("image/webp");
     expect(sql).toMatch(/for select to public/);
     expect((sql.match(/public\.is_operations\(\)/g) ?? []).length).toBeGreaterThanOrEqual(3);
+    expect(nginx).toContain("img-src 'self' data: blob: https://hzxoofvodpqpdomtmzlf.supabase.co");
   });
 
   it("运营端执行真实存储上传并限制格式和大小", async () => {
