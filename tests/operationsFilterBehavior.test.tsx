@@ -9,12 +9,12 @@ import type { ProductionBrowserServices } from "../src/shared/backend/production
 afterEach(() => cleanup());
 
 describe("运营筛选参数行为", () => {
-  it("班次页把 URL 中的日本服务日期传给数据库查询", async () => {
-    const listEditableDepartures = vi.fn(async () => ({ data: [], error: null }));
+  it("班次页把 URL 中的日本服务日期所在月份传给数据库查询", async () => {
+    const listDepartureCalendar = vi.fn(async () => ({ data: [], error: null }));
     const services = {
       operations: {
         listProducts: vi.fn(async () => ({ data: [], error: null })),
-        listEditableDepartures,
+        listDepartureCalendar,
       },
       loadSellableDepartures: async () => ({ data: [], error: null }),
       onAuthStateChange: () => () => {},
@@ -27,11 +27,8 @@ describe("运营筛选参数行为", () => {
       </MemoryRouter>,
     );
 
-    await waitFor(() => expect(listEditableDepartures).toHaveBeenCalled());
-    expect(listEditableDepartures).toHaveBeenLastCalledWith(
-      "2026-09-11T00:00:00+09:00",
-      "2026-09-11T23:59:59+09:00",
-    );
+    await waitFor(() => expect(listDepartureCalendar).toHaveBeenCalled());
+    expect(listDepartureCalendar).toHaveBeenLastCalledWith("2026-09-01", "2026-09-30");
   });
 
   it("每日运行台使用 URL 日期加载班次和司导统计", async () => {

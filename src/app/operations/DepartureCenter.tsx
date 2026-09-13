@@ -2,9 +2,12 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useApp } from "../store";
 import type {
+  OperationsCalendarDeparture,
   OperationsEditableDeparture,
   OperationsProduct,
 } from "../../shared/integrations/supabaseOperations";
+import {DepartureMonthCalendar} from './DepartureMonthCalendar';
+import {currentJapanMonth, monthRange, shiftMonth} from './departureCalendar';
 const uuid = () => crypto.randomUUID();
 const japanLocalToIso = (value: string) =>
   new Date(`${value}:00+09:00`).toISOString();
@@ -32,16 +35,17 @@ export function DepartureCenter() {
   const { services } = useApp();
   const [searchParams,setSearchParams]=useSearchParams();
   const selectedDate=searchParams.get('date')??'';
-  const range=searchParams.get('range')??'';
   const statusFilter=searchParams.get('status')??'all';
   const routeFilter=searchParams.get('route')??'';
+  const month=searchParams.get('month') || selectedDate.slice(0,7) || currentJapanMonth();
   const selectedDeparture=searchParams.get('departure')??'';
-  const queryWindow=()=>{const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());if(selectedDate)return {from:`${selectedDate}T00:00:00+09:00`,to:`${selectedDate}T23:59:59+09:00`};if(range==='past')return {from:'2020-01-01T00:00:00+09:00',to:`${today}T00:00:00+09:00`};if(range==='future')return {from:`${today}T00:00:00+09:00`,to:'2035-12-31T23:59:59+09:00'};return null};
   const updateFilter=(key:string,value:string)=>{const next=new URLSearchParams(searchParams);if(value&&value!=='all')next.set(key,value);else next.delete(key);setSearchParams(next,{replace:true})};
   const [products, setProducts] = useState<OperationsProduct[]>([]);
   const [departures, setDepartures] = useState<OperationsEditableDeparture[]>(
     [],
   );
+  const [calendarDepartures, setCalendarDepartures] = useState<OperationsCalendarDeparture[]>([]);
+  const [loadingCalendar, setLoadingCalendar] = useState(true);
   const [editing, setEditing] = useState<OperationsEditableDeparture | null>(
     null,
   );
@@ -51,8 +55,10 @@ export function DepartureCenter() {
   const [busy, setBusy] = useState(false);
   const reloadDepartures = async () => {
     if (!services) return;
-    const window=queryWindow();
-    const result = await services.operations.listEditableDepartures(window?.from,window?.to);
+    const calendarWindow=monthRange(month);
+    const result = await services.operations.listDepartureCalendar(calendarWindow.from,calendarWindow.to);
+    setCalendarDepartures(result.data);
+    setDepartures(result.data);
     setDepartures(result.data);
     setEditing(
       (current) => result.data.find((item) => item.id === (selectedDeparture||current?.id)) ?? null,
@@ -61,22 +67,26 @@ export function DepartureCenter() {
   };
   useEffect(() => {
     let active = true;
+    setLoadingCalendar(true);
+    const calendarWindow=monthRange(month);
     if (services)
       void Promise.all([
         services.operations.listProducts(),
-        (()=>{const window=queryWindow();return services.operations.listEditableDepartures(window?.from,window?.to)})(),
+        services.operations.listDepartureCalendar(calendarWindow.from,calendarWindow.to),
       ]).then(([productResult, departureResult]) => {
         if (!active) return;
         setProducts(productResult.data);
         setDepartures(departureResult.data);
+        setCalendarDepartures(departureResult.data);
         setEditing(departureResult.data.find(item=>item.id===selectedDeparture)??null);
         setNotice(productResult.error ?? departureResult.error ?? "");
+        setLoadingCalendar(false);
       });
     return () => {
       active = false;
     };
-  }, [services,selectedDate,range,selectedDeparture]);
-  const visibleDepartures=departures.filter(item=>(statusFilter==='all'||item.status===statusFilter)&&(!routeFilter||item.tripTitle.toLocaleLowerCase().includes(routeFilter.toLocaleLowerCase())));
+  }, [services,month,selectedDeparture]);
+  const visibleDepartures=departures.filter(item=>statusFilter==='all'||item.status===statusFilter);
   const onPreview = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!services) return;
@@ -183,29 +193,9 @@ export function DepartureCenter() {
           </div>
           <small>容量不能低于已锁定席位；旧订单合同不改写</small>
         </header>
-        <div className="operations-controls operations-filter-row"><label>服务日期<input type="date" value={selectedDate} onChange={event=>updateFilter('date',event.target.value)}/></label><label>状态<select value={statusFilter} onChange={event=>updateFilter('status',event.target.value)}><option value="all">全部</option><option value="open">销售中</option><option value="closed">停售</option><option value="cancelled">已取消</option><option value="draft">草稿</option></select></label><label>路线<input value={routeFilter} placeholder="输入路线名称" onChange={event=>updateFilter('route',event.target.value)}/></label></div>
-        <div className="operations-dispatch-list">
-          {visibleDepartures.map((item) => (
-            <button
-              type="button"
-              key={item.id}
-              className={editing?.id === item.id ? "selected" : ""}
-              onClick={() => {setEditing(item);updateFilter('departure',item.id)}}
-            >
-              <b>{item.tripTitle}</b>
-              <span>
-                {new Date(item.departsAt).toLocaleString("zh-CN", {
-                  timeZone: "Asia/Tokyo",
-                })}
-              </span>
-              <small>
-                ¥{item.price} · {item.committedSeats}/{item.capacity}席 · 已付款{" "}
-                {item.paidOrders} 单 · {item.status} · v{item.version}
-              </small>
-            </button>
-          ))}
-        </div>
-        {!notice&&visibleDepartures.length===0&&<p className="operations-empty">当前日期、状态和路线筛选范围内没有班次。</p>}
+        <div className="departure-calendar-toolbar"><div><button type="button" onClick={() => updateFilter('month', shiftMonth(month, -1))}>上个月</button><button type="button" onClick={() => updateFilter('month', currentJapanMonth())}>本月</button><button type="button" onClick={() => updateFilter('month', shiftMonth(month, 1))}>下个月</button></div><strong>{month.replace('-', '年')}月</strong><label>状态<select value={statusFilter} onChange={event=>updateFilter('status',event.target.value)}><option value="all">全部状态</option><option value="open">销售中</option><option value="closed">停售</option><option value="cancelled">已取消</option><option value="draft">草稿</option></select></label></div>
+        {loadingCalendar ? <p className="operations-empty">正在读取班次月历…</p> : notice ? <p className="operations-error">{notice}</p> : <DepartureMonthCalendar month={month} departures={calendarDepartures.filter(item=>statusFilter==='all'||item.status===statusFilter)} selectedRoute={routeFilter} selectedDeparture={editing?.id ?? ''} onRouteChange={(value) => updateFilter('route', value)} onSelect={(item) => {setEditing(item);updateFilter('departure', item.id);}} />}
+        {!loadingCalendar&&!notice&&visibleDepartures.length===0&&<p className="operations-empty">当前月份和状态范围内没有班次。</p>}
         {editing && (
           <form
             key={`${editing.id}:${editing.version}`}

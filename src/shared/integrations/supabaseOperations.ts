@@ -288,6 +288,31 @@ export type OperationsEditableDeparture = {
   mapLng: number;
   paidOrders: number;
 };
+export type OperationsDepartureVehicle = {
+  assignmentId: string;
+  sequence: number;
+  plannedPassengers: number;
+  assignmentCapacity: number;
+  vehicleType: string;
+  vehicleLabel: string | null;
+  taskId: string | null;
+  taskStatus: string | null;
+  driverId: string | null;
+  vehicleId: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  vehicleCode: string | null;
+  vehicleModel: string | null;
+  sellableCapacity: number | null;
+  driverName: string | null;
+};
+export type OperationsCalendarDeparture = OperationsEditableDeparture & {
+  tripId: string;
+  bookingClosesAt: string;
+  paidPassengers: number;
+  dispatchPlanningStatus: string;
+  vehicles: OperationsDepartureVehicle[];
+};
 export type OperationsDriverStatistic = {
   driverId: string;
   driverName: string;
@@ -853,6 +878,40 @@ export class SupabaseOperationsRepository {
         mapLat: Number(row.map_lat),
         mapLng: Number(row.map_lng),
         paidOrders: Number(row.paid_orders ?? 0),
+      })),
+      error: error?.message ?? null,
+    };
+  }
+  async listDepartureCalendar(from: string, to: string) {
+    if (!this.client)
+      return {data: [] as OperationsCalendarDeparture[], error: "运营数据服务未配置"};
+    const {data, error} = await this.client.rpc("get_operations_departure_calendar", {
+      p_from: from,
+      p_to: to,
+    });
+    return {
+      data: ((data ?? []) as Array<Record<string, unknown>>).map((row) => ({
+        id: String(row.id),
+        tripId: String(row.trip_id),
+        tripTitle: String(row.trip_title),
+        departsAt: String(row.departs_at),
+        endsAt: String(row.ends_at),
+        price: Number(row.seat_price_jpy),
+        capacity: Number(row.capacity),
+        salesOpenAt: String(row.sales_open_at),
+        salesCloseAt: String(row.sales_close_at),
+        bookingClosesAt: String(row.booking_closes_at),
+        status: String(row.status),
+        version: Number(row.schedule_version),
+        committedSeats: Number(row.paid_passengers ?? 0),
+        paidPassengers: Number(row.paid_passengers ?? 0),
+        meetingName: String(row.meeting_name ?? ""),
+        meetingAddress: String(row.meeting_address ?? ""),
+        mapLat: Number(row.map_lat),
+        mapLng: Number(row.map_lng),
+        paidOrders: Number(row.paid_orders ?? 0),
+        dispatchPlanningStatus: String(row.dispatch_planning_status ?? "collecting"),
+        vehicles: Array.isArray(row.vehicles) ? row.vehicles as OperationsDepartureVehicle[] : [],
       })),
       error: error?.message ?? null,
     };
