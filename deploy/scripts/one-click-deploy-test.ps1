@@ -99,7 +99,7 @@ try {
   [IO.File]::WriteAllText((Join-Path $bundle 'BUILD_SOURCE.txt'), (($sourceLines -join "`n") + "`n"), [Text.UTF8Encoding]::new($false))
 
   $hashLines = Get-ChildItem (Join-Path $bundle 'dist') -Recurse -File | Sort-Object FullName | ForEach-Object {
-    $relative = [IO.Path]::GetRelativePath($bundle, $_.FullName).Replace('\', '/')
+    $relative = $_.FullName.Substring($bundle.Length).TrimStart([char]92, [char]47).Replace([char]92, '/')
     $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
     "$hash  $relative"
   }
