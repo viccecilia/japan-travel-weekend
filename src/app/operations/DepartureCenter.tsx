@@ -5,9 +5,12 @@ import type {
   OperationsCalendarDeparture,
   OperationsEditableDeparture,
   OperationsProduct,
+  OperationsSnapshot,
+  DispatchPlanDraft,
 } from "../../shared/integrations/supabaseOperations";
 import {DepartureMonthCalendar} from './DepartureMonthCalendar';
 import {currentJapanMonth, monthRange, shiftMonth} from './departureCalendar';
+import {ManualDispatchPanel} from './ManualDispatchPanel';
 const uuid = () => crypto.randomUUID();
 const japanLocalToIso = (value: string) =>
   new Date(`${value}:00+09:00`).toISOString();
@@ -39,6 +42,7 @@ export function DepartureCenter() {
   const routeFilter=searchParams.get('route')??'';
   const month=searchParams.get('month') || selectedDate.slice(0,7) || currentJapanMonth();
   const selectedDeparture=searchParams.get('departure')??'';
+  const dispatchMode=searchParams.get('dispatch')??'';
   const updateFilter=(key:string,value:string)=>{const next=new URLSearchParams(searchParams);if(value&&value!=='all')next.set(key,value);else next.delete(key);setSearchParams(next,{replace:true})};
   const [products, setProducts] = useState<OperationsProduct[]>([]);
   const [departures, setDepartures] = useState<OperationsEditableDeparture[]>(
@@ -46,6 +50,9 @@ export function DepartureCenter() {
   );
   const [calendarDepartures, setCalendarDepartures] = useState<OperationsCalendarDeparture[]>([]);
   const [loadingCalendar, setLoadingCalendar] = useState(true);
+  const [calendarError, setCalendarError] = useState('');
+  const [resources, setResources] = useState<OperationsSnapshot | null>(null);
+  const [resourceError, setResourceError] = useState('');
   const [editing, setEditing] = useState<OperationsEditableDeparture | null>(
     null,
   );
@@ -59,11 +66,10 @@ export function DepartureCenter() {
     const result = await services.operations.listDepartureCalendar(calendarWindow.from,calendarWindow.to);
     setCalendarDepartures(result.data);
     setDepartures(result.data);
-    setDepartures(result.data);
     setEditing(
       (current) => result.data.find((item) => item.id === (selectedDeparture||current?.id)) ?? null,
     );
-    if (result.error) setNotice(result.error);
+    setCalendarError(result.error ?? '');
   };
   useEffect(() => {
     let active = true;
@@ -79,13 +85,21 @@ export function DepartureCenter() {
         setDepartures(departureResult.data);
         setCalendarDepartures(departureResult.data);
         setEditing(departureResult.data.find(item=>item.id===selectedDeparture)??null);
-        setNotice(productResult.error ?? departureResult.error ?? "");
+        setNotice(productResult.error ?? "");
+        setCalendarError(departureResult.error ?? "");
         setLoadingCalendar(false);
       });
     return () => {
       active = false;
     };
   }, [services,month,selectedDeparture]);
+  useEffect(() => {
+    let active = true;
+    if (!services || dispatchMode !== 'manual' || !selectedDeparture) return () => {active = false;};
+    const window = monthRange(month);
+    void services.operations.loadSnapshot(window.from, window.to).then((result) => {if (active) {setResources(result.data); setResourceError(result.error ?? '');}});
+    return () => {active = false;};
+  }, [services, dispatchMode, selectedDeparture, month]);
   const visibleDepartures=departures.filter(item=>statusFilter==='all'||item.status===statusFilter);
   const onPreview = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -173,6 +187,14 @@ export function DepartureCenter() {
     );
     if (result.ok) await reloadDepartures();
   };
+  const saveDispatch = async (tasks: DispatchPlanDraft[]) => {
+    if (!services || !editing) return;
+    setBusy(true);
+    const result = await services.operations.saveDispatchPlan(editing.id, tasks);
+    setNotice(result.ok ? '配车草稿已保存并重新读取；尚未确认派单、公开车辆或发送通知。' : `配车草稿保存失败：${result.error ?? '未知错误'}`);
+    if (result.ok) await reloadDepartures();
+    setBusy(false);
+  };
   return (
     <main className="operations-page">
       <header className="operations-hero">
@@ -194,8 +216,9 @@ export function DepartureCenter() {
           <small>容量不能低于已锁定席位；旧订单合同不改写</small>
         </header>
         <div className="departure-calendar-toolbar"><div><button type="button" onClick={() => updateFilter('month', shiftMonth(month, -1))}>上个月</button><button type="button" onClick={() => updateFilter('month', currentJapanMonth())}>本月</button><button type="button" onClick={() => updateFilter('month', shiftMonth(month, 1))}>下个月</button></div><strong>{month.replace('-', '年')}月</strong><label>状态<select value={statusFilter} onChange={event=>updateFilter('status',event.target.value)}><option value="all">全部状态</option><option value="open">销售中</option><option value="closed">停售</option><option value="cancelled">已取消</option><option value="draft">草稿</option></select></label></div>
-        {loadingCalendar ? <p className="operations-empty">正在读取班次月历…</p> : notice ? <p className="operations-error">{notice}</p> : <DepartureMonthCalendar month={month} departures={calendarDepartures.filter(item=>statusFilter==='all'||item.status===statusFilter)} selectedRoute={routeFilter} selectedDeparture={editing?.id ?? ''} onRouteChange={(value) => updateFilter('route', value)} onSelect={(item) => {setEditing(item);updateFilter('departure', item.id);}} />}
-        {!loadingCalendar&&!notice&&visibleDepartures.length===0&&<p className="operations-empty">当前月份和状态范围内没有班次。</p>}
+        {loadingCalendar ? <p className="operations-empty">正在读取班次月历…</p> : calendarError ? <p className="operations-error">{calendarError}</p> : <DepartureMonthCalendar month={month} departures={calendarDepartures.filter(item=>statusFilter==='all'||item.status===statusFilter)} selectedRoute={routeFilter} selectedDeparture={editing?.id ?? ''} openSelected={dispatchMode !== 'manual'} onRouteChange={(value) => updateFilter('route', value)} onSelect={(item) => {setEditing(item);updateFilter('departure', item.id);}} />}
+        {!loadingCalendar&&!calendarError&&visibleDepartures.length===0&&<p className="operations-empty">当前月份和状态范围内没有班次。</p>}
+        {dispatchMode === 'manual' && editing && (resourceError ? <p className="operations-error">配车资源读取失败：{resourceError}</p> : resources ? <ManualDispatchPanel departure={calendarDepartures.find((item) => item.id === editing.id) ?? editing as OperationsCalendarDeparture} snapshot={resources} busy={busy} onSave={saveDispatch} /> : <p className="operations-empty">正在读取车辆与司机资源…</p>)}
         {editing && (
           <form
             key={`${editing.id}:${editing.version}`}
