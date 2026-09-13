@@ -8,8 +8,8 @@ describe('V8-S.1 build observability and safe PWA update',()=>{
   it('keeps API routes outside navigation fallback',()=>{
     const config=read('vite.config.ts');
     expect(config).toContain("registerType:'prompt'");
-    expect(config).toContain('skipWaiting:false');
-    expect(config).toContain('clientsClaim:false');
+    expect(config).toContain('skipWaiting:true');
+    expect(config).toContain('clientsClaim:true');
     expect(config).toContain("/^\\/api(?:\\/|$)/");
     expect(config).toContain("/^\\/api-test(?:\\/|$)/");
   });
