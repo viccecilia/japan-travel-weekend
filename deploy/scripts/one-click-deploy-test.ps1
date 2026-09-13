@@ -60,8 +60,16 @@ try {
 
   $status = Get-GitText @('status', '--short')
   $trackedChanges = Get-GitText @('diff', '--name-only', 'HEAD', '--', 'src', 'public', 'content-import', 'index.html', 'package.json', 'package-lock.json', 'vite.config.ts')
+  $untrackedChanges = Get-GitText @('ls-files', '--others', '--exclude-standard', '--', 'src', 'public', 'content-import', 'index.html', 'package.json', 'package-lock.json', 'vite.config.ts')
   $sourceStatus = (& git.exe status --short --untracked-files=all -- src public content-import index.html package.json package-lock.json vite.config.ts) -join "`n"
   if ($LASTEXITCODE -ne 0) { throw '无法读取构建来源状态' }
+  $changedSourcePaths = (($trackedChanges + "`n" + $untrackedChanges) -split "`n") | Where-Object { $_ } | Sort-Object -Unique
+  $changedSourceHashes = $changedSourcePaths | ForEach-Object {
+    $sourcePath = Join-Path $repo $_
+    if (Test-Path -LiteralPath $sourcePath -PathType Leaf) {
+      "$(Get-FileHash -LiteralPath $sourcePath -Algorithm SHA256 | Select-Object -ExpandProperty Hash)  $_"
+    }
+  }
 
   Write-Host "提交：$sha"
   if ($sourceStatus) {
@@ -95,6 +103,8 @@ try {
     $(if ($sourceStatus) { $sourceStatus } else { '(none)' })
     'Tracked build-related changes:'
     $(if ($trackedChanges) { $trackedChanges } else { '(none)' })
+    'Build-related uncommitted file SHA256:'
+    $(if ($changedSourceHashes) { $changedSourceHashes } else { '(none)' })
   )
   [IO.File]::WriteAllText((Join-Path $bundle 'BUILD_SOURCE.txt'), (($sourceLines -join "`n") + "`n"), [Text.UTF8Encoding]::new($false))
 
