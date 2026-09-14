@@ -1,8 +1,16 @@
-import {useEffect, useMemo, useState} from 'react';
+import {useMemo, useState} from 'react';
 import type {DispatchPlanDraft, OperationsCalendarDeparture, OperationsSnapshot} from '../../shared/integrations/supabaseOperations';
 import {validateVehicleAllocations} from './OrdersCenter';
 
 type Allocation = {vehicleId: string; driverId: string; passengers: number};
+
+const initialAllocations = (departure: OperationsCalendarDeparture): Allocation[] => departure.vehicles.length
+  ? departure.vehicles.map((item) => ({
+      vehicleId: item.vehicleId ?? '',
+      driverId: item.driverId ?? '',
+      passengers: item.plannedPassengers,
+    }))
+  : [{vehicleId: '', driverId: '', passengers: departure.paidPassengers}];
 
 export function ManualDispatchPanel({departure, snapshot, busy, onSave}: {
   departure: OperationsCalendarDeparture;
@@ -10,10 +18,7 @@ export function ManualDispatchPanel({departure, snapshot, busy, onSave}: {
   busy: boolean;
   onSave: (tasks: DispatchPlanDraft[]) => Promise<void>;
 }) {
-  const [allocations, setAllocations] = useState<Allocation[]>([]);
-  useEffect(() => {
-    setAllocations(departure.vehicles.length ? departure.vehicles.map((item) => ({vehicleId: item.vehicleId ?? '', driverId: item.driverId ?? '', passengers: item.plannedPassengers})) : [{vehicleId: '', driverId: '', passengers: departure.paidPassengers}]);
-  }, [departure.id, departure.version]);
+  const [allocations, setAllocations] = useState<Allocation[]>(() => initialAllocations(departure));
   const validation = useMemo(() => validateVehicleAllocations({allocations, plannedPassengers: departure.paidPassengers, vehicles: snapshot.vehicles, vehicleTypes: snapshot.vehicleTypes}), [allocations, departure.paidPassengers, snapshot]);
   const setRow = (index: number, patch: Partial<Allocation>) => setAllocations((rows) => rows.map((row, rowIndex) => rowIndex === index ? {...row, ...patch} : row));
   const save = async () => {

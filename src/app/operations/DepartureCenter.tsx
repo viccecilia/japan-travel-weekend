@@ -49,7 +49,11 @@ export function DepartureCenter() {
     [],
   );
   const [calendarDepartures, setCalendarDepartures] = useState<OperationsCalendarDeparture[]>([]);
-  const [loadingCalendar, setLoadingCalendar] = useState(true);
+  const [loadedCalendarRequest, setLoadedCalendarRequest] = useState<{
+    services: typeof services;
+    month: string;
+    selectedDeparture: string;
+  } | null>(null);
   const [calendarError, setCalendarError] = useState('');
   const [resources, setResources] = useState<OperationsSnapshot | null>(null);
   const [resourceError, setResourceError] = useState('');
@@ -73,7 +77,6 @@ export function DepartureCenter() {
   };
   useEffect(() => {
     let active = true;
-    setLoadingCalendar(true);
     const calendarWindow=monthRange(month);
     if (services)
       void Promise.all([
@@ -87,12 +90,17 @@ export function DepartureCenter() {
         setEditing(departureResult.data.find(item=>item.id===selectedDeparture)??null);
         setNotice(productResult.error ?? "");
         setCalendarError(departureResult.error ?? "");
-        setLoadingCalendar(false);
+        setLoadedCalendarRequest({services, month, selectedDeparture});
       });
     return () => {
       active = false;
     };
   }, [services,month,selectedDeparture]);
+  const loadingCalendar = Boolean(services) && (
+    loadedCalendarRequest?.services !== services
+    || loadedCalendarRequest?.month !== month
+    || loadedCalendarRequest?.selectedDeparture !== selectedDeparture
+  );
   useEffect(() => {
     let active = true;
     if (!services || dispatchMode !== 'manual' || !selectedDeparture) return () => {active = false;};
@@ -216,9 +224,9 @@ export function DepartureCenter() {
           <small>容量不能低于已锁定席位；旧订单合同不改写</small>
         </header>
         <div className="departure-calendar-toolbar"><div><button type="button" onClick={() => updateFilter('month', shiftMonth(month, -1))}>上个月</button><button type="button" onClick={() => updateFilter('month', currentJapanMonth())}>本月</button><button type="button" onClick={() => updateFilter('month', shiftMonth(month, 1))}>下个月</button></div><strong>{month.replace('-', '年')}月</strong><label>状态<select value={statusFilter} onChange={event=>updateFilter('status',event.target.value)}><option value="all">全部状态</option><option value="open">销售中</option><option value="closed">停售</option><option value="cancelled">已取消</option><option value="draft">草稿</option></select></label></div>
-        {loadingCalendar ? <p className="operations-empty">正在读取班次月历…</p> : calendarError ? <p className="operations-error">{calendarError}</p> : <DepartureMonthCalendar month={month} departures={calendarDepartures.filter(item=>statusFilter==='all'||item.status===statusFilter)} selectedRoute={routeFilter} selectedDeparture={editing?.id ?? ''} openSelected={dispatchMode !== 'manual'} onRouteChange={(value) => updateFilter('route', value)} onSelect={(item) => {setEditing(item);updateFilter('departure', item.id);}} />}
+        {loadingCalendar ? <p className="operations-empty">正在读取班次月历…</p> : calendarError ? <p className="operations-error">{calendarError}</p> : <DepartureMonthCalendar key={`calendar:${month}:${editing?.id ?? ''}:${dispatchMode}`} month={month} departures={calendarDepartures.filter(item=>statusFilter==='all'||item.status===statusFilter)} selectedRoute={routeFilter} selectedDeparture={editing?.id ?? ''} openSelected={dispatchMode !== 'manual'} onRouteChange={(value) => updateFilter('route', value)} onSelect={(item) => {setEditing(item);updateFilter('departure', item.id);}} />}
         {!loadingCalendar&&!calendarError&&visibleDepartures.length===0&&<p className="operations-empty">当前月份和状态范围内没有班次。</p>}
-        {dispatchMode === 'manual' && editing && (resourceError ? <p className="operations-error">配车资源读取失败：{resourceError}</p> : resources ? <ManualDispatchPanel departure={calendarDepartures.find((item) => item.id === editing.id) ?? editing as OperationsCalendarDeparture} snapshot={resources} busy={busy} onSave={saveDispatch} /> : <p className="operations-empty">正在读取车辆与司机资源…</p>)}
+        {dispatchMode === 'manual' && editing && (resourceError ? <p className="operations-error">配车资源读取失败：{resourceError}</p> : resources ? <ManualDispatchPanel key={`dispatch:${editing.id}:${editing.version}`} departure={calendarDepartures.find((item) => item.id === editing.id) ?? editing as OperationsCalendarDeparture} snapshot={resources} busy={busy} onSave={saveDispatch} /> : <p className="operations-empty">正在读取车辆与司机资源…</p>)}
         {editing && (
           <form
             key={`${editing.id}:${editing.version}`}

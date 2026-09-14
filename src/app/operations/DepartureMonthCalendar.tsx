@@ -1,4 +1,4 @@
-import {useEffect, useState, type CSSProperties} from 'react';
+import {useState, type CSSProperties} from 'react';
 import {Link} from 'react-router-dom';
 import type {OperationsCalendarDeparture} from '../../shared/integrations/supabaseOperations';
 import {calendarDays, japanDateKey, routeLegend, vehicleCodes} from './departureCalendar';
@@ -17,7 +17,6 @@ export function DepartureMonthCalendar({month, departures, selectedRoute, select
   onSelect: (item: OperationsCalendarDeparture) => void;
 }) {
   const [popoverOpen, setPopoverOpen] = useState(Boolean(selectedDeparture) && openSelected);
-  useEffect(() => { if (selectedDeparture && openSelected) setPopoverOpen(true); }, [selectedDeparture, openSelected]);
   const days = calendarDays(month);
   const legend = routeLegend(departures);
   const presentation = new Map(legend.map((item) => [item.id, item]));
