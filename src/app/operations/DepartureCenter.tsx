@@ -214,24 +214,16 @@ export function DepartureCenter() {
   const changeTarget=calendarDepartures.flatMap(departure=>departure.vehicles.map(vehicle=>({departure,vehicle}))).find(item=>item.vehicle.vehicleGroupId===groupChangeId);
   return (
     <main className="operations-page">
-      <header className="operations-hero">
+      <header className="departure-calendar-page-head">
         <div>
-          <span>DEPARTURES & PRICING</span>
-          <h1>班次与价格</h1>
-          <p>所有时间按日本时间；新建先预览，修改使用版本锁避免覆盖。</p>
+          <span>产品与班次 / 班次日历</span>
+          <h1>班次日历</h1>
         </div>
         <Link className="button secondary" to="/app/operations">
           返回工作台
         </Link>
       </header>
-      <section className="operations-section">
-        <header>
-          <div>
-            <span>已有班次</span>
-            <h2>日期、集合、价格与截止时间调整</h2>
-          </div>
-          <small>容量不能低于已锁定席位；旧订单合同不改写</small>
-        </header>
+      <section className="operations-section departure-calendar-section">
         <div className="departure-calendar-toolbar"><div><button type="button" onClick={() => updateFilter('month', shiftMonth(month, -1))}>上个月</button><button type="button" onClick={() => updateFilter('month', currentJapanMonth())}>本月</button><button type="button" onClick={() => updateFilter('month', shiftMonth(month, 1))}>下个月</button></div><strong>{month.replace('-', '年')}月</strong><label>状态<select value={statusFilter} onChange={event=>updateFilter('status',event.target.value)}><option value="all">全部状态</option><option value="open">销售中</option><option value="closed">停售</option><option value="cancelled">已取消</option><option value="draft">草稿</option></select></label></div>
         {loadingCalendar ? <p className="operations-empty">正在读取班次月历…</p> : calendarError ? <p className="operations-error">{calendarError}</p> : <DepartureMonthCalendar key={`calendar:${month}:${editing?.id ?? ''}:${dispatchMode}`} month={month} departures={calendarDepartures.filter(item=>statusFilter==='all'||item.status===statusFilter)} selectedRoute={routeFilter} selectedDeparture={editing?.id ?? ''} openSelected={dispatchMode !== 'manual'&&!groupChangeId} onRouteChange={(value) => updateFilter('route', value)} onSelect={(item) => {setEditing(item);updateFilter('departure', item.id);}} onChangeVehicleGroup={(departure,vehicle:OperationsDepartureVehicle)=>{setEditing(departure);const next=new URLSearchParams(searchParams);next.set('departure',departure.id);next.set('groupChange',vehicle.vehicleGroupId??'');next.delete('dispatch');setSearchParams(next,{replace:true})}} />}
         {!loadingCalendar&&!calendarError&&visibleDepartures.length===0&&<p className="operations-empty">当前月份和状态范围内没有班次。</p>}
