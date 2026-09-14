@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useApp } from "../store";
 import type {
   OperationsDriver,
   OperationsSnapshot,
   OperationsVehicle,
 } from "../../shared/integrations/supabaseOperations";
+import { OperationsEditorDialog } from "./OperationsEditorDialog";
 
 type ResourceKind = "staff" | "vehicles" | "requests";
 const statusText = (value: string) =>
@@ -35,7 +36,10 @@ export function ResourceCenter({ kind }: { kind: ResourceKind }) {
   );
   const [editingVehicle, setEditingVehicle] =
     useState<OperationsVehicle | null>(null);
-  const load = async () => {
+  const [creatingDriver, setCreatingDriver] = useState(false);
+  const [creatingVehicle, setCreatingVehicle] = useState(false);
+  const [editorDirty, setEditorDirty] = useState(false);
+  const load = useCallback(async () => {
     if (!services) {
       setError("运营数据服务未配置");
       return;
@@ -44,9 +48,22 @@ export function ResourceCenter({ kind }: { kind: ResourceKind }) {
     const result = await services.operations.loadSnapshot();
     setSnapshot(result.data);
     setError(result.error ?? "");
-  };
+  }, [services]);
   useEffect(() => {
-    void load();
+    let active = true;
+    void Promise.resolve().then(async () => {
+      if (!services) {
+        if (active) setError("运营数据服务未配置");
+        return;
+      }
+      const result = await services.operations.loadSnapshot();
+      if (!active) return;
+      setSnapshot(result.data);
+      setError(result.error ?? "");
+    });
+    return () => {
+      active = false;
+    };
   }, [services]);
   const drivers = useMemo(
     () =>
@@ -110,6 +127,55 @@ export function ResourceCenter({ kind }: { kind: ResourceKind }) {
     );
     if (result.ok) {
       setEditingVehicle(null);
+      await load();
+    }
+  };
+  const createDriver = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!services) return;
+    const form = new FormData(event.currentTarget);
+    setBusy("create-driver");
+    const ok = await services.operations.createDriver({
+      displayName: String(form.get("displayName") ?? "").trim(),
+      externalDispatchId: String(form.get("externalDispatchId") ?? "").trim(),
+      vehicleTypes: form.getAll("vehicleTypes").map(String),
+      languages: String(form.get("languages") ?? "")
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean),
+      availableFrom: new Date(String(form.get("availableFrom"))).toISOString(),
+      availableUntil: new Date(String(form.get("availableUntil"))).toISOString(),
+      serviceRole: String(form.get("serviceRole")) as
+        | "driver"
+        | "guide"
+        | "driver_guide",
+      publicPhone: String(form.get("publicPhone") ?? "").trim(),
+    });
+    setBusy("");
+    setNotice(ok ? "司导档案已新增并记录审计。" : "新增失败，请检查时间、车型资格、重复档案和运营权限。");
+    if (ok) {
+      setCreatingDriver(false);
+      setEditorDirty(false);
+      await load();
+    }
+  };
+  const createVehicle = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!services) return;
+    const form = new FormData(event.currentTarget);
+    setBusy("create-vehicle");
+    const ok = await services.operations.createVehicle({
+      registration: String(form.get("registration") ?? "").trim(),
+      vehicleType: String(form.get("vehicleType") ?? ""),
+      externalDispatchId: String(form.get("externalDispatchId") ?? "").trim(),
+      publicColor: String(form.get("color") ?? "").trim(),
+      publicPhotoUrl: String(form.get("photoUrl") ?? "").trim(),
+    });
+    setBusy("");
+    setNotice(ok ? "车辆档案已新增并记录审计。" : "新增失败，请检查车牌、车型和运营权限。");
+    if (ok) {
+      setCreatingVehicle(false);
+      setEditorDirty(false);
       await load();
     }
   };
@@ -189,6 +255,7 @@ export function ResourceCenter({ kind }: { kind: ResourceKind }) {
           )}
           {kind === "staff" && (
             <section className="operations-section">
+              <header><div><span>人员档案</span><h2>司导列表</h2></div><button type="button" onClick={() => { setEditorDirty(false); setCreatingDriver(true); }}>新增人员</button></header>
               <div className="operations-dispatch-list">
                 {drivers.map((item) => (
                   <article key={item.id}>
@@ -205,7 +272,7 @@ export function ResourceCenter({ kind }: { kind: ResourceKind }) {
                       {item.private_phone ?? "内部联系方式待补"} ·{" "}
                       {item.employment_base ?? "营业所待补"}
                     </small>
-                    <button onClick={() => setEditingDriver(item)}>
+                    <button onClick={() => { setEditorDirty(false); setEditingDriver(item); }}>
                       编辑司导资料
                     </button>
                   </article>
@@ -215,6 +282,7 @@ export function ResourceCenter({ kind }: { kind: ResourceKind }) {
           )}
           {kind === "vehicles" && (
             <section className="operations-section">
+              <header><div><span>车辆档案</span><h2>车辆列表</h2></div><button type="button" onClick={() => { setEditorDirty(false); setCreatingVehicle(true); }}>新增车辆</button></header>
               <div className="operations-dispatch-list">
                 {vehicles.map((item) => (
                   <article key={item.id}>
@@ -233,7 +301,7 @@ export function ResourceCenter({ kind }: { kind: ResourceKind }) {
                         : "车检状态无阻塞"}
                       {item.operations_note ? ` · ${item.operations_note}` : ""}
                     </small>
-                    <button onClick={() => setEditingVehicle(item)}>
+                    <button onClick={() => { setEditorDirty(false); setEditingVehicle(item); }}>
                       编辑车辆资料
                     </button>
                   </article>
@@ -355,8 +423,9 @@ export function ResourceCenter({ kind }: { kind: ResourceKind }) {
         </>
       )}
       {editingDriver && (
-        <form className="operations-section" onSubmit={saveDriver}>
-          <h2>编辑司导资料</h2>
+        <OperationsEditorDialog title="编辑司导资料" eyebrow="STAFF PROFILE" description="公开称呼与联系方式、内部资料分区保存；停用状态不会被自动启用。" dirty={editorDirty} busy={busy === editingDriver.id} onClose={() => { setEditingDriver(null); setEditorDirty(false); }} footer={<div className="operations-task-actions"><button type="button" onClick={() => { setEditingDriver(null); setEditorDirty(false); }}>取消</button><button form="edit-driver-form" disabled={busy === editingDriver.id}>{busy === editingDriver.id ? "正在保存…" : "保存修改"}</button></div>}>
+        <form id="edit-driver-form" className="operations-dialog-fields" onChange={() => setEditorDirty(true)} onSubmit={saveDriver}>
+          <div className="operations-dialog-section"><h3>档案标识</h3><p>{editingDriver.employee_code ?? "编号待补"} · {editingDriver.employment_base ?? "营业所待补"} · {(editingDriver.languages ?? []).join(" / ") || "语言待补"}</p></div>
           <label>
             显示名
             <input
@@ -406,18 +475,13 @@ export function ResourceCenter({ kind }: { kind: ResourceKind }) {
               defaultValue={editingDriver.operations_note ?? ""}
             />
           </label>
-          <div className="operations-task-actions">
-            <button disabled={busy === editingDriver.id}>保存</button>
-            <button type="button" onClick={() => setEditingDriver(null)}>
-              取消
-            </button>
-          </div>
         </form>
+        </OperationsEditorDialog>
       )}
       {editingVehicle && (
-        <form className="operations-section" onSubmit={saveVehicle}>
-          <h2>编辑车辆资料</h2>
-          <p>{editingVehicle.registration_identifier}</p>
+        <OperationsEditorDialog title="编辑车辆资料" eyebrow="FLEET PROFILE" description={`${editingVehicle.registration_identifier} · 实车容量独立于车型默认值保存。`} dirty={editorDirty} busy={busy === editingVehicle.id} onClose={() => { setEditingVehicle(null); setEditorDirty(false); }} footer={<div className="operations-task-actions"><button type="button" onClick={() => { setEditingVehicle(null); setEditorDirty(false); }}>取消</button><button form="edit-vehicle-form" disabled={busy === editingVehicle.id}>{busy === editingVehicle.id ? "正在保存…" : "保存修改"}</button></div>}>
+        <form id="edit-vehicle-form" className="operations-dialog-fields" onChange={() => setEditorDirty(true)} onSubmit={saveVehicle}>
+          <div className="operations-dialog-section"><h3>车辆标识</h3><p>{editingVehicle.registration_identifier} · 车型代码 {editingVehicle.vehicle_type_key}</p></div>
           <label>
             状态
             <select name="status" defaultValue={editingVehicle.status}>
@@ -477,13 +541,33 @@ export function ResourceCenter({ kind }: { kind: ResourceKind }) {
               defaultValue={editingVehicle.operations_note ?? ""}
             />
           </label>
-          <div className="operations-task-actions">
-            <button disabled={busy === editingVehicle.id}>保存</button>
-            <button type="button" onClick={() => setEditingVehicle(null)}>
-              取消
-            </button>
-          </div>
         </form>
+        </OperationsEditorDialog>
+      )}
+      {creatingDriver && snapshot && (
+        <OperationsEditorDialog title="新增人员档案" eyebrow="NEW STAFF" description="使用现有人员接口建立档案；不会自动创建登录账号或启用推广资格。" dirty={editorDirty} busy={busy === "create-driver"} onClose={() => { setCreatingDriver(false); setEditorDirty(false); }} footer={<div className="operations-task-actions"><button type="button" onClick={() => { setCreatingDriver(false); setEditorDirty(false); }}>取消</button><button form="create-driver-form" disabled={busy === "create-driver"}>{busy === "create-driver" ? "正在保存…" : "新增人员"}</button></div>}>
+          <form id="create-driver-form" className="operations-dialog-fields" onChange={() => setEditorDirty(true)} onSubmit={createDriver}>
+            <label>显示名<input name="displayName" required /></label>
+            <label>外部调度编号<input name="externalDispatchId" /></label>
+            <label>职责<select name="serviceRole" defaultValue="driver"><option value="driver">司机</option><option value="guide">导游</option><option value="driver_guide">司兼导</option></select></label>
+            <label>游客可见电话<input name="publicPhone" /></label>
+            <label>可用开始时间<input name="availableFrom" type="datetime-local" required /></label>
+            <label>可用结束时间<input name="availableUntil" type="datetime-local" required /></label>
+            <label className="full">服务语言（逗号分隔）<input name="languages" placeholder="zh-CN, ja-JP" /></label>
+            <fieldset className="operations-dialog-section"><legend>准驾车型</legend>{snapshot.vehicleTypes.map((type) => <label className="check" key={type.type_key}><input name="vehicleTypes" type="checkbox" value={type.type_key} /><span>{type.label} · 默认 {type.sellable_capacity} 席</span></label>)}</fieldset>
+          </form>
+        </OperationsEditorDialog>
+      )}
+      {creatingVehicle && snapshot && (
+        <OperationsEditorDialog title="新增车辆档案" eyebrow="NEW VEHICLE" description="新增后保持接口定义的初始状态；实际可售容量可在编辑弹窗中按实车资料调整。" dirty={editorDirty} busy={busy === "create-vehicle"} onClose={() => { setCreatingVehicle(false); setEditorDirty(false); }} footer={<div className="operations-task-actions"><button type="button" onClick={() => { setCreatingVehicle(false); setEditorDirty(false); }}>取消</button><button form="create-vehicle-form" disabled={busy === "create-vehicle"}>{busy === "create-vehicle" ? "正在保存…" : "新增车辆"}</button></div>}>
+          <form id="create-vehicle-form" className="operations-dialog-fields" onChange={() => setEditorDirty(true)} onSubmit={createVehicle}>
+            <label>完整车牌<input name="registration" required /></label>
+            <label>车型<select name="vehicleType" required defaultValue=""><option value="" disabled>选择车型</option>{snapshot.vehicleTypes.map((type) => <option key={type.type_key} value={type.type_key}>{type.label} · 默认 {type.sellable_capacity} 席</option>)}</select></label>
+            <label>外部调度编号<input name="externalDispatchId" /></label>
+            <label>公开颜色<input name="color" /></label>
+            <label className="full">公开照片地址<input name="photoUrl" type="url" /></label>
+          </form>
+        </OperationsEditorDialog>
       )}
     </main>
   );
