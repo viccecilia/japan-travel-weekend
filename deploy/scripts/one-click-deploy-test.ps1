@@ -107,7 +107,6 @@ try {
   Invoke-Checked npm.cmd @('run', 'check:launch')
 
   Copy-Item -LiteralPath (Join-Path $repo 'dist') -Destination (Join-Path $bundle 'dist') -Recurse
-  Copy-Item -LiteralPath (Join-Path $repo 'deploy\nginx\weekend-test.conf') -Destination (Join-Path $bundle 'weekend-test.conf')
   Copy-Item -LiteralPath (Join-Path $repo 'deploy\nginx\weekend-test-common.conf') -Destination (Join-Path $bundle 'weekend-test-common.conf')
   [IO.File]::WriteAllText((Join-Path $bundle 'RELEASE_SHA'), "$sha`n", [Text.UTF8Encoding]::new($false))
 
@@ -138,9 +137,7 @@ set -euo pipefail
 switched=0
 previous=''
 nginx_changed=0
-nginx_site=/etc/nginx/sites-available/jtw-weekend-test
 nginx_common=/etc/nginx/snippets/jtw-weekend-test-common.conf
-nginx_site_backup=''
 nginx_common_backup=''
 rollback_on_error() {
   status=`$?
@@ -150,7 +147,6 @@ rollback_on_error() {
     echo "ROLLBACK_RESTORED=`$previous" >&2
   fi
   if [ "`$nginx_changed" = 1 ]; then
-    if [ -n "`$nginx_site_backup" ] && sudo test -f "`$nginx_site_backup"; then sudo cp "`$nginx_site_backup" "`$nginx_site"; fi
     if [ -n "`$nginx_common_backup" ] && sudo test -f "`$nginx_common_backup"; then sudo cp "`$nginx_common_backup" "`$nginx_common"; fi
     sudo nginx -t && sudo systemctl reload nginx || true
     echo "NGINX_CONFIG_ROLLBACK_RESTORED=1" >&2
@@ -165,7 +161,6 @@ current=/var/www/japan-travel-weekend-test
 expected=$sha
 test -s "`$bundle/dist/index.html"
 test -s "`$bundle/dist/sw.js"
-test -s "`$bundle/weekend-test.conf"
 test -s "`$bundle/weekend-test-common.conf"
 test "`$(tr -d '\r\n ' < "`$bundle/RELEASE_SHA")" = "`$expected"
 test ! -e "`$release"
@@ -180,13 +175,9 @@ printf '%s\n' "`$previous" | sudo tee "`$release/ROLLBACK_FROM" >/dev/null
 sudo chown -R root:root "`$release"
 sudo find "`$release" -type d -exec chmod 0755 {} +
 sudo find "`$release" -type f -exec chmod 0644 {} +
-nginx_site_backup="`$release/nginx-site.before"
 nginx_common_backup="`$release/nginx-common.before"
-if sudo test -f "`$nginx_site"; then sudo cp "`$nginx_site" "`$nginx_site_backup"; fi
 if sudo test -f "`$nginx_common"; then sudo cp "`$nginx_common" "`$nginx_common_backup"; fi
-sudo install -m 0644 "`$bundle/weekend-test.conf" "`$nginx_site"
 sudo install -m 0644 "`$bundle/weekend-test-common.conf" "`$nginx_common"
-sudo ln -sfn "`$nginx_site" /etc/nginx/sites-enabled/jtw-weekend-test
 nginx_changed=1
 sudo nginx -t
 sudo ln -sfn "`$release" "`$current"
