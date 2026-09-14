@@ -1,21 +1,50 @@
-import {fireEvent,render,screen,waitFor} from '@testing-library/react';
+import {cleanup,fireEvent,render,screen,waitFor,within} from '@testing-library/react';
 import {MemoryRouter,Route,Routes} from 'react-router-dom';
 import {readFileSync} from 'node:fs';
-import {describe,expect,it,vi} from 'vitest';
+import {afterEach,describe,expect,it,vi} from 'vitest';
 import {VipCharter} from '../src/app/VipCharter';
 import {AppProvider} from '../src/app/store';
 import type {ProductionBrowserServices} from '../src/shared/backend/productionServices';
+
+afterEach(cleanup);
 
 const route={departureId:'dep-1',tripId:'trip-1',tripSlug:'amanohashidate-ine',tripTitle:'海之京都：天桥立与伊根舟屋一日游',departsAt:'2026-09-20T23:40:00.000Z',baseSeatPriceJpy:5500,heroImageUrl:'/images/amanohashidate-ine.jpg',stops:['天桥立','伊根舟屋']};
 const services=()=>({
   loadPublishedCatalog:vi.fn().mockResolvedValue({data:[],error:null}),loadSellableDepartures:vi.fn().mockResolvedValue({data:[],error:null}),
   onAuthStateChange:vi.fn().mockReturnValue(()=>{}),currentUser:vi.fn().mockResolvedValue({email:'passenger@example.test'}),
   loadVipCharterRoutePrices:vi.fn().mockResolvedValue({data:[route],error:null}),
-  quoteVipCharter:vi.fn(async(_id:string,_pax:number,vehicle:'alphard'|'hiace')=>({data:{departureId:'dep-1',tripId:'trip-1',serviceDate:'2026-09-21',vehicleType:vehicle,baseSeatPriceJpy:5500,pricingFactor:vehicle==='alphard'?6:8,pickupFeeJpy:2000,totalJpy:vehicle==='alphard'?35000:46000},error:null})),
+  quoteVipCharter:vi.fn(async(_id:string,_pax:number,vehicle:'alphard'|'hiace',englishDriver=false)=>({data:{departureId:'dep-1',tripId:'trip-1',serviceDate:'2026-09-21',vehicleType:vehicle,baseSeatPriceJpy:5500,pricingFactor:vehicle==='alphard'?6:8,pickupFeeJpy:2000,englishDriver,englishDriverFeeJpy:englishDriver?5000:0,totalJpy:(vehicle==='alphard'?35000:46000)+(englishDriver?5000:0)},error:null})),
   loadOwnVipCharterRequests:vi.fn().mockResolvedValue({data:[],error:null}),submitVipCharterRequest:vi.fn().mockResolvedValue({data:{requestId:'11111111-1111-1111-1111-111111111111',status:'pending_operations',totalJpy:35000,createdAt:'2026-09-14T00:00:00Z'},error:null}),
 }) as unknown as ProductionBrowserServices;
 
 describe('VIP charter quote flow',()=>{
+  it('shows order information and requests an English-driver quote without exposing the pricing formula',async()=>{
+    const api=services();
+    render(<MemoryRouter initialEntries={['/app/vip-charter?date=2026-09-21&passengers=4']}><AppProvider services={api}><VipCharter/></AppProvider></MemoryRouter>);
+    await screen.findByText('¥35,000／车');
+    fireEvent.click(screen.getAllByText('选择此行程')[0]);
+    const form=within(document.getElementById('vip-charter-request')!);
+    expect(form.getByText('订单信息')).toBeInTheDocument();
+    expect(form.getByText('2026-09-21')).toBeInTheDocument();
+    expect(form.getByText('阿尔法')).toBeInTheDocument();
+    expect(form.getByText('¥35,000／车')).toBeInTheDocument();
+    for(const label of ['当日每席价格','车型报价系数','同一接送点接送费']) expect(form.queryByText(label)).not.toBeInTheDocument();
+    fireEvent.change(form.getByLabelText('大阪市内接送地址'),{target:{value:'大阪市北区梅田1-1'}});
+    const checkbox=form.getByRole('checkbox',{name:'英语司机 +¥5,000'});
+    fireEvent.click(checkbox);
+    await waitFor(()=>expect(form.getByText('¥40,000／车')).toBeInTheDocument());
+    expect(api.quoteVipCharter).toHaveBeenCalledWith('dep-1',4,'alphard',true);
+    expect(form.getByLabelText('大阪市内接送地址')).toHaveValue('大阪市北区梅田1-1');
+    fireEvent.click(checkbox);
+    await waitFor(()=>expect(form.getByText('¥35,000／车')).toBeInTheDocument());
+    fireEvent.click(checkbox);
+    await waitFor(()=>expect(form.getByText('¥40,000／车')).toBeInTheDocument());
+    fireEvent.click(form.getByRole('button',{name:'提交包车需求'}));
+    await waitFor(()=>expect(api.submitVipCharterRequest).toHaveBeenCalledWith(expect.objectContaining({englishDriver:true,passengerCount:4})));
+    const submitted=vi.mocked(api.submitVipCharterRequest).mock.calls[0][0];
+    expect(submitted).not.toHaveProperty('totalJpy');
+  });
+
   it('shows server quotes, removes Alphard above four people, and submits the selected snapshot',async()=>{const api=services();render(<MemoryRouter initialEntries={['/app/vip-charter?date=2026-09-21&passengers=1']}><AppProvider services={api}><Routes><Route path="/app/vip-charter" element={<VipCharter/>}/></Routes></AppProvider></MemoryRouter>);expect(await screen.findByText('¥35,000／车')).toBeInTheDocument();expect(screen.getByText('¥46,000／车')).toBeInTheDocument();fireEvent.change(screen.getByLabelText('出行人数'),{target:{value:'5'}});await waitFor(()=>expect(screen.queryByText('阿尔法 1–4人')).not.toBeInTheDocument());expect(screen.getByText('海狮 最多9人')).toBeInTheDocument();fireEvent.change(screen.getByLabelText('出行人数'),{target:{value:'4'}});expect(await screen.findByText('阿尔法 1–4人')).toBeInTheDocument();fireEvent.click(screen.getAllByText('选择此行程')[0]);fireEvent.change(screen.getByLabelText('大阪市内接送地址'),{target:{value:'大阪市北区梅田1-1'}});fireEvent.click(screen.getByRole('button',{name:'提交包车需求'}));await waitFor(()=>expect(api.submitVipCharterRequest).toHaveBeenCalledWith(expect.objectContaining({departureId:'dep-1',passengerCount:4,vehicleType:'alphard',pickupWard:'北区'})));expect(await screen.findByText(/包车需求已提交/)).toBeInTheDocument()});
   it('keeps the corporate group inquiry separate in source routes',()=>{const router=readFileSync('src/router/Router.tsx','utf8');const home=readFileSync('src/app/App.tsx','utf8');expect(router).toContain('path="/app/vip-charter"');expect(router).toContain('path="/app/private-groups"');expect(home).toContain('className="passenger-vip-card" to="/app/vip-charter"');expect(home).toContain('className="passenger-private-card" to="/app/private-groups"')});
 });
