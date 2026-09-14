@@ -30,6 +30,21 @@ function Get-GitText {
   return ($value -join "`n").Trim()
 }
 
+function Get-Sha256 {
+  param([Parameter(Mandatory)][string]$Path)
+  $stream = [IO.File]::OpenRead($Path)
+  try {
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try {
+      return ([BitConverter]::ToString($sha.ComputeHash($stream))).Replace('-', '').ToLowerInvariant()
+    } finally {
+      $sha.Dispose()
+    }
+  } finally {
+    $stream.Dispose()
+  }
+}
+
 try {
   Write-Host 'Japan Travel Weekend 测试站一键部署' -ForegroundColor Cyan
   Write-Host '关闭窗口不会回滚已成功完成的发布。部署过程中请保持窗口打开。'
@@ -67,7 +82,7 @@ try {
   $changedSourceHashes = $changedSourcePaths | ForEach-Object {
     $sourcePath = Join-Path $repo $_
     if (Test-Path -LiteralPath $sourcePath -PathType Leaf) {
-      "$(Get-FileHash -LiteralPath $sourcePath -Algorithm SHA256 | Select-Object -ExpandProperty Hash)  $_"
+      "$(Get-Sha256 -Path $sourcePath)  $_"
     }
   }
 
@@ -110,7 +125,7 @@ try {
 
   $hashLines = Get-ChildItem (Join-Path $bundle 'dist') -Recurse -File | Sort-Object FullName | ForEach-Object {
     $relative = $_.FullName.Substring($bundle.Length).TrimStart([char]92, [char]47).Replace([char]92, '/')
-    $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+    $hash = Get-Sha256 -Path $_.FullName
     "$hash  $relative"
   }
   [IO.File]::WriteAllText((Join-Path $bundle 'CHECKSUMS.sha256'), (($hashLines -join "`n") + "`n"), [Text.UTF8Encoding]::new($false))
@@ -165,7 +180,7 @@ echo "DEPLOYED=$releaseId ROLLBACK_FROM=`$previous"
   [IO.File]::WriteAllText((Join-Path $bundle 'install.sh'), ($install.Replace("`r`n", "`n") + "`n"), [Text.UTF8Encoding]::new($false))
 
   Invoke-Checked tar.exe @('-czf', $archive, '-C', $runRoot, 'bundle')
-  $archiveHash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+  $archiveHash = Get-Sha256 -Path $archive
   [IO.File]::WriteAllText((Join-Path $runRoot 'ARCHIVE_SHA256.txt'), "$archiveHash  $releaseId.tar.gz`n", [Text.UTF8Encoding]::new($false))
   Write-Host "发布包已生成：$archive"
   Write-Host "压缩包 SHA256：$archiveHash"
