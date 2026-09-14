@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { appConfig } from "../shared/config/businessRules";
 import { describeAssistance } from "../shared/services/passengerAssistance";
 import { remoteChatAvailability } from "../shared/services/realtimeAccess";
@@ -117,7 +117,7 @@ export function MyTrip() {
               <b>{fulfilment.meeting_name ?? "集合地点待确认"}</b>
               <small>{fulfilment.meeting_address ?? "请留意最新通知"}</small>
             </div>
-            <Link className="button full" to="/app/my-trip/room">进入本车行程房间</Link>
+            <Link className="button full" to={`/app/my-trip/room?vehicleGroup=${encodeURIComponent(fulfilment.vehicle_group_id)}`}>进入本车行程房间</Link>
           </>
         ) : (
           <p className="notice">订单已付款，车辆分组和行程房间仍在准备中；准备完成后入口会自动开放。</p>
@@ -304,6 +304,8 @@ type RemoteRoom = {
 };
 function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
   const {state}=useApp();
+  const [searchParams]=useSearchParams();
+  const requestedVehicleGroup=searchParams.get('vehicleGroup');
   const locale=state.ui.locale??'zh-CN';
   const ui=(zh:string,en:string)=>locale==='en'?en:zh;
   const [loading, setLoading] = useState(true);
@@ -367,7 +369,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
             : (preference.target_language as ChatLanguage),
         );
       }
-      const result = await services.tripRoom.loadAccessibleRoom();
+      const result = await services.tripRoom.loadAccessibleRoom(requestedVehicleGroup);
       if (cancelled) return;
       if (result.error) {
         setError(result.error);
@@ -452,7 +454,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
       cancelled = true;
       subscription.current?.close();
     };
-  }, [services]);
+  }, [requestedVehicleGroup,services]);
   useEffect(() => {
     if (!room || room.room_status !== "open") return;
     const refresh = () => {

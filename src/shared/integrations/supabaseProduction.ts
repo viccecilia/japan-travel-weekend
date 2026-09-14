@@ -712,10 +712,10 @@ export class SupabaseTripRoomRepository {
   get available() {
     return this.client !== null;
   }
-  async loadAccessibleRoom() {
+  async loadAccessibleRoom(vehicleGroupId?:string|null) {
     if (!this.client) return { data: null, error: "行程房间服务未配置" };
     const { data, error } = await this.client
-      .rpc("get_accessible_trip_room")
+      .rpc(vehicleGroupId?"get_accessible_trip_room_by_group":"get_accessible_trip_room",vehicleGroupId?{p_vehicle_group:vehicleGroupId}:undefined)
       .maybeSingle();
     return error
       ? { data: null, error: "无法读取本车行程房间" }

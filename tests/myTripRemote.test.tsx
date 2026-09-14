@@ -26,7 +26,7 @@ describe('真实账户我的行程',()=>{
     render(<MemoryRouter><AppProvider services={services}><MyTrip/></AppProvider></MemoryRouter>);
     expect(await screen.findByText('已付款一日游')).toBeInTheDocument();
     expect(screen.getAllByText('大阪日本桥2号出口')).toHaveLength(2);
-    expect(screen.getByRole('link',{name:'进入本车行程房间'})).toHaveAttribute('href','/app/my-trip/room');
+    expect(screen.getByRole('link',{name:'进入本车行程房间'})).toHaveAttribute('href','/app/my-trip/room?vehicleGroup=group-1');
   });
   it('退款订单不会重新取得行程或群聊入口',async()=>{
     const {services,rpc}=servicesFor([{id:'order-refunded',departure_id:'dep-1',seat_count:2,status:'refunded'}],null);
