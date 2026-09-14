@@ -33,6 +33,20 @@ describe("departure selection", () => {
     expect(resolveDepartureSelection({ requestedId: "missing", selectedId: "valid", departures: [departure("valid", "2026-09-12T00:00:00Z")], resolved: true })).toEqual({ selectedId: "valid", invalidRequested: false });
   });
 
+  it("rejects sold-out and unpriced deep links without silently selecting another departure", () => {
+    const soldOut = { ...departure("full", "2026-09-12T00:00:00Z"), availableSeats: 0 };
+    const unpriced = { ...departure("pending", "2026-09-13T00:00:00Z"), price: null };
+    const sellable = departure("sellable", "2026-09-14T00:00:00Z");
+    expect(resolveDepartureSelection({ requestedId: "full", selectedId: "", departures: [soldOut, sellable], resolved: true })).toEqual({ selectedId: "", invalidRequested: true });
+    expect(resolveDepartureSelection({ requestedId: "pending", selectedId: "", departures: [unpriced, sellable], resolved: true })).toEqual({ selectedId: "", invalidRequested: true });
+  });
+
+  it("does not keep a selected departure after it becomes sold out", () => {
+    const soldOut = { ...departure("selected", "2026-09-12T00:00:00Z"), availableSeats: 0 };
+    const fallback = departure("fallback", "2026-09-13T00:00:00Z");
+    expect(resolveDepartureSelection({ requestedId: null, selectedId: "selected", departures: [soldOut, fallback], resolved: true })).toEqual({ selectedId: "fallback", invalidRequested: false });
+  });
+
   it("groups multiple departures on one day and labels cross-month inventory", () => {
     const grouped = groupDeparturesByMonth([
       departure("a", "2026-09-30T00:00:00Z"),

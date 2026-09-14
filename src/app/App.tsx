@@ -1300,35 +1300,35 @@ export function BookingPage() {
       {deps.length ? (
         <form className="form" onSubmit={submit}>
           {invalidRequestedDeparture&&<p className="booking-note" role="alert">该班次已失效、已停售或不属于当前路线，请重新选择日期；系统不会自动替换为其他班次。</p>}
-          <fieldset className="departure-calendar">
+          <fieldset className="booking-departure-calendar">
             <legend>
               {b.selectDate} <small>{b.next30}</small>
             </legend>
-            {departureMonths.map(month=>{
+            <div className="booking-departure-months">{departureMonths.map(month=>{
               const firstDay=month.days[0]?.key;
               const firstWeekday=firstDay?new Intl.DateTimeFormat(locale,{timeZone:'Asia/Tokyo',weekday:'short'}).format(new Date(`${firstDay}T12:00:00+09:00`)):calendarWeekdays[0];
               const leading=Math.max(0,calendarWeekdays.indexOf(firstWeekday));
-              return <section className="departure-calendar-month" key={month.key}>
+              return <section className="booking-departure-calendar-month" key={month.key}>
                 <h3>{month.label}</h3>
-                <div className="departure-calendar-weekdays" aria-hidden="true">{calendarWeekdays.map(day=><span className={day===calendarWeekdays[5]||day===calendarWeekdays[6]?'weekend':''} key={day}>{day}</span>)}</div>
-                <div className="departure-calendar-grid">
-                  {Array.from({length:leading},(_,index)=><span className="calendar-blank" aria-hidden="true" key={`blank-${month.key}-${index}`}/>)}
+                <div className="booking-departure-calendar-weekdays" aria-hidden="true">{calendarWeekdays.map(day=><span className={day===calendarWeekdays[5]||day===calendarWeekdays[6]?'weekend':''} key={day}>{day}</span>)}</div>
+                <div className="booking-departure-calendar-grid">
+                  {Array.from({length:leading},(_,index)=><span className="booking-calendar-blank" aria-hidden="true" key={`blank-${month.key}-${index}`}/>)}
                   {month.days.map(day=>{
                     const date=new Date(`${day.key}T12:00:00+09:00`);
                     const weekday=new Intl.DateTimeFormat(locale,{timeZone:'Asia/Tokyo',weekday:'short'}).format(date);
                     const weekend=weekday===calendarWeekdays[5]||weekday===calendarWeekdays[6];
-                    return <div className={`departure-calendar-day${weekend?' weekend':''}`} key={day.key}>
+                    return <div className={`booking-departure-calendar-day${weekend?' weekend':''}`} key={day.key}>
                       <b>{new Intl.DateTimeFormat(locale,{timeZone:'Asia/Tokyo',day:'numeric'}).format(date)}</b>
-                      {day.departures.map(d=><label className={effectiveDepartureId===d.id?'selected':''} key={d.id}>
+                      {day.departures.map(d=><label className={`booking-departure-option${effectiveDepartureId===d.id?' selected':''}`} key={d.id}>
                         <input required type="radio" name="departure" value={d.id} checked={effectiveDepartureId===d.id} disabled={d.price==null||d.availableSeats===0} onChange={()=>{setSelectedDeparture(d.id);if(requestedDepartureId)nav(location.pathname,{replace:true})}}/>
                         <span>{d.departureTime?new Intl.DateTimeFormat(locale,{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit'}).format(new Date(d.departureTime)):''}</span>
-                        <small>{d.price==null?b.pending:`¥${d.price.toLocaleString(locale)}`}</small>
+                        <small>{d.price==null?b.pending:d.availableSeats===0?b.soldOut:`¥${d.price.toLocaleString(locale)}`}</small>
                       </label>)}
                     </div>;
                   })}
                 </div>
               </section>;
-            })}
+            })}</div>
           </fieldset>
           {chosen && (
             <>
@@ -1413,7 +1413,6 @@ export function BookingPage() {
               </span>
             </div>
           )}
-          <h2 className="booking-subtitle">{b.people}</h2>
           <div className="form-row booking-party-grid">
             <label>
               {b.people}

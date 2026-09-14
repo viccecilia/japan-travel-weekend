@@ -50,7 +50,9 @@ export function resolveDepartureSelection(input: {
 }) {
   if (!input.resolved) return { selectedId: input.selectedId, invalidRequested: false };
   const available = (id: string | null) =>
-    Boolean(id && input.departures.some((item) => item.id === id));
+    Boolean(id && input.departures.some((item) =>
+      item.id === id && item.price != null && item.availableSeats !== 0,
+    ));
   if (available(input.selectedId)) {
     return { selectedId: input.selectedId, invalidRequested: false };
   }
