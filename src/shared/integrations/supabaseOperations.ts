@@ -292,6 +292,7 @@ export type OperationsDepartureVehicle = {
   assignmentId: string;
   sequence: number;
   plannedPassengers: number;
+  bookedPassengers?: number;
   assignmentCapacity: number;
   vehicleType: string;
   vehicleLabel: string | null;

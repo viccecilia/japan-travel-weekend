@@ -11,6 +11,13 @@ describe('运营班次月历数据', () => {
     expect(result.data[0]).toMatchObject({paidPassengers: 8, paidOrders: 3, vehicles: [{sellableCapacity: 21, plannedPassengers: 8}]});
   });
 
+  it('投影同时提供每车计划人数、已落实订单人数和实车容量', () => {
+    const sql = readFileSync('supabase/migrations/202609140133_calendar_group_allocation_projection.sql', 'utf8');
+    expect(sql).toContain("'plannedPassengers',va.planned_passengers");
+    expect(sql).toContain("'bookedPassengers',coalesce(va.booked_seats,0)");
+    expect(sql).toContain("'sellableCapacity',fv.sellable_capacity");
+  });
+
   it('数据库投影只统计已付款未取消订单并由运营权限保护', () => {
     const sql = readFileSync('supabase/migrations/202609130131_operations_compact_departure_calendar.sql', 'utf8');
     expect(sql).toContain("o.status in('paid','confirmed')");
