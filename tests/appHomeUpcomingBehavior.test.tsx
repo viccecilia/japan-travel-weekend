@@ -22,5 +22,14 @@ describe('游客首页合并近期出发板块',()=>{
     expect(card).toHaveTextContent('余 4');
     expect(document.querySelector('.passenger-route-rail')).toBeNull();
     expect(document.querySelector('.passenger-departure-row')).toBeNull();
+    const vip=screen.getByRole('link',{name:/VIP 专属包车/});
+    expect(vip).toHaveAttribute('href','/app/private-groups');
+    expect(vip).toHaveTextContent('和家人朋友，按自己的节奏出发');
+    expect(vip).toHaveTextContent('专车出行 · 酒店接送 · 阿尔法／海狮');
+    expect(vip).toHaveTextContent('查看包车方案 →');
+    const alert=document.querySelector('.passenger-alert-ribbon')!;
+    const upcoming=document.querySelector('.passenger-upcoming-heading')!;
+    expect(alert.compareDocumentPosition(vip)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(vip.compareDocumentPosition(upcoming)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

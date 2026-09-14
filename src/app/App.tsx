@@ -2,7 +2,6 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import {
   Link,
   Navigate,
-  NavLink,
   useLocation,
   useNavigate,
   useParams,
@@ -216,6 +215,14 @@ export function LanguageSelect({ compact = false }: { compact?: boolean }) {
   );
 }
 const compactTripMeta=(...parts:Array<string|undefined|null>)=>parts.map(value=>value?.trim()).filter(Boolean).join(' · ');
+type PassengerNavSection='home'|'trips'|'orders'|'messages'|'profile';
+const passengerNavSection=(pathname:string):PassengerNavSection=>{
+  if(pathname==='/app'||pathname.startsWith('/app/private-groups'))return 'home';
+  if(pathname.startsWith('/app/trips')||pathname.startsWith('/app/booking')||pathname.startsWith('/app/guides'))return 'trips';
+  if(pathname.startsWith('/app/orders')||pathname.startsWith('/app/passengers')||pathname.startsWith('/app/checkout')||pathname.startsWith('/app/payment')||pathname.startsWith('/app/boarding-pass'))return 'orders';
+  if(pathname.startsWith('/app/notifications')||pathname.startsWith('/app/my-trip')||pathname.startsWith('/app/ai-guide')||pathname.startsWith('/app/support'))return 'messages';
+  return 'profile';
+};
 export function AppShell({
   children,
   nav = false,
@@ -228,6 +235,14 @@ export function AppShell({
   const locale=app?.state.ui.locale ?? "zh-CN";
   const c=passengerCoreCopy[locale];
   const screen = pathname.split("/").filter(Boolean).slice(1, 2)[0] ?? "home";
+  const activeSection=passengerNavSection(pathname);
+  const navigation:Array<{id:PassengerNavSection,to:string,icon:string,label:string}>=[
+    {id:'home',to:'/app',icon:'⌂',label:c.home},
+    {id:'trips',to:'/app/trips',icon:'◇',label:locale==='zh-CN'?'选路线':locale==='zh-TW'?'選路線':c.trips},
+    {id:'orders',to:'/app/orders',icon:'▤',label:c.orders},
+    {id:'messages',to:'/app/notifications',icon:'◉',label:c.messages},
+    {id:'profile',to:'/app/profile',icon:'○',label:c.profile},
+  ];
   return (
     <div className="app-stage">
       <div className={`app-frame passenger-v2 screen-${screen}`}>
@@ -242,21 +257,7 @@ export function AppShell({
         <main className="app-content passenger-screen">{children}</main>
         {nav && (
           <nav className="bottom-nav" aria-label={app?.state.ui.locale === "ja" ? "アプリナビゲーション" : app?.state.ui.locale === "ko" ? "앱 탐색" : app?.state.ui.locale === "en" ? "App navigation" : app?.state.ui.locale === "es" ? "Navegación de la aplicación" : app?.state.ui.locale === "vi" ? "Điều hướng ứng dụng" : app?.state.ui.locale === "ne" ? "एप नेभिगेसन" : "应用导航"}>
-            <NavLink end to="/app">
-              ⌂<span>{c.home}</span>
-            </NavLink>
-            <NavLink to="/app/trips">
-              ◇<span>{locale === "zh-CN" ? "选路线" : locale === "zh-TW" ? "選路線" : c.trips}</span>
-            </NavLink>
-            <NavLink to="/app/orders">
-              ▤<span>{c.orders}</span>
-            </NavLink>
-            <NavLink to="/app/notifications">
-              ◉<span>{c.messages}</span>
-            </NavLink>
-            <NavLink to="/app/profile">
-              ○<span>{c.profile}</span>
-            </NavLink>
+            {navigation.map(item=><Link className={activeSection===item.id?'active':undefined} aria-current={activeSection===item.id?'page':undefined} key={item.id} to={item.to}><i aria-hidden="true">{item.icon}</i><span>{item.label}</span></Link>)}
           </nav>
         )}
       </div>
@@ -465,6 +466,17 @@ export function AppHome() {
   const localTrip=(trip:typeof trips[number])=>localizedTripSummary(locale,trip);
   const visibleDepartures=selectUpcomingDepartures(deps,trips.map(trip=>trip.slug));
   const upcomingTitle:Record<PassengerLocale,string>={'zh-CN':'近期出发','zh-TW':'近期出發',ja:'近日出発',en:'Upcoming departures',es:'Próximas salidas',vi:'Chuyến đi sắp tới',ne:'आगामी प्रस्थान',ko:'다가오는 출발'};
+  const vipCopy:Record<PassengerLocale,{eyebrow:string,title:string,text:string,features:string,action:string}>={
+    'zh-CN':{eyebrow:'VIP CHARTER',title:'VIP 专属包车',text:'和家人朋友，按自己的节奏出发',features:'专车出行 · 酒店接送 · 阿尔法／海狮',action:'查看包车方案 →'},
+    'zh-TW':{eyebrow:'VIP CHARTER',title:'VIP 專屬包車',text:'和家人朋友，按自己的節奏出發',features:'專車出行 · 飯店接送 · Alphard／Hiace',action:'查看包車方案 →'},
+    ja:{eyebrow:'VIP CHARTER',title:'VIP専用チャーター',text:'ご家族やご友人と、自分たちのペースで出発',features:'専用車 · ホテル送迎 · アルファード／ハイエース',action:'チャータープランを見る →'},
+    en:{eyebrow:'VIP CHARTER',title:'VIP private charter',text:'Travel with family and friends at your own pace',features:'Private vehicle · Hotel pickup · Alphard / Hiace',action:'View charter options →'},
+    es:{eyebrow:'VIP CHARTER',title:'Chárter VIP privado',text:'Viaja con familia y amigos a vuestro ritmo',features:'Vehículo privado · Recogida en hotel · Alphard / Hiace',action:'Ver opciones →'},
+    vi:{eyebrow:'VIP CHARTER',title:'Xe riêng VIP',text:'Đi cùng gia đình và bạn bè theo nhịp riêng',features:'Xe riêng · Đón tại khách sạn · Alphard / Hiace',action:'Xem phương án →'},
+    ne:{eyebrow:'VIP CHARTER',title:'VIP निजी चार्टर',text:'परिवार र साथीहरूसँग आफ्नै गतिमा यात्रा गर्नुहोस्',features:'निजी सवारी · होटल पिकअप · Alphard / Hiace',action:'चार्टर विकल्प हेर्नुहोस् →'},
+    ko:{eyebrow:'VIP CHARTER',title:'VIP 전용 차량',text:'가족·친구와 우리만의 속도로 출발하세요',features:'전용 차량 · 호텔 픽업 · 알파드／하이에이스',action:'전용 차량 보기 →'},
+  };
+  const vip=vipCopy[locale];
   return (
     <div className="fulfillment-home passenger-home-v2">
       <section className="passenger-yellow-hero">
@@ -522,6 +534,16 @@ export function AppHome() {
         <span>{h.alert}</span>
         <b>{h.alertText}</b>
         <strong>›</strong>
+      </Link>
+      <Link className="passenger-vip-card" to="/app/private-groups">
+        <div>
+          <span>{vip.eyebrow}</span>
+          <h2>{vip.title}</h2>
+          <p>{vip.text}</p>
+          <small>{vip.features}</small>
+          <strong>{vip.action}</strong>
+        </div>
+        <img src="/images/vip-alphard-hotel.jpg" alt="" />
       </Link>
       <div className="passenger-section-heading passenger-upcoming-heading">
         <div>

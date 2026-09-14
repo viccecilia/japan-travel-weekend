@@ -132,7 +132,7 @@ export function Router() {
       <Route
         path="/app/booking/:slug"
         element={
-          <AppShell>
+          <AppShell nav>
             <BookingPage />
           </AppShell>
         }
@@ -170,7 +170,7 @@ export function Router() {
       <Route
         path="/app/orders/:id"
         element={
-          <RequireAccount><AppShell><OrderDetail /></AppShell></RequireAccount>
+          <RequireAccount><AppShell nav><OrderDetail /></AppShell></RequireAccount>
         }
       />
       <Route
@@ -189,7 +189,7 @@ export function Router() {
       <Route
         path="/app/private-groups"
         element={
-          <AppShell>
+          <AppShell nav>
             <AppPrivateGroups />
           </AppShell>
         }
@@ -197,7 +197,7 @@ export function Router() {
       <Route
         path="/app/boarding-pass/:id"
         element={
-          <RequireAccount><AppShell><BoardingPass /></AppShell></RequireAccount>
+          <RequireAccount><AppShell nav><BoardingPass /></AppShell></RequireAccount>
         }
       />
       <Route

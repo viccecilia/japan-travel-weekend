@@ -532,3 +532,23 @@
 @media(min-width:768px){.app-frame.passenger-v2.screen-booking{width:min(920px,calc(100vw - 68px))}}
 @media(max-width:767px){.booking-departure-months{grid-template-columns:1fr;gap:20px}.booking-departure-calendar-day{min-height:66px}.booking-calendar-blank{min-height:66px}}
 @media(max-width:520px){.booking-departure-calendar>legend{align-items:flex-start;flex-direction:column;gap:3px}.booking-departure-calendar-weekdays,.booking-departure-calendar-grid{gap:4px}.booking-departure-calendar-day{min-height:64px;padding:4px 3px}.booking-calendar-blank{min-height:64px}.booking-departure-option{min-height:44px;padding-left:0;padding-right:0}.booking-departure-option>span{font-size:.56rem}.booking-departure-option>small{font-size:.5rem;letter-spacing:-.03em;white-space:nowrap;overflow-wrap:normal}.passenger-v2 .selected-departure-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.passenger-v2 .selected-departure-summary b{white-space:normal}}
+
+/* Passenger-only VIP entry and route-aware bottom navigation. */
+.passenger-v2 .passenger-vip-card{display:grid;grid-template-columns:minmax(0,1fr) 42%;min-height:174px;overflow:hidden;margin:0 22px 24px;border:1px solid #d8b64b;border-radius:17px;color:#fff;background:linear-gradient(135deg,#101922,#20252b);box-shadow:0 12px 30px #1118202b;text-decoration:none}
+.passenger-v2 .passenger-vip-card>div{display:flex;min-width:0;flex-direction:column;align-items:flex-start;justify-content:center;padding:20px}
+.passenger-v2 .passenger-vip-card span{color:#e4c95b;font-size:.63rem;font-weight:900;letter-spacing:.14em}
+.passenger-v2 .passenger-vip-card h2{margin:5px 0 6px;color:#fff;font-size:1.24rem;line-height:1.2}
+.passenger-v2 .passenger-vip-card p{margin:0;color:#f5f2e9;font-size:.82rem;line-height:1.45}
+.passenger-v2 .passenger-vip-card small{margin-top:7px;color:#d9d3c2;font-size:.68rem;line-height:1.4}
+.passenger-v2 .passenger-vip-card strong{margin-top:13px;color:#ffe36b;font-size:.76rem}
+.passenger-v2 .passenger-vip-card img{display:block;width:100%;height:100%;min-height:174px;object-fit:cover;object-position:center}
+.passenger-v2 .passenger-vip-card:focus-visible{outline:3px solid #ffe234;outline-offset:3px}
+.passenger-v2 .bottom-nav{box-sizing:border-box;padding-inline:5px}
+.passenger-v2 .bottom-nav a{display:flex;min-width:0;min-height:56px;flex-direction:column;align-items:center;justify-content:center;gap:2px;margin:7px 3px;padding:5px 4px;border-radius:12px;color:#879197;text-decoration:none}
+.passenger-v2 .bottom-nav a i{font-size:1.15rem;font-style:normal;line-height:1}
+.passenger-v2 .bottom-nav a span{font-weight:500}
+.passenger-v2 .bottom-nav a.active{color:#171717;background:#fff3a8}
+.passenger-v2 .bottom-nav a.active:before{display:none}
+.passenger-v2 .bottom-nav a.active span{font-weight:900}
+.passenger-v2 .bottom-nav a:focus-visible{outline:2px solid #c7a000;outline-offset:1px}
+@media(max-width:520px){.passenger-v2 .passenger-vip-card{grid-template-columns:minmax(0,1fr) 39%;min-height:164px;margin:0 18px 22px}.passenger-v2 .passenger-vip-card>div{padding:17px 15px}.passenger-v2 .passenger-vip-card h2{font-size:1.08rem}.passenger-v2 .passenger-vip-card p{font-size:.76rem}.passenger-v2 .passenger-vip-card small{font-size:.62rem}.passenger-v2 .passenger-vip-card img{min-height:164px}.passenger-v2 .bottom-nav a{margin-inline:2px;padding-inline:2px}.passenger-v2 .bottom-nav a span{font-size:.66rem}}
