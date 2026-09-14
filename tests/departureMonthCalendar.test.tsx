@@ -45,13 +45,16 @@ describe('紧凑班次月历', () => {
   });
 
   it('浮层逐辆展示车型车牌司机和计划人数，并保留真实深链', () => {
-    const item = departure({vehicles: [departure().vehicles[0], {...departure().vehicles[0], assignmentId: 'a-2', sequence: 2, vehicleCode: '大阪200', driverName: '第二司机', plannedPassengers: 9, sellableCapacity: 14}]});
-    render(<MemoryRouter><DepartureMonthCalendar month="2026-09" departures={[item]} selectedRoute="trip-1" selectedDeparture="departure-1" onRouteChange={vi.fn()} onSelect={vi.fn()} /></MemoryRouter>);
+    const change=vi.fn();
+    const item = departure({vehicles: [{...departure().vehicles[0],vehicleGroupId:'group-1',groupVersion:1,taskStatus:'confirmed'}, {...departure().vehicles[0], assignmentId: 'a-2', sequence: 2, vehicleCode: '大阪200', driverName: '第二司机', plannedPassengers: 9, sellableCapacity: 14,vehicleGroupId:'group-2',groupVersion:1,taskStatus:'confirmed'}]});
+    render(<MemoryRouter><DepartureMonthCalendar month="2026-09" departures={[item]} selectedRoute="trip-1" selectedDeparture="departure-1" onRouteChange={vi.fn()} onSelect={vi.fn()} onChangeVehicleGroup={change} /></MemoryRouter>);
     expect(screen.getByRole('dialog', {name: '京都与奈良'})).toBeInTheDocument();
     expect(screen.getByText(/1号车 · なにわ100/)).toBeInTheDocument();
     expect(screen.getByText(/2号车 · 大阪200/)).toBeInTheDocument();
     expect(screen.getByText(/计划 9 人 \/ 实车可售 14 席/)).toBeInTheDocument();
     expect(screen.getByRole('link', {name: '进入运行详情'})).toHaveAttribute('href', '/app/operations/run?date=2026-09-18&departure=departure-1');
     expect(screen.getByRole('link', {name: '手动配车'})).toHaveAttribute('href', '/app/operations/departures?month=2026-09&route=trip-1&departure=departure-1&dispatch=manual');
+    fireEvent.click(screen.getAllByRole('button',{name:'变更车辆/司机'})[0]);
+    expect(change).toHaveBeenCalledWith(item,item.vehicles[0]);
   });
 });

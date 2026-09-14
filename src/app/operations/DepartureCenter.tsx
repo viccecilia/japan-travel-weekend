@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useApp } from "../store";
 import type {
@@ -7,10 +7,12 @@ import type {
   OperationsProduct,
   OperationsSnapshot,
   DispatchPlanDraft,
+  OperationsDepartureVehicle,
 } from "../../shared/integrations/supabaseOperations";
 import {DepartureMonthCalendar} from './DepartureMonthCalendar';
 import {currentJapanMonth, monthRange, shiftMonth} from './departureCalendar';
 import {ManualDispatchPanel} from './ManualDispatchPanel';
+import {ConfirmedVehicleGroupChangeDialog} from './ConfirmedVehicleGroupChangeDialog';
 const uuid = () => crypto.randomUUID();
 const japanLocalToIso = (value: string) =>
   new Date(`${value}:00+09:00`).toISOString();
@@ -43,6 +45,7 @@ export function DepartureCenter() {
   const month=searchParams.get('month') || selectedDate.slice(0,7) || currentJapanMonth();
   const selectedDeparture=searchParams.get('departure')??'';
   const dispatchMode=searchParams.get('dispatch')??'';
+  const groupChangeId=searchParams.get('groupChange')??'';
   const updateFilter=(key:string,value:string)=>{const next=new URLSearchParams(searchParams);if(value&&value!=='all')next.set(key,value);else next.delete(key);setSearchParams(next,{replace:true})};
   const [products, setProducts] = useState<OperationsProduct[]>([]);
   const [departures, setDepartures] = useState<OperationsEditableDeparture[]>(
@@ -103,11 +106,11 @@ export function DepartureCenter() {
   );
   useEffect(() => {
     let active = true;
-    if (!services || dispatchMode !== 'manual' || !selectedDeparture) return () => {active = false;};
+    if (!services || (!groupChangeId && dispatchMode !== 'manual') || !selectedDeparture) return () => {active = false;};
     const window = monthRange(month);
     void services.operations.loadSnapshot(window.from, window.to).then((result) => {if (active) {setResources(result.data); setResourceError(result.error ?? '');}});
     return () => {active = false;};
-  }, [services, dispatchMode, selectedDeparture, month]);
+  }, [services, dispatchMode, groupChangeId, selectedDeparture, month]);
   const visibleDepartures=departures.filter(item=>statusFilter==='all'||item.status===statusFilter);
   const onPreview = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -204,6 +207,11 @@ export function DepartureCenter() {
     setBusy(false);
     return result.ok;
   };
+  const loadGroupChangeHistory=useCallback(async(groupId:string)=>services?services.operations.listVehicleGroupChanges(groupId):{data:[],error:'运营数据服务未配置'},[services]);
+  const requestGroupChange=useCallback(async(input:Parameters<NonNullable<typeof services>['operations']['requestVehicleGroupChange']>[0])=>services?services.operations.requestVehicleGroupChange(input):{ok:false,id:null,error:'运营数据服务未配置'},[services]);
+  const applyGroupChange=useCallback(async(requestId:string)=>services?services.operations.applyVehicleGroupChange(requestId):{ok:false,data:null,error:'运营数据服务未配置'},[services]);
+  const retryGroupChangeNotification=useCallback(async(requestId:string)=>services?services.operations.retryVehicleGroupChangeNotification(requestId):{ok:false,error:'运营数据服务未配置'},[services]);
+  const changeTarget=calendarDepartures.flatMap(departure=>departure.vehicles.map(vehicle=>({departure,vehicle}))).find(item=>item.vehicle.vehicleGroupId===groupChangeId);
   return (
     <main className="operations-page">
       <header className="operations-hero">
@@ -225,9 +233,10 @@ export function DepartureCenter() {
           <small>容量不能低于已锁定席位；旧订单合同不改写</small>
         </header>
         <div className="departure-calendar-toolbar"><div><button type="button" onClick={() => updateFilter('month', shiftMonth(month, -1))}>上个月</button><button type="button" onClick={() => updateFilter('month', currentJapanMonth())}>本月</button><button type="button" onClick={() => updateFilter('month', shiftMonth(month, 1))}>下个月</button></div><strong>{month.replace('-', '年')}月</strong><label>状态<select value={statusFilter} onChange={event=>updateFilter('status',event.target.value)}><option value="all">全部状态</option><option value="open">销售中</option><option value="closed">停售</option><option value="cancelled">已取消</option><option value="draft">草稿</option></select></label></div>
-        {loadingCalendar ? <p className="operations-empty">正在读取班次月历…</p> : calendarError ? <p className="operations-error">{calendarError}</p> : <DepartureMonthCalendar key={`calendar:${month}:${editing?.id ?? ''}:${dispatchMode}`} month={month} departures={calendarDepartures.filter(item=>statusFilter==='all'||item.status===statusFilter)} selectedRoute={routeFilter} selectedDeparture={editing?.id ?? ''} openSelected={dispatchMode !== 'manual'} onRouteChange={(value) => updateFilter('route', value)} onSelect={(item) => {setEditing(item);updateFilter('departure', item.id);}} />}
+        {loadingCalendar ? <p className="operations-empty">正在读取班次月历…</p> : calendarError ? <p className="operations-error">{calendarError}</p> : <DepartureMonthCalendar key={`calendar:${month}:${editing?.id ?? ''}:${dispatchMode}`} month={month} departures={calendarDepartures.filter(item=>statusFilter==='all'||item.status===statusFilter)} selectedRoute={routeFilter} selectedDeparture={editing?.id ?? ''} openSelected={dispatchMode !== 'manual'&&!groupChangeId} onRouteChange={(value) => updateFilter('route', value)} onSelect={(item) => {setEditing(item);updateFilter('departure', item.id);}} onChangeVehicleGroup={(departure,vehicle:OperationsDepartureVehicle)=>{setEditing(departure);const next=new URLSearchParams(searchParams);next.set('departure',departure.id);next.set('groupChange',vehicle.vehicleGroupId??'');next.delete('dispatch');setSearchParams(next,{replace:true})}} />}
         {!loadingCalendar&&!calendarError&&visibleDepartures.length===0&&<p className="operations-empty">当前月份和状态范围内没有班次。</p>}
         {dispatchMode === 'manual' && editing && (resourceError ? <p className="operations-error">配车资源读取失败：{resourceError}</p> : resources ? <ManualDispatchPanel key={`dispatch:${editing.id}:${editing.version}`} departure={calendarDepartures.find((item) => item.id === editing.id) ?? editing as OperationsCalendarDeparture} snapshot={resources} busy={busy} onSave={saveDispatch} onClose={() => updateFilter('dispatch', '')} /> : <p className="operations-empty">正在读取车辆与司机资源…</p>)}
+        {groupChangeId&&(resourceError?<p className="operations-error">变更资源读取失败：{resourceError}</p>:resources&&changeTarget?<ConfirmedVehicleGroupChangeDialog key={`change:${groupChangeId}:${changeTarget.vehicle.groupVersion??1}`} departure={changeTarget.departure} vehicle={changeTarget.vehicle} snapshot={resources} onClose={()=>updateFilter('groupChange','')} onLoadHistory={loadGroupChangeHistory} onRequest={requestGroupChange} onApply={applyGroupChange} onRetryNotification={retryGroupChangeNotification} onApplied={reloadDepartures}/>:resources&&!loadingCalendar?<p className="operations-error">旅行团不存在、已完成或已不允许变更。</p>:<p className="operations-empty">正在读取旅行团变更资料…</p>)}
         {editing && (
           <form
             key={`${editing.id}:${editing.version}`}

@@ -306,6 +306,31 @@ export type OperationsDepartureVehicle = {
   vehicleModel: string | null;
   sellableCapacity: number | null;
   driverName: string | null;
+  vehicleGroupId?: string | null;
+  roomId?: string | null;
+  groupVersion?: number;
+  journeyStatus?: string | null;
+};
+export type OperationsVehicleGroupChange = {
+  id: string;
+  vehicleGroupId: string;
+  expectedGroupVersion: number;
+  status: string;
+  reason: string;
+  priorVehicleId: string;
+  priorVehicleCode: string;
+  requestedVehicleId: string;
+  requestedVehicleCode: string;
+  priorDriverId: string;
+  priorDriverName: string;
+  requestedDriverId: string;
+  requestedDriverName: string;
+  requestedAt: string;
+  appliedAt: string | null;
+  appliedGroupVersion: number | null;
+  notificationStatus: string;
+  notificationAttempts: number;
+  notificationLastError: string | null;
 };
 export type OperationsCalendarDeparture = OperationsEditableDeparture & {
   tripId: string;
@@ -1620,6 +1645,38 @@ export class SupabaseOperationsRepository {
       p_tasks: tasks,
     });
     return { ok: !error, error: error?.message ?? null };
+  }
+  async listVehicleGroupChanges(vehicleGroupId: string) {
+    if (!this.client) return {data: [] as OperationsVehicleGroupChange[], error: "运营数据服务未配置"};
+    const {data,error}=await this.client.rpc("get_operations_vehicle_group_changes",{p_vehicle_group:vehicleGroupId});
+    return {data:((data??[]) as Array<Record<string,unknown>>).map((row)=>({
+      id:String(row.id),vehicleGroupId:String(row.vehicle_group_id),expectedGroupVersion:Number(row.expected_group_version),
+      status:String(row.status),reason:String(row.reason),priorVehicleId:String(row.prior_vehicle_id),
+      priorVehicleCode:String(row.prior_vehicle_code??""),requestedVehicleId:String(row.requested_vehicle_id),
+      requestedVehicleCode:String(row.requested_vehicle_code??""),priorDriverId:String(row.prior_driver_id),
+      priorDriverName:String(row.prior_driver_name??""),requestedDriverId:String(row.requested_driver_id),
+      requestedDriverName:String(row.requested_driver_name??""),requestedAt:String(row.requested_at),
+      appliedAt:row.applied_at?String(row.applied_at):null,appliedGroupVersion:row.applied_group_version==null?null:Number(row.applied_group_version),
+      notificationStatus:String(row.notification_status),notificationAttempts:Number(row.notification_attempts??0),
+      notificationLastError:row.notification_last_error?String(row.notification_last_error):null,
+    })),error:error?.message??null};
+  }
+  async requestVehicleGroupChange(input: {vehicleGroupId:string;expectedGroupVersion:number;vehicleId:string;driverId:string;reason:string;idempotencyKey:string}) {
+    if (!this.client) return {ok:false,id:null as string|null,error:"运营数据服务未配置"};
+    const {data,error}=await this.client.rpc("operations_request_vehicle_group_change",{
+      p_vehicle_group:input.vehicleGroupId,p_expected_group_version:input.expectedGroupVersion,
+      p_requested_vehicle:input.vehicleId,p_requested_driver:input.driverId,p_reason:input.reason,
+      p_idempotency_key:input.idempotencyKey,
+    });
+    return {ok:!error,id:data?String(data):null,error:error?.message??null};
+  }
+  async applyVehicleGroupChange(requestId:string) {
+    if (!this.client) return {ok:false,data:null as Record<string,unknown>|null,error:"运营数据服务未配置"};
+    const {data,error}=await this.client.rpc("operations_apply_vehicle_group_change",{p_request:requestId});
+    return {ok:!error,data:data as Record<string,unknown>|null,error:error?.message??null};
+  }
+  async retryVehicleGroupChangeNotification(requestId:string) {
+    return this.transition("operations_retry_vehicle_group_change_notification",{p_request:requestId});
   }
   async confirmDispatchTasks(taskIds: string[]) {
     return this.transition("operations_confirm_dispatch_tasks", {
