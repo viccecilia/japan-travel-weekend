@@ -60,6 +60,14 @@ describe("工作人员端", () => {
     expect(screen.getByRole('heading',{name:'今日工作台'})).toBeInTheDocument();
     expect(screen.getByRole('region',{name:'今日概况'})).toHaveTextContent('当前登车');
   });
+  it('未来班次残留运行状态时单独告警且不显示正在执行',async()=>{
+    renderTodayWithTasks([
+      {...task,staff_assignment_id:'future-running',trip_title:'明日模拟运行',journey_status:'meeting',departs_at:new Date(atTokyoHour(1,9)).toISOString()},
+    ]);
+    expect(await screen.findByRole('alert')).toHaveTextContent('未来班次已进入执行状态');
+    expect(screen.getByText(/下一次出勤：/)).toHaveTextContent('明日模拟运行');
+    expect(screen.getByText(/等待排班/)).toBeInTheDocument();
+  });
   it('多个运行中任务显示冲突，不静默隐藏',async()=>{
     renderTodayWithTasks([
       {...task,staff_assignment_id:'running-a',trip_title:'运行任务A',journey_status:'in_progress'},

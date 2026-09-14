@@ -18,4 +18,8 @@ describe('V8-S 今日主任务选择',()=>{
     const tasks=[make('cancelled','2026-09-11T04:00:00Z','cancelled'),make('completed','2026-09-11T02:00:00Z','completed'),make('next','2026-09-12T00:00:00Z','pending')];
     expect(selectPrimaryStaffTask(tasks,now)?.staff_assignment_id).toBe('next');
   });
+  it('未来班次即使残留运行状态也不会占据当前任务',()=>{
+    const tasks=[make('future-running','2026-09-12T00:00:00Z','meeting'),make('today','2026-09-11T04:00:00Z','pending')];
+    expect(selectPrimaryStaffTask(tasks,now)?.staff_assignment_id).toBe('today');
+  });
 });

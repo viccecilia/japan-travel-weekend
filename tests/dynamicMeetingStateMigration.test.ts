@@ -2,6 +2,7 @@ import {readFileSync} from 'node:fs';
 import {describe,expect,it} from 'vitest';
 
 const sql=readFileSync('supabase/migrations/202609030037_dynamic_meeting_state.sql','utf8');
+const noOpGuard=readFileSync('supabase/migrations/202609140144_noop_meeting_update_guard.sql','utf8');
 
 describe('动态集合点真实数据层',()=>{
   it('每个车组只有一个带版本的当前集合点',()=>{
@@ -23,5 +24,11 @@ describe('动态集合点真实数据层',()=>{
   it('乘客只能读取本人已付款订单所属车组',()=>{
     expect(sql).toMatch(/o\.account_id=auth\.uid\(\).*o\.status in \('paid','confirmed'\)/s);
     expect(sql).toContain('public.is_group_staff(m.vehicle_group_id)');
+  });
+  it('集合内容没有变化时保留当前状态且不生成新版本和通知',()=>{
+    expect(noOpGuard).toMatch(/v_previous\.meeting_at is not distinct from p_meeting_at/);
+    expect(noOpGuard).toMatch(/v_previous\.landmark_description is not distinct from/);
+    expect(noOpGuard).toMatch(/return v_previous\.revision/);
+    expect(noOpGuard.indexOf('return v_previous.revision')).toBeLessThan(noOpGuard.indexOf("v_revision:=coalesce"));
   });
 });

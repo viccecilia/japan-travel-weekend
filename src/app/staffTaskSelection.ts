@@ -6,10 +6,13 @@ export const taskSortTime=(task:SelectableStaffTask)=>task.departs_at?new Date(t
 
 export const isExecutableStaffTask=(task:SelectableStaffTask)=>!['cancelled','completed'].includes(taskPhase(task));
 
+export const isFutureActiveStaffTask=(task:SelectableStaffTask,now=new Date())=>
+  taskPhase(task)==='active'&&Boolean(task.departs_at)&&taskSortTime(task)>now.getTime();
+
 export function selectCurrentStaffTask<T extends SelectableStaffTask>(tasks:T[],now=new Date()):T|null{
   const today=tokyoDay(now);
   const eligible=tasks.filter(isExecutableStaffTask);
-  const running=eligible.filter(task=>taskPhase(task)==='active').sort((a,b)=>taskSortTime(a)-taskSortTime(b));
+  const running=eligible.filter(task=>taskPhase(task)==='active'&&!isFutureActiveStaffTask(task,now)).sort((a,b)=>taskSortTime(a)-taskSortTime(b));
   if(running[0])return running[0];
   return eligible.filter(task=>taskPhase(task)==='pending'&&task.departs_at&&tokyoDay(task.departs_at)===today).sort((a,b)=>taskSortTime(a)-taskSortTime(b))[0]??null;
 }

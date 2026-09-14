@@ -10,7 +10,7 @@ import { Link, useLocation, useParams, useSearchParams } from "react-router-dom"
 import QRCode from "qrcode";
 import { isSeedEnabled } from "../shared/config/businessRules";
 import { useApp } from "./store";
-import {isExecutableStaffTask,selectCurrentStaffTask,selectNextStaffTask,selectPrimaryStaffTask,taskPhase,taskSortTime,tokyoDay,tokyoWeekBounds} from './staffTaskSelection';
+import {isExecutableStaffTask,isFutureActiveStaffTask,selectCurrentStaffTask,selectNextStaffTask,selectPrimaryStaffTask,taskPhase,taskSortTime,tokyoDay,tokyoWeekBounds} from './staffTaskSelection';
 
 export type StaffTask = {
   staff_assignment_id: string;
@@ -300,8 +300,10 @@ export function StaffPortal() {
   const updateSchedule=(key:'date'|'range'|'status',value:string)=>{const next=new URLSearchParams(searchParams);if(value)next.set(key,value);else next.delete(key);if(key==='date')next.delete('range');if(key==='range')next.delete('date');setSearchParams(next,{replace:true})};
   const nowDate=selectionClock;const todayKey=tokyoDay(nowDate);const tomorrowKey=tokyoDay(new Date(nowDate.getTime()+86_400_000));const week=tokyoWeekBounds(nowDate);
   const todayTasks=tasks.filter(task=>task.departs_at&&tokyoDay(task.departs_at)===todayKey&&taskPhase(task)!=='cancelled');
-  const todayPassengerCount=todayTasks.reduce((total,task)=>total+task.passenger_count,0);
-  const activeConflicts=tasks.filter(task=>taskPhase(task)==='active');
+  const uniqueTodayGroups=[...new Map(todayTasks.map(task=>[task.vehicle_group_id,task])).values()];
+  const todayPassengerCount=uniqueTodayGroups.reduce((total,task)=>total+task.passenger_count,0);
+  const activeConflicts=tasks.filter(task=>taskPhase(task)==='active'&&!isFutureActiveStaffTask(task,selectionClock));
+  const futureActiveTasks=tasks.filter(task=>isFutureActiveStaffTask(task,selectionClock));
   const upcomingTasks=tasks.filter(task=>isExecutableStaffTask(task)&&task.departs_at&&tokyoDay(task.departs_at)>todayKey).sort((a,b)=>taskSortTime(a)-taskSortTime(b)).slice(0,2);
   const filteredTasks=tasks.filter(task=>{if(scheduleStatus!=='all'&&taskPhase(task)!==scheduleStatus)return false;if(!task.departs_at)return !scheduleDate&&!scheduleRange;const key=tokyoDay(task.departs_at);if(scheduleDate)return key===scheduleDate;if(scheduleRange==='week'){const time=new Date(task.departs_at).getTime();return time>=week.start.getTime()&&time<week.end.getTime()}return true}).sort((a,b)=>taskSortTime(a)-taskSortTime(b));
   if(portalView==='schedule')return <StaffFrame task={active}><header className="staff-welcome"><span>工作人员端</span><h1>行程</h1><p>按日期和执行状态查看本人已分配任务。</p></header><section className="staff-filter-panel"><div role="group" aria-label="日期快捷选择"><button className={scheduleDate===todayKey?'active':''} onClick={()=>updateSchedule('date',todayKey)}>今天</button><button className={scheduleDate===tomorrowKey?'active':''} onClick={()=>updateSchedule('date',tomorrowKey)}>明天</button><button className={scheduleRange==='week'?'active':''} onClick={()=>updateSchedule('range','week')}>本周</button></div><label>日历选择<input aria-label="行程日期" type="date" value={scheduleDate} onChange={event=>updateSchedule('date',event.target.value)}/></label><div role="group" aria-label="行程状态">{([['all','全部'],['pending','待执行'],['active','进行中'],['completed','已完成'],['cancelled','已取消']] as const).map(([value,label])=><button type="button" key={value} className={scheduleStatus===value?'active':''} onClick={()=>updateSchedule('status',value)}>{label}</button>)}</div></section>{filteredTasks.length?<section className="staff-view-list">{filteredTasks.map(task=><article key={task.staff_assignment_id} data-status={taskPhase(task)}><span>{dayLabel(task.departs_at)} · {timeLabel(task.departs_at)} · {taskPhase(task)==='pending'?'待执行':taskPhase(task)==='active'?'进行中':taskPhase(task)==='cancelled'?'已取消':'已完成'}</span><h2>{task.trip_title}</h2><p>{task.meeting_name??'集合点待确认'} · {task.vehicle_label??task.vehicle_type}</p><p>{roleLabel(task.assignment_role)} · 本车 {task.passenger_count} 人</p>{taskPhase(task)==='cancelled'?<small>任务已取消，执行操作已关闭。</small>:<Link to={taskPath(task,'journey')}>打开行程</Link>}</article>)}</section>:<StatusCard title="当前筛选没有行程">更改日期或状态后，可查看其他已分配任务。</StatusCard>}</StaffFrame>;
@@ -329,9 +331,10 @@ export function StaffPortal() {
           {error} <button type="button" onClick={retry}>重新读取</button>
         </StatusCard>
       )}
+      {!error&&futureActiveTasks.length>0&&<div className="staff-conflict" role="alert"><b>发现未来班次已进入执行状态</b><p>该状态不会作为当前行程执行。请联系调度核对测试时间或班次状态。</p></div>}
       {!error&&<section className="staff-today-kpis" aria-label="今日概况">
         <Link to={`/staff/schedule?date=${todayKey}`}><span>今日任务</span><b>{todayTasks.length}</b><small>日本时间当天</small></Link>
-        <Link to={`/staff/schedule?date=${todayKey}`}><span>负责乘客</span><b>{todayPassengerCount}</b><small>各任务实际名单</small></Link>
+        <Link to={`/staff/schedule?date=${todayKey}`}><span>今日负责乘客</span><b>{todayPassengerCount}</b><small>按本车任务去重汇总</small></Link>
         <Link to={active?taskPath(active,'passengers'):`/staff/schedule?date=${todayKey}`}><span>当前登车</span><b>{active?`${active.boarded_count}/${active.passenger_count}`:'—'}</b><small>{active?`待登车 ${Math.max(0,active.passenger_count-active.boarded_count)}`:'暂无当前任务'}</small></Link>
       </section>}
       {activeConflicts.length>1&&<div className="staff-conflict" role="alert"><b>发现 {activeConflicts.length} 个同时进行中的任务</b><p>请先联系调度确认当前负责车辆；系统不会静默隐藏其他进行中任务。</p></div>}
