@@ -14,6 +14,7 @@ const batchId=`v12-referral-${Date.now()}-${randomUUID().slice(0,8)}`;
 const inviteeEmail=`${batchId}@example.invalid`;
 const password=`V12!${randomUUID()}aA9`;
 let userId=null,orderId=null,relationId=null;
+let evidence=null;
 const must=(result,label)=>{if(result.error)throw new Error(`${label}: ${result.error.message}`);return result.data};
 const waitFor=async(label,probe)=>{for(let i=0;i<30;i+=1){const result=await probe();if(result)return result;await new Promise(resolve=>setTimeout(resolve,1000))}throw new Error(`${label} timed out`)};
 
@@ -68,18 +69,42 @@ try{
   if(!replayResponse.ok||replay.duplicate!==true)throw new Error(`duplicate webhook was not recognized: ${JSON.stringify(replay)}`);
   const count=await admin.from('cash_commission_entries').select('id',{count:'exact',head:true}).eq('source_order_id',orderId);
   if(count.error||count.count!==1)throw new Error(`duplicate commission count: ${count.count}`);
-  console.log(JSON.stringify({ok:true,batchId,ambassador:{status:qualification.status,source:qualification.source,fixedReferralCode:true},relationship:{correctInviter:true,legacyInviterCouponCreated:false},payment:{livemode:false,orderId,status:settled.order.status,amountJpy:settled.order.amount},commission:{status:settled.entry.status,basisAmountJpy:basis,percent:10,amountJpy:settled.entry.amount_jpy},duplicateWebhook:{duplicate:true,commissionEntries:count.count},cleanup:'completed'},null,2));
+  evidence={ok:true,batchId,ambassador:{status:qualification.status,source:qualification.source,fixedReferralCode:true},relationship:{correctInviter:true,legacyInviterCouponCreated:false},payment:{livemode:false,orderId,status:settled.order.status,amountJpy:settled.order.amount},commission:{status:settled.entry.status,basisAmountJpy:basis,percent:10,amountJpy:settled.entry.amount_jpy},duplicateWebhook:{duplicate:true,commissionEntries:count.count}};
 }finally{
+  const cleanupErrors=[];
+  const remove=async(table,column,value)=>{
+    const result=await admin.from(table).delete().eq(column,value);
+    if(result.error)cleanupErrors.push(`${table}: ${result.error.message}`);
+  };
   if(orderId){
-    await admin.from('cash_commission_entries').delete().eq('source_order_id',orderId);
-    await admin.from('notification_outbox').delete().eq('order_id',orderId);
-    await admin.from('fulfilment_work_items').delete().eq('order_id',orderId);
-    await admin.from('payment_events').delete().eq('order_id',orderId);
-    await admin.from('order_snapshots').delete().eq('order_id',orderId);
-    await admin.from('inventory_locks').delete().eq('order_id',orderId);
-    await admin.from('orders').delete().eq('id',orderId);
+    await remove('cash_commission_entries','source_order_id',orderId);
+    await remove('notification_outbox','order_id',orderId);
+    await remove('fulfilment_work_items','order_id',orderId);
+    await remove('payment_events','order_id',orderId);
+    await remove('order_snapshots','order_id',orderId);
+    await remove('boardings','order_id',orderId);
+    await remove('checkout_attempts','order_id',orderId);
+    await remove('inventory_locks','order_id',orderId);
+    await remove('orders','id',orderId);
+    const remaining=await admin.from('orders').select('id',{count:'exact',head:true}).eq('id',orderId);
+    if(remaining.error)cleanupErrors.push(`verify order cleanup: ${remaining.error.message}`);
+    else if(remaining.count!==0)cleanupErrors.push(`verify order cleanup: ${remaining.count} row remains`);
   }
-  if(relationId)await admin.from('discount_coupons').delete().eq('referral_relationship_id',relationId);
-  if(relationId)await admin.from('referral_relationships').delete().eq('id',relationId);
-  if(userId)await admin.auth.admin.deleteUser(userId);
+  if(userId&&!relationId){
+    const relation=await admin.from('referral_relationships').select('id').eq('invitee_account_id',userId).maybeSingle();
+    if(relation.error)cleanupErrors.push(`find referral relationship: ${relation.error.message}`);
+    else relationId=relation.data?.id??null;
+  }
+  if(relationId)await remove('discount_coupons','referral_relationship_id',relationId);
+  if(relationId)await remove('referral_relationships','id',relationId);
+  if(userId){
+    const deleted=await admin.auth.admin.deleteUser(userId);
+    if(deleted.error&&deleted.error.message!=='User not found')cleanupErrors.push(`auth user: ${deleted.error.message}`);
+    const remaining=await admin.auth.admin.getUserById(userId);
+    if(remaining.data?.user)cleanupErrors.push('verify auth cleanup: user remains');
+    else if(remaining.error&&remaining.error.message!=='User not found')cleanupErrors.push(`verify auth cleanup: ${remaining.error.message}`);
+  }
+  if(cleanupErrors.length)throw new Error(`cleanup failed: ${cleanupErrors.join('; ')}`);
 }
+
+if(evidence)console.log(JSON.stringify({...evidence,cleanup:'verified'},null,2));
