@@ -217,7 +217,7 @@ export function LanguageSelect({ compact = false }: { compact?: boolean }) {
 const compactTripMeta=(...parts:Array<string|undefined|null>)=>parts.map(value=>value?.trim()).filter(Boolean).join(' · ');
 type PassengerNavSection='home'|'trips'|'orders'|'messages'|'profile';
 const passengerNavSection=(pathname:string):PassengerNavSection=>{
-  if(pathname==='/app'||pathname.startsWith('/app/private-groups'))return 'home';
+  if(pathname==='/app'||pathname.startsWith('/app/private-groups')||pathname.startsWith('/app/vip-charter'))return 'home';
   if(pathname.startsWith('/app/trips')||pathname.startsWith('/app/booking')||pathname.startsWith('/app/guides'))return 'trips';
   if(pathname.startsWith('/app/orders')||pathname.startsWith('/app/passengers')||pathname.startsWith('/app/checkout')||pathname.startsWith('/app/payment')||pathname.startsWith('/app/boarding-pass'))return 'orders';
   if(pathname.startsWith('/app/notifications')||pathname.startsWith('/app/my-trip')||pathname.startsWith('/app/ai-guide')||pathname.startsWith('/app/support'))return 'messages';
@@ -535,7 +535,7 @@ export function AppHome() {
         <b>{h.alertText}</b>
         <strong>›</strong>
       </Link>
-      <Link className="passenger-vip-card" to="/app/private-groups">
+      <Link className="passenger-vip-card" to="/app/vip-charter">
         <div>
           <span>{vip.eyebrow}</span>
           <h2>{vip.title}</h2>

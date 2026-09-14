@@ -1,0 +1,28 @@
+import {createClient} from '@supabase/supabase-js';
+import {randomBytes} from 'node:crypto';
+
+const required=(name)=>{const value=process.env[name];if(!value)throw new Error(`${name} is required`);return value};
+const url=process.env.SUPABASE_URL??required('VITE_SUPABASE_URL');const key=required('VITE_SUPABASE_PUBLISHABLE_KEY');const admin=createClient(url,required('SUPABASE_SERVICE_ROLE_KEY'),{auth:{persistSession:false,autoRefreshToken:false}});
+const passenger=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});const operations=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
+const login=async(client,email,password)=>{const{error}=await client.auth.signInWithPassword({email,password});if(error)throw error};
+const batchId=`vip-charter-${Date.now()}`;const password=`V!p-${randomBytes(12).toString('base64url')}9Aa`;
+const createIdentity=async(role)=>{const email=`${batchId}-${role}@example.test`;const{data,error}=await admin.auth.admin.createUser({email,password,email_confirm:true,user_metadata:{display_name:`VIP包车验收${role}`}});if(error)throw error;const profile=await admin.from('profiles').upsert({id:data.user.id,role,display_name:`VIP包车验收${role}`},{onConflict:'id'});if(profile.error)throw profile.error;return {id:data.user.id,email}};
+const passengerIdentity=await createIdentity('passenger');const operationsIdentity=await createIdentity('operations');
+await login(passenger,passengerIdentity.email,password);await login(operations,operationsIdentity.email,password);
+const {data:sellable,error:sellableError}=await passenger.rpc('list_sellable_departures');if(sellableError)throw sellableError;
+const departure=(sellable??[]).find(row=>Number(row.seat_price_jpy)===5500)??sellable?.[0];if(!departure)throw new Error('No sellable departure is available for VIP charter verification');
+const serviceDate=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(departure.departs_at));
+const {data:options,error:optionsError}=await passenger.rpc('list_vip_charter_route_prices',{p_service_date:serviceDate});if(optionsError)throw optionsError;
+const option=options.find(row=>row.departure_id===departure.id);if(!option)throw new Error('Selected date price is not returned by the VIP route projection');
+const quote=async(pax,vehicle)=>{const{data,error}=await passenger.rpc('quote_vip_charter',{p_departure:option.departure_id,p_passenger_count:pax,p_vehicle_type:vehicle});return {data:data?.[0]??null,error:error?.message??null}};
+const q1a=await quote(1,'alphard'),q4a=await quote(4,'alphard'),q4h=await quote(4,'hiace'),q5a=await quote(5,'alphard'),q5h=await quote(5,'hiace'),q9h=await quote(9,'hiace');
+if(!q1a.data||!q4a.data||!q4h.data||!q5h.data||!q9h.data||!q5a.error)throw new Error('Vehicle eligibility behavior is incorrect');
+const base=Number(option.base_seat_price_jpy);if(q4a.data.total_jpy!==base*6+2000||q4h.data.total_jpy!==base*8+2000)throw new Error('Server quote does not match configured whole-vehicle formula');
+const before=Number(departure.available_seats);const idempotency=`${batchId}-request`;const args={p_departure:option.departure_id,p_passenger_count:4,p_vehicle_type:'alphard',p_pickup_ward:'北区',p_pickup_address:'大阪市北区梅田1-1',p_return_address:null,p_special_requests:`V12-DEMO 隔离包车验收 ${batchId}；禁止真实付款或外部通知`,p_idempotency_key:idempotency};
+const first=await passenger.rpc('submit_vip_charter_request',args);if(first.error)throw first.error;const replay=await passenger.rpc('submit_vip_charter_request',args);if(replay.error)throw replay.error;if(first.data?.[0]?.request_id!==replay.data?.[0]?.request_id)throw new Error('Idempotent replay created a different request');
+const tampered=await passenger.rpc('submit_vip_charter_request',{...args,p_idempotency_key:`${idempotency}-tamper`,p_total_jpy:1});if(!tampered.error)throw new Error('Client supplied amount was unexpectedly accepted');
+const own=await passenger.rpc('get_own_vip_charter_requests');if(own.error||!own.data.some(row=>row.request_id===first.data[0].request_id))throw own.error??new Error('Passenger cannot reload the submitted request');
+const ops=await operations.rpc('get_operations_vip_charter_requests');if(ops.error||!ops.data.some(row=>row.request_id===first.data[0].request_id))throw ops.error??new Error('Operations cannot find the submitted request');
+const passengerOps=await passenger.rpc('get_operations_vip_charter_requests');if(passengerOps.error||passengerOps.data.length!==0)throw passengerOps.error??new Error('Passenger can read operations VIP requests');
+const afterRows=(await passenger.rpc('list_sellable_departures')).data??[];const after=Number(afterRows.find(row=>row.id===departure.id)?.available_seats);if(after!==before)throw new Error('VIP request changed ordinary seat inventory');
+console.log(JSON.stringify({ok:true,batchId,serviceDate,departureId:departure.id,tripTitle:option.trip_title,baseSeatPriceJpy:base,quotes:{onePersonAlphard:q1a.data.total_jpy,fourPersonAlphard:q4a.data.total_jpy,fourPersonHiace:q4h.data.total_jpy,fivePersonAlphardRejected:Boolean(q5a.error),fivePersonHiace:q5h.data.total_jpy,ninePersonHiace:q9h.data.total_jpy},requestId:first.data[0].request_id,replaySameRequest:true,tamperedAmountRejected:true,operationsVisible:true,passengerOperationsRows:0,passengerReloadVisible:true,ordinaryInventoryBefore:before,ordinaryInventoryAfter:after,status:first.data[0].status,testIdentityIds:{passenger:passengerIdentity.id,operations:operationsIdentity.id}},null,2));

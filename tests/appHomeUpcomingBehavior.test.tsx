@@ -23,7 +23,7 @@ describe('游客首页合并近期出发板块',()=>{
     expect(document.querySelector('.passenger-route-rail')).toBeNull();
     expect(document.querySelector('.passenger-departure-row')).toBeNull();
     const vip=screen.getByRole('link',{name:/VIP 专属包车/});
-    expect(vip).toHaveAttribute('href','/app/private-groups');
+    expect(vip).toHaveAttribute('href','/app/vip-charter');
     expect(vip).toHaveTextContent('和家人朋友，按自己的节奏出发');
     expect(vip).toHaveTextContent('专车出行 · 酒店接送 · 阿尔法／海狮');
     expect(vip).toHaveTextContent('查看包车方案 →');

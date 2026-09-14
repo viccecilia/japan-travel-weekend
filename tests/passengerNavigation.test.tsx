@@ -21,6 +21,7 @@ describe('乘客端底部导航',()=>{
   it.each([
     ['/app','首页'],
     ['/app/private-groups','首页'],
+    ['/app/vip-charter','首页'],
     ['/app/trips/kyoto-nara-classic','选路线'],
     ['/app/booking/kyoto-nara-classic','选路线'],
     ['/app/orders/order-1','订单'],

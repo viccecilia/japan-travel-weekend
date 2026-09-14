@@ -51,6 +51,7 @@ import {AccountStatus,AuthCallback,CreateAccount,ForgotPassword,ResetPassword} f
 import {DesignLab} from "../app/DesignLab";
 import {StaffPortal,StaffTaskAction} from "../app/StaffPortal";
 import {AiGuide} from "../app/AiGuide";
+import {VipCharter} from '../app/VipCharter';
 import {OperationsLayout} from "../app/operations/OperationsLayout";
 const OperationsDashboard=lazy(()=>import('../app/OperationsDashboard').then(module=>({default:module.OperationsDashboard})));
 const ProductCenter=lazy(()=>import('../app/operations/ProductCenter').then(module=>({default:module.ProductCenter})));
@@ -62,6 +63,7 @@ const MarketingCenter=lazy(()=>import('../app/operations/MarketingCenter').then(
 const CommissionCenter=lazy(()=>import('../app/operations/CommissionCenter').then(module=>({default:module.CommissionCenter})));
 const SystemSettings=lazy(()=>import('../app/operations/SystemSettings').then(module=>({default:module.SystemSettings})));
 const ResourceCenter=lazy(()=>import('../app/operations/ResourceCenter').then(module=>({default:module.ResourceCenter})));
+const CharterRequestCenter=lazy(()=>import('../app/operations/CharterRequestCenter').then(module=>({default:module.CharterRequestCenter})));
 const OperationsPage=({children}:{children:ReactNode})=><RequireAccount><RequireOperations><OperationsLayout><Suspense fallback={<main className="operations-page"><p>正在加载管理功能…</p></main>}>{children}</Suspense></OperationsLayout></RequireOperations></RequireAccount>;
 const OperationsNotFound=()=> <main className="operations-page"><section className="operations-error" role="alert"><h2>管理页面不存在</h2><p>该管理链接可能来自旧版本，请通过左侧导航进入现有模块。</p></section></main>;
 function ScrollToTop(){const {pathname}=useLocation();useEffect(()=>{if(!navigator.userAgent.includes('jsdom'))window.scrollTo({top:0,left:0,behavior:'auto'});},[pathname]);return null;}
@@ -194,6 +196,7 @@ export function Router() {
           </AppShell>
         }
       />
+      <Route path="/app/vip-charter" element={<AppShell nav><VipCharter/></AppShell>} />
       <Route
         path="/app/boarding-pass/:id"
         element={
@@ -232,6 +235,7 @@ export function Router() {
       <Route path="/app/operations/vehicles" element={<OperationsPage><ResourceCenter kind="vehicles"/></OperationsPage>} />
       <Route path="/app/operations/staff-requests" element={<OperationsPage><ResourceCenter kind="requests"/></OperationsPage>} />
       <Route path="/app/operations/orders" element={<OperationsPage><OrdersCenter/></OperationsPage>} />
+      <Route path="/app/operations/orders/charters" element={<OperationsPage><CharterRequestCenter/></OperationsPage>} />
       <Route path="/app/operations/analytics" element={<OperationsPage><AnalyticsCenter/></OperationsPage>} />
       <Route path="/app/operations/*" element={<OperationsPage><OperationsNotFound/></OperationsPage>} />
       <Route path="/staff" element={<RequireAccount><RequireStaff><StaffPortal/></RequireStaff></RequireAccount>} />

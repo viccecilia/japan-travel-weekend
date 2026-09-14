@@ -11,6 +11,7 @@ import {
 } from "../integrations/supabaseProduction";
 import { SupabaseRealtimeAdapter } from "../integrations/supabaseClient";
 import { SupabaseOperationsRepository } from "../integrations/supabaseOperations";
+import {SupabaseVipCharterRepository} from '../integrations/supabaseVipCharter';
 export class ProductionBrowserServices {
   readonly auth;
   readonly orders;
@@ -22,6 +23,7 @@ export class ProductionBrowserServices {
   readonly operations;
   readonly staff;
   readonly accountProfile;
+  readonly vipCharter;
   constructor(
     client: SupabaseClient | null,
     apiBaseUrl: string | undefined,
@@ -36,6 +38,7 @@ export class ProductionBrowserServices {
     this.operations = new SupabaseOperationsRepository(client);
     this.staff = new SupabaseStaffRepository(client);
     this.accountProfile = new SupabaseAccountProfileRepository(client);
+    this.vipCharter = new SupabaseVipCharterRepository(client);
     this.checkout = new TestBackendApi(
       apiBaseUrl,
       async () =>
@@ -147,6 +150,11 @@ export class ProductionBrowserServices {
     return this.departures.listSellable();
   }
   loadPublishedCatalog(){return this.catalog.listPublished()}
+  loadVipCharterRoutePrices(serviceDate:string){return this.vipCharter.listRoutePrices(serviceDate)}
+  quoteVipCharter(departureId:string,passengerCount:number,vehicleType:Parameters<SupabaseVipCharterRepository['getQuote']>[2]){return this.vipCharter.getQuote(departureId,passengerCount,vehicleType)}
+  submitVipCharterRequest(input:Parameters<SupabaseVipCharterRepository['submit']>[0]){return this.vipCharter.submit(input)}
+  loadOwnVipCharterRequests(){return this.vipCharter.listOwn()}
+  loadOperationsVipCharterRequests(){return this.vipCharter.listOperations()}
   loadStaffTasks() {
     return this.staff.listTasks();
   }
