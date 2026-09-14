@@ -699,6 +699,51 @@ export class SupabaseOperationsRepository {
       error: null,
     };
   }
+  async uploadProductSpotVideo(
+    productId: string,
+    stopId: string,
+    file: File,
+    onProgress?: (percent: number) => void,
+  ) {
+    if (!this.client)
+      return { url: null as string | null, storagePath: null as string | null, error: "运营数据服务未配置" };
+    if (file.type !== "video/mp4" || !file.name.toLowerCase().endsWith(".mp4") || file.size <= 0 || file.size > 50 * 1024 * 1024)
+      return { url: null, storagePath: null, error: "仅支持不超过50MB的 MP4（H.264／AAC）" };
+    const safeStopId = stopId.replace(/[^a-zA-Z0-9_-]/g, "-");
+    const path = `${productId}/stops/${safeStopId}/${crypto.randomUUID()}.mp4`;
+    const runtime = this.client as unknown as { supabaseUrl?: string; supabaseKey?: string };
+    const session = await this.client.auth.getSession();
+    const accessToken = session.data.session?.access_token;
+    if (typeof XMLHttpRequest !== "undefined" && runtime.supabaseUrl && runtime.supabaseKey && accessToken) {
+      const endpoint = `${runtime.supabaseUrl}/storage/v1/object/route-media/${path.split("/").map(encodeURIComponent).join("/")}`;
+      const error = await new Promise<string | null>((resolve) => {
+        const request = new XMLHttpRequest();
+        request.open("POST", endpoint);
+        request.setRequestHeader("Authorization", `Bearer ${accessToken}`);
+        request.setRequestHeader("apikey", runtime.supabaseKey!);
+        request.setRequestHeader("Content-Type", file.type);
+        request.setRequestHeader("x-upsert", "false");
+        request.upload.onprogress = (event) => {
+          if (event.lengthComputable) onProgress?.(Math.min(99, Math.round(event.loaded / event.total * 100)));
+        };
+        request.onerror = () => resolve("视频上传网络中断，请重试");
+        request.onabort = () => resolve("视频上传已取消");
+        request.onload = () => resolve(request.status >= 200 && request.status < 300 ? null : (() => {
+          try { return String((JSON.parse(request.responseText) as {message?: string}).message ?? `存储返回 ${request.status}`); }
+          catch { return `存储返回 ${request.status}`; }
+        })());
+        onProgress?.(0);
+        request.send(file);
+      });
+      if (error) return { url: null, storagePath: null, error };
+    } else {
+      onProgress?.(0);
+      const { error } = await this.client.storage.from("route-media").upload(path, file, { contentType: file.type, upsert: false });
+      if (error) return { url: null, storagePath: null, error: error.message };
+    }
+    onProgress?.(100);
+    return { url: this.client.storage.from("route-media").getPublicUrl(path).data.publicUrl, storagePath: path, error: null };
+  }
   async listCommissionPayouts() {
     if (!this.client)
       return {

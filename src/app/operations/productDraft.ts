@@ -1,4 +1,5 @@
 import type {OperationsProduct} from '../../shared/integrations/supabaseOperations';
+import {productSpotStableId, type ProductSpotVideo} from './productSpotVideo';
 
 export type ProductEditorLocale = Record<string, unknown> & {
   title?: string;
@@ -19,6 +20,7 @@ export type ProductEditorStop = Record<string, unknown> & {
   imageUrl?: string;
   gallery?: string[];
   tip?: string;
+  video?: ProductSpotVideo;
 };
 
 export type ProductDraft = {
@@ -43,11 +45,6 @@ const strings = (value: unknown) => Array.isArray(value) ? value.filter((item): 
 const text = (value: unknown) => typeof value === 'string' ? value : '';
 const object = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
 
-function editorId(value: Record<string, unknown>, index: number) {
-  const stable = value.id ?? value.stopId ?? value.placeId;
-  return stable ? `stop-${String(stable)}` : `stop-${index}-${crypto.randomUUID()}`;
-}
-
 export function draftFromProduct(product: OperationsProduct): ProductDraft {
   const content = product.content ?? {};
   const rawLocales = object(content.locales);
@@ -67,7 +64,7 @@ export function draftFromProduct(product: OperationsProduct): ProductDraft {
     gallery: [...product.gallery],
     itinerary: Array.isArray(content.itinerary)
       ? content.itinerary.flatMap((item, index) => item && typeof item === 'object' && !Array.isArray(item)
-        ? [{...(item as Record<string, unknown>), editorId: editorId(item as Record<string, unknown>, index)} as ProductEditorStop]
+        ? (() => { const value = item as Record<string, unknown>; const id = productSpotStableId(value, index); return [{...value, id, editorId: `stop-${id}`} as ProductEditorStop]; })()
         : [])
       : [],
     locales: Object.fromEntries(Object.entries(rawLocales).map(([key, value]) => [key, object(value) as ProductEditorLocale])),
