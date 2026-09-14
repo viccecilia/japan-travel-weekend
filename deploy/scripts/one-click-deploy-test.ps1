@@ -107,6 +107,8 @@ try {
   Invoke-Checked npm.cmd @('run', 'check:launch')
 
   Copy-Item -LiteralPath (Join-Path $repo 'dist') -Destination (Join-Path $bundle 'dist') -Recurse
+  Copy-Item -LiteralPath (Join-Path $repo 'deploy\nginx\weekend-test.conf') -Destination (Join-Path $bundle 'weekend-test.conf')
+  Copy-Item -LiteralPath (Join-Path $repo 'deploy\nginx\weekend-test-common.conf') -Destination (Join-Path $bundle 'weekend-test-common.conf')
   [IO.File]::WriteAllText((Join-Path $bundle 'RELEASE_SHA'), "$sha`n", [Text.UTF8Encoding]::new($false))
 
   $sourceLines = @(
@@ -123,7 +125,7 @@ try {
   )
   [IO.File]::WriteAllText((Join-Path $bundle 'BUILD_SOURCE.txt'), (($sourceLines -join "`n") + "`n"), [Text.UTF8Encoding]::new($false))
 
-  $hashLines = Get-ChildItem (Join-Path $bundle 'dist') -Recurse -File | Sort-Object FullName | ForEach-Object {
+  $hashLines = Get-ChildItem $bundle -Recurse -File | Where-Object { $_.Name -ne 'CHECKSUMS.sha256' } | Sort-Object FullName | ForEach-Object {
     $relative = $_.FullName.Substring($bundle.Length).TrimStart([char]92, [char]47).Replace([char]92, '/')
     $hash = Get-Sha256 -Path $_.FullName
     "$hash  $relative"
@@ -135,12 +137,23 @@ try {
 set -euo pipefail
 switched=0
 previous=''
+nginx_changed=0
+nginx_site=/etc/nginx/sites-available/jtw-weekend-test
+nginx_common=/etc/nginx/snippets/jtw-weekend-test-common.conf
+nginx_site_backup=''
+nginx_common_backup=''
 rollback_on_error() {
   status=`$?
   if [ "`$switched" = 1 ] && [ -n "`$previous" ]; then
     sudo ln -sfn "`$previous" /var/www/japan-travel-weekend-test || true
     sudo systemctl reload nginx || true
     echo "ROLLBACK_RESTORED=`$previous" >&2
+  fi
+  if [ "`$nginx_changed" = 1 ]; then
+    if [ -n "`$nginx_site_backup" ] && sudo test -f "`$nginx_site_backup"; then sudo cp "`$nginx_site_backup" "`$nginx_site"; fi
+    if [ -n "`$nginx_common_backup" ] && sudo test -f "`$nginx_common_backup"; then sudo cp "`$nginx_common_backup" "`$nginx_common"; fi
+    sudo nginx -t && sudo systemctl reload nginx || true
+    echo "NGINX_CONFIG_ROLLBACK_RESTORED=1" >&2
   fi
   echo "INSTALL_FAILED line=`$LINENO exit=`$status" >&2
   exit "`$status"
@@ -152,6 +165,8 @@ current=/var/www/japan-travel-weekend-test
 expected=$sha
 test -s "`$bundle/dist/index.html"
 test -s "`$bundle/dist/sw.js"
+test -s "`$bundle/weekend-test.conf"
+test -s "`$bundle/weekend-test-common.conf"
 test "`$(tr -d '\r\n ' < "`$bundle/RELEASE_SHA")" = "`$expected"
 test ! -e "`$release"
 if [[ -e "`$current" && ! -L "`$current" ]]; then echo 'refusing non-symlink current' >&2; exit 1; fi
@@ -165,6 +180,14 @@ printf '%s\n' "`$previous" | sudo tee "`$release/ROLLBACK_FROM" >/dev/null
 sudo chown -R root:root "`$release"
 sudo find "`$release" -type d -exec chmod 0755 {} +
 sudo find "`$release" -type f -exec chmod 0644 {} +
+nginx_site_backup="`$release/nginx-site.before"
+nginx_common_backup="`$release/nginx-common.before"
+if sudo test -f "`$nginx_site"; then sudo cp "`$nginx_site" "`$nginx_site_backup"; fi
+if sudo test -f "`$nginx_common"; then sudo cp "`$nginx_common" "`$nginx_common_backup"; fi
+sudo install -m 0644 "`$bundle/weekend-test.conf" "`$nginx_site"
+sudo install -m 0644 "`$bundle/weekend-test-common.conf" "`$nginx_common"
+sudo ln -sfn "`$nginx_site" /etc/nginx/sites-enabled/jtw-weekend-test
+nginx_changed=1
 sudo nginx -t
 sudo ln -sfn "`$release" "`$current"
 switched=1
@@ -175,6 +198,7 @@ for path in /app /staff /app/operations /app/operations/products; do curl -fsS "
 curl -fsS https://weekend.japan-travel.info/api/health; echo
 curl -fsS https://weekend.japan-travel.info/api/ready; echo
 switched=0
+nginx_changed=0
 echo "DEPLOYED=$releaseId ROLLBACK_FROM=`$previous"
 "@
   [IO.File]::WriteAllText((Join-Path $bundle 'install.sh'), ($install.Replace("`r`n", "`n") + "`n"), [Text.UTF8Encoding]::new($false))
@@ -213,6 +237,10 @@ echo "DEPLOYED=$releaseId ROLLBACK_FROM=`$previous"
     $app = Invoke-WebRequest -Uri "$site/app/operations/products" -UseBasicParsing -TimeoutSec 15
     $sw = Invoke-WebRequest -Uri "$site/sw.js" -UseBasicParsing -TimeoutSec 15
     if ($app.StatusCode -ne 200 -or $sw.StatusCode -ne 200) { throw '公网前端检查未通过' }
+    $contentSecurityPolicy = [string]$app.Headers['Content-Security-Policy']
+    if ($contentSecurityPolicy -notmatch "media-src 'self' blob: https://hzxoofvodpqpdomtmzlf\.supabase\.co") {
+      throw '公网 CSP 未包含景点视频播放来源'
+    }
     Write-Host "部署成功：$releaseId" -ForegroundColor Green
     Write-Host "回滚信息：服务器 $remoteRelease/ROLLBACK_FROM"
     Write-Host "验证：Nginx、API、数据库、应用页面和 Service Worker 均正常。"
