@@ -1,4 +1,5 @@
 import {localizedDraft, type ProductDraft} from './productDraft';
+import {SpotVideoPlayer} from '../../shared/components/SpotVideoPlayer';
 
 export type PreviewMode = 'detail' | 'card';
 
@@ -32,6 +33,7 @@ export function ProductPhonePreview({draft, locale, mode, dirty}: {draft: Produc
               {view.itinerary.length ? view.itinerary.map((item, index) => (
                 <article key={item.editorId} id={`preview-${item.editorId}`}>
                   {item.imageUrl && <img src={String(item.imageUrl)} alt="" />}
+                  {item.video?.url && <SpotVideoPlayer compact url={item.video.url} posterUrl={item.video.posterUrl || String(item.imageUrl ?? '') || undefined} title={String(item.title ?? item.name ?? '景点')} />}
                   <div><b>{index + 1}. {String(item.title ?? item.name ?? '未命名景点')}</b>{Number(item.stayMinutes) > 0 && <small>{Number(item.stayMinutes)} 分钟</small>}</div>
                   {item.description && <p>{String(item.description)}</p>}
                 </article>

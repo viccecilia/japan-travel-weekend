@@ -20,6 +20,7 @@ function open(overrides: Record<string, unknown> = {}) {
     saveProductDraft: vi.fn(async (_input: unknown) => ({ok: true, error: null})),
     publishProduct: vi.fn(async () => ({ok: true, error: null})),
     uploadProductImage: vi.fn(async () => ({url: 'https://media.example.invalid/new.webp', error: null})),
+    uploadProductSpotVideo: vi.fn(async (_productId: string, _stopId: string, _file: File, onProgress?: (value: number) => void) => { onProgress?.(100); return {url: 'https://media.example.invalid/spot.mp4', storagePath: 'trip-edit/stops/stop-1/video.mp4', error: null}; }),
     setProductStatus: vi.fn(async () => ({ok: true, error: null})),
     ...overrides,
   };
@@ -66,6 +67,27 @@ it('景点改名不重挂输入，排序作用于稳定景点且实时更新预�
   expect(preview.getByText(/2\. 清水寺新名称/)).toBeInTheDocument();
 });
 
+it('景点视频绑定稳定ID，改名排序后保存仍跟随原景点', async () => {
+  const withVideo = {...product, content: {...product.content, itinerary: [{id: 'stop-1', title: '清水寺', description: '原景点介绍', video: {url: 'https://media.example.invalid/spot.mp4', storagePath: 'trip-edit/stops/stop-1/video.mp4', posterUrl: '/poster.webp', mimeType: 'video/mp4', sizeBytes: 2048}}, {id: 'stop-2', title: '奈良公园', description: '第二站'}]}};
+  const operations = open({listProducts: vi.fn(async () => ({data: [withVideo], error: null}))});
+  fireEvent.click(await screen.findByRole('button', {name: '景点行程'}));
+  fireEvent.change(screen.getAllByLabelText('景点名称')[0], {target: {value: '清水寺新名称'}});
+  fireEvent.click(screen.getAllByRole('button', {name: '下移'})[0]);
+  fireEvent.click(screen.getByRole('button', {name: '保存草稿'}));
+  await vi.waitFor(() => expect(operations.saveProductDraft).toHaveBeenCalled());
+  const payload = operations.saveProductDraft.mock.calls[0][0] as {content: {itinerary: Array<Record<string, unknown>>}};
+  expect(payload.content.itinerary[1]).toMatchObject({id: 'stop-1', title: '清水寺新名称', video: {storagePath: 'trip-edit/stops/stop-1/video.mp4'}});
+});
+
+it('不兼容景点视频明确报错且不调用存储上传', async () => {
+  const operations = open();
+  fireEvent.click(await screen.findByRole('button', {name: '景点行程'}));
+  const invalid = new File(['not-a-video'], 'spot.mov', {type: 'video/quicktime'});
+  fireEvent.change(screen.getByLabelText('上传清水寺视频'), {target: {files: [invalid]}});
+  expect(await screen.findByText(/上传失败：仅支持 MP4/)).toBeInTheDocument();
+  expect(operations.uploadProductSpotVideo).not.toHaveBeenCalled();
+});
+
 it('保存失败保留输入和未保存状态，按钮恢复可重试', async () => {
   open({saveProductDraft: vi.fn(async () => ({ok: false, error: '版本冲突'}))});
   fireEvent.change(await screen.findByLabelText('路线标题'), {target: {value: '不能丢失的输入'}});
@@ -83,7 +105,7 @@ it('图片上传失败保留本地草稿并阻止 blob 地址写入保存', asyn
   fireEvent.change(await screen.findByLabelText('上传路线图片'), {target: {files: [file]}});
   expect(await screen.findByText(/上传失败：存储暂不可用/)).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', {name: '保存草稿'}));
-  expect(await screen.findByText(/仍有图片只存在于本地预览/)).toBeInTheDocument();
+  expect(await screen.findByText(/仍有图片或视频只存在于本地预览/)).toBeInTheDocument();
   expect(operations.saveProductDraft).not.toHaveBeenCalled();
 });
 

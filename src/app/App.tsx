@@ -17,7 +17,7 @@ import {
   describeChildSeat,
   emptyAssistance,
 } from "../shared/services/passengerAssistance";
-import type { ChildSeatChoice } from "../shared/types";
+import type { ChildSeatChoice, TripSpotVideo } from "../shared/types";
 import { GoogleMapsAdapter } from "../shared/integrations/googleMaps";
 import { useApp, useOptionalApp } from "./store";
 import { accessDestinationPath, isPassengerOnlyPath, loginSurfaceForReturnTo, passengerAccountBoundaryPath, referralCodeFromSearch, safeReturnTo } from "./auth";
@@ -31,6 +31,7 @@ import type {PassengerLocale} from '../shared/i18n/passengerLocale';
 import { featuredRoutePitch, featuredRouteSpots } from "../shared/i18n/spotContent";
 import {expandedRouteSummary} from '../shared/i18n/routeExpansion';
 import {RoutePlacePhoto} from '../shared/components/RoutePlacePhoto';
+import {SpotVideoPlayer} from '../shared/components/SpotVideoPlayer';
 import {routePhotoAt} from '../shared/data/routePhotoCatalog';
 import {groupDeparturesByMonth, resolveDepartureSelection} from './bookingDepartureSelection';
 import {singleSeatQuote} from '../shared/services/singleSeatPricing';
@@ -1002,9 +1003,9 @@ export function AppTrip() {
   const detail=routeDetailExtra[locale];
   const routeText=routeContentFallback[locale];
   const expandedSummary=t.catalogSource==='published'?null:expandedRouteSummary(locale,t.slug);
-  const fallbackSpots=displayTrip.stops.map((name,index)=>({name,location:displayTrip.region,intro:routeText.spot(name),history:'',highlights:[] as string[],tip:'',time:t.timeline[index]?.time,imageUrl:t.timeline[index]?.imageUrl,stayMinutes:t.timeline[index]?.stayMinutes}));
-  const publishedSpots=t.timeline.map(item=>({name:item.title,location:item.location||displayTrip.region,intro:item.detail,history:'',highlights:item.highlights??[],tip:item.tip??'',time:item.time,imageUrl:item.imageUrl,stayMinutes:item.stayMinutes}));
-  const displayedSpots=t.catalogSource==='published'?(publishedSpots.length?publishedSpots:fallbackSpots):richSpots??fallbackSpots;
+  const fallbackSpots=displayTrip.stops.map((name,index)=>({name,location:displayTrip.region,intro:routeText.spot(name),history:'',highlights:[] as string[],tip:'',time:t.timeline[index]?.time,imageUrl:t.timeline[index]?.imageUrl,stayMinutes:t.timeline[index]?.stayMinutes,video:t.timeline[index]?.video}));
+  const publishedSpots=t.timeline.map(item=>({name:item.title,location:item.location||displayTrip.region,intro:item.detail,history:'',highlights:item.highlights??[],tip:item.tip??'',time:item.time,imageUrl:item.imageUrl,stayMinutes:item.stayMinutes,video:item.video}));
+  const displayedSpots=(t.catalogSource==='published'?(publishedSpots.length?publishedSpots:fallbackSpots):richSpots??fallbackSpots).map(item=>({...item,video:('video' in item?item.video:undefined) as TripSpotVideo|undefined}));
   return (
     <div className="route-detail-page">
       <section className="route-detail-hero">
@@ -1104,6 +1105,7 @@ export function AppTrip() {
                           <span>{item.location}</span>
                           <h3>{item.name}</h3>
                           <RoutePlacePhoto id={`${t.slug}-spot-${index}`} name={item.name} query={routePlaceQueries[t.slug]?.[index]??`${item.name} Japan`} fallbackUrl={t.heroImage} {...routePhotoAt(t.slug,index)} url={item.imageUrl??routePhotoAt(t.slug,index)?.url} locale={locale}/>
+                          {item.video?.url&&<SpotVideoPlayer url={item.video.url} posterUrl={item.video.posterUrl||item.imageUrl} title={item.name}/>}
                           <>
                             <p>{item.intro}</p>
                             {item.history&&<p>{item.history}</p>}
