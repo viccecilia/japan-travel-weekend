@@ -5,20 +5,11 @@ import type {
   OperationsDriverStatistic,
   OperationsRunRow,
 } from "../../shared/integrations/supabaseOperations";
+import { locationState } from "./runStatus";
 const tokyoToday = () =>
   new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo" }).format(
     new Date(),
   );
-export const locationState = (value: string | null, now = Date.now()) => {
-  if (!value) return "暂无真实定位";
-  const age = now - new Date(value).getTime();
-  const time = new Date(value).toLocaleString("zh-CN", {
-    timeZone: "Asia/Tokyo",
-  });
-  return age <= 2 * 60_000
-    ? `实时 · 最后定位 ${time}`
-    : `已过期 · 最后定位 ${time}`;
-};
 const sum = (
   rows: OperationsRunRow[],
   field: "bookedSeats" | "arrived" | "boarded",
@@ -34,19 +25,23 @@ const groupedDepartures = (rows: OperationsRunRow[]) =>
       }, new Map<string, OperationsRunRow[]>())
       .values(),
   );
+const journeyStatusText = (value: string) =>
+  ({
+    preparing: "待出发",
+    meeting: "集合中",
+    in_progress: "行程中",
+    completed: "已完成",
+    data_inconsistent: "历史状态待核对",
+  })[value] ?? value;
 export function RunCenter() {
   const { services } = useApp();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [date, setDate] = useState(searchParams.get("date") ?? tokyoToday());
+  const date = searchParams.get("date") ?? tokyoToday();
   const selectedDeparture = searchParams.get("departure") ?? "";
   const [rows, setRows] = useState<OperationsRunRow[]>([]);
   const [drivers, setDrivers] = useState<OperationsDriverStatistic[]>([]);
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    const requested = searchParams.get("date");
-    if (requested && requested !== date) setDate(requested);
-  }, [searchParams, date]);
   useEffect(() => {
     let active = true;
     const monthStart = `${date.slice(0, 7)}-01`;
@@ -80,7 +75,6 @@ export function RunCenter() {
     };
   }, [date, services]);
   const changeDate = (value: string) => {
-    setDate(value);
     const next = new URLSearchParams(searchParams);
     next.set("date", value);
     next.delete("departure");
@@ -187,12 +181,13 @@ export function RunCenter() {
                       {row.arrived} · 已上车 {row.boarded}
                     </strong>
                     <span>
-                      {row.journeyStatus}
+                      {journeyStatusText(row.journeyStatus)}
                       {row.currentStop
                         ? ` · 当前站点：${row.currentStop}`
                         : " · 暂无当前站点"}
                     </span>
-                    <small>
+                    <small className={row.journeyStatus === "data_inconsistent" ? "operations-warning" : undefined}>
+                      {row.journeyStatus === "data_inconsistent" && "该履约记录早于班次服务日期，已保留历史并停止作为当前进度展示。 "}
                       {row.lastEventAt
                         ? `最后事件：${new Date(row.lastEventAt).toLocaleString("zh-CN", { timeZone: "Asia/Tokyo" })}`
                         : "暂无履约事件"}{" "}
