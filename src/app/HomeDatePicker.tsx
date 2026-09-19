@@ -4,6 +4,14 @@ import type {PassengerLocale} from '../shared/i18n/passengerLocale';
 import './homeV3.css';
 
 import {homeV3Labels} from './homeV3Copy';
+// Some embedded browsers omit ICU locales; keep navigation labels in the selected language.
+const weekdays:Record<PassengerLocale,readonly string[]>={
+  'zh-CN':['周日','周一','周二','周三','周四','周五','周六'],
+  'zh-TW':['週日','週一','週二','週三','週四','週五','週六'],
+  ja:['日','月','火','水','木','金','土'],en:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
+  es:['dom','lun','mar','mié','jue','vie','sáb'],vi:['CN','T2','T3','T4','T5','T6','T7'],
+  ne:['आइत','सोम','मङ्गल','बुध','बिही','शुक्र','शनि'],ko:['일','월','화','수','목','금','토'],
+};
 export function HomeDatePicker({locale,date,onChange}:{locale:PassengerLocale;date:string;onChange:(date:string)=>void}) {
   const [today,setToday]=useState(()=>tokyoDateKey(new Date()));
   useEffect(()=>{
@@ -19,7 +27,7 @@ export function HomeDatePicker({locale,date,onChange}:{locale:PassengerLocale;da
     <div className="home-v3-days">{days.map(day=>{
       const value=new Date(`${day}T12:00:00+09:00`);
       return <button key={day} type="button" aria-pressed={day===date} onClick={()=>onChange(day)}>
-        <span>{new Intl.DateTimeFormat(locale,{timeZone:'Asia/Tokyo',weekday:'short'}).format(value)}</span>
+        <span>{weekdays[locale][value.getUTCDay()]}</span>
         <b>{Number(day.slice(-2))}</b>
       </button>;
     })}</div>

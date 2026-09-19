@@ -1,10 +1,17 @@
-import {act,cleanup,renderHook} from '@testing-library/react';
+import {act,cleanup,render,renderHook,screen} from '@testing-library/react';
 import {afterEach,describe,expect,it,vi} from 'vitest';
 import {useCurrentTime} from '../src/app/useCurrentTime';
 import {tokyoDateKey} from '../src/app/homeUpcomingDepartures';
+import {HomeDatePicker} from '../src/app/HomeDatePicker';
 
 afterEach(()=>{cleanup();vi.useRealTimers()});
 describe('foreground and Tokyo midnight clock',()=>{
+  it('renders selected-language weekdays even if browser ICU falls back',()=>{
+    vi.useFakeTimers();vi.setSystemTime(new Date('2026-09-19T12:00:00Z'));
+    render(<HomeDatePicker locale="ne" date="2026-09-19" onChange={()=>{}}/>);
+    expect(screen.getByRole('button',{name:/शनि\s*19/})).toHaveAttribute('aria-pressed','true');
+    expect(screen.queryByText('周六')).toBeNull();
+  });
   it('updates across Tokyo midnight and stops its interval on unmount',()=>{
     vi.useFakeTimers();vi.setSystemTime(new Date('2026-09-19T14:59:50Z'));
     const hook=renderHook(()=>useCurrentTime());
