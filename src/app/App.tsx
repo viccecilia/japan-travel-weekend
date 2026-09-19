@@ -35,7 +35,11 @@ import {routePhotoAt} from '../shared/data/routePhotoCatalog';
 import {groupDeparturesByMonth, resolveDepartureSelection} from './bookingDepartureSelection';
 import {singleSeatQuote} from '../shared/services/singleSeatPricing';
 import type {ServerQuote} from '../shared/backend/testApi';
-import {isHomeSellableDeparture,selectUpcomingDepartures} from './homeUpcomingDepartures';
+import {isHomeSellableDeparture,selectDeparturesForTokyoDate,tokyoDateKey} from './homeUpcomingDepartures';
+import {HomeDatePicker} from './HomeDatePicker';
+import {homeV3Labels} from './homeV3Copy';
+import {HomeNextTrip,HomeBenefits} from './HomeNextTrip';
+const homePriceUnit:Record<PassengerLocale,string>={'zh-CN':'人','zh-TW':'人',ja:'人',en:'person',es:'persona',vi:'người',ne:'व्यक्ति',ko:'인'};
 import {composePassengerDisplayName,splitPassengerDisplayName,type PassengerSalutation} from './passengerDisplayName';
 const trips = travelRepository.listTrips();
 const orderStatusLabels:Record<string,Record<string,string>>={
@@ -464,8 +468,9 @@ export function AppHome() {
   const h=passengerHomeCopy[locale];
   const x=homeExtraCopy[locale];
   const localTrip=(trip:typeof trips[number])=>localizedTripSummary(locale,trip);
-  const visibleDepartures=selectUpcomingDepartures(deps,trips.map(trip=>trip.slug));
-  const upcomingTitle:Record<PassengerLocale,string>={'zh-CN':'近期出发','zh-TW':'近期出發',ja:'近日出発',en:'Upcoming departures',es:'Próximas salidas',vi:'Chuyến đi sắp tới',ne:'आगामी प्रस्थान',ko:'다가오는 출발'};
+  const [search,setSearch]=useSearchParams();
+  const selectedDate=/^\d{4}-\d{2}-\d{2}$/.test(search.get("date")??"")?search.get("date")!:tokyoDateKey(new Date());
+  const visibleDepartures=selectDeparturesForTokyoDate(deps,travelRepository.listTrips().map(trip=>trip.slug),selectedDate);
   const vipCopy:Record<PassengerLocale,{eyebrow:string,title:string,text:string,features:string,action:string}>={
     'zh-CN':{eyebrow:'VIP CHARTER',title:'VIP 专属包车',text:'和家人朋友，按自己的节奏出发',features:'专车出行 · 酒店接送 · 阿尔法／海狮',action:'查看包车方案 →'},
     'zh-TW':{eyebrow:'VIP CHARTER',title:'VIP 專屬包車',text:'和家人朋友，按自己的節奏出發',features:'專車出行 · 飯店接送 · Alphard／Hiace',action:'查看包車方案 →'},
@@ -478,7 +483,7 @@ export function AppHome() {
   };
   const vip=vipCopy[locale];
   return (
-    <div className="fulfillment-home passenger-home-v2">
+    <div className="fulfillment-home passenger-home-v2 home-v3">
       <section className="passenger-yellow-hero">
         <div className="passenger-welcome">
           <div>
@@ -489,66 +494,15 @@ export function AppHome() {
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
             </svg>
-            <em aria-hidden="true" />
           </Link>
         </div>
-        <div className="next-trip-pass">
-          <div>
-            <span>JAPAN TRAVEL PASS</span>
-            <h2>{h.passTitle}</h2>
-            <p>{h.passText}</p>
-          </div>
-          <Link to="/app/trips">{h.choose} →</Link>
-        </div>
       </section>
-      <section className="passenger-member-strip" aria-label={x.member}>
-        <div>
-          <small>{h.credit}</small>
-          <b>¥{state.credits}</b>
-        </div>
-        <div>
-          <small>{h.tier}</small>
-          <b>{locale==='zh-CN'?tierFor(state.completedTrips).name:x.tier}</b>
-        </div>
-        <Link to="/app/rewards">{h.benefits} →</Link>
-      </section>
-       <nav className="passenger-quick-actions" aria-label={x.quick}>
-         <Link to="/app/my-trip">
-          <i>⌖</i>
-          <span>{h.meeting}</span>
-        </Link>
-        <Link to="/app/guides">
-          <i>▤</i>
-          <span>{h.guides}</span>
-        </Link>
-        <Link to="/app/rewards">
-          <i>☆</i>
-          <span>{x.benefits}</span>
-        </Link>
-        <Link to="/app/support">
-          <i>?</i>
-          <span>{h.support}</span>
-        </Link>
-      </nav>
-      <Link className="passenger-alert-ribbon" to="/app/notifications">
-        <span>{h.alert}</span>
-        <b>{h.alertText}</b>
-        <strong>›</strong>
-      </Link>
-      <Link className="passenger-vip-card" to="/app/vip-charter">
-        <div>
-          <span>{vip.eyebrow}</span>
-          <h2>{vip.title}</h2>
-          <p>{vip.text}</p>
-          <small>{vip.features}</small>
-          <strong>{vip.action}</strong>
-        </div>
-        <img src="/images/vip-alphard-hotel.jpg" alt="" />
-      </Link>
+      <HomeNextTrip key={`trip-${state.user?.email??'anonymous'}`}/>
+      <HomeDatePicker locale={locale} date={selectedDate} onChange={date=>{const next=new URLSearchParams(search);next.set('date',date);setSearch(next)}}/>
       <div className="passenger-section-heading passenger-upcoming-heading">
         <div>
-          <span>UPCOMING</span>
-          <h2>{upcomingTitle[locale]}</h2>
+          <time dateTime={selectedDate}>{selectedDate}</time>
+          <h2>{homeV3Labels(locale)[2]}</h2>
         </div>
         <Link to="/app/trips">{h.allRoutes}</Link>
       </div>
@@ -574,8 +528,8 @@ export function AppHome() {
                   <h3>{display.name}</h3>
                   <p>{display.stops.slice(0, 3).join(" → ")}</p>
                   <time dateTime={departure.departureTime??undefined}>{dateLabel}</time>
-                  <strong>{h.perSeat} ¥{departure.price?.toLocaleString(locale)}</strong>
-                  <small>{h.seatsLeft} {departure.availableSeats}</small>
+                  <strong>¥{departure.price?.toLocaleString(locale)} / {homePriceUnit[locale]}</strong>
+                  {departure.availableSeats!==null&&departure.availableSeats<=5&&<small>{h.seatsLeft} {departure.availableSeats}</small>}
                 </div>
               </Link>
             );
@@ -587,25 +541,18 @@ export function AppHome() {
           text={h.emptyText}
         />
       )}
-      <div className="passenger-section-heading compact">
+      <HomeBenefits key={`benefits-${state.user?.email??'anonymous'}`}/>
+      <h2>{homeV3Labels(locale)[4]}</h2>
+      <Link className="passenger-vip-card" to="/app/vip-charter">
         <div>
-          <span>TRAVEL IDEAS</span>
-          <h2>{h.ideas}</h2>
+          <span>{vip.eyebrow}</span>
+          <h2>{vip.title}</h2>
+          <p>{vip.text}</p>
+          <small>{vip.features}</small>
+          <strong>{vip.action}</strong>
         </div>
-        <Link to="/app/guides">{h.all}</Link>
-      </div>
-      <div className="passenger-guide-grid">
-        <Link to="/app/guides#food">
-          <span>{x.foodTag}</span>
-          <b>{x.food}</b>
-          <small>{x.foodTime}</small>
-        </Link>
-        <Link to="/app/guides#meeting">
-          <span>{x.meetTag}</span>
-          <b>{x.meet}</b>
-          <small>{x.meetTime}</small>
-        </Link>
-      </div>
+        <img src="/images/vip-alphard-hotel.jpg" alt="" />
+      </Link>
       <Link className="passenger-private-card" to="/app/private-groups">
         <div>
           <span>PRIVATE GROUPS</span>

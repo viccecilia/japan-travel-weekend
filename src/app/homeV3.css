@@ -1,0 +1,23 @@
+.home-v3 .passenger-yellow-hero{background:#fffdf4;padding:16px;border:1px solid #eee4bd;border-radius:18px}
+.home-v3 .passenger-welcome h1{font-size:22px;margin:6px 0}
+.home-v3 .passenger-welcome{align-items:center}
+.home-v3 .passenger-welcome p{margin:4px 0;font-size:13px;color:#59636a}
+.home-v3-dates{min-width:0;margin:18px 0}
+.home-v3 h2{font-size:18px}
+.home-v3-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.home-v3-days button{min-width:0;min-height:64px;border:1px solid #e4e6e7;border-radius:12px;background:#fff;color:#34444b;padding:6px 2px;display:grid;gap:4px;cursor:pointer}
+.home-v3-days button[aria-pressed=true]{background:#fff1a4;border-color:#d4ae25;color:#19242b}
+.home-v3-days span{font-size:11px;overflow-wrap:anywhere}
+.home-v3-days b{font-size:18px}
+.home-v3-dates label{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;font-size:13px}
+.home-v3-dates input{min-width:0;min-height:44px;max-width:65%;padding:8px;border:1px solid #dfe3e4;border-radius:10px;background:#fff}
+.home-v3 .passenger-upcoming-heading{margin-top:12px}
+.home-v3 .passenger-upcoming-card{min-width:0}
+.home-v3 .passenger-upcoming-card>div{min-width:0;overflow-wrap:anywhere}
+.home-v3-benefits{margin:20px 0;padding:16px;border:1px solid #eadb8d;border-radius:18px;background:linear-gradient(145deg,#fffdf4,#fff7cf)}
+.home-v3-benefits nav{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.home-v3-benefits a{min-height:44px;display:flex;align-items:center;padding:8px 12px;border-radius:10px;background:#fff;color:#22353d}
+.home-v3 .home-v3-next{display:grid;gap:8px;margin:14px 0;padding:16px;border:1px solid #d7c060;border-radius:16px;background:#fff9db;color:#24323b;text-decoration:none}
+.home-v3 .home-v3-next time{font-size:14px}
+.home-v3 .home-v3-next small{color:#58656b}
+.home-v3{padding:0 12px}

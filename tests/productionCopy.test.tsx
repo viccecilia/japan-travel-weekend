@@ -27,7 +27,7 @@ describe('production 用户可见文案',()=>{
   });
   it('游客首页不把演示行程伪装成下一次真实行程',()=>{
     render(<MemoryRouter><AppProvider><AppHome/></AppProvider></MemoryRouter>);
-    expect(screen.getByText('把关西周末装进口袋')).toBeInTheDocument();
+    expect(screen.getByText('你好，今天想去哪里？')).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/明日出发|TEST-本周六|车辆信息已更新/);
   });
   it('Supabase 可用但结账 API 缺失时支付按钮明确禁用',()=>{

@@ -1,5 +1,18 @@
 import type {Departure} from '../shared/types';
 
+export function tokyoDateKey(value: Date | string): string {
+  return new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value));
+}
+
+export function nextTokyoDays(now = new Date(), count = 7): string[] {
+  const start = new Date(`${tokyoDateKey(now)}T00:00:00+09:00`).getTime();
+  return Array.from({length:count}, (_, index) => tokyoDateKey(new Date(start + index * 86_400_000)));
+}
+
+export function selectDeparturesForTokyoDate(departures:Departure[], slugs:string[], date:string, now=new Date()) {
+  return selectUpcomingDepartures(departures.filter(item => item.departureTime && tokyoDateKey(item.departureTime) === date), slugs, now);
+}
+
 export const isHomeSellableDeparture=(departure:Departure)=>
   !departure.dateLabel.includes('TEST-')&&
   !departure.isSeed&&

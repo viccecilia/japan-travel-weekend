@@ -1,4 +1,4 @@
-import {cleanup,render,screen,waitFor} from '@testing-library/react';
+import {cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {afterEach,describe,expect,it,vi} from 'vitest';
 import {MemoryRouter} from 'react-router-dom';
 import {AppHome} from '../src/app/App';
@@ -15,8 +15,8 @@ describe('游客首页合并近期出发板块',()=>{
       onAuthStateChange:()=>()=>{},
       currentUser:async()=>null,
     };
-    render(<MemoryRouter><AppProvider services={services as never}><AppHome/></AppProvider></MemoryRouter>);
-    await waitFor(()=>expect(screen.getByText('每席 ¥8,123')).toBeInTheDocument());
+    render(<MemoryRouter initialEntries={['/app?date=2099-09-13']}><AppProvider services={services as never}><AppHome/></AppProvider></MemoryRouter>);
+    await waitFor(()=>expect(screen.getByText('¥8,123 / 人')).toBeInTheDocument());
     const card=screen.getAllByRole('link').find(link=>link.classList.contains('passenger-upcoming-card'))!;
     expect(card).toHaveAttribute('href','/app/trips/kyoto-nara-classic?departureId=home-departure-1');
     expect(card).toHaveTextContent('余 4');
@@ -27,9 +27,14 @@ describe('游客首页合并近期出发板块',()=>{
     expect(vip).toHaveTextContent('和家人朋友，按自己的节奏出发');
     expect(vip).toHaveTextContent('专车出行 · 酒店接送 · 阿尔法／海狮');
     expect(vip).toHaveTextContent('查看包车方案 →');
-    const alert=document.querySelector('.passenger-alert-ribbon')!;
     const upcoming=document.querySelector('.passenger-upcoming-heading')!;
-    expect(alert.compareDocumentPosition(vip)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(vip.compareDocumentPosition(upcoming)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(upcoming.compareDocumentPosition(vip)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('其他日期'),{target:{value:'2099-09-14'}});
+    expect(await screen.findByText('¥9,999 / 人')).toBeInTheDocument();
+    expect(screen.queryByText('¥8,123 / 人')).not.toBeInTheDocument();
+    expect(document.querySelector('.passenger-upcoming-card')).toHaveAttribute('href','/app/trips/kyoto-nara-classic?departureId=home-departure-2');
+    fireEvent.change(screen.getByLabelText('其他日期'),{target:{value:'2099-09-15'}});
+    expect(screen.getByText('暂无开放班次')).toBeInTheDocument();
+    expect(document.querySelector('.passenger-upcoming-card')).toBeNull();
   });
 });
