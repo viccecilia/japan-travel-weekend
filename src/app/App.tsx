@@ -41,6 +41,7 @@ import {homeV3Labels} from './homeV3Copy';
 import {HomeNextTrip,HomeBenefits} from './HomeNextTrip';
 import './routeDetailContinuous.css';
 import {TravelShareCampaign} from './TravelShareCampaign';
+import {useCurrentTime} from './useCurrentTime';
 const homePriceUnit:Record<PassengerLocale,string>={'zh-CN':'人','zh-TW':'人',ja:'人',en:'person',es:'persona',vi:'người',ne:'व्यक्ति',ko:'인'};
 import {composePassengerDisplayName,splitPassengerDisplayName,type PassengerSalutation} from './passengerDisplayName';
 const trips = travelRepository.listTrips();
@@ -471,8 +472,9 @@ export function AppHome() {
   const x=homeExtraCopy[locale];
   const localTrip=(trip:typeof trips[number])=>localizedTripSummary(locale,trip);
   const [search,setSearch]=useSearchParams();
-  const selectedDate=/^\d{4}-\d{2}-\d{2}$/.test(search.get("date")??"")?search.get("date")!:tokyoDateKey(new Date());
-  const visibleDepartures=selectDeparturesForTokyoDate(deps,travelRepository.listTrips().map(trip=>trip.slug),selectedDate);
+  const homeNow=useCurrentTime();
+  const selectedDate=/^\d{4}-\d{2}-\d{2}$/.test(search.get("date")??"")?search.get("date")!:tokyoDateKey(new Date(homeNow));
+  const visibleDepartures=selectDeparturesForTokyoDate(deps,travelRepository.listTrips().map(trip=>trip.slug),selectedDate,new Date(homeNow));
   const vipCopy:Record<PassengerLocale,{eyebrow:string,title:string,text:string,features:string,action:string}>={
     'zh-CN':{eyebrow:'VIP CHARTER',title:'VIP 专属包车',text:'和家人朋友，按自己的节奏出发',features:'专车出行 · 酒店接送 · 阿尔法／海狮',action:'查看包车方案 →'},
     'zh-TW':{eyebrow:'VIP CHARTER',title:'VIP 專屬包車',text:'和家人朋友，按自己的節奏出發',features:'專車出行 · 飯店接送 · Alphard／Hiace',action:'查看包車方案 →'},
@@ -947,7 +949,7 @@ export function AppTrips() {
         text={r.text}
       />
       <div className="app-list route-card-list">
-        {trips.map((t) => (
+        {travelRepository.listTrips().map((t) => (
           <TripCard key={t.id} trip={t} app locale={state.ui.locale ?? 'zh-CN'} />
         ))}
       </div>
@@ -955,6 +957,7 @@ export function AppTrips() {
   );
 }
 export function AppTrip() {
+  const now=useCurrentTime();
   const t = travelRepository.getTrip(useParams().slug || "");
   const location=useLocation();
   const { departures,state } = useApp();
@@ -963,7 +966,7 @@ export function AppTrip() {
 
   if (!t) return <Empty title={r.notFound} />;
   const routeDepartures = departures.filter((item) => item.tripSlug === t.slug);
-  const sellable = routeDepartures.filter(isHomeSellableDeparture).filter(item=>Date.parse(item.departureTime!)>=Date.now()).sort((a,b)=>Date.parse(a.departureTime!)-Date.parse(b.departureTime!));
+  const sellable = routeDepartures.filter(isHomeSellableDeparture).filter(item=>Date.parse(item.departureTime!)>=now).sort((a,b)=>Date.parse(a.departureTime!)-Date.parse(b.departureTime!));
   const requestedDepartureId=new URLSearchParams(location.search).get('departureId');
   const requestedDeparture=sellable.find(item=>item.id===requestedDepartureId)??sellable[0]??null;
   const published=t.catalogSource==='published';
@@ -1108,18 +1111,18 @@ export function AppTrip() {
                 ))}
               </div>
               <div className="route-detail-grid">
-                <section>
+                {(!published||t.suitableFor.length>0)&&<section>
                   <h2>{routeText.suitable}</h2><ul className="check-list"><li>{published?t.suitableFor.join(' · '):routeText.suitableText}</li></ul>
-                </section>
-                <section>
+                </section>}
+                {(!published||t.mealOptions)&&<section>
                   <h2>{routeText.meal}</h2><p>{published?t.mealOptions:routeText.mealText}</p>
-                </section>
-                <section>
+                </section>}
+                {(!published||t.included.length>0)&&<section>
                   <h2>{routeText.included}</h2><ul><li>{published?t.included.join('；'):routeText.includedText}</li></ul>
-                </section>
-                <section>
+                </section>}
+                {(!published||t.excluded.length>0)&&<section>
                   <h2>{routeText.excluded}</h2><ul><li>{published?t.excluded.join('；'):routeText.excludedText}</li></ul>
-                </section>
+                </section>}
               </div>
             </section>
           )}
@@ -1130,7 +1133,7 @@ export function AppTrip() {
                   <span>{routeText.prep}</span><h2>{routeText.prepTitle}</h2><p>{published?t.notices.join('；'):routeText.prepText}</p>
                 </header>
                 <div className="travel-prep-grid">
-                  <details open>
+                  {(!published||t.packingList.length>0)&&<details open>
                     <summary>
                       <i>包</i>
                       <span>
@@ -1140,8 +1143,8 @@ export function AppTrip() {
                     <ul>
                       <li>{published?t.packingList.join('；'):routeText.carryText}</li>
                     </ul>
-                  </details>
-                  <details>
+                  </details>}
+                  {(!published||t.clothingAdvice)&&<details>
                     <summary>
                       <i>衣</i>
                       <span>
@@ -1149,8 +1152,8 @@ export function AppTrip() {
                       </span>
                     </summary>
                     <p>{published?t.clothingAdvice:routeText.wearText}</p>
-                  </details>
-                  <details>
+                  </details>}
+                  {(!published||t.friendlyReminders.length>0)&&<details>
                     <summary>
                       <i>心</i>
                       <span>
@@ -1160,13 +1163,13 @@ export function AppTrip() {
                     <ul>
                       <li>{published?t.friendlyReminders.join('；'):routeText.reminderText}</li>
                     </ul>
-                  </details>
+                  </details>}
                 </div>
               </section>
               <section className="route-booking-notices">
                 <span>BOOKING NOTES</span>
                   <h2>{routeText.notes}</h2>
-                <ul className="check-list"><li>{published?t.notices.join('；'):routeText.prepText}</li><li>{published?t.friendlyReminders.join('；'):routeText.reminderText}</li></ul>
+                <ul className="check-list">{(!published||t.notices.length>0)&&<li>{published?t.notices.join('；'):routeText.prepText}</li>}{(!published||t.friendlyReminders.length>0)&&<li>{published?t.friendlyReminders.join('；'):routeText.reminderText}</li>}</ul>
               </section>
             </section>
           )}

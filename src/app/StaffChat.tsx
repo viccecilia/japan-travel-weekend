@@ -35,8 +35,8 @@ export function StaffChat({task}:{task:StaffTask}){
       }catch{if(active){setFailed(true);setLoaded(true)}}finally{inFlight=false}
     };
     refreshRef.current=refresh;void refresh();
-    void services.currentUser().then(user=>{if(active)setCurrentUser(user?.id??null)});
-    void services.realtime.subscribeTripRoom(task.room_id,()=>void refresh(),()=>void refresh(),()=>void refresh()).then(live=>{if(active)subscription=live;else live.close()});
+    void services.currentUser().then(user=>{if(active)setCurrentUser(user?.id??null)}).catch(()=>{if(active)setCurrentUser(null)});
+    void services.realtime.subscribeTripRoom(task.room_id,()=>void refresh(),()=>void refresh(),()=>void refresh()).then(live=>{if(active)subscription=live;else live.close()}).catch(()=>{if(active)setNotice('实时连接暂不可用，正在定时刷新消息。')});
     const timer=window.setInterval(()=>void refresh(),15000);
     window.addEventListener('focus',refresh);
     return()=>{active=false;subscription?.close();window.clearInterval(timer);window.removeEventListener('focus',refresh)};

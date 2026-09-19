@@ -55,14 +55,14 @@ export function HomeBenefits(){
     return()=>{active=false};
   },[services,state.user]);
   const copy={
-    'zh-CN':['优惠券','推荐记录','等级与旅行金以权益中心已核对记录为准'],
-    'zh-TW':['優惠券','推薦記錄','等級及旅行金以權益中心已核對記錄為準'],
-    ja:['クーポン','紹介履歴','特典センターで確認済みの情報をご確認ください'],
-    en:['Coupons','Referrals','View verified benefits in the benefits centre'],
-    es:['Cupones','Referidos','Consulta los beneficios verificados en el centro'],
-    vi:['Phiếu giảm giá','Giới thiệu','Xem quyền lợi đã xác nhận tại trung tâm'],
-    ne:['कुपन','सिफारिस','लाभ केन्द्रमा प्रमाणित विवरण हेर्नुहोस्'],
-    ko:['쿠폰','추천 기록','혜택 센터에서 확인된 내역을 확인하세요'],
+    'zh-CN':['优惠券','推荐记录','等级、完成次数与旅行金汇总尚未接通'],
+    'zh-TW':['優惠券','推薦記錄','等級、完成次數及旅行金彙總尚未接通'],
+    ja:['クーポン','紹介履歴','会員ランク・旅行回数・クレジットの集計は未接続です'],
+    en:['Coupons','Referrals','Tier, completed-trip and credit summaries are not connected yet'],
+    es:['Cupones','Referidos','Los resúmenes de nivel, viajes y saldo aún no están conectados'],
+    vi:['Phiếu giảm giá','Giới thiệu','Chưa kết nối tổng hợp hạng, chuyến đi và tín dụng'],
+    ne:['कुपन','सिफारिस','स्तर, पूरा भएका यात्रा र क्रेडिटको सारांश अझै जोडिएको छैन'],
+    ko:['쿠폰','추천 기록','등급, 완료 여행 및 크레딧 집계는 아직 연결되지 않았습니다'],
   }[locale];
   return <section className="home-v3-benefits"><h2>{homeV3Labels(locale)[3]}</h2>
     <p>{copy[2]}</p><nav><Link to="/app/rewards">{copy[0]}{coupons!==null?` · ${coupons}`:''} →</Link><Link to="/app/referral">{copy[1]} →</Link></nav>

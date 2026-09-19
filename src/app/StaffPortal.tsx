@@ -1230,7 +1230,7 @@ function StatusCard({
 }
 function StaffFrame({
   children,
-  task = null,
+  task: _task = null,
 }: {
   children: ReactNode;
   task?: StaffTask | null;
