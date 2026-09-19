@@ -1,0 +1,7 @@
+.route-detail-page .route-section-nav a{padding:12px;text-align:center;color:#304049;font-weight:700;text-decoration:none;min-height:44px;display:flex;align-items:center;justify-content:center;flex:1;min-width:0;overflow-wrap:anywhere}
+.route-detail-page .route-continuous-content>section{scroll-margin-top:76px;padding:16px 0;border-bottom:1px solid #e3e7e8}
+.route-detail-page .route-selected-departure{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:16px;margin:16px 0;border:1px solid #e3d79c;border-radius:16px;background:#fffdf2}
+.route-detail-page .route-selected-departure time{grid-column:1/-1}
+.route-detail-page .route-selected-departure strong{font-size:20px;color:#745a00}
+.route-detail-page .route-selected-departure a{grid-column:1/-1;min-height:44px;display:flex;align-items:center;justify-content:center;background:#ffe357;border-radius:10px;font-weight:700;color:#1e2e37}
+.route-detail-page .route-selected-departure span{overflow-wrap:anywhere}

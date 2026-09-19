@@ -39,6 +39,7 @@ import {isHomeSellableDeparture,selectDeparturesForTokyoDate,tokyoDateKey} from 
 import {HomeDatePicker} from './HomeDatePicker';
 import {homeV3Labels} from './homeV3Copy';
 import {HomeNextTrip,HomeBenefits} from './HomeNextTrip';
+import './routeDetailContinuous.css';
 const homePriceUnit:Record<PassengerLocale,string>={'zh-CN':'人','zh-TW':'人',ja:'人',en:'person',es:'persona',vi:'người',ne:'व्यक्ति',ko:'인'};
 import {composePassengerDisplayName,splitPassengerDisplayName,type PassengerSalutation} from './passengerDisplayName';
 const trips = travelRepository.listTrips();
@@ -958,14 +959,13 @@ export function AppTrip() {
   const { departures,state } = useApp();
   const locale=state.ui.locale ?? 'zh-CN';
   const r=passengerRoutesCopy[locale];
-  const [activeDetailTab, setActiveDetailTab] = useState<
-    "highlights" | "schedule" | "prep"
-  >("highlights");
+
   if (!t) return <Empty title={r.notFound} />;
   const routeDepartures = departures.filter((item) => item.tripSlug === t.slug);
-  const sellable = routeDepartures.filter(isHomeSellableDeparture);
+  const sellable = routeDepartures.filter(isHomeSellableDeparture).filter(item=>Date.parse(item.departureTime!)>=Date.now()).sort((a,b)=>Date.parse(a.departureTime!)-Date.parse(b.departureTime!));
   const requestedDepartureId=new URLSearchParams(location.search).get('departureId');
-  const requestedDeparture=sellable.find(item=>item.id===requestedDepartureId)??null;
+  const requestedDeparture=sellable.find(item=>item.id===requestedDepartureId)??sellable[0]??null;
+  const published=t.catalogSource==='published';
   const richSpots=featuredRouteSpots[t.slug]?.[locale]??null;
   const routePitch=t.catalogSource==='published'?null:featuredRoutePitch[t.slug]?.[locale]??null;
   const displayTrip=localizedTripSummary(locale,t);
@@ -974,7 +974,7 @@ export function AppTrip() {
   const expandedSummary=t.catalogSource==='published'?null:expandedRouteSummary(locale,t.slug);
   const fallbackSpots=displayTrip.stops.map((name,index)=>({name,location:displayTrip.region,intro:routeText.spot(name),history:'',highlights:[] as string[],tip:'',time:t.timeline[index]?.time,imageUrl:t.timeline[index]?.imageUrl,stayMinutes:t.timeline[index]?.stayMinutes,video:t.timeline[index]?.video}));
   const publishedSpots=t.timeline.map(item=>({name:item.title,location:item.location||displayTrip.region,intro:item.detail,history:'',highlights:item.highlights??[],tip:item.tip??'',time:item.time,imageUrl:item.imageUrl,stayMinutes:item.stayMinutes,video:item.video}));
-  const displayedSpots=(t.catalogSource==='published'?(publishedSpots.length?publishedSpots:fallbackSpots):richSpots??fallbackSpots).map(item=>({...item,video:('video' in item?item.video:undefined) as TripSpotVideo|undefined}));
+  const displayedSpots=(t.catalogSource==='published'?(publishedSpots):richSpots??fallbackSpots).map(item=>({...item,video:('video' in item?item.video:undefined) as TripSpotVideo|undefined}));
   return (
     <div className="route-detail-page">
       <section className="route-detail-hero">
@@ -987,6 +987,12 @@ export function AppTrip() {
           <p>{displayTrip.stops.join(' · ')}</p>
         </div>
       </section>
+      {requestedDeparture&&<section className="route-selected-departure">
+        <time dateTime={requestedDeparture.departureTime!}>{new Intl.DateTimeFormat(locale,{timeZone:'Asia/Tokyo',dateStyle:'medium',timeStyle:'short'}).format(new Date(requestedDeparture.departureTime!))}</time>
+        <strong>¥{requestedDeparture.price?.toLocaleString(locale)} / {homePriceUnit[locale]}</strong>
+        <span>{requestedDeparture.meetingPointName}</span><span>{passengerHomeCopy[locale].seatsLeft} {requestedDeparture.availableSeats}</span>
+        <Link to={`/app/booking/${t.slug}?departureId=${encodeURIComponent(requestedDeparture.id)}`}>{r.book} →</Link>
+      </section>}
       <div className="route-facts">
         <span>
           <small>{r.duration}</small>
@@ -994,14 +1000,14 @@ export function AppTrip() {
         </span>
         <span>
           <small>{r.walking}</small>
-          <b>{t.walkingLevel||detail.walking}</b>
+          <b>{t.walkingLevel||(published?detail.pending:detail.walking)}</b>
         </span>
         <span>
           <small>{r.service}</small>
-          <b>{t.languages.length?t.languages.join(' · '):detail.languages}</b>
+          <b>{t.languages.length?t.languages.join(' · '):(published?detail.pending:detail.languages)}</b>
         </span>
       </div>
-      <p className="route-lead">{routePitch?.lead ?? expandedSummary?.summary ?? (t.catalogSource==='published'&&t.summary?t.summary:routeText.lead(displayTrip.stops.join('、')))}</p>
+      <p className="route-lead">{routePitch?.lead ?? expandedSummary?.summary ?? (published?t.summary:routeText.lead(displayTrip.stops.join('、')))}</p>
       {routePitch&&<div className="route-fit-tags" aria-label="适合人群">{routePitch.fit.map(item=><span key={item}>{item}</span>)}</div>}
       <section className="route-trust-strip" aria-label={detail.trust}>
         <span>
@@ -1021,7 +1027,7 @@ export function AppTrip() {
         <nav
           className="route-section-nav"
           aria-label={detail.nav}
-          role="tablist"
+
         >
           {(
             [
@@ -1030,21 +1036,12 @@ export function AppTrip() {
               ["prep", r.prep],
             ] as const
           ).map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={activeDetailTab === key}
-              className={activeDetailTab === key ? "active" : ""}
-              onClick={() => setActiveDetailTab(key)}
-            >
-              {label}
-            </button>
+            <a key={key} href={`#route-${key}`}>{label}</a>
           ))}
         </nav>
-        <div className="route-tab-panel" role="tabpanel">
-          {activeDetailTab === "highlights" && (
-            <>
+        <div className="route-continuous-content">
+          {(
+            <section id="route-highlights">
               <section className="route-reasons">
                 <header>
                   <span>WHY THIS TRIP</span>
@@ -1055,7 +1052,7 @@ export function AppTrip() {
                     <article key={item.name}>
                       <i>{String(index + 1).padStart(2, "0")}</i>
                       <h3>{item.name}</h3>
-                      <p>{richSpots?item.intro:routeText.reason(item.name)}</p>
+                      <p>{published||richSpots?item.intro:routeText.reason(item.name)}</p>
                     </article>
                   ))}
                 </div>
@@ -1075,29 +1072,29 @@ export function AppTrip() {
                           <h3>{item.name}</h3>
                           <RoutePlacePhoto id={`${t.slug}-spot-${index}`} name={item.name} query={routePlaceQueries[t.slug]?.[index]??`${item.name} Japan`} fallbackUrl={t.heroImage} {...routePhotoAt(t.slug,index)} url={item.imageUrl??routePhotoAt(t.slug,index)?.url} locale={locale}/>
                           {item.video?.url&&<SpotVideoPlayer url={item.video.url} posterUrl={item.video.posterUrl||item.imageUrl} title={item.name}/>}
-                          <>
+                          <section>
                             <p>{item.intro}</p>
                             {item.history&&<p>{item.history}</p>}
                             {item.highlights.length>0&&<ul className="check-list">{item.highlights.map(point=><li key={point}>{point}</li>)}</ul>}
                             {item.stayMinutes&&<p className="privacy">预计停留约 {item.stayMinutes} 分钟</p>}
                             {item.tip&&<p className="notice">{item.tip}</p>}
-                          </>
+                          </section>
                         </div>
                       </article>
                     ))}
                 </div>
               </section>
-            </>
+            </section>
           )}
-          {activeDetailTab === "schedule" && (
-            <>
+          {(
+            <section id="route-schedule">
               <div className="route-panel-heading">
                 <span>DAY SCHEDULE</span>
                 <h2>{r.daySchedule}</h2>
                 <p>{r.scheduleNote}</p>
               </div>
               <div className="route-timeline">
-                {(locale==='zh-CN'?t.timeline:fallbackSpots).map((item, index) => (
+                {(published||locale==='zh-CN'?t.timeline:fallbackSpots).map((item, index) => (
                   <article key={`${('title' in item?item.title:item.name)}-${index}`}>
                     <span>{item.time ?? routeText.time}</span>
                     <div>
@@ -1111,56 +1108,56 @@ export function AppTrip() {
               </div>
               <div className="route-detail-grid">
                 <section>
-                  <h2>{routeText.suitable}</h2><ul className="check-list"><li>{routeText.suitableText}</li></ul>
+                  <h2>{routeText.suitable}</h2><ul className="check-list"><li>{published?t.suitableFor.join(' · '):routeText.suitableText}</li></ul>
                 </section>
                 <section>
-                  <h2>{routeText.meal}</h2><p>{routeText.mealText}</p>
+                  <h2>{routeText.meal}</h2><p>{published?t.mealOptions:routeText.mealText}</p>
                 </section>
                 <section>
-                  <h2>{routeText.included}</h2><ul><li>{routeText.includedText}</li></ul>
+                  <h2>{routeText.included}</h2><ul><li>{published?t.included.join('；'):routeText.includedText}</li></ul>
                 </section>
                 <section>
-                  <h2>{routeText.excluded}</h2><ul><li>{routeText.excludedText}</li></ul>
+                  <h2>{routeText.excluded}</h2><ul><li>{published?t.excluded.join('；'):routeText.excludedText}</li></ul>
                 </section>
               </div>
-            </>
+            </section>
           )}
-          {activeDetailTab === "prep" && (
-            <>
+          {(
+            <section id="route-prep">
               <section className="travel-prep-section">
                 <header>
-                  <span>{routeText.prep}</span><h2>{routeText.prepTitle}</h2><p>{routeText.prepText}</p>
+                  <span>{routeText.prep}</span><h2>{routeText.prepTitle}</h2><p>{published?t.notices.join('；'):routeText.prepText}</p>
                 </header>
                 <div className="travel-prep-grid">
                   <details open>
                     <summary>
                       <i>包</i>
                       <span>
-                        <b>{routeText.carry}</b><small>{routeText.carryText}</small>
+                        <b>{routeText.carry}</b><small>{published?t.packingList.join('；'):routeText.carryText}</small>
                       </span>
                     </summary>
                     <ul>
-                      <li>{routeText.carryText}</li>
+                      <li>{published?t.packingList.join('；'):routeText.carryText}</li>
                     </ul>
                   </details>
                   <details>
                     <summary>
                       <i>衣</i>
                       <span>
-                        <b>{routeText.wear}</b><small>{routeText.wearText}</small>
+                        <b>{routeText.wear}</b><small>{published?t.clothingAdvice:routeText.wearText}</small>
                       </span>
                     </summary>
-                    <p>{routeText.wearText}</p>
+                    <p>{published?t.clothingAdvice:routeText.wearText}</p>
                   </details>
                   <details>
                     <summary>
                       <i>心</i>
                       <span>
-                        <b>{routeText.reminder}</b><small>{routeText.reminderText}</small>
+                        <b>{routeText.reminder}</b><small>{published?t.friendlyReminders.join('；'):routeText.reminderText}</small>
                       </span>
                     </summary>
                     <ul>
-                      <li>{routeText.reminderText}</li>
+                      <li>{published?t.friendlyReminders.join('；'):routeText.reminderText}</li>
                     </ul>
                   </details>
                 </div>
@@ -1168,18 +1165,18 @@ export function AppTrip() {
               <section className="route-booking-notices">
                 <span>BOOKING NOTES</span>
                   <h2>{routeText.notes}</h2>
-                <ul className="check-list"><li>{routeText.prepText}</li><li>{routeText.reminderText}</li></ul>
+                <ul className="check-list"><li>{published?t.notices.join('；'):routeText.prepText}</li><li>{published?t.friendlyReminders.join('；'):routeText.reminderText}</li></ul>
               </section>
-            </>
+            </section>
           )}
         </div>
       </section>
       <div className="route-booking-bar">
         <div>
-          <small>{sellable.length ? detail.min : detail.open}</small>
+          <small>{requestedDeparture?new Intl.DateTimeFormat(locale,{timeZone:'Asia/Tokyo',month:'short',day:'numeric'}).format(new Date(requestedDeparture.departureTime!)):detail.open}</small>
           <b>
             {sellable.length
-              ? `¥${Math.min(...sellable.map((item) => item.price as number)).toLocaleString("ja-JP")}`
+              ? `¥${requestedDeparture!.price!.toLocaleString(locale)}`
               : detail.pending}
           </b>
         </div>
