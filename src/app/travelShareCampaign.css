@@ -1,0 +1,10 @@
+.boost-card{margin:16px 0;padding:18px;border:1px solid #e3d8a6;border-radius:18px;background:#fffdf4;overflow-wrap:anywhere}
+.boost-card h2{font-size:22px}
+.boost-card form{display:grid;gap:14px}
+.boost-card label{display:grid;gap:7px;font-size:14px}
+.boost-card input:not([type=checkbox]),.boost-card select{min-height:44px;min-width:0;width:100%;padding:10px;border:1px solid #d5dcde;border-radius:10px;box-sizing:border-box}
+.boost-card .boost-consent{display:grid;grid-template-columns:24px minmax(0,1fr);align-items:start;line-height:1.6}
+.boost-card input[type=checkbox]{width:20px;height:20px;margin-top:5px}
+.boost-card button{min-height:44px}
+.boost-card article{padding:12px 0;border-top:1px solid #e3e5df}
+.boost-card small{display:block;color:#627078}
