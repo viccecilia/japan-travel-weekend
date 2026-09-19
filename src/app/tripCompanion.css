@@ -1,0 +1,11 @@
+.trip-companion{display:grid;gap:14px;padding:12px;min-width:0}
+.trip-companion h1{font-size:23px;margin:6px 0}
+.trip-companion h2{font-size:18px}
+.trip-companion>section{padding:16px;background:#fff;border:1px solid #e0e5e6;border-radius:16px}
+.trip-companion .trip-companion-meeting.active{border:2px solid #ce8011;background:#fff3d2}
+.trip-companion button,.trip-companion a{min-height:44px;padding:10px 14px;border-radius:10px;display:inline-flex;align-items:center;color:#20323b;overflow-wrap:anywhere}
+.trip-companion button{border:1px solid #d2d9db;background:#fff7cb;cursor:pointer}
+.trip-companion button:disabled{opacity:.5;cursor:not-allowed}
+.trip-companion small{display:block;margin-top:10px;color:#5e6a71}
+.trip-companion-actions{display:flex;flex-wrap:wrap;gap:8px}
+.trip-companion-poi{padding:12px;border-left:3px solid #ddbf31;margin-top:14px}

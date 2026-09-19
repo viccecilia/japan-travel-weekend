@@ -109,7 +109,7 @@ export function MyTrip() {
           <div><span>集合地址</span><b>{fulfilment?.meeting_address ?? "等待运营确认"}</b></div>
         </div>
         <Link className="button secondary full" to={`/app/orders/${remote.order.id}`}>查看订单详情</Link>
-        <Link className="button full" to="/app/ai-guide">{aiLabel}</Link>
+        {fulfilment?.vehicle_group_id&&<Link className="button full" to={`/app/ai-guide?vehicleGroup=${encodeURIComponent(fulfilment.vehicle_group_id)}`}>{aiLabel}</Link>}
         {fulfilment?.vehicle_group_id && fulfilment.trip_room_id ? (
           <>
             <div className="trip-status">
