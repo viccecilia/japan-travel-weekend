@@ -8,6 +8,7 @@ import {
 } from "react";
 import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 import QRCode from "qrcode";
+import {StaffChat} from './StaffChat';
 import { isSeedEnabled } from "../shared/config/businessRules";
 import { useApp } from "./store";
 import {isExecutableStaffTask,isFutureActiveStaffTask,selectCurrentStaffTask,selectNextStaffTask,selectPrimaryStaffTask,taskPhase,taskSortTime,tokyoDay,tokyoWeekBounds} from './staffTaskSelection';
@@ -56,14 +57,6 @@ type AttendanceSummary = {
   needs_assistance: number;
   pending: number;
   all_present: boolean;
-};
-type StaffMessage = {
-  id: string;
-  content: string;
-  original_content: string | null;
-  important: boolean;
-  created_at: string;
-  template_key: string | null;
 };
 type StaffAction =
   | "passengers"
@@ -493,7 +486,7 @@ export function StaffTaskAction() {
   if(taskPhase(task)==='cancelled')return <StaffFrame task={task}><StatusCard title="任务已取消">该任务仅供查看，开始、核销、位置共享和结束操作均已关闭。<br/><Link to="/staff/schedule?status=cancelled">返回已取消行程</Link></StatusCard></StaffFrame>;
   return (
     <StaffFrame task={task}>
-      <header className="staff-welcome">
+      <header className={action==='chat'?'staff-chat-heading':'staff-welcome'}>
         <span>{roleLabel(task.assignment_role)}任务</span>
         <h1>
           {action === "passengers"
@@ -516,11 +509,11 @@ export function StaffTaskAction() {
           {task.trip_title} · {task.vehicle_label ?? task.vehicle_type}
         </p>
       </header>
-      <TaskSummary task={task} />
+      {action!=='chat'&&<TaskSummary task={task} />}
       {action === "passengers" ? (
         <PassengerAction task={task} preview={preview} />
       ) : action === "chat" ? (
-        <ChatAction task={task} />
+        <StaffChat key={task.staff_assignment_id} task={task} />
       ) : action === "notice" ? (
         <NoticeAction task={task} />
       ) : action === "meeting" ? (
@@ -786,94 +779,6 @@ function PassengerAction({
   );
 }
 
-function ChatAction({ task }: { task: StaffTask }) {
-  const { services } = useApp();
-  const [messages, setMessages] = useState<StaffMessage[]>([]);
-  const [content, setContent] = useState("");
-  const [notice, setNotice] = useState("");
-  const open = task.room_status === "open" && Boolean(task.room_id);
-  const refresh = async () => {
-    if (services && task.room_id)
-      setMessages(
-        (await services.tripRoom.loadMessages(task.room_id)) as StaffMessage[],
-      );
-  };
-  useEffect(() => {
-    let active = true;
-    if (!services || !task.room_id)
-      return () => {
-        active = false;
-      };
-    void services.tripRoom.loadMessages(task.room_id).then((value) => {
-      if (active) setMessages(value as StaffMessage[]);
-    });
-    return () => {
-      active = false;
-    };
-  }, [services, task.room_id]);
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!services || !task.room_id || !content.trim()) return;
-    const ok = await services.tripRoom.sendMessage(task.room_id, content);
-    setNotice(
-      ok ? "消息已发送到本车群组。" : "发送失败，请确认房间状态和本车权限。",
-    );
-    if (ok) {
-      setContent("");
-      await refresh();
-    }
-  };
-  return (
-    <section className="staff-detail">
-      <div className="staff-detail-note">
-        群聊成员仅限本车乘客、司机、导游和授权运营；不会展示私人
-        LINE、微信或手机号。
-      </div>
-      <div className="staff-chat-list">
-        {messages.length === 0 ? (
-          <p>暂无消息。</p>
-        ) : (
-          messages.map((item) => (
-            <article
-              className={item.important ? "important" : ""}
-              key={item.id}
-            >
-              <header>
-                <b>{item.important ? "重要通知" : "本车消息"}</b>
-                <small>
-                  {new Intl.DateTimeFormat("zh-CN", {
-                    timeZone: "Asia/Tokyo",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  }).format(new Date(item.created_at))}
-                </small>
-              </header>
-              <p>{item.original_content ?? item.content}</p>
-            </article>
-          ))
-        )}
-      </div>
-      <form className="staff-composer" onSubmit={(event) => void submit(event)}>
-        <label>
-          发送到本车群组
-          <textarea
-            value={content}
-            onChange={(event) => setContent(event.target.value)}
-            maxLength={1000}
-            disabled={!open}
-            placeholder={open ? "输入本车群消息" : "Trip Room 尚未开放"}
-          />
-        </label>
-        <button disabled={!open || !content.trim()}>发送消息</button>
-      </form>
-      {notice && (
-        <p className="staff-result" role="status">
-          {notice}
-        </p>
-      )}
-    </section>
-  );
-}
 
 function NoticeAction({ task }: { task: StaffTask }) {
   const { services } = useApp();
