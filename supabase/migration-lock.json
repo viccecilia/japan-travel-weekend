@@ -1,0 +1,610 @@
+{
+  "formatVersion": 1,
+  "normalization": "UTF-8 text, CRLF normalized to LF",
+  "files": [
+    {
+      "name": "202608210001_test_stack_foundation.sql",
+      "sha256": "7d01f485e64f37963ec31975415100d1657c10ed7f8313dae10f3817b7c5170e"
+    },
+    {
+      "name": "202608210002_security_and_compensation.sql",
+      "sha256": "602c55c5d43d860d330f6bba537c0b6a468b9c840185009dbbbd2087a82d4a19"
+    },
+    {
+      "name": "202608210003_vehicle_group_membership_and_chat.sql",
+      "sha256": "ba17923c5e17808a95f01fb2454339f7e5744fed7021b48cd9676be1f1d6491f"
+    },
+    {
+      "name": "202608210004_fix_reserve_inventory_ambiguity.sql",
+      "sha256": "7d59fb75b975ef0829b2b99eae1195e385c8b301e16062d19d0e4de6d95ce8a2"
+    },
+    {
+      "name": "202608210005_bank_transfer_manual_review.sql",
+      "sha256": "3241e8ad13e541240305cecf5e8dab5ef908f4ccfbcc7e1e8ece851d3bf6d6e9"
+    },
+    {
+      "name": "202608210006_align_realtime_vehicle_group_chat.sql",
+      "sha256": "df65cf0faee4b6ee6a4adf0890b0b56ebfe08e7b4d203b4e9f284740720d66e2"
+    },
+    {
+      "name": "202608210007_secure_boarding_credentials.sql",
+      "sha256": "4ddf4bc2e75e9c17755f3ec84bcf7ecfc16e17e6091e2366f5cb709380e68aab"
+    },
+    {
+      "name": "202608210008_fix_boarding_digest_search_path.sql",
+      "sha256": "8c96e5b5cd7c879bab3b3e23091b9d4e9df69ffcb28dde8517bc79759fb0376d"
+    },
+    {
+      "name": "202608240009_stripe_test_checkout.sql",
+      "sha256": "ceec2bb1486c9c70fe0c3e66bcc3ee218e00b4752d0659462c0d1a048cd63029"
+    },
+    {
+      "name": "202608250010_sellable_departures.sql",
+      "sha256": "c6f100cfb912cd112ec04cd69b8e8b3ca42e8c13c12d3dd0185047cf976248ad"
+    },
+    {
+      "name": "202608250011_fulfilment_allocation.sql",
+      "sha256": "5c6311d3e6de325fd0ad3f7fcc4abad0d007327bd8883fe099b2a46bca7fd8ce"
+    },
+    {
+      "name": "202608250012_staff_trip_room_actions.sql",
+      "sha256": "c415053a326ffbe9dee292dbf2015ab8f23bf3bb71d3f3bfd443222f5dc0d40b"
+    },
+    {
+      "name": "202608250013_boarding_open_room_gate.sql",
+      "sha256": "0d5eb62f19a7a4f4539e06b5536d19fa7f485a4be9768f53064db7bc368dd0c5"
+    },
+    {
+      "name": "202608250014_boarding_issue_for_owner.sql",
+      "sha256": "1e961d59a665fecc865f6fd2c088a10b3dc071c5f1ff765907c4ea1ea36473a7"
+    },
+    {
+      "name": "202608250015_notification_outbox.sql",
+      "sha256": "6b4c8752f33e6ed582e5bbad763c6e7dac73d8ffb293539580effe68ff4b8509"
+    },
+    {
+      "name": "202608250016_fix_boarding_issue_ambiguity.sql",
+      "sha256": "35b68b9dcc3327efb3b79724de0ac6b53bb5bf0993092369dfd599adb3756e1f"
+    },
+    {
+      "name": "202608250017_driver_live_location.sql",
+      "sha256": "6c44645338dc9c59e3e08cb4ef2b2b462b4cda7af0f11de1fa4b191229e3d3fe"
+    },
+    {
+      "name": "202608250018_notification_delivery_lifecycle.sql",
+      "sha256": "fcb942f68a809764d83e1e54be626d896faa035776c9daf29ed7ad5dbabf5d25"
+    },
+    {
+      "name": "202608250019_persistent_chat_attendance.sql",
+      "sha256": "949fe6902b79e210c2d535bb02d04c065c9f5326c7408963b6c7afe35ee9e080"
+    },
+    {
+      "name": "202608260020_chat_translation_preferences.sql",
+      "sha256": "2192ed28c647f546df35267476cc8e87a44d797d6fb74432e36bbfafff262acf"
+    },
+    {
+      "name": "202608270021_operations_fleet_dispatch.sql",
+      "sha256": "7c589fbe5ab1ad823c209720c1fb70bfc0fdaa7a518636acf1f433535f892f3a"
+    },
+    {
+      "name": "202608300022_staff_portal.sql",
+      "sha256": "e73170f5bfb6bac913f195566c4231320b03bd314e2c1b85449642181b976cb3"
+    },
+    {
+      "name": "202608310023_dispatch_workflow.sql",
+      "sha256": "9c5fe34d462e0afea5bd005d59f005b4e6f719a9d27c07b596b20c78e16f7ed2"
+    },
+    {
+      "name": "202608310024_dispatch_confirmation_guard.sql",
+      "sha256": "df9a8ea398261876f7dd5115863698f8b0dfd33711a54565e225f01611837331"
+    },
+    {
+      "name": "202608310025_operations_dashboard_projection.sql",
+      "sha256": "cf105dd81204fcc54703f61111bd55cf1d6d21658f87eb4ea3cc1194ef27b571"
+    },
+    {
+      "name": "202608310026_frozen_vehicle_assignment_guard.sql",
+      "sha256": "920fa90ad5c5905ca6b4a1fb45aedf4f590b912204fc5ab22d259a88e7463d69"
+    },
+    {
+      "name": "202608310027_staff_direct_contact.sql",
+      "sha256": "7da24473b559e42b6cdca441de399b68f800ca14bdf6cd1b396c8199d42e8bff"
+    },
+    {
+      "name": "202609020028_route_catalog_and_booking_drafts.sql",
+      "sha256": "98a47ae797c42fec1866a6e1b06c7e8eee41771f9fa02d114ce565c5318d2f5a"
+    },
+    {
+      "name": "202609020029_account_profiles_and_draft_lifecycle.sql",
+      "sha256": "004fd5410fc3bb9f5a40b42f129dff2509cd810f9f9a89bd5403e3204a2a338a"
+    },
+    {
+      "name": "202609020030_checkout_retry_idempotency.sql",
+      "sha256": "02992add62d88e53f8b127dc0ef9ed7c4f99f5ad97f0fd9c3de6c3edf0ddce9d"
+    },
+    {
+      "name": "202609020031_dispatch_trip_room_bridge.sql",
+      "sha256": "d7492eb3ee12d29a72e891fbaeaf3f08904a16db7566d9263b133a3351a8b3f0"
+    },
+    {
+      "name": "202609020032_dispatch_bridge_recovery.sql",
+      "sha256": "f11eb346715ba20319dea0efe386be212998833d5fb7eaae3daba0a06d9aa04f"
+    },
+    {
+      "name": "202609030033_sellable_product_completeness.sql",
+      "sha256": "d82fb29d83650643b164447c0b9281d53ddb2f9bee7c1634e67917b638d25eeb"
+    },
+    {
+      "name": "202609030034_publish_reference_seat_products.sql",
+      "sha256": "0e645eb0935a634cda14de2486fee1302803fb55c2a3f8be2955e3c05e194170"
+    },
+    {
+      "name": "202609030035_weekend_seat_pricing.sql",
+      "sha256": "a5fb450db0ce0a50b71a0ac9b5938a3024ea43df8acafdd0d920aaa997f24a3d"
+    },
+    {
+      "name": "202609030036_staff_execution_and_post_payment.sql",
+      "sha256": "4c35578154aeee1a9c88402d5efd8a4446a177f1af112b0574d8278f98633e35"
+    },
+    {
+      "name": "202609030037_dynamic_meeting_state.sql",
+      "sha256": "6936870a34aa1af01ba4679787db9a4bb75a6f3964ce6e0c812f69fe93769374"
+    },
+    {
+      "name": "202609030038_delay_and_attendance_summary.sql",
+      "sha256": "12f7aebd0dd48e98119039c4124fdd9d92a723739d85844990f433e3a5304fb1"
+    },
+    {
+      "name": "202609030039_late_paid_order_allocation.sql",
+      "sha256": "fc7877f1d2b65c2ec56f6ea1cd3020557bd93d2fbb2e7d76c925e98864d9d363"
+    },
+    {
+      "name": "202609030040_notification_delivery_receipts.sql",
+      "sha256": "2af55e0b875a50faf7eed39f147dd9d9a11a1fe1ce7fc18e3b84cbce8e9c2174"
+    },
+    {
+      "name": "202609030041_operations_notification_delivery_queue.sql",
+      "sha256": "78417079946f485aaddd88861f1575bf78216fdb5c38d3ad27d1dca25b41db7d"
+    },
+    {
+      "name": "202609030042_due_fulfilment_notifications.sql",
+      "sha256": "984ea25c9a5df389de435dfb895aaae9245a8ec8a4cec1c79530b1f723c9a9f3"
+    },
+    {
+      "name": "202609030043_passenger_trip_context.sql",
+      "sha256": "d4514562317e025fdc221ac25ce2d517d74d554d6c2b5f923db9cf61286e7c77"
+    },
+    {
+      "name": "202609030044_public_dispatch_details.sql",
+      "sha256": "8a4464bca514deee79f3eb266b04842732c75476e71258e2e0ab89eb6895b48d"
+    },
+    {
+      "name": "202609030045_passenger_late_reporting.sql",
+      "sha256": "e18bf47e6d00027157f020eb9efebfd38c72dd65f6f2c7abe5ed5e9bc99255ce"
+    },
+    {
+      "name": "202609030046_booking_draft_order_conversion.sql",
+      "sha256": "669d3cb7a50b9e82fec89deb8e9bcbf83b028908ee6cdd75f4387e400638562e"
+    },
+    {
+      "name": "202609030047_paid_order_passenger_manifest.sql",
+      "sha256": "380ffbd2aa154aa31f76b8be76b49524f6a31dfa7655fe54d6ad4022091ed45a"
+    },
+    {
+      "name": "202609030048_order_fulfilment_readiness.sql",
+      "sha256": "b123df8f01cfac2eca842df0fb16ea81777988ab733351fde082526be761b323"
+    },
+    {
+      "name": "202609030049_refunded_order_fulfilment_cleanup.sql",
+      "sha256": "b2e1a8c97766d25f9ee4f53581d403ab232d0dc4c5fdc9a97dacfe84349e399c"
+    },
+    {
+      "name": "202609030050_boarding_readiness_alignment.sql",
+      "sha256": "6b646b435539358d8ffb9f91b8a0774920ba19583f9426c94efb8f3f9a763434"
+    },
+    {
+      "name": "202609030051_bank_transfer_review_queue.sql",
+      "sha256": "9f00cc6845efc2183c3f22adb3f0848c253e2fe3111b01d08e8efaccea7972f0"
+    },
+    {
+      "name": "202609030052_bank_transfer_resolution.sql",
+      "sha256": "c0e59e212886895010ea3dec11b14384b3f16f3aadcf99695c49e0f8fbd417d4"
+    },
+    {
+      "name": "202609030053_bank_transfer_payment_window.sql",
+      "sha256": "c5b7c7ae414552f7a7b0f5f2805e5cd43ec0f060b86763fe3ef5318e74d43c09"
+    },
+    {
+      "name": "202609030054_account_deletion_requests.sql",
+      "sha256": "131e78b2a0f71234b881b7933595d65a6d213e5391f5440abed61df865dc4967"
+    },
+    {
+      "name": "202609030055_ephemeral_data_retention.sql",
+      "sha256": "b0bde364f91d717f0baa8f367b31492b02764e517bad050ca47e959b0171e198"
+    },
+    {
+      "name": "202609040056_departure_cutoff_and_dispatch_handoff.sql",
+      "sha256": "f94693c9404762a8d9f115f848974d57bcf79563b75da153885ee90cab3a239a"
+    },
+    {
+      "name": "202609040057_departure_cutoff_result_name.sql",
+      "sha256": "ee4bea2a32f02a378de7fa629a92458a02ecadbbfd9bcc1761adf5f89d6891c9"
+    },
+    {
+      "name": "202609040058_product_guard_execution.sql",
+      "sha256": "0189887e2f263314a778ee7a2108e050f65b7a96c2318e341b669dc50791be49"
+    },
+    {
+      "name": "202609040059_journey_control_and_meeting_notifications.sql",
+      "sha256": "11d8cc6ff60a8b9b2b1afd744769e0eeba9f89eb113ad3267fef8df5ffe42990"
+    },
+    {
+      "name": "202609040060_route_itinerary_stops.sql",
+      "sha256": "cbf3c19ecf9e43202a09c4407dec48dac1eecb761b5d3d85f8e88fcfcb01ea7e"
+    },
+    {
+      "name": "202609040061_staff_paid_fulfilment_boundary.sql",
+      "sha256": "b1c516e212d70b4017dd46d8c72dc5043549f822ad6e8f36c1fb204e4df21f7e"
+    },
+    {
+      "name": "202609040062_cancellation_refund_requests.sql",
+      "sha256": "b6b2ea9521acd0d0c3c9d283b5f1fd7abc37cf2613683097429fd2f033d442c3"
+    },
+    {
+      "name": "202609040063_traditional_chinese_chat_translation.sql",
+      "sha256": "67cb8f3f137dc5ef1f3495bb8517f0cbb9e4e99f28912e9389fdad7c6da1e49c"
+    },
+    {
+      "name": "202609040064_korean_passenger_translation.sql",
+      "sha256": "03a42a02d6e90266f4ffb7e95deb848ef7d0d3b53ddb648e3f300ed29e77fc35"
+    },
+    {
+      "name": "202609040065_refund_execution_boundary.sql",
+      "sha256": "34166381c8b43f62a8c299329cb149fa38af899f5699aac6647d98fd8c8b7540"
+    },
+    {
+      "name": "202609040066_cancellation_rejection_audit.sql",
+      "sha256": "9a91533b203451beb0bff82572f73d6f825bb810a16b533cfa7edd7ce3cac6bc"
+    },
+    {
+      "name": "202609050067_guided_tour_companion.sql",
+      "sha256": "3069b5796790f612840d56bc7953da99707888061da9c55c548ad887f70a36f1"
+    },
+    {
+      "name": "202609050068_guided_tour_scope_and_progress.sql",
+      "sha256": "acbe1996a5753cbfa8f4a5a7e5b8fdfe8223a8712bddae4d0ac690ed332155af"
+    },
+    {
+      "name": "202609050069_guided_assignment_membership_policy.sql",
+      "sha256": "ad5a7bfd0c25741f31ee01968c4b39e30843855a79115089898f0ff9140568d9"
+    },
+    {
+      "name": "202609050070_guided_tour_photo_sources.sql",
+      "sha256": "6753424c11a1c253605854d4acb6c3ae2314fc43d83f7736faccecba1e7fe18b"
+    },
+    {
+      "name": "202609050071_refund_inventory_and_notification.sql",
+      "sha256": "7e14c2bca2d608d59a2375d5c900867fcdf985a8e959d2508526e6e8d0a67505"
+    },
+    {
+      "name": "202609070072_self_service_display_name.sql",
+      "sha256": "efab98b5428ed9d792108a1b5032cbdf4c636e6badb16480f87e5f4b1b7ceb99"
+    },
+    {
+      "name": "202609070073_fleet_capacity_convention.sql",
+      "sha256": "43f46af6c00b86937586ea9ff2bf2264011a4673e73290d015ed8cf7492ff0f7"
+    },
+    {
+      "name": "202609080074_single_role_staff_approval.sql",
+      "sha256": "829b3567ec23dff4f3aeef101ccf24b9fac2fe860d03544613790859f7117538"
+    },
+    {
+      "name": "202609080075_staff_leave_workflow.sql",
+      "sha256": "b14740d21b223b8bb32fe7e2413c17fcbb078693af698daa5d68fce169574518"
+    },
+    {
+      "name": "202609080076_initial_staff_and_vehicle_registry.sql",
+      "sha256": "a94819204f190281da60a06da81d491f34a776a653c8e7c78177223529632ca7"
+    },
+    {
+      "name": "202609080077_referral_coupon_program.sql",
+      "sha256": "2fef25cc173133b7d7a404afae392beda6e4902f22199dcffc51e4f612ed0cab"
+    },
+    {
+      "name": "202609080078_referral_summary_volatility.sql",
+      "sha256": "178b949b5d5f851de35105e8d4886d2ce73d7051866189e8d7777d3e1de4109d"
+    },
+    {
+      "name": "202609080079_coupon_checkout_redemption.sql",
+      "sha256": "bbf50386cf04132562c2a6099eee1939346ccfa3d410b55963776d86f8c602a7"
+    },
+    {
+      "name": "202609080080_noon_trip_publication.sql",
+      "sha256": "3459a1a7a07952cc3f7ac585b2e5181fc8f26fc40dfb5173dc4b13419e4533ca"
+    },
+    {
+      "name": "202609080081_referral_completion_rewards.sql",
+      "sha256": "b5dd460b8bd2e3c17e186e95fa288fbc0acd29f4b0e5c503c414c66de8c927bc"
+    },
+    {
+      "name": "202609080082_dispatch_manual_override.sql",
+      "sha256": "d528ce7cc70e717aeb5a0c9cc5325d878e83d77b6b4a13be0d9944fd55b125cc"
+    },
+    {
+      "name": "202609080083_referral_achievement_progress.sql",
+      "sha256": "c1c337a9d202c38a191d21bbff07dff223d8f08410a2f62889a591e40940f1ab"
+    },
+    {
+      "name": "202609080084_referral_coupon_unlock_schedule.sql",
+      "sha256": "940b99a691b5408ffee6b1e6fd2a392a9000345586a90b447b81e02020855fa8"
+    },
+    {
+      "name": "202609080085_referral_unlock_at_refund_cutoff.sql",
+      "sha256": "8e52b3672db5841112c7c466e300db77a48d7cb1a7eaf9b1b1429824cde65c99"
+    },
+    {
+      "name": "202609090086_referral_operations_monitoring.sql",
+      "sha256": "78cbec81c6007c0248f2a8d6dd53f82d385c9603ae863c665eeab2807af90807"
+    },
+    {
+      "name": "202609090087_staff_portal_seat_aggregation.sql",
+      "sha256": "1e80ddd5518e2e4e9c962d140cd0786b97a731fce9c87aa026df1869f2355529"
+    },
+    {
+      "name": "202609090088_revoke_inactive_staff_access.sql",
+      "sha256": "68fc91e75dc59deda6aebf132202661a95109b2c832c697283de456c2a3419ed"
+    },
+    {
+      "name": "202609090089_refund_operations_state_machine.sql",
+      "sha256": "afde0e839b9a116099376d78c6c573c40095d5074c614b58c67fd084ae4a5ae9"
+    },
+    {
+      "name": "202609090090_safe_route_catalog_patch.sql",
+      "sha256": "e42ad21d13b6d599bb18ce35ff27ac127ef51db0044f2a8a99df483c9d3389ed"
+    },
+    {
+      "name": "202609090091_product_revision_publication.sql",
+      "sha256": "e50d672f086485a74e1647a4273f832d56f49821887b4f3d171f69036339b400"
+    },
+    {
+      "name": "202609090092_seed_nine_product_catalog.sql",
+      "sha256": "77cce57963d5201582eb70694b6d5f94cd86ab32db4e8fe9580ae3b223fbf59a"
+    },
+    {
+      "name": "202609090093_departure_schedule_and_order_snapshot.sql",
+      "sha256": "0ecccb791122688b34c1ade5dcfb01276d58cbc47d76e51e893fe4a2b691c047"
+    },
+    {
+      "name": "202609090094_operations_run_control.sql",
+      "sha256": "a9676a14a20f27e96bf8c469bd96ca30f8ccecfb1a717e664cdfb7ae7712191b"
+    },
+    {
+      "name": "202609090095_driver_location_history.sql",
+      "sha256": "c0c6aeb6af4d42dc32e3710f82f709365c4fccf1265dd3f08da80a56d443df83"
+    },
+    {
+      "name": "202609090096_product_merchandising.sql",
+      "sha256": "1715e61ff85a2f5d51c68530d6cbbe920e0589d943bab19e5ee2529b6db3a8c8"
+    },
+    {
+      "name": "202609090097_order_quote_snapshot_and_refund_retry.sql",
+      "sha256": "b78e6422787595e051abd0889de8df8cb1d669cc87f073cdf728cf57ac5727da"
+    },
+    {
+      "name": "202609090098_departure_edit_and_driver_statistics.sql",
+      "sha256": "171dfbaa79bf81ea715d36e5975fd14ba1318b5f8c1b45ada51990cfd81f6986"
+    },
+    {
+      "name": "202609090099_publication_scope_and_release_manifest.sql",
+      "sha256": "c9186dab72f88e7ae78d36a7a32f29a52671002abfa98aeeac6ae393205be8ea"
+    },
+    {
+      "name": "202609090100_refund_recovery_and_snapshot_terms.sql",
+      "sha256": "d0287a24c00eabe6bb52a253645ebb3e5338a9dabdee2ea4f80fb644a5a32e1d"
+    },
+    {
+      "name": "202609090101_location_sessions_and_run_metrics.sql",
+      "sha256": "4cea3d92d2b57d7773ec7aca570b6e50e62d3cd80ba2764f29e5b4035b009cc2"
+    },
+    {
+      "name": "202609090102_run_board_transport_projection.sql",
+      "sha256": "5b9fe7013d2c5956a7287c779641f51d140575f5ab73fc12c4def81fad65e640"
+    },
+    {
+      "name": "202609090103_fix_allocation_and_draft_replay.sql",
+      "sha256": "75337fd345de75a985a2cf29500fe076043ddcd8761a052d3945742c89dd3b74"
+    },
+    {
+      "name": "202609090104_single_seat_coupon_and_billing_snapshot.sql",
+      "sha256": "74fe63994aa6df94ad6e2d5d1ef0b8d887c451c806484f587bbadafe84ae10be"
+    },
+    {
+      "name": "202609090105_server_quotes_and_price_reconfirmation.sql",
+      "sha256": "ad679bb2f441de49e4dfa68fc49c442fd22262e545deb40ecd5b13072ffef78d"
+    },
+    {
+      "name": "202609090106_rich_itinerary_schema_and_samples.sql",
+      "sha256": "04f7284c766479c91dbe827b994eb8a48a275b063cf0895c9dcd0cd1a6ac29c7"
+    },
+    {
+      "name": "202609090107_transport_aggregation_and_location_lifecycle.sql",
+      "sha256": "7aaab054f64cda9af6ea11b4a62ef6ab5317154d93e4e7acfde4f5b9f54b2c54"
+    },
+    {
+      "name": "202609090108_link_only_travel_share_campaign.sql",
+      "sha256": "686128ea8e12aa06bc3f9fd651a56b2b91ee5c7a993364bcf740611bdae13e86"
+    },
+    {
+      "name": "202609100109_checkout_attempt_and_immutable_billing.sql",
+      "sha256": "e4293ac9a05988721f7fbe536c30a846c22196a77ab86f34babe9a99a56b9986"
+    },
+    {
+      "name": "202609100110_refund_convergence_and_manual_evidence.sql",
+      "sha256": "af6c21711f4de66af387bf0842b3882579935a0351e18f1d5f3426dd22b56003"
+    },
+    {
+      "name": "202609100111_fix_refund_function_lint.sql",
+      "sha256": "ec8d88b756a909e650fa13403cc3c50e221776bd7fc36e445bd8c2b12bc44f27"
+    },
+    {
+      "name": "202609100112_driver_navigation_and_location_renewal.sql",
+      "sha256": "e2ae845fd000f8b58a5d27e45d133b3c34eba52ddcfd0ae1d15aeafced593d9b"
+    },
+    {
+      "name": "202609100113_product_lifecycle.sql",
+      "sha256": "7f1fcacb96198be22771244ed38fc8a4dffb687dce84ce9e81cbbc90e1bd1280"
+    },
+    {
+      "name": "202609100114_departure_reschedule.sql",
+      "sha256": "1d408156b834960ee301936383d861123dcb22897528aa68e88226d28edfc5f6"
+    },
+    {
+      "name": "202609100115_ambassador_cash_commission.sql",
+      "sha256": "8e844552be493b661953a2ebaecb93c99a8a605d9df1195f586ac65f01c5d194"
+    },
+    {
+      "name": "202609100116_operations_resource_maintenance.sql",
+      "sha256": "3359b129aac86aef2564a0ddd844cf861b9abcc06bf9cc0bfed200bec050cb64"
+    },
+    {
+      "name": "202609100117_route_media_storage.sql",
+      "sha256": "16ad8b9dc78ab5644c40ff8294cdd8ee93f691f34c5035b4ddb7cf4138700a6e"
+    },
+    {
+      "name": "202609110118_autumn_route_media.sql",
+      "sha256": "93dd60e62116b445b6cd92f26ef83d5b2e83806f47c62decd755844570655d12"
+    },
+    {
+      "name": "202609110119_v7_financial_convergence.sql",
+      "sha256": "569a6fe5cadb59a36ecb9c531561cfe32c250d36016e64d1553d24183bc440e5"
+    },
+    {
+      "name": "202609110120_v7_staff_portal_and_ambassador.sql",
+      "sha256": "ded4669546b1ab252a0d597b30affa1093c4e38569d5b108ad73981317830413"
+    },
+    {
+      "name": "202609110121_v7_controlled_departure_cancellation.sql",
+      "sha256": "d2f1d90db651b4ba5d08132e8319a4a0ad89383bff27c905fdf2e0807f21d3c9"
+    },
+    {
+      "name": "202609110122_v8s1_cancelled_staff_execution_boundary.sql",
+      "sha256": "2d5d212875867839daf0317deb616bbc0049b0b505622d4e40b71c77ca4e64ea"
+    },
+    {
+      "name": "202609110123_harden_account_access_destination.sql",
+      "sha256": "e869c28df72ee009b5d85932b5d64e056f3ecc1dcc81875a80db75d95978ce84"
+    },
+    {
+      "name": "202609110124_staff_assignment_acknowledgement.sql",
+      "sha256": "024b321ab0148e520165d8545944005b60cd55e0b59701704edeecd759f4c0d9"
+    },
+    {
+      "name": "202609110125_operations_tokyo_dashboard_metrics.sql",
+      "sha256": "2ec0c72acc5dc6bceda602348e78dc3728486787483bbf1eb5667be1e757559c"
+    },
+    {
+      "name": "202609110126_staff_assignment_version_acknowledgement.sql",
+      "sha256": "5a2708257d722d25c3208ff8a9cf2b493aefc62f941ad052cdedaa61f98cf3aa"
+    },
+    {
+      "name": "202609110127_notification_payload_owner_read.sql",
+      "sha256": "d8094e824b867c4a430b24efbf1fa4076e075b529d28e27af5dd5a5c620c5392"
+    },
+    {
+      "name": "202609110128_versioned_product_copy.sql",
+      "sha256": "446171253a5ed72b057bdbe269b08d0620eb65f8d5d07415b580d5912d0b38ae"
+    },
+    {
+      "name": "202609120129_v11_vehicle_capacity_orders_and_ranges.sql",
+      "sha256": "42ef870e08db266ef4b79809c8b979a573f9a1b686a13ede8a985760009cb15c"
+    },
+    {
+      "name": "202609120130_v11_release_observability.sql",
+      "sha256": "397f5a5ed1c899586da6460e0dca7112f3e9084fc6310f18bae36acc9ee33709"
+    },
+    {
+      "name": "202609130131_operations_compact_departure_calendar.sql",
+      "sha256": "a4a8c265a29043d71350ef272e2257998cb378a9042f1dc77a04b7df50bebfa2"
+    },
+    {
+      "name": "202609140132_dispatch_plan_consistency.sql",
+      "sha256": "d573737b042cc77ef3e4b77e9b3c6d95a7bc013fcd9b48a5c1c2df31e7668722"
+    },
+    {
+      "name": "202609140133_calendar_group_allocation_projection.sql",
+      "sha256": "51040b3ca596bd3ab8540d74f0632904545dd870e2784401b7722d3af9eb20a5"
+    },
+    {
+      "name": "202609140134_dispatch_order_best_fit.sql",
+      "sha256": "df35a7db484338525d7287f1c512bf2d89b9b78e65e60a5e8b00c3b92265ba2a"
+    },
+    {
+      "name": "202609140135_vehicle_assignment_booked_seat_reconciliation.sql",
+      "sha256": "bc7b40ab694dce3f0553671915cc95c2db4938df1ff31ac7b8f5abfc508afe7b"
+    },
+    {
+      "name": "202609140136_confirmed_vehicle_group_reassignment.sql",
+      "sha256": "987d56e7875fd03269587bac9c8822b723181cdda59751e4d8319b7a1a83607d"
+    },
+    {
+      "name": "202609140137_v12_exact_trip_room_opening.sql",
+      "sha256": "131c484a49e0b52f2c2180c9285323a7fdbb5ee19ffa205d7b10cd8255e8eb71"
+    },
+    {
+      "name": "202609140138_payment_cancellation_release.sql",
+      "sha256": "3186fd41aa0128ed2502a9bd6bd7d08a9fee035b72f3326b58f2ffab04fd2e3c"
+    },
+    {
+      "name": "202609140139_vehicle_creation_capacity.sql",
+      "sha256": "3ed8bb7013b438acf74880af31009ecb4f1b59ef6e5e3ba13cead8fb289198df"
+    },
+    {
+      "name": "202609140140_idempotent_meeting_start.sql",
+      "sha256": "b692364685a2db407c973aa34a95487bb6a18d8ead503845792984b1a4b4345f"
+    },
+    {
+      "name": "202609140141_prioritize_current_trip_room.sql",
+      "sha256": "cdd645796c03d9f0b5d8ab54982cda2271dfe3613d16af5c3f67d73cd0b407c1"
+    },
+    {
+      "name": "202609140142_trip_room_group_deep_link.sql",
+      "sha256": "afa723ed57c98eb2508c3562be1c122931080a507be24d9331184736729cd465"
+    },
+    {
+      "name": "202609140143_product_spot_video_storage.sql",
+      "sha256": "b2dc16c57efb222ca621ca6a122b94297a0c2f86a948d19c304f98892eea13b3"
+    },
+    {
+      "name": "202609140144_noop_meeting_update_guard.sql",
+      "sha256": "acf9ca1bfb34cc4eabf2c7bfdd5acda47c634a83bc863d155a851052daa73821"
+    },
+    {
+      "name": "202609140145_idempotent_journey_completion_replay.sql",
+      "sha256": "b5c9e57d0fb9f736e62bfd569416d054b70883bc930a6a89e9760141e65e547a"
+    },
+    {
+      "name": "202609140146_vip_charter_quote_requests.sql",
+      "sha256": "cd8cf4840f85fcd4eaddcd1108a9e0bcc41ed4ed76ff3e19c348b5cbdcd578c0"
+    },
+    {
+      "name": "202609150147_vip_charter_english_driver.sql",
+      "sha256": "31b540f3a609ba43928808f9b26ddfc56db4b060eff37ade8ff0d64929e0fe9a"
+    },
+    {
+      "name": "20260919100111_operations_read_authorization_closure.sql",
+      "sha256": "e28ce785c680c1245a5e45fe90964132e6c9b963e7f17f4f45f8a32fb9742217"
+    },
+    {
+      "name": "20260919100132_travelers_boost_explicit_consent.sql",
+      "sha256": "26299ddb76fa7b81f3e03030b3eb242b29a376244ee0df2ea098af54c09b565e"
+    },
+    {
+      "name": "20260919100755_staff_assignment_capability_boundary.sql",
+      "sha256": "19ea8939e12fefb8dd369ce0d183f6726b7cf52e3796035a26cb9705311582d7"
+    },
+    {
+      "name": "20260919101135_restore_korean_translation_context.sql",
+      "sha256": "9ca69e1c04976061007e6972727ddc71f3b3a56477418cbf89dbca4b1f886bde"
+    }
+  ]
+}

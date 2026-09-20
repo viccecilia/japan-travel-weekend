@@ -1,0 +1,436 @@
+{
+  "date": "2026-09-19",
+  "project": "hzxoofvodpqpdomtmzlf",
+  "mode": "existing isolated database, transaction rollback; not browser login or real payment",
+  "baseline": "d16b8290269ef186264a6603b51706e31d2dfd68",
+  "checks": [
+    {
+      "name": "identity-P01",
+      "role": "passenger",
+      "emailMatchesSaved": false,
+      "verified": true,
+      "banned": false,
+      "deleted": false
+    },
+    {
+      "name": "identity-D01",
+      "role": "driver",
+      "emailMatchesSaved": false,
+      "verified": true,
+      "banned": false,
+      "deleted": false
+    },
+    {
+      "name": "identity-A01",
+      "role": "operations",
+      "emailMatchesSaved": false,
+      "verified": true,
+      "banned": false,
+      "deleted": false
+    },
+    {
+      "name": "20260919100111_operations_read_authorization_closure.sql",
+      "result": "applied inside rollback transaction"
+    },
+    {
+      "name": "20260919100132_travelers_boost_explicit_consent.sql",
+      "result": "applied inside rollback transaction"
+    },
+    {
+      "name": "20260919100755_staff_assignment_capability_boundary.sql",
+      "result": "applied inside rollback transaction"
+    },
+    {
+      "name": "20260919101135_restore_korean_translation_context.sql",
+      "result": "applied inside rollback transaction"
+    },
+    {
+      "name": "get_operations_dashboard_departures-P01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_dashboard_departures-D01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_dashboard_departures-A01",
+      "result": "executed"
+    },
+    {
+      "name": "get_operations_staff_applications-P01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_staff_applications-D01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_staff_applications-A01",
+      "result": "executed"
+    },
+    {
+      "name": "get_operations_staff_leave_requests-P01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_staff_leave_requests-D01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_staff_leave_requests-A01",
+      "result": "executed"
+    },
+    {
+      "name": "get_operations_products-P01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_products-D01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_products-A01",
+      "result": "executed"
+    },
+    {
+      "name": "get_operations_daily_run_board-P01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_daily_run_board-D01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_daily_run_board-A01",
+      "result": "executed"
+    },
+    {
+      "name": "get_operations_merchandising-P01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_merchandising-D01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_merchandising-A01",
+      "result": "executed"
+    },
+    {
+      "name": "get_operations_editable_departures-P01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_editable_departures-D01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_editable_departures-A01",
+      "result": "executed"
+    },
+    {
+      "name": "get_operations_driver_statistics-P01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_driver_statistics-D01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_driver_statistics-A01",
+      "result": "executed"
+    },
+    {
+      "name": "get_operations_release_status-P01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_release_status-D01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_release_status-A01",
+      "result": "executed"
+    },
+    {
+      "name": "get_operations_driver_transport_statistics-P01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_driver_transport_statistics-D01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_driver_transport_statistics-A01",
+      "result": "executed"
+    },
+    {
+      "name": "get_operations_product_revisions-P01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_product_revisions-D01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_product_revisions-A01",
+      "result": "executed"
+    },
+    {
+      "name": "get_operations_payment_metrics-P01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_payment_metrics-D01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_payment_metrics-A01",
+      "result": "executed"
+    },
+    {
+      "name": "get_operations_system_release_info-P01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_system_release_info-D01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_system_release_info-A01",
+      "result": "executed"
+    },
+    {
+      "name": "get_operations_orders-P01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_orders-D01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_orders-A01",
+      "result": "executed"
+    },
+    {
+      "name": "get_operations_departure_calendar-P01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_departure_calendar-D01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_departure_calendar-A01",
+      "result": "executed"
+    },
+    {
+      "name": "get_operations_vehicle_group_changes-P01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_vehicle_group_changes-D01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_vehicle_group_changes-A01",
+      "result": "executed"
+    },
+    {
+      "name": "get_operations_vip_charter_requests-P01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_vip_charter_requests-D01",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "get_operations_vip_charter_requests-A01",
+      "result": "executed"
+    },
+    {
+      "name": "driver-position-session",
+      "result": "created in rollback transaction"
+    },
+    {
+      "name": "driver-other-group",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "private-capability-helper",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "driver-cannot-start-guide-meeting",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "driver-cannot-self-grant-guiding",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "passenger-cannot-drive",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "guide-cannot-drive",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "guide-cannot-publish-vehicle-position",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "combined-authorization-stale-version",
+      "result": "denied",
+      "sqlstate": "40001"
+    },
+    {
+      "name": "revoked-combined-cannot-execute",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "assignment-matrix",
+      "result": "driver driving only; guide guiding only; explicit combined both; revoked neither; real RPC negative and meeting positive cases"
+    },
+    {
+      "name": "translation-context-zh-CN",
+      "result": "authorized context available; external generation not exercised"
+    },
+    {
+      "name": "translation-context-zh-TW",
+      "result": "authorized context available; external generation not exercised"
+    },
+    {
+      "name": "translation-context-en",
+      "result": "authorized context available; external generation not exercised"
+    },
+    {
+      "name": "translation-context-ja",
+      "result": "authorized context available; external generation not exercised"
+    },
+    {
+      "name": "translation-context-ko",
+      "result": "authorized context available; external generation not exercised"
+    },
+    {
+      "name": "translation-context-es",
+      "result": "not connected"
+    },
+    {
+      "name": "translation-context-vi",
+      "result": "authorized context available; external generation not exercised"
+    },
+    {
+      "name": "translation-context-ne",
+      "result": "authorized context available; external generation not exercised"
+    },
+    {
+      "name": "passenger-cannot-write-translation-cache",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "translation-revoked-staff",
+      "result": "no context returned"
+    },
+    {
+      "name": "weekend-rounding",
+      "result": "5500 * 1.10 = 6050; round to nearest 100 = 6100; no price changed"
+    },
+    {
+      "name": "boost-null",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "boost-missing",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "boost-not-authorized",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "boost-mention-missing",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "boost-string-true",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "boost-paid-ads",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "boost-extra-right",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "boost-old-version",
+      "result": "denied",
+      "sqlstate": "42501"
+    },
+    {
+      "name": "boost-explicit-consent",
+      "result": "persisted exact limited rights within transaction"
+    },
+    {
+      "name": "boost-no-account",
+      "result": "denied authentication"
+    },
+    {
+      "name": "rollback",
+      "result": "confirmed: no fixture persisted, no migration installed"
+    }
+  ]
+}

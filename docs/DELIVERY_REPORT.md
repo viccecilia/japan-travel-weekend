@@ -1,5 +1,74 @@
 # Continuous Delivery — 2026-09-19
 
+## 最新：最终 Blocker Closure（2026-09-19）
+
+**本节取代下方历史报告中的本轮阻断状态，历史证据保留。没有重新实施 Round 0–5，也没有重构 Home、Route Detail、Booking、AI Guide、Travelers Boost 或 Staff App。**
+
+结果：本轮本地可解决项已修复并验证；真实登录与外部服务边界见 [HUMAN_BLOCKERS.md](HUMAN_BLOCKERS.md)。本轮修改尚未提交、推送或部署，四个 SQL 迁移仅在隔离库事务内应用后回滚，线上修复与真实登录验收不标通过。
+
+### 八项结论
+
+| 项 | 修改/核查 | 实际结果及边界 |
+|---|---|---|
+| 1. P01 / D01 / A01 | 按既有 ID 只读核对 auth.users、profiles、项目配置及内部凭据文件 | 三个账号仍存在、已验证、未封禁/删除；内部文件保存的旧邮箱已不存在，账号邮箱已变化。已定位为凭据文件失效；当前密码未验证。需要更新这三个既有账号的安全登录信息，未重置/新建/绕过鉴权 |
+| 2. Boost 服务端同意 | `20260919100132_travelers_boost_explicit_consent.sql` | 直接 RPC 也要求 `share-link-limited-v2` 与精确 JSON 布尔授权：authorized、mention_confirmed、display、monitoring、repost 为 true，download、editing、reupload、paid_ads 为 false。空值、缺字段、字符串 true、旧版本、额外权利及付费广告授权均拒绝；正确有限授权真实写入并回滚。保留原有资格、活动和订单校验 |
+| 3. Assignment 权限 | `20260919100755_staff_assignment_capability_boundary.sql`、`verify-blocker-closure.mjs` | 原接口只判断本车工作人员，确有职责过宽。现按 assignment 校验车辆操作/导游操作；兼任由运营专用版本化 RPC 明确授权并审计。撤销或变更 assignment 清除兼任权限，不因无导游/永久档案自动授权。真实 RPC 正负向验证通过；未扩展管理 UI，未伪称真实司机浏览器验收 |
+| 4. 0920/0970/0980 | 原样归档至 `supabase/patch-archive/blocker-closure`；正式承接迁移 `20260919100111`；preflight、manifest hash lock | 三个原稿不直接登记：存在旧查询回退、列返回不符及 scalar JSON 错用 RETURN QUERY。以最终登记实现承接 17 个读取函数的显式权限拒绝并修正聚合类型。当前为 147 个不变历史迁移 + 4 个核验后新增迁移 = 151，不是改期望为 150。完整名称、序号、排序、非空和全文件哈希检查保留；篡改、漏文件、多文件仍失败 |
+| 5. 周末价格 | 只读样本、0035 定价迁移、日价写入链路及数据库数值运算 | `round(5500*1.10/100.0)*100 = 6100`，即 6050 按百日元取整。9/21 琵琶湖 5500、9/26 6100 当前样本与此一致。0035 是一次性写入，不是每次报价时运行的引擎；后续后台日价可覆盖，游客/报价读 departures.seat_price_jpy。没有历史写入审计不能断言样本最后操作者；未改生产价格 |
+| 6. Booking 人数 | 未修改 App.tsx、订单/库存/支付规则 | 现有 `max="6"` 保留。10 人只用于单席优惠券数学测试，不能作为十人订单通过证明 |
+| 7. Staff /profile | `VehicleInspectionPlaceholder.tsx`、StaffPortal.tsx、组件测试 | 增加“车辆 / 出库检查”明确未接入说明，无强制勾选/假检查结果/阻断按钮。顺带修复该文件两处既有 lint 错误：无效选中任务在渲染时受控重置；位置会话只在实际开启时初始化，非渲染期间制造假会话 |
+| 8. 八语聊天 | `20260919101135_restore_korean_translation_context.sql`、数据库测试 | 发现最终库繁体缓存写入与韩语上下文/写入限制仍落后于现有服务配置，已恢复现有七语。七语真实上下文及缓存读写通过，游客直接写缓存被拒、撤销工作人员无上下文。西语自动生成明确未接通；未调用或新增付费翻译服务 |
+
+### Assignment 最小服务端矩阵
+
+| 当前 assignment | 车辆定位/车辆行程推进 | 开始集合/乘客核销 | 群聊、查看、联系 |
+|---|---|---|---|
+| driver | 按原任务/状态校验允许 | 拒绝 | 仍按原本车范围 |
+| guide | 拒绝 | 按原任务/状态校验允许 | 仍按原本车范围 |
+| driver + 明确的 guiding grant | 两者允许 | 两者允许 | 仍按原本车范围 |
+| 未派班、其他车、撤销/不可执行任务 | 拒绝 | 拒绝 | 原有读取边界不放宽 |
+| 运营 | 保留原授权及业务状态校验 | 保留原授权及业务状态校验 | 原运营范围 |
+
+受保护 RPC：record_staff_execution_event、advance_vehicle_group_journey、advance_vehicle_group_to_itinerary_stop、update_vehicle_group_meeting、start_driver_location_session_v2、append_driver_location_point、publish_driver_location、set_staff_passenger_checkin、mark_vehicle_group_order_boarded、verify_boarding_credential。集合地点维护是司机/导游共享动作，开始集合仍限导游/明确兼任。保留原执行状态、幂等、归属、核销和私有服务调用权限。
+
+`operations_set_assignment_guiding(assignment, enabled, expected_revision, reason)` 仅运营可执行；无 grant 的版本为 0，重复旧版本拒绝并保留审计。直接表写未开放给 authenticated；司机不能自授予权限。未把“管理员派班”等同司机确认，也未修改现有人员状态。
+
+### 本轮实际验证
+
+| 层级 | 结果 | 证据 |
+|---|---|---|
+| 类型检查 | 通过，exit 0 | runtime/blocker-typecheck.log |
+| 全量单元/组件测试 | **190 文件，787/787 通过** | runtime/blocker-test.log |
+| 前端构建 | 通过，exit 0；保留 >500kB bundle 提醒，不扩展重构 | runtime/blocker-build.log |
+| Server build | 通过，exit 0 | runtime/blocker-server-build.log |
+| 涉及文件 lint | 0 错误、0 警告，exit 0；未关闭规则 | runtime/blocker-lint.log |
+| Manifest | 151 个文件完整校验通过；额外原稿、缺失、内容篡改拒绝 | runtime/blocker-restore-manifest.json；restoreManifest / restorePreflight 测试 |
+| 隔离数据库增量行为 | 通过，91 条证据记录（不是 91 项端到端用例） | [脱敏回执](evidence/blocker-closure-database.json)；scripts/verify-blocker-closure.mjs |
+| 浏览器三身份 | 阻断，未重新用旧密码反复尝试 | HUMAN_BLOCKERS.md；保留上一轮 invalid_credentials 截图 |
+| 部署/全量空库恢复/外部翻译 | 未执行 | 不以增量回滚测试或构建替代 |
+
+数据库测试在现有 restore-test 项目 `hzxoofvodpqpdomtmzlf` 执行；明确 `--rollback-test` 后才运行，使用既有三个测试身份 ID，未创建认证账号。业务 fixture、假定已付款的资格测试订单、群组、活动、位置会话、集合事件、授权审计及 outbox 均在同一未提交事务内，最后回滚并确认 fixture 不存在。该 paid fixture 仅测权限/Boost 资格，**不是支付回调成功证据**；同一司机身份的 assignment 临时变体是数据库矩阵测试，不是真实三种角色登录验收。
+
+具体正负向包括：17 个运营 RPC 对游客/司机拒绝、对运营执行；司机可创建车辆定位会话但不能发起导游集合或自授权；导游可集合但不能驾驶操作；显式兼任可集合；过期授权版本拒绝；撤销后拒绝，重新恢复 assignment 不自动恢复兼任；私有权限 helper 不能由游客/司机调用；Boost 正确授权落库、缺少/扩大权利拒绝；翻译服务角色可保存七语缓存、游客不可写、撤销人员不可读。
+
+测试过程中发现并修正了 varchar/text 与 bigint 聚合返回类型不匹配，以及真实库繁体缓存约束回退；没有通过删校验或把读取失败当空数据规避。
+
+### 构建来源 / 保留情况
+
+- 分支：feature/production-app-foundation；HEAD：`d16b8290269ef186264a6603b51706e31d2dfd68`。本轮修改仍在工作区，未创建新提交、未推送、未部署。
+- 构建含本轮修复和用户已有 GuidedTourPhoto.tsx、RoutePlacePhoto.tsx、本地照片素材；**不等于纯 GitHub HEAD 产物**。
+- 保留用户 tests/v3dOperationsControl.test.ts 的既有内容，只把其原稿读取路径改为归档路径。该旧源码断言保留作历史检查，真正权限结论来自上述数据库执行，而非字符串匹配。
+- 三个 SQL 原稿内容哈希和承接关系见归档 README；所有未跟踪照片、视频和历史验证文件保留。
+- dist/index.html SHA256：`6DC221BA58830C4AEF1B6A05080F071802925E0146050EFEC58408D6988BF732`。
+- dist/assets/index-D3IzcSva.js SHA256：`2547611CC884624CFBE9BA00D498A0919ABA871F23B616A6FE04096BF6890B5C`。
+- dist/sw.js SHA256：`CED525FC4D5A50929E5EA9ECE3F857D9E6B2A21EBFD1845D88D048CB8CFAA844`。
+
+**停止条件：** 本轮本地修复与验证已完成；等待原三个测试身份的当前安全凭据，外部西语能力如实保留未接通。不继续尝试旧密码、不重做页面、不将历史待验收业务标为通过。
+
+---
+
+## 以下为 Blocker Closure 之前的历史报告（状态不覆盖上方最新结论）
+
 阶段交付 / 外部验收阻断，**不是全部 Round 验收通过报告**。依据 TASKPACK.md / CODEX_START_PROMPT.txt，已连续实施 Round 0–5 并执行 Round 6 可用检查；三身份登录未通过，不能宣称闭环完成。未推送、未部署，未执行支付、退款、外部通知或资金操作。
 
 ## 基线与保留边界
