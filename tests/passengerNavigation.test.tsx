@@ -10,8 +10,8 @@ describe('乘客端底部导航',()=>{
   it('以消息作为核心入口并移除奖励入口',()=>{
     render(<MemoryRouter><AppShell nav><p>页面正文</p></AppShell></MemoryRouter>);
     const navigation=screen.getByRole('navigation',{name:'应用导航'});
-    expect(navigation).toHaveTextContent('首页');
-    expect(navigation).toHaveTextContent('选路线');
+    expect(navigation).toHaveTextContent('发现');
+    expect(navigation).toHaveTextContent('精选线路');
     expect(navigation).toHaveTextContent('消息');
     expect(navigation).toHaveTextContent('订单');
     expect(navigation).toHaveTextContent('我的');
@@ -19,11 +19,11 @@ describe('乘客端底部导航',()=>{
     expect(screen.getByRole('link',{name:/消息$/})).toHaveAttribute('href','/app/notifications');
   });
   it.each([
-    ['/app','首页'],
-    ['/app/private-groups','首页'],
-    ['/app/vip-charter','首页'],
-    ['/app/trips/kyoto-nara-classic','选路线'],
-    ['/app/booking/kyoto-nara-classic','选路线'],
+    ['/app','发现'],
+    ['/app/private-groups','精选线路'],
+    ['/app/vip-charter','精选线路'],
+    ['/app/trips/kyoto-nara-classic','精选线路'],
+    ['/app/booking/kyoto-nara-classic','精选线路'],
     ['/app/orders/order-1','订单'],
     ['/app/notifications','消息'],
     ['/app/my-trip/room?vehicleGroup=group-1','消息'],

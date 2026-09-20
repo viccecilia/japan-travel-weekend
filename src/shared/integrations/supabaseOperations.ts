@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type {DiscoverHero} from '../discover';
 
 export type OperationsVehicleType = {
   type_key: string;
@@ -530,6 +531,16 @@ export class SupabaseOperationsRepository {
   constructor(private readonly client: SupabaseClient | null) {}
   get available() {
     return this.client !== null;
+  }
+  async listDiscoverHeroes(operations = false): Promise<{data:DiscoverHero[];error:string|null}> {
+    if(!this.client)return {data:[],error:'内容服务未配置'};
+    const {data,error}=await this.client.rpc(operations?'get_operations_discover_heroes':'get_public_discover_heroes');
+    return {data:(data??[]) as DiscoverHero[],error:error?.message??null};
+  }
+  async saveDiscoverHero(hero:DiscoverHero):Promise<{data:DiscoverHero|null;error:string|null}> {
+    if(!this.client)return {data:null,error:'内容服务未配置'};
+    const {data,error}=await this.client.rpc('save_discover_hero',{p_id:hero.id,p_expected_version:hero.version,p_content:{video_url:hero.video_url,poster_url:hero.poster_url,product_id:hero.product_id,translations:hero.translations,enabled:hero.enabled,sort_order:hero.sort_order}});
+    return {data:data as DiscoverHero|null,error:error?.message??null};
   }
   async listProducts() {
     if (!this.client)

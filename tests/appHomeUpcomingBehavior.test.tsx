@@ -1,40 +1,7 @@
-import {cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
-import {afterEach,describe,expect,it,vi} from 'vitest';
-import {MemoryRouter} from 'react-router-dom';
-import {AppHome} from '../src/app/App';
-import {AppProvider} from '../src/app/store';
-import type {Departure} from '../src/shared/types';
-
-afterEach(cleanup);
-const sellable:Departure={id:'home-departure-1',tripSlug:'kyoto-nara-classic',dateLabel:'9月13日',weekend:'本周末',status:'可预订',departureTime:'2099-09-13T00:00:00Z',expectedEndTime:'2099-09-13T10:00:00Z',meetingPointName:'大阪集合点',meetingAddress:'大阪',meetingCoordinates:null,arrivalInstructions:{transit:null,walking:null,driving:null},meetingPhoto:null,meetingPhotoStatus:'待确认',mapStatus:'未连接',price:8123,availableSeats:4,currency:'JPY',taxIncluded:true,inventoryStatus:'权威库存',isSeed:false};
-
-describe('游客首页合并近期出发板块',()=>{
-  it('渲染单一整卡链接并把同一班次 ID、价格和库存一起带出',async()=>{
-    const services={
-      loadSellableDepartures:vi.fn(async()=>({data:[sellable,{...sellable,id:'home-departure-2',departureTime:'2099-09-14T00:00:00Z',price:9999}],error:null})),
-      onAuthStateChange:()=>()=>{},
-      currentUser:async()=>null,
-    };
-    render(<MemoryRouter initialEntries={['/app?date=2099-09-13']}><AppProvider services={services as never}><AppHome/></AppProvider></MemoryRouter>);
-    await waitFor(()=>expect(screen.getByText('¥8,123 / 人')).toBeInTheDocument());
-    const card=screen.getAllByRole('link').find(link=>link.classList.contains('passenger-upcoming-card'))!;
-    expect(card).toHaveAttribute('href','/app/trips/kyoto-nara-classic?departureId=home-departure-1');
-    expect(card).toHaveTextContent('余 4');
-    expect(document.querySelector('.passenger-route-rail')).toBeNull();
-    expect(document.querySelector('.passenger-departure-row')).toBeNull();
-    const vip=screen.getByRole('link',{name:/VIP 专属包车/});
-    expect(vip).toHaveAttribute('href','/app/vip-charter');
-    expect(vip).toHaveTextContent('和家人朋友，按自己的节奏出发');
-    expect(vip).toHaveTextContent('专车出行 · 酒店接送 · 阿尔法／海狮');
-    expect(vip).toHaveTextContent('查看包车方案 →');
-    const upcoming=document.querySelector('.passenger-upcoming-heading')!;
-    expect(upcoming.compareDocumentPosition(vip)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    fireEvent.change(screen.getByLabelText('其他日期'),{target:{value:'2099-09-14'}});
-    expect(await screen.findByText('¥9,999 / 人')).toBeInTheDocument();
-    expect(screen.queryByText('¥8,123 / 人')).not.toBeInTheDocument();
-    expect(document.querySelector('.passenger-upcoming-card')).toHaveAttribute('href','/app/trips/kyoto-nara-classic?departureId=home-departure-2');
-    fireEvent.change(screen.getByLabelText('其他日期'),{target:{value:'2099-09-15'}});
-    expect(screen.getByText('暂无开放班次')).toBeInTheDocument();
-    expect(document.querySelector('.passenger-upcoming-card')).toBeNull();
-  });
+// Home no longer lists departures; the date/price association remains covered in
+// homeUpcomingDepartures.test.ts and the Booking component tests.
+import {expect,it} from 'vitest';
+import {initialDiscoverHeroes} from '../src/shared/discover';
+it('initial Discover content contains no copied commercial fields',()=>{
+ for(const hero of initialDiscoverHeroes){expect(hero).not.toHaveProperty('price');expect(hero).not.toHaveProperty('departureId');expect(hero).not.toHaveProperty('inventory')}
 });

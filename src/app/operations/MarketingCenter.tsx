@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useApp } from "../store";
 import type { OperationsMerchandising } from "../../shared/integrations/supabaseOperations";
+import {DiscoverManager} from './DiscoverManager';
 export function MarketingCenter() {
   const { services } = useApp();
   const [rows, setRows] = useState<OperationsMerchandising[]>([]);
@@ -22,6 +23,7 @@ export function MarketingCenter() {
           返回工作台
         </Link>
       </header>
+      <DiscoverManager/>
       <section className="operations-section">
         {notice && <p role="alert">{notice}</p>}
         <div className="operations-dispatch-list">

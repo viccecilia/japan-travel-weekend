@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import {
   Link,
   Navigate,
@@ -9,7 +9,8 @@ import {
 } from "react-router-dom";
 import { travelRepository } from "../shared/data/repository";
 import { backend } from "../shared/backend";
-import { TripCard } from "../shared/components/TripCard";
+import {Discover} from './Discover';
+import {discoverLabels} from '../shared/discover';
 import { appConfig, nextTier, tierFor } from "../shared/config/businessRules";
 import {
   describeAssistance,
@@ -35,10 +36,7 @@ import {routePhotoAt} from '../shared/data/routePhotoCatalog';
 import {groupDeparturesByMonth, resolveDepartureSelection} from './bookingDepartureSelection';
 import {singleSeatQuote} from '../shared/services/singleSeatPricing';
 import type {ServerQuote} from '../shared/backend/testApi';
-import {isHomeSellableDeparture,selectDeparturesForTokyoDate,tokyoDateKey} from './homeUpcomingDepartures';
-import {HomeDatePicker} from './HomeDatePicker';
-import {homeV3Labels} from './homeV3Copy';
-import {HomeNextTrip,HomeBenefits} from './HomeNextTrip';
+import {isHomeSellableDeparture} from './homeUpcomingDepartures';
 import './routeDetailContinuous.css';
 import {TravelShareCampaign} from './TravelShareCampaign';
 import {useCurrentTime} from './useCurrentTime';
@@ -68,16 +66,6 @@ const reviewStatusLabels:Record<string,Record<string,string>>={
  ko:{not_requested:'요청 없음',reviewing:'확인 중',manual_contact:'직접 연락 필요',confirmed:'확인 완료',unavailable:'제공 불가'}
 };
 const localizedReviewStatus=(locale:string,status:string)=>reviewStatusLabels[locale]?.[status]??status;
-const homeExtraCopy={
- 'zh-CN':{notice:'查看通知',member:'会员信息',quick:'常用功能',ai:'AI随行',benefits:'会员权益',weekend:['本周末','下周末','稍后'],tier:'探索者',foodTag:'当地餐食',food:'京都与奈良的一日用餐建议',foodTime:'6 分钟阅读',meetTag:'集合指南',meet:'第一次参加巴士一日游怎么准备',meetTime:'4 分钟阅读'},
- 'zh-TW':{notice:'查看通知',member:'會員資訊',quick:'常用功能',ai:'AI 隨行',benefits:'會員權益',weekend:['本週末','下週末','稍後'],tier:'探索者',foodTag:'當地餐食',food:'京都與奈良一日用餐建議',foodTime:'閱讀 6 分鐘',meetTag:'集合指南',meet:'第一次參加巴士一日遊如何準備',meetTime:'閱讀 4 分鐘'},
- ja:{notice:'通知を見る',member:'会員情報',quick:'よく使う機能',ai:'AI旅ガイド',benefits:'会員特典',weekend:['今週末','来週末','以降'],tier:'エクスプローラー',foodTag:'現地グルメ',food:'京都・奈良の日帰り食事ガイド',foodTime:'6分で読めます',meetTag:'集合ガイド',meet:'初めてのバス日帰り旅行の準備',meetTime:'4分で読めます'},
- en:{notice:'View notifications',member:'Membership information',quick:'Quick actions',ai:'AI companion',benefits:'Member benefits',weekend:['This weekend','Next weekend','Later'],tier:'Explorer',foodTag:'LOCAL FOOD',food:'Where to eat on a Kyoto and Nara day trip',foodTime:'6 min read',meetTag:'MEETING GUIDE',meet:'How to prepare for your first bus day trip',meetTime:'4 min read'},
- es:{notice:'Ver notificaciones',member:'Información sobre la suscripción',quick:'Acciones rapidas',ai:'Compañero de IA',benefits:'Beneficios para los socios ',weekend:['Este fin de semana','El próximo fin de semana','Más tarde'],tier:'Explorar',foodTag:'Comida local',food:'Dónde comer en una excursión de un día a Kioto y Nara',foodTime:'6 min de lectura',meetTag:'GUÍA DE LA REUNIÓN ',meet:'Cómo prepararte para tu primer viaje de un día en autobús',meetTime:'4 min de lectura'},
- vi:{notice:'Xem thông báo',member:'Thông tin thành viên',quick:'Truy cập nhanh',ai:'Bạn đồng hành AI',benefits:'Quyền lợi thành viên',weekend:['Cuối tuần này','Cuối tuần sau','Sau đó'],tier:'Người khám phá',foodTag:'ẨM THỰC',food:'Gợi ý ăn uống trong ngày ở Kyoto và Nara',foodTime:'Đọc 6 phút',meetTag:'HƯỚNG DẪN TẬP TRUNG',meet:'Chuẩn bị cho chuyến xe buýt trong ngày đầu tiên',meetTime:'Đọc 4 phút'},
- ne:{notice:'सूचना हेर्नुहोस्',member:'सदस्य जानकारी',quick:'छिटो पहुँच',ai:'AI सहयात्री',benefits:'सदस्य सुविधा',weekend:['यो सप्ताहन्त','अर्को सप्ताहन्त','पछि'],tier:'अन्वेषक',foodTag:'स्थानीय खाना',food:'क्योटो र नाराको एकदिने खानपान सुझाव',foodTime:'६ मिनेट पढाइ',meetTag:'भेट्ने निर्देशिका',meet:'पहिलो बस एकदिने यात्राको तयारी',meetTime:'४ मिनेट पढाइ'},
- ko:{notice:'알림 보기',member:'회원 정보',quick:'빠른 메뉴',ai:'AI 동행',benefits:'회원 혜택',weekend:['이번 주말','다음 주말','추후'],tier:'탐험가',foodTag:'현지 음식',food:'교토·나라 당일치기 식사 추천',foodTime:'6분 읽기',meetTag:'집합 안내',meet:'첫 버스 당일치기 여행 준비 방법',meetTime:'4분 읽기'},
-} as const;
 const tripHomeCopy:Record<string,Record<string,{name:string;region:string;duration:string;stops:string[]}>>={
  en:{'kyoto-nara-classic':{name:'Kyoto & Nara',region:'Kyoto and Nara',duration:'9–10 hours',stops:['Kiyomizu-dera','Fushimi Inari Taisha','Nara Park']},'amanohashidate-ine':{name:'Amanohashidate & Ine',region:'Northern Kyoto',duration:'10–11 hours',stops:['Amanohashidate','Chionji Temple','Ine Funaya']},'biwako-shirahige':{name:'Lake Biwa M Route',region:'Shiga',duration:'10–11 hours',stops:['Shirahige Shrine','Lake Biwa Terrace','La Collina Omihachiman']}},
  es:{'kyoto-nara-classic':{name:'Kioto y Nara',region:'Kioto y Nara',duration:'9–10 horas',stops:['Templo Kiyomizu-dera','Santuario Fushimi Inari Taisha','Parque de Nara']},'amanohashidate-ine':{name:'Amanohashidate e Ine',region:'Norte de Kioto',duration:'10–11 horas',stops:['Amanohashidate','Templo Chionji','Casas flotantes de Ine']},'biwako-shirahige':{name:'Lago Biwa y Shirahige',region:'Shiga',duration:'10–11 horas',stops:['Santuario Shirahige','Mirador del lago Biwa','La Collina Omihachiman']}},
@@ -224,7 +212,8 @@ export function LanguageSelect({ compact = false }: { compact?: boolean }) {
 const compactTripMeta=(...parts:Array<string|undefined|null>)=>parts.map(value=>value?.trim()).filter(Boolean).join(' · ');
 type PassengerNavSection='home'|'trips'|'orders'|'messages'|'profile';
 const passengerNavSection=(pathname:string):PassengerNavSection=>{
-  if(pathname==='/app'||pathname.startsWith('/app/private-groups')||pathname.startsWith('/app/vip-charter'))return 'home';
+  if(pathname==='/app')return 'home';
+  if(pathname.startsWith('/app/private-groups')||pathname.startsWith('/app/vip-charter'))return 'trips';
   if(pathname.startsWith('/app/trips')||pathname.startsWith('/app/booking')||pathname.startsWith('/app/guides'))return 'trips';
   if(pathname.startsWith('/app/orders')||pathname.startsWith('/app/passengers')||pathname.startsWith('/app/checkout')||pathname.startsWith('/app/payment')||pathname.startsWith('/app/boarding-pass'))return 'orders';
   if(pathname.startsWith('/app/notifications')||pathname.startsWith('/app/my-trip')||pathname.startsWith('/app/ai-guide')||pathname.startsWith('/app/support'))return 'messages';
@@ -243,16 +232,21 @@ export function AppShell({
   const c=passengerCoreCopy[locale];
   const screen = pathname.split("/").filter(Boolean).slice(1, 2)[0] ?? "home";
   const activeSection=passengerNavSection(pathname);
+  const isDiscover=pathname==='/app';
+  const [awake,setAwake]=useState(false);
+  const idle=useRef<ReturnType<typeof setTimeout>|null>(null);
+  useEffect(()=>()=>{if(idle.current)clearTimeout(idle.current)},[]);
+  const wake=()=>{if(!isDiscover)return;setAwake(true);if(idle.current)clearTimeout(idle.current);idle.current=setTimeout(()=>setAwake(false),2200)};
   const navigation:Array<{id:PassengerNavSection,to:string,icon:string,label:string}>=[
-    {id:'home',to:'/app',icon:'⌂',label:c.home},
-    {id:'trips',to:'/app/trips',icon:'◇',label:locale==='zh-CN'?'选路线':locale==='zh-TW'?'選路線':c.trips},
+    {id:'home',to:'/app',icon:'⌂',label:discoverLabels[locale].discover},
+    {id:'trips',to:'/app/trips',icon:'◇',label:discoverLabels[locale].trips},
     {id:'orders',to:'/app/orders',icon:'▤',label:c.orders},
     {id:'messages',to:'/app/notifications',icon:'◉',label:c.messages},
     {id:'profile',to:'/app/profile',icon:'○',label:c.profile},
   ];
   return (
     <div className="app-stage">
-      <div className={`app-frame passenger-v2 screen-${screen}`}>
+      <div className={`app-frame passenger-v2 screen-${screen}${isDiscover?' discover-frame':''}`} data-awake={awake} onPointerDown={wake} onPointerMove={wake} onClick={wake} onKeyDown={wake}>
         {appConfig.runtimeMode==='demo'&&<div className="test-guest-banner">测试免登录 · 仅使用模拟数据</div>}
         <header className="app-top">
           <Link className="app-brand" to="/app" aria-label={c.backHome}>
@@ -460,21 +454,11 @@ export function Login() {
     </>
   );
 }
-export function AppHome() {
-  const {
-    state,
-    departures: deps,
-    departuresResolved,
-    departuresError,
-  } = useApp();
-  const locale=state.ui.locale ?? "zh-CN";
+export function AppHome() { return <Discover/>; }
+function DiscoverCharters() {
+  const {state}=useApp();
+  const locale=state.ui.locale??'zh-CN';
   const h=passengerHomeCopy[locale];
-  const x=homeExtraCopy[locale];
-  const localTrip=(trip:typeof trips[number])=>localizedTripSummary(locale,trip);
-  const [search,setSearch]=useSearchParams();
-  const homeNow=useCurrentTime();
-  const selectedDate=/^\d{4}-\d{2}-\d{2}$/.test(search.get("date")??"")?search.get("date")!:tokyoDateKey(new Date(homeNow));
-  const visibleDepartures=selectDeparturesForTokyoDate(deps,travelRepository.listTrips().map(trip=>trip.slug),selectedDate,new Date(homeNow));
   const vipCopy:Record<PassengerLocale,{eyebrow:string,title:string,text:string,features:string,action:string}>={
     'zh-CN':{eyebrow:'VIP CHARTER',title:'VIP 专属包车',text:'和家人朋友，按自己的节奏出发',features:'专车出行 · 酒店接送 · 阿尔法／海狮',action:'查看包车方案 →'},
     'zh-TW':{eyebrow:'VIP CHARTER',title:'VIP 專屬包車',text:'和家人朋友，按自己的節奏出發',features:'專車出行 · 飯店接送 · Alphard／Hiace',action:'查看包車方案 →'},
@@ -486,87 +470,11 @@ export function AppHome() {
     ko:{eyebrow:'VIP CHARTER',title:'VIP 전용 차량',text:'가족·친구와 우리만의 속도로 출발하세요',features:'전용 차량 · 호텔 픽업 · 알파드／하이에이스',action:'전용 차량 보기 →'},
   };
   const vip=vipCopy[locale];
-  return (
-    <div className="fulfillment-home passenger-home-v2 home-v3">
-      <section className="passenger-yellow-hero">
-        <div className="passenger-welcome">
-          <div>
-            <span>{h.kicker}</span>
-            <h1>{h.greeting}</h1>
-          </div>
-          <Link to="/app/notifications" aria-label={x.notice}>
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
-            </svg>
-          </Link>
-        </div>
-      </section>
-      <HomeNextTrip key={`trip-${state.user?.email??'anonymous'}`}/>
-      <HomeDatePicker locale={locale} date={selectedDate} onChange={date=>{const next=new URLSearchParams(search);next.set('date',date);setSearch(next)}}/>
-      <div className="passenger-section-heading passenger-upcoming-heading">
-        <div>
-          <time dateTime={selectedDate}>{selectedDate}</time>
-          <h2>{homeV3Labels(locale)[2]}</h2>
-        </div>
-        <Link to="/app/trips">{h.allRoutes}</Link>
-      </div>
-      {!departuresResolved ? (
-        <Empty title={h.loadingTitle} text={h.loadingText} />
-      ) : departuresError ? (
-        <Empty title={h.errorTitle} text={h.errorText} />
-      ) : visibleDepartures.length ? (
-        <div className="passenger-upcoming-list">
-          {visibleDepartures.map((departure) => {
-            const trip = travelRepository.getTrip(departure.tripSlug);
-            if (!trip) return null;
-            const display=localTrip(trip);
-            const dateLabel=departure.departureTime?new Intl.DateTimeFormat(locale,{timeZone:'Asia/Tokyo',month:'short',day:'numeric',weekday:'short'}).format(new Date(departure.departureTime)):departure.dateLabel;
-            return (
-              <Link
-                className="passenger-upcoming-card"
-                key={departure.id}
-                to={`/app/trips/${trip.slug}?departureId=${encodeURIComponent(departure.id)}`}
-              >
-                <img src={trip.heroImage} alt="" />
-                <div>
-                  <h3>{display.name}</h3>
-                  <p>{display.stops.slice(0, 3).join(" → ")}</p>
-                  <time dateTime={departure.departureTime??undefined}>{dateLabel}</time>
-                  <strong>¥{departure.price?.toLocaleString(locale)} / {homePriceUnit[locale]}</strong>
-                  {departure.availableSeats!==null&&departure.availableSeats<=5&&<small>{h.seatsLeft} {departure.availableSeats}</small>}
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-      ) : (
-        <Empty
-          title={h.emptyTitle}
-          text={h.emptyText}
-        />
-      )}
-      <HomeBenefits key={`benefits-${state.user?.email??'anonymous'}`}/>
-      <h2>{homeV3Labels(locale)[4]}</h2>
-      <Link className="passenger-vip-card" to="/app/vip-charter">
-        <div>
-          <span>{vip.eyebrow}</span>
-          <h2>{vip.title}</h2>
-          <p>{vip.text}</p>
-          <small>{vip.features}</small>
-          <strong>{vip.action}</strong>
-        </div>
-        <img src="/images/vip-alphard-hotel.jpg" alt="" />
-      </Link>
-      <Link className="passenger-private-card" to="/app/private-groups">
-        <div>
-          <span>PRIVATE GROUPS</span>
-          <b>{h.privateTitle}</b>
-          <p>{h.privateText}</p>
-        </div>
-        <strong>{h.inquire} →</strong>
-      </Link>
-    </div>
-  );
+
+  return <section className="discover-charters">
+    <Link className="passenger-vip-card" to="/app/vip-charter"><div><span>{vip.eyebrow}</span><h2>{vip.title}</h2><p>{vip.text}</p><small>{vip.features}</small><strong>{vip.action}</strong></div><img src="/images/vip-alphard-hotel.jpg" alt=""/></Link>
+    <Link className="passenger-private-card" to="/app/private-groups"><div><span>PRIVATE GROUPS</span><b>{h.privateTitle}</b><p>{h.privateText}</p></div><strong>{h.inquire} →</strong></Link>
+  </section>;
 }
 
 const notificationCopy:Record<string,any>={
@@ -948,11 +856,15 @@ export function AppTrips() {
         title={r.title}
         text={r.text}
       />
-      <div className="app-list route-card-list">
+      <div className="discover-route-grid">
         {travelRepository.listTrips().map((t) => (
-          <TripCard key={t.id} trip={t} app locale={state.ui.locale ?? 'zh-CN'} />
+          <Link key={t.id} className="discover-route-card" to={'/app/trips/'+t.slug}>
+            <img src={t.heroImage} alt="" loading="lazy"/>
+            <div><h3>{localizedTripSummary(state.ui.locale??'zh-CN',t).name}</h3><p>{String(t.localizedContent?.[state.ui.locale??'zh-CN']?.summary||t.summary||t.description)}</p><small>{localizedTripSummary(state.ui.locale??'zh-CN',t).stops.slice(0,4).join(' → ')}</small></div>
+          </Link>
         ))}
       </div>
+      <DiscoverCharters/>
     </div>
   );
 }

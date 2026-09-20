@@ -19,6 +19,7 @@ export const ADDITIONAL_MIGRATIONS = [
   '20260919100132_travelers_boost_explicit_consent.sql',
   '20260919100755_staff_assignment_capability_boundary.sql',
   '20260919101135_restore_korean_translation_context.sql',
+  '20260920054451_discover_video_heroes.sql',
 ];
 export const EXPECTED_MIGRATION_COUNT = LEGACY_MIGRATION_COUNT + ADDITIONAL_MIGRATIONS.length;
 

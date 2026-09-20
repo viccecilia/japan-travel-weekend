@@ -1,0 +1,50 @@
+.app-stage:has(.discover-frame){background:#141919;padding:0;display:block}
+.app-stage .app-frame.discover-frame{position:relative;width:100%;max-width:none;height:100dvh;min-height:0;background:#172326;color:white;overflow:clip;border:0;border-radius:0;box-shadow:none}
+.app-frame.discover-frame .app-content{padding:0;max-width:none;height:100%;margin:0}
+.discover-hero{height:100%;width:100%;position:relative;touch-action:pinch-zoom;overflow:clip}
+.discover-film,.discover-film img,.discover-film video,.discover-shade{position:absolute;inset:0;width:100%;height:100%}
+.discover-film img,.discover-film video{object-fit:cover}
+.discover-shade{pointer-events:none;background:linear-gradient(180deg,#0005,transparent 25%,transparent 65%,#0005)}
+.app-frame.discover-frame .app-top{position:absolute;inset:0 0 auto;z-index:4;background:transparent;border:0;box-shadow:none;max-width:none;padding:calc(16px + env(safe-area-inset-top)) 18px 12px;color:white}
+.discover-frame .app-brand{color:white;gap:7px;font-size:11px}
+.app-frame.discover-frame .app-top .app-brand,.app-frame.discover-frame .app-top .app-brand span{color:white!important}
+.app-frame.discover-frame .app-top .app-brand span{display:block;background:none;padding:0;font-size:11px;font-weight:500}
+.app-frame.discover-frame .app-top .language-select.compact{width:44px;height:36px;border-radius:22px;background:#17232655;border:1px solid #ffffff44}
+.app-frame.discover-frame .app-top .language-select.compact span{color:white;background:transparent}
+.app-frame.discover-frame .bottom-nav a:before,.app-frame.discover-frame .bottom-nav a:after{display:none}
+.app-frame.discover-frame .bottom-nav a.active:after{display:none}
+.discover-frame .app-brand i{width:27px;height:27px;font-size:12px;background:#ffffff17;border:1px solid #ffffff55;color:white}
+.discover-frame .app-language-control{color:white}
+.discover-frame .app-top select{max-width:104px;color:white;background:#17232655;border:1px solid #ffffff44;border-radius:22px}
+.discover-frame .app-top select option{color:#172326;background:white}
+.app-frame.discover-frame .bottom-nav{position:absolute;inset:auto 0 0;max-width:none;width:100%;background:#0b171a45;border-top:1px solid #ffffff22;backdrop-filter:blur(8px);padding-bottom:calc(6px + env(safe-area-inset-bottom))}
+.app-frame.discover-frame .bottom-nav a{color:#ffffffc9}
+.app-frame.discover-frame .bottom-nav a.active{background:#ffffff1c;color:white}
+.app-frame.discover-frame .bottom-nav a.active i{color:white}
+.discover-control,.discover-frame .app-top,.discover-frame .bottom-nav{opacity:.28;transition:opacity .3s}
+.discover-frame[data-awake=true] .discover-control,.discover-frame[data-awake=true] .app-top,.discover-frame[data-awake=true] .bottom-nav,.discover-frame :focus-visible,.discover-frame .app-top:focus-within,.discover-frame .bottom-nav:focus-within{opacity:1}
+.discover-title{position:absolute;left:8%;right:8%;top:25%;pointer-events:none;text-shadow:0 2px 18px #0009;animation:discover-title-fade 3.7s forwards}
+.discover-title h1{white-space:pre-line;color:#fff;font-size:clamp(24px,5.5vw,40px);line-height:1.6;letter-spacing:.025em;margin:0;font-weight:550}
+.discover-title p{color:#fffffff0;font-size:13px;line-height:1.8;margin-top:15px}
+.discover-edge,.discover-up,.discover-cta{z-index:2;color:white!important;background:#111e2260!important;border:1px solid #ffffff32!important;backdrop-filter:blur(9px);text-decoration:none}
+.discover-edge{position:absolute;top:48%;height:64px;width:30px;min-width:0;border-radius:18px;font:30px/1 serif;padding:0}
+.discover-previous{left:7px}.discover-next{right:7px}
+.discover-up{position:absolute;bottom:calc(118px + env(safe-area-inset-bottom));right:10px;width:32px;height:65px;border-radius:20px;display:grid;place-items:center;animation:discover-nudge 1.5s ease-out 1}
+.discover-up svg{width:22px;height:34px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.discover-cta{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(225px + env(safe-area-inset-bottom));border-radius:26px;padding:12px 22px;font-size:14px;white-space:nowrap;min-height:44px}
+.discover-dots{position:absolute;bottom:calc(102px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);display:flex;z-index:2}
+.discover-dots button{border:0;background:transparent;width:34px;height:44px;padding:12px;display:grid;place-items:center;color:white}
+.discover-dots span{width:4px;height:4px;border-radius:5px;background:currentColor}
+.discover-dots [aria-current=true] span{width:20px;height:3px}
+.discover-empty{position:absolute;top:40%;width:100%;text-align:center}
+@keyframes discover-title-fade{0%,81%{opacity:1}100%{opacity:0}}
+@keyframes discover-nudge{0%,100%{translate:0 0}50%{translate:0 -7px}}
+.route-catalog .discover-route-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 12px}
+.discover-route-card{min-width:0;text-decoration:none;color:inherit;background:white;border-radius:16px;overflow:clip;box-shadow:0 2px 12px #00000008}
+.discover-route-card img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}
+.discover-route-card>div{padding:12px}
+.discover-route-card h3{font-size:16px;line-height:1.5;margin:0 0 8px;overflow-wrap:anywhere}
+.discover-route-card p,.discover-route-card small{font-size:12px;line-height:1.65;overflow-wrap:anywhere;margin:0 0 8px;display:block;color:#586263}
+.route-catalog .discover-charters{margin-top:28px;display:grid;gap:15px}
+@media(min-width:900px){.discover-title{left:12%;max-width:620px}.discover-hero .discover-film img,.discover-hero .discover-film video{object-fit:contain;background:#172326}.discover-frame .app-top{padding-inline:32px}.discover-route-card img{aspect-ratio:16/9}}
+@media(prefers-reduced-motion:reduce){.discover-up{animation:none}.discover-control,.discover-title{transition:none}}

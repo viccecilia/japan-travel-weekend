@@ -605,6 +605,10 @@
     {
       "name": "20260919101135_restore_korean_translation_context.sql",
       "sha256": "9ca69e1c04976061007e6972727ddc71f3b3a56477418cbf89dbca4b1f886bde"
+    },
+    {
+      "name": "20260920054451_discover_video_heroes.sql",
+      "sha256": "cd04505eb391dab0e701cebde49dfe61fe07b6bcb73e54fc1ad6640e30398594"
     }
   ]
 }
