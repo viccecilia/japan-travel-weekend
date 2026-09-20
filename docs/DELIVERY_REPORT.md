@@ -1,5 +1,7 @@
 # Continuous Delivery — 2026-09-19
 
+> 2026-09-20 发布进展以 [BLOCKER_RELEASE_20260920.md](BLOCKER_RELEASE_20260920.md) 为准：代码已推送，测试数据库补丁已安装；前端上传完成，等待部署窗口 sudo 密码。下文“未提交/未部署”为上一轮结束时快照。
+
 ## 最新：最终 Blocker Closure（2026-09-19）
 
 **本节取代下方历史报告中的本轮阻断状态，历史证据保留。没有重新实施 Round 0–5，也没有重构 Home、Route Detail、Booking、AI Guide、Travelers Boost 或 Staff App。**
