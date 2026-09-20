@@ -340,7 +340,7 @@ export class SupabaseOrderRepository {
     if (!this.client) return { data: [], error: "账户服务未配置" };
     const { data, error } = await this.client
       .from("orders")
-      .select("id,departure_id,seat_count,status,amount,currency,manual_payment_due_at,created_at")
+      .select("id,departure_id,seat_count,status,amount,currency,manual_payment_due_at,created_at,departure:departures(departs_at,status,trip:trips(slug))")
       .order("created_at", { ascending: false });
     return error
       ? { data: [], error: "订单读取失败" }

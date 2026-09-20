@@ -609,6 +609,10 @@
     {
       "name": "20260920054451_discover_video_heroes.sql",
       "sha256": "cd04505eb391dab0e701cebde49dfe61fe07b6bcb73e54fc1ad6640e30398594"
+    },
+    {
+      "name": "20260920070417_delete_discover_hero.sql",
+      "sha256": "da71cde44394b7d2ba2b9419210eebb3352eacc619e96c628bf47f8e165f6b31"
     }
   ]
 }

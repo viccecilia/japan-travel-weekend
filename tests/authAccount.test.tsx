@@ -102,7 +102,7 @@ describe('账户页面',()=>{
       onAuthStateChange:vi.fn((callback)=>{listener=callback;return {data:{subscription:{unsubscribe:vi.fn()}}}}),
     });
     render(<MemoryRouter initialEntries={['/app/orders']}><AppProvider services={new ProductionBrowserServices(client,undefined)}><Router/></AppProvider></MemoryRouter>);
-    await waitFor(()=>expect(screen.getByRole('heading',{name:'我的行程'})).toBeInTheDocument());
+    await waitFor(()=>expect(screen.getByRole('heading',{name:'我的订单'})).toBeInTheDocument());
     act(()=>listener?.('SIGNED_OUT',null));
     await waitFor(()=>expect(screen.getByRole('button',{name:'登录账户'})).toBeInTheDocument());
   });

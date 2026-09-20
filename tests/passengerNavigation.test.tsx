@@ -16,7 +16,7 @@ describe('乘客端底部导航',()=>{
     expect(navigation).toHaveTextContent('订单');
     expect(navigation).toHaveTextContent('我的');
     expect(navigation).not.toHaveTextContent('奖励');
-    expect(screen.getByRole('link',{name:/消息$/})).toHaveAttribute('href','/app/notifications');
+    expect(screen.getByRole('link',{name:/消息$/})).toHaveAttribute('href','/app/messages');
   });
   it.each([
     ['/app','发现'],
@@ -25,7 +25,7 @@ describe('乘客端底部导航',()=>{
     ['/app/trips/kyoto-nara-classic','精选线路'],
     ['/app/booking/kyoto-nara-classic','精选线路'],
     ['/app/orders/order-1','订单'],
-    ['/app/notifications','消息'],
+    ['/app/messages','消息'],
     ['/app/my-trip/room?vehicleGroup=group-1','消息'],
     ['/app/profile','我的'],
     ['/app/rewards','我的'],

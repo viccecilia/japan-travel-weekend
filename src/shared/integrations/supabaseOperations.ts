@@ -542,6 +542,11 @@ export class SupabaseOperationsRepository {
     const {data,error}=await this.client.rpc('save_discover_hero',{p_id:hero.id,p_expected_version:hero.version,p_content:{video_url:hero.video_url,poster_url:hero.poster_url,product_id:hero.product_id,translations:hero.translations,enabled:hero.enabled,sort_order:hero.sort_order}});
     return {data:data as DiscoverHero|null,error:error?.message??null};
   }
+  async deleteDiscoverHero(id:string,expectedVersion:number):Promise<{error:string|null}> {
+    if(!this.client)return {error:'内容服务未配置'};
+    const {data,error}=await this.client.rpc('delete_discover_hero',{p_id:id,p_expected_version:expectedVersion});
+    return {error:error?.code==='40001'?'版本冲突，请刷新后核对最新内容再删除':error?.message??(data===id?null:'删除未确认，请刷新后核对')};
+  }
   async listProducts() {
     if (!this.client)
       return { data: [] as OperationsProduct[], error: "运营数据服务未配置" };

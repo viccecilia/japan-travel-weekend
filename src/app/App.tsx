@@ -10,6 +10,7 @@ import {
 import { travelRepository } from "../shared/data/repository";
 import { backend } from "../shared/backend";
 import {Discover} from './Discover';
+import {ProfileInvite} from './ProfileInvite';
 import {discoverLabels} from '../shared/discover';
 import { appConfig, nextTier, tierFor } from "../shared/config/businessRules";
 import {
@@ -40,6 +41,7 @@ import {isHomeSellableDeparture} from './homeUpcomingDepartures';
 import './routeDetailContinuous.css';
 import {TravelShareCampaign} from './TravelShareCampaign';
 import {useCurrentTime} from './useCurrentTime';
+import './passengerFrame.css';
 const homePriceUnit:Record<PassengerLocale,string>={'zh-CN':'人','zh-TW':'人',ja:'人',en:'person',es:'persona',vi:'người',ne:'व्यक्ति',ko:'인'};
 import {composePassengerDisplayName,splitPassengerDisplayName,type PassengerSalutation} from './passengerDisplayName';
 const trips = travelRepository.listTrips();
@@ -216,7 +218,7 @@ const passengerNavSection=(pathname:string):PassengerNavSection=>{
   if(pathname.startsWith('/app/private-groups')||pathname.startsWith('/app/vip-charter'))return 'trips';
   if(pathname.startsWith('/app/trips')||pathname.startsWith('/app/booking')||pathname.startsWith('/app/guides'))return 'trips';
   if(pathname.startsWith('/app/orders')||pathname.startsWith('/app/passengers')||pathname.startsWith('/app/checkout')||pathname.startsWith('/app/payment')||pathname.startsWith('/app/boarding-pass'))return 'orders';
-  if(pathname.startsWith('/app/notifications')||pathname.startsWith('/app/my-trip')||pathname.startsWith('/app/ai-guide')||pathname.startsWith('/app/support'))return 'messages';
+  if(pathname.startsWith('/app/messages')||pathname.startsWith('/app/my-trip')||pathname.startsWith('/app/ai-guide')||pathname.startsWith('/app/support'))return 'messages';
   return 'profile';
 };
 export function AppShell({
@@ -233,27 +235,23 @@ export function AppShell({
   const screen = pathname.split("/").filter(Boolean).slice(1, 2)[0] ?? "home";
   const activeSection=passengerNavSection(pathname);
   const isDiscover=pathname==='/app';
-  const [awake,setAwake]=useState(false);
-  const idle=useRef<ReturnType<typeof setTimeout>|null>(null);
-  useEffect(()=>()=>{if(idle.current)clearTimeout(idle.current)},[]);
-  const wake=()=>{if(!isDiscover)return;setAwake(true);if(idle.current)clearTimeout(idle.current);idle.current=setTimeout(()=>setAwake(false),2200)};
   const navigation:Array<{id:PassengerNavSection,to:string,icon:string,label:string}>=[
     {id:'home',to:'/app',icon:'⌂',label:discoverLabels[locale].discover},
     {id:'trips',to:'/app/trips',icon:'◇',label:discoverLabels[locale].trips},
     {id:'orders',to:'/app/orders',icon:'▤',label:c.orders},
-    {id:'messages',to:'/app/notifications',icon:'◉',label:c.messages},
+    {id:'messages',to:'/app/messages',icon:'◉',label:c.messages},
     {id:'profile',to:'/app/profile',icon:'○',label:c.profile},
   ];
   return (
     <div className="app-stage">
-      <div className={`app-frame passenger-v2 screen-${screen}${isDiscover?' discover-frame':''}`} data-awake={awake} onPointerDown={wake} onPointerMove={wake} onClick={wake} onKeyDown={wake}>
+      <div className={`app-frame passenger-v2 screen-${screen}${isDiscover?' discover-frame':''}`}>
         {appConfig.runtimeMode==='demo'&&<div className="test-guest-banner">测试免登录 · 仅使用模拟数据</div>}
         <header className="app-top">
           <Link className="app-brand" to="/app" aria-label={c.backHome}>
             <i>JT</i>
-            <span>Japan Travel Weekend</span>
+            <span>Japan Travel Weekend{isDiscover&&<small className="discover-brand-jp" lang="ja">ジャパン・トラベル・ウィークエンド</small>}</span>
           </Link>
-          <LanguageSelect compact />
+          <div className="passenger-header-actions">{!isDiscover&&<Link className="passenger-notification-bell" to="/app/notifications" aria-label={locale==='zh-CN'?'系统通知':locale==='zh-TW'?'系統通知':'Notifications'}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9a6 6 0 0 1 12 0v5l2 3H4l2-3V9m4 11h4"/></svg></Link>}<LanguageSelect compact /></div>
         </header>
         <main className="app-content passenger-screen">{children}</main>
         {nav && (
@@ -455,7 +453,7 @@ export function Login() {
   );
 }
 export function AppHome() { return <Discover/>; }
-function DiscoverCharters() {
+function DiscoverCharters({kind}:{kind:'vip'|'groups'}) {
   const {state}=useApp();
   const locale=state.ui.locale??'zh-CN';
   const h=passengerHomeCopy[locale];
@@ -472,8 +470,7 @@ function DiscoverCharters() {
   const vip=vipCopy[locale];
 
   return <section className="discover-charters">
-    <Link className="passenger-vip-card" to="/app/vip-charter"><div><span>{vip.eyebrow}</span><h2>{vip.title}</h2><p>{vip.text}</p><small>{vip.features}</small><strong>{vip.action}</strong></div><img src="/images/vip-alphard-hotel.jpg" alt=""/></Link>
-    <Link className="passenger-private-card" to="/app/private-groups"><div><span>PRIVATE GROUPS</span><b>{h.privateTitle}</b><p>{h.privateText}</p></div><strong>{h.inquire} →</strong></Link>
+    {kind==='vip'?<Link className="passenger-vip-card" to="/app/vip-charter"><div><span>{vip.eyebrow}</span><h2>{vip.title}</h2><p>{vip.text}</p><small>{vip.features}</small><strong>{vip.action}</strong></div><img src="/images/vip-alphard-hotel.jpg" alt=""/></Link>:<Link className="passenger-private-card" to="/app/private-groups"><div><span>PRIVATE GROUPS</span><b>{h.privateTitle}</b><p>{h.privateText}</p></div><strong>{h.inquire} →</strong></Link>}
   </section>;
 }
 
@@ -848,14 +845,10 @@ export function AppSupport() {
 }
 export function AppTrips() {
   const {state}=useApp();
-  const r=passengerRoutesCopy[state.ui.locale ?? 'zh-CN'];
   return (
     <div className="route-catalog">
-      <AppTitle
-        eyebrow={r.eyebrow}
-        title={r.title}
-        text={r.text}
-      />
+      <DiscoverCharters kind="vip"/>
+      <h1>{discoverLabels[state.ui.locale??'zh-CN'].trips}</h1>
       <div className="discover-route-grid">
         {travelRepository.listTrips().map((t) => (
           <Link key={t.id} className="discover-route-card" to={'/app/trips/'+t.slug}>
@@ -864,7 +857,7 @@ export function AppTrips() {
           </Link>
         ))}
       </div>
-      <DiscoverCharters/>
+      <DiscoverCharters kind="groups"/>
     </div>
   );
 }
@@ -2078,7 +2071,10 @@ export function PaymentResult() {
   );
 }
 export function Orders() {
-  const { state, services } = useApp();
+  const { state, services, departures } = useApp();
+  const [search,setSearch]=useSearchParams();
+  const filter=search.get("status")??"all";
+  const [billingById,setBillingById]=useState<Record<string,{title:string|null;departsAt:string|null}>>({});
   const locale=state.ui.locale ?? "zh-CN";
   const c=passengerOrderCopy[locale];
   const [remote, setRemote] = useState<{
@@ -2087,6 +2083,7 @@ export function Orders() {
     rows: Array<{
       id: string;
       departure_id: string;
+      departure?:{departs_at:string;status:string;trip:{slug:string}|null}|null;
       seat_count: number;
       status: string;
       manual_payment_due_at?: string | null;
@@ -2096,6 +2093,7 @@ export function Orders() {
     Array<{
       id: string;
       departure_id: string;
+      departure?:{departs_at:string;status:string;trip:{slug:string}|null}|null;
       adults: number;
       children: number;
       infants: number;
@@ -2117,22 +2115,30 @@ export function Orders() {
         services.loadOwnDrafts(),
       ]).then(([result, draftResult]) => {
         setDrafts(draftResult.data as typeof drafts);
+        void Promise.all(result.data.map(async order=>[order.id,await services.loadOwnOrderBilling(order.id)] as const)).then(entries=>setBillingById(Object.fromEntries(entries.filter(([,value])=>value)) as typeof billingById)).catch(()=>{});
+
         setRemote({
           loading: false,
           error: result.error ?? draftResult.error,
           rows: result.data as Array<{
             id: string;
             departure_id: string;
+      departure?:{departs_at:string;status:string;trip:{slug:string}|null}|null;
             seat_count: number;
             status: string;
             manual_payment_due_at?: string | null;
           }>,
         });
-      });
+      }).catch(error=>setRemote({loading:false,error:error instanceof Error?error.message:'订单读取失败',rows:[]}));
   }, [services]);
+  const matchesFilter=(o:typeof remote.rows[number])=>{
+    const completed=['paid','confirmed'].includes(o.status)&&o.departure?.status==='completed';
+    return filter==='all'||(filter==='pending'?['pending_payment','pending_manual_review','payment_review'].includes(o.status):filter==='paid'?['paid','confirmed'].includes(o.status)&&!completed:filter==='cancelled'?['cancelled','refunded','expired'].includes(o.status):filter==='completed'&&completed);
+  };
   return (
     <>
-      <AppTitle eyebrow={c.trips} title={c.title} />
+      <AppTitle eyebrow={c.trips} title={locale==='zh-CN'?'我的订单':c.title} />
+      <div className="passenger-order-filters" aria-label="订单筛选">{[['all','全部'],['pending','待付款'],['paid','已支付'],['completed','已完成'],['cancelled','已取消']].map(([key,label])=><button key={key} aria-pressed={filter===key} onClick={()=>setSearch(key==='all'?{}:{status:key})}>{label}</button>)}</div>
       {state.tripRoom && (
         <Link className="my-trip-banner" to="/app/my-trip">
           <span>{c.seed}</span>
@@ -2140,7 +2146,6 @@ export function Orders() {
           <small>{c.openRoom}</small>
         </Link>
       )}
-      <h2>{passengerCoreCopy[locale].orders}</h2>
       {services && drafts.length > 0 && (
         <section className="draft-list">
           <h2>{c.drafts}</h2>
@@ -2207,16 +2212,15 @@ export function Orders() {
         ) : remote.error ? (
           <Empty title={c.unavailable} text={remote.error} />
         ) : remote.rows.length ? (
-          remote.rows.map((o) => (
-            <Link className="order-card" key={o.id} to={`/app/orders/${o.id}`}>
-              <b>{c.ownOrder}</b>
-              <span>
-                {o.id} · {o.seat_count} {c.seats}
-              </span>
-              <small>{localizedOrderStatus(locale,o.status)}</small>
-              {o.status==='pending_manual_review'&&o.manual_payment_due_at&&<small>{c.paymentDue}: {new Date(o.manual_payment_due_at).toLocaleString(locale,{timeZone:"Asia/Tokyo",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit",hour12:false})}</small>}
+          <>{remote.rows.filter(o=>matchesFilter(o)).map(o=>{
+            const departure=departures.find(d=>d.id===o.departure_id);
+            const trip=travelRepository.getTrip(o.departure?.trip?.slug??departure?.tripSlug??'');
+            const bill=billingById[o.id];
+            return <Link className="passenger-order-link" key={o.id} to={'/app/orders/'+encodeURIComponent(o.id)} state={{returnTo:'/app/orders'+(search.size?'?'+search.toString():'')}}>
+              <img src={trip?.heroImage??'/icons/icon.svg'} alt=""/>
+              <div><b>{bill?.title??trip?.title??c.ownOrder}</b><small>{(bill?.departsAt??o.departure?.departs_at)?new Date((bill?.departsAt??o.departure?.departs_at)!).toLocaleString(locale,{timeZone:'Asia/Tokyo'}):departure?.dateLabel??c.pending}</small><span>{o.seat_count} {c.seats} · {localizedOrderStatus(locale,o.status)}</span><strong>{c.viewOrder} →</strong>{o.status==='pending_payment'&&<small>待付款 · 进入订单核对付款状态</small>}{o.status==='pending_manual_review'&&o.manual_payment_due_at&&<small>{c.paymentDue}: {new Date(o.manual_payment_due_at).toLocaleString(locale,{timeZone:'Asia/Tokyo'})}</small>}</div>
             </Link>
-          ))
+          })}{!remote.rows.some(o=>matchesFilter(o))&&<p role="status">当前筛选下暂无订单</p>}</>
         ) : (
           <Empty title={c.empty} text={c.emptyText} />
         )
@@ -2243,6 +2247,11 @@ export function Orders() {
 }
 export function OrderDetail() {
   const { state, services, departures } = useApp();
+  const location=useLocation();
+  const requestedReturn=(location.state as {returnTo?:string}|null)?.returnTo;
+  const returnTo=requestedReturn?.startsWith('/app/orders?')?requestedReturn:'/app/orders';
+  const [loadError,setLoadError]=useState('');
+  const [reload,setReload]=useState(0);
   const locale=state.ui.locale ?? "zh-CN";
   const c=passengerOrderCopy[locale];
   const journeyCopy=orderJourneyCopy(locale);
@@ -2288,6 +2297,7 @@ export function OrderDetail() {
       services.loadOwnOrderBilling(id),
     ]).then(([result, fulfilment,draftResult,cancellationResult,billingResult]) => {
       if (!active) return;
+      if(result.error)throw new Error(result.error);
       setRemoteOrder(
         (
           result.data as Array<{
@@ -2307,11 +2317,11 @@ export function OrderDetail() {
       setCancellation(cancellationResult as typeof cancellation);
       setBilling(billingResult);
       setRemoteResolved(true);
-    });
+    }).catch(error=>{if(active){setLoadError(error instanceof Error?error.message:'订单读取失败');setRemoteResolved(true)}});
     return () => {
       active = false;
     };
-  }, [services, id]);
+  }, [services, id,reload]);
   const submitCancellation=async(event:FormEvent<HTMLFormElement>)=>{
     event.preventDefault();if(!services||!id)return;
     const form=new FormData(event.currentTarget);setCancellationBusy(true);
@@ -2320,6 +2330,7 @@ export function OrderDetail() {
     if(result.ok)setCancellation(await services.loadOwnCancellationRequest(id) as typeof cancellation);
   };
   if (services) {
+    if(loadError)return <div role="alert"><h1>订单读取失败</h1><p>{loadError}</p><button onClick={()=>{setLoadError('');setRemoteResolved(false);setReload(n=>n+1)}}>重新读取</button><Link to={returnTo}>返回订单列表</Link></div>;
     if (!remoteResolved)
       return (
         <Empty title={c.loading} text={c.wait} />
@@ -2398,7 +2409,7 @@ export function OrderDetail() {
           <div><span>{c.fulfilmentNeeds}</span><b>{assistanceItems.length?assistanceItems.join(' · '):c.noneDeclared}</b></div>
           {remoteFulfilment?.details_published&&<><div><span>{journeyCopy.vehicle}</span><b>{remoteFulfilment.vehicle_label??c.pending}</b></div><div><span>{journeyCopy.staff}</span><b>{remoteFulfilment.staff_name??c.pending}</b></div></>}
         </div>
-        {billing&&<section className="receipt" aria-label="不可变订单账单"><h2>订单费用明细</h2>{billing.lineItems.map((item,index)=><div key={`${item.kind}-${index}`}><span>{item.label}{item.quantity>0?` · ${item.quantity}项`:''}</span><b>{item.amountJpy<0?'-':''}¥{Math.abs(item.amountJpy).toLocaleString('ja-JP')}</b></div>)}<div><span>订单原价</span><b>¥{billing.grossAmountJpy.toLocaleString('ja-JP')}</b></div>{billing.discountAmountJpy>0&&<div><span>优惠券抵扣（仅优惠一席）</span><b>-¥{billing.discountAmountJpy.toLocaleString('ja-JP')}</b></div>}<div><span>实际应付</span><b>¥{billing.amountPaidJpy.toLocaleString('ja-JP')}</b></div><div><span>付款方式</span><b>{billing.paymentKind==='coupon_covered'?'优惠券抵扣，无需付款':billing.paymentKind==='bank_transfer'?'银行转账':billing.paymentKind==='stripe'?'银行卡支付':'待确认'}</b></div>{billing.userConfirmedAt&&<div><span>确认费用时间</span><b>{new Date(billing.userConfirmedAt).toLocaleString(locale,{timeZone:'Asia/Tokyo'})}</b></div>}{billing.refunds.length>0&&<details><summary>退款流水（{billing.refunds.length}）</summary>{billing.refunds.map((refund,index)=><div key={index}><span>{refund.channel} · {refund.status}</span><b>{refund.amountJpy==null?'金额核对中':`¥${refund.amountJpy.toLocaleString('ja-JP')}`}</b></div>)}</details>}{!billing.snapshotAvailable&&<p className="notice">这是旧订单，部分历史合同字段当时尚未建立；系统不会使用当前价格补写旧账单。</p>}</section>}
+        {billing&&<section className="receipt" aria-label="不可变订单账单"><h2>订单费用明细</h2>{(billing.lineItems??[]).map((item,index)=><div key={`${item.kind}-${index}`}><span>{item.label}{item.quantity>0?` · ${item.quantity}项`:''}</span><b>{item.amountJpy<0?'-':''}¥{Math.abs(item.amountJpy).toLocaleString('ja-JP')}</b></div>)}<div><span>订单原价</span><b>{typeof billing.grossAmountJpy==='number'?`¥${billing.grossAmountJpy.toLocaleString('ja-JP')}`:c.pending}</b></div>{billing.discountAmountJpy>0&&<div><span>优惠券抵扣（仅优惠一席）</span><b>-¥{billing.discountAmountJpy.toLocaleString('ja-JP')}</b></div>}<div><span>实际应付</span><b>{typeof billing.amountPaidJpy==='number'?`¥${billing.amountPaidJpy.toLocaleString('ja-JP')}`:c.pending}</b></div><div><span>付款方式</span><b>{billing.paymentKind==='coupon_covered'?'优惠券抵扣，无需付款':billing.paymentKind==='bank_transfer'?'银行转账':billing.paymentKind==='stripe'?'银行卡支付':'待确认'}</b></div>{billing.userConfirmedAt&&<div><span>确认费用时间</span><b>{new Date(billing.userConfirmedAt).toLocaleString(locale,{timeZone:'Asia/Tokyo'})}</b></div>}{billing.refunds.length>0&&<details><summary>退款流水（{billing.refunds.length}）</summary>{billing.refunds.map((refund,index)=><div key={index}><span>{refund.channel} · {refund.status}</span><b>{refund.amountJpy==null?'金额核对中':`¥${refund.amountJpy.toLocaleString('ja-JP')}`}</b></div>)}</details>}{!billing.snapshotAvailable&&<p className="notice">这是旧订单，部分历史合同字段当时尚未建立；系统不会使用当前价格补写旧账单。</p>}</section>}
         {['paid','confirmed'].includes(remoteOrder.status)&&(cancellation?<section className="empty-card" aria-live="polite"><b>{c.cancellationProcessing}</b><p>{c.currentStatus}：{cancellation.status} · {c.estimatedRefund} {cancellation.refund_percent}%（¥{cancellation.estimated_refund_amount}）。{c.refundDisclaimer}</p></section>:<details className="order-help-panel"><summary>{journeyCopy.help}</summary><p>{journeyCopy.helpText}</p><div className="order-help-actions"><Link className="button full" to="/app/support">{journeyCopy.consult}</Link><Link className="button secondary full" to="/app/support?topic=change-date">{journeyCopy.change}</Link><button type="button" className="text-action" onClick={()=>setCancellationFormOpen(true)}>{journeyCopy.continueCancel}</button></div>{cancellationFormOpen&&<form className="form cancellation-request-form" onSubmit={submitCancellation}><label>{c.cancelReason}<select name="reason" required defaultValue="plans_changed"><option value="plans_changed">{c.plansChanged}</option><option value="health">{c.health}</option><option value="transport">{c.transport}</option><option value="duplicate">{c.duplicate}</option><option value="other">{c.other}</option></select></label><label>{c.note}<textarea name="note" maxLength={500}/></label><button className="button secondary full" disabled={cancellationBusy}>{cancellationBusy?c.submitting:c.requestCancel}</button></form>}</details>)}
         {cancellationNotice&&<p className="notice" role="status">{cancellationNotice}</p>}
         {navigationUrl ? (
@@ -2415,7 +2426,7 @@ export function OrderDetail() {
         )}
         {boardingEligible?<Link className="button full" to={`/app/boarding-pass/${remoteOrder.id}`}>{c.boardingPass}</Link>:<p className="notice">{c.boardingPending}</p>}
         {remoteDraft&&remoteDraft.operational_review_status!=='not_requested'&&remoteDraft.operational_review_status!=='confirmed'?<p className="notice">{c.assistancePending}</p>:null}
-        <Link className="button secondary full" to="/app/orders">
+        <Link className="button secondary full" to={returnTo}>
           {c.back}
         </Link>
       </>
@@ -2785,257 +2796,75 @@ function ReferralPanel(){
   </section>;
 }
 export function Profile() {
-  const { state, setUi, reset, clearIdentity, services } = useApp();
-  const locale=state.ui.locale??'zh-CN';
-  const pc=profileCopy[locale];
-  const nav = useNavigate();
-  const [profile, setProfile] = useState({
-    displayName: "",
-    phone: "",
-    emergencyName: "",
-    emergencyPhone: "",
-  });
-  const [profileState, setProfileState] = useState<
-    "loading" | "ready" | "saving" | "unavailable"
-  >(services ? "loading" : "unavailable");
-  const [profileNotice, setProfileNotice] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [salutation,setSalutation]=useState<PassengerSalutation>("");
-  const [displayNameNotice, setDisplayNameNotice] = useState("");
-  const [displayNameSaving, setDisplayNameSaving] = useState(false);
-  const [accountRole,setAccountRole]=useState<string|null>(null);
-  useEffect(() => {
-    let active = true;
-    if (!services)
-      return () => {
-        active = false;
-      };
-    void Promise.all([services.loadOwnAccountProfile(),services.loadOwnDisplayName(),services.currentRole().catch(()=>null)]).then(([result,nameResult,role]) => {
-      if (!active) return;
-      setAccountRole(role);
-      if (result.error) {
-        setProfileNotice(result.error);
-        setProfileState("unavailable");
-        return;
-      }
-      if (result.data)
-        setProfile({
-          displayName: result.data.display_name,
-          phone: result.data.phone,
-          emergencyName: result.data.emergency_name,
-          emergencyPhone: result.data.emergency_phone,
-        });
-      const identity=splitPassengerDisplayName(nameResult.data || result.data?.display_name || "");
-      setDisplayName(identity.name);
-      setSalutation(identity.salutation);
-      if(nameResult.error)setDisplayNameNotice(nameResult.error);
-      setProfileState("ready");
-    });
-    return () => {
-      active = false;
-    };
-  }, [services]);
-  const saveDisplayName = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!services) return;
-    setDisplayNameSaving(true);
-    if(!salutation)return;
-    const publicDisplayName=composePassengerDisplayName(displayName,salutation);
-    const result=await services.updateOwnDisplayName(publicDisplayName);
-    setDisplayNameSaving(false);
-    setDisplayNameNotice(result.error ?? pc.saved);
-    if(result.ok){const identity=splitPassengerDisplayName(result.data ?? publicDisplayName);setDisplayName(identity.name);setSalutation(identity.salutation)}
-  };
-  const saveProfile = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!services) return;
-    const form = new FormData(event.currentTarget);
-    setProfileState("saving");
-    const result = await services.updateOwnAccountProfile({
-      displayName:salutation?composePassengerDisplayName(displayName,salutation):displayName,
-      phone: String(form.get("phone")),
-      emergencyName: String(form.get("emergencyName")),
-      emergencyPhone: String(form.get("emergencyPhone")),
-      acceptedTerms: Boolean(form.get("terms")),
-      acceptedPrivacy: Boolean(form.get("privacy")),
-    });
-    setProfileState("ready");
-    setProfileNotice(result.error ?? pc.saved);
-    if (result.ok)
-      setProfile({
-        displayName:salutation?composePassengerDisplayName(displayName,salutation):displayName,
-        phone: String(form.get("phone")),
-        emergencyName: String(form.get("emergencyName")),
-        emergencyPhone: String(form.get("emergencyPhone")),
-      });
-  };
-  const logout = async () => {
-    if (services) await services.signOut();
-    clearIdentity();
-    nav("/app/login");
-  };
-  return (
-    <>
-      <AppTitle eyebrow={pc.eyebrow} title={pc.title} />
-      <div className="receipt">
-        <div>
-          <span>{pc.status}</span>
-          <b>
-            {services
-              ? state.user
-                ? pc.signed
-                : pc.signedOut
-              : backend.connected
-                ? "本地开发账户"
-                : "账户服务不可用"}
-          </b>
-        </div>
-        <div>
-          <span>{pc.email}</span>
-          <b>{state.user?.email ?? pc.signedOut}</b>
-        </div>
-        <div>
-          <span>{pc.language}</span>
-          <b>{passengerLocales.find(item=>item.code===locale)?.label}</b>
-        </div>
-        <div>
-          <span>{pc.runtime}</span>
-          <b>
-            {appConfig.runtimeMode === "production"
-              ? pc.production
-              : appConfig.runtimeMode === "development"
-                ? pc.development
-                : pc.demo}
-          </b>
-        </div>
-      </div>
-      <section className="form" aria-labelledby="account-center-title">
-        <h2 id="account-center-title">{pc.center}</h2>
-        <p className="privacy">{pc.centerText}</p>
-        <div className="inline-actions account-center-actions">
-          <Link className="button" to="/app/orders">
-            {pc.orders}
-          </Link>
-          <Link className="button secondary" to="/app/my-trip/room">
-            {pc.messages}
-          </Link>
-        </div>
-      </section>
-      {accountRole==='passenger'&&<TravelShareCampaign/>}
-      {services && (
-        <form className="form" onSubmit={saveDisplayName}>
-          <h2>{pc.name}</h2>
-          <div className="passenger-name-row">
-            <label>
-              {pc.name} *
-              <input required maxLength={78} value={displayName} onChange={(event)=>setDisplayName(event.target.value)}/>
-            </label>
-            <fieldset>
-              <legend>称谓 *</legend>
-              <label><input required type="radio" name="salutation" value="先生" checked={salutation==="先生"} onChange={()=>setSalutation("先生")}/><span>先生</span></label>
-              <label><input required type="radio" name="salutation" value="女士" checked={salutation==="女士"} onChange={()=>setSalutation("女士")}/><span>女士</span></label>
-            </fieldset>
-          </div>
-          <button className="button full" disabled={displayNameSaving}>{displayNameSaving?pc.saving:pc.save}</button>
-          {displayNameNotice&&<p className="notice" role="status">{displayNameNotice}</p>}
-        </form>
-      )}
-      {services && accountRole==='passenger' && (
-        <form className="form" onSubmit={saveProfile}>
-          <h2>{pc.details}</h2>
-          <p className="privacy">{pc.detailsText}</p>
-          <label>
-            {pc.phone} *
-            <input
-              required
-              name="phone"
-              type="tel"
-              maxLength={40}
-              value={profile.phone}
-              onChange={(event) =>
-                setProfile({ ...profile, phone: event.target.value })
-              }
-            />
-          </label>
-          <label>
-            {pc.emergencyName} *
-            <input
-              required
-              name="emergencyName"
-              maxLength={80}
-              value={profile.emergencyName}
-              onChange={(event) =>
-                setProfile({ ...profile, emergencyName: event.target.value })
-              }
-            />
-          </label>
-          <label>
-            {pc.emergencyPhone} *
-            <input
-              required
-              name="emergencyPhone"
-              type="tel"
-              maxLength={40}
-              value={profile.emergencyPhone}
-              onChange={(event) =>
-                setProfile({ ...profile, emergencyPhone: event.target.value })
-              }
-            />
-          </label>
-          <label className="check">
-            <input required name="terms" type="checkbox" /> {pc.agree}{" "}
-            <Link to="/terms">{pc.terms}</Link>
-          </label>
-          <label className="check">
-            <input required name="privacy" type="checkbox" /> {pc.agree}{" "}
-            <Link to="/privacy">{pc.privacy}</Link>
-          </label>
-          <button
-            className="button full"
-            disabled={profileState === "loading" || profileState === "saving"}
-          >
-            {profileState === "loading"
-              ? pc.loading
-              : profileState === "saving"
-                ? pc.saving
-                : pc.save}
-          </button>
-          {profileNotice && (
-            <p className="notice" role="status">
-              {profileNotice}
-            </p>
-          )}
-        </form>
-      )}
-      <LanguageSelect />
-      <label className="check">
-        <input
-          type="checkbox"
-          checked={state.ui.compact}
-          onChange={(e) => setUi({ compact: e.target.checked })}
-        />{" "}
-        {pc.compact}
-      </label>
-      {services && state.user ? (
-        <button className="button danger-button full" onClick={logout}>
-          {pc.logout}
-        </button>
-      ) : (
-        <button
-          className="button danger-button full"
-          onClick={() => {
-            reset();
-            nav("/app/login");
-          }}
-        >
-          {pc.reset}
-        </button>
-      )}
-      <p className="privacy">
-        {pc.logoutText}
-      </p>
-    </>
-  );
+ const {state,reset,clearIdentity,services}=useApp();
+ const locale=state.ui.locale??'zh-CN',pc=profileCopy[locale];
+ const nav=useNavigate();
+ const [profile,setProfile]=useState({phone:'',emergencyName:'',emergencyPhone:''});
+ const [displayName,setDisplayName]=useState('');
+ const [salutation,setSalutation]=useState<PassengerSalutation>('');
+ const [accountRole,setAccountRole]=useState<string|null>(null);
+ const [status,setStatus]=useState<'loading'|'ready'|'saving'|'unavailable'>(services?'loading':'unavailable');
+ const [notice,setNotice]=useState('');
+ useEffect(()=>{
+  let active=true;
+  if(!services)return;
+  void Promise.all([services.loadOwnAccountProfile(),services.loadOwnDisplayName(),services.currentRole()]).then(([result,nameResult,role])=>{
+   if(!active)return;
+   setAccountRole(role);
+   if(result.error||nameResult.error){setNotice(result.error??nameResult.error??'读取失败');setStatus('unavailable');return}
+   if(result.data)setProfile({phone:result.data.phone,emergencyName:result.data.emergency_name,emergencyPhone:result.data.emergency_phone});
+   const identity=splitPassengerDisplayName(nameResult.data||result.data?.display_name||'');
+   setDisplayName(identity.name);setSalutation(identity.salutation);setStatus('ready');
+  }).catch(error=>{if(active){setNotice(error instanceof Error?error.message:'资料读取失败');setStatus('unavailable')}});
+  return()=>{active=false};
+ },[services]);
+ async function save(event:FormEvent<HTMLFormElement>){
+  event.preventDefault();
+  if(!services||status!=='ready'||!salutation)return;
+  const form=new FormData(event.currentTarget);
+  const name=composePassengerDisplayName(displayName,salutation);
+  setStatus('saving');setNotice('');
+  try{
+   // Reuse the two existing APIs; do not imply a cross-RPC transaction.
+   const personal=await services.updateOwnAccountProfile({displayName:name,...profile,acceptedTerms:!!form.get('terms'),acceptedPrivacy:!!form.get('privacy')});
+   if(!personal.ok)throw new Error(personal.error??'个人资料保存失败');
+   const publicName=await services.updateOwnDisplayName(name);
+   if(!publicName.ok)throw new Error('联系资料已保存，公开称呼未保存：'+(publicName.error??'请重试'));
+   setNotice(locale==='zh-CN'?'已保存 ✓':pc.saved);
+  }catch(error){setNotice((error instanceof Error?error.message:'保存失败')+'；输入已保留。')}
+  finally{setStatus('ready')}
+ }
+ async function logout(){
+  try{if(services)await services.signOut();else reset();clearIdentity();nav('/app/login')}
+  catch{setNotice('退出失败，请重试')}
+ }
+ return <div className="passenger-profile-sections">
+  <AppTitle eyebrow={pc.eyebrow} title={locale==='zh-CN'?'我的':pc.title}/>
+  <section className="form" aria-labelledby="account-center-title">
+   <h2 id="account-center-title">{pc.center}</h2>
+   <div className="account-summary"><div className="profile-info-row"><span>登录状态</span><b>{state.user?pc.signed:pc.signedOut}</b></div><div className="profile-info-row"><span>当前邮箱</span><b>{state.user?.email??pc.signedOut}</b></div></div>
+   <div className="account-center-actions"><Link className="profile-setting-row" to="/app/orders"><i aria-hidden="true">▤</i><span>{locale==='zh-CN'?'我的订单':pc.orders}</span><b aria-hidden="true">›</b></Link><Link className="profile-setting-row" to="/app/messages"><i aria-hidden="true">◉</i><span>{pc.messages}</span><b aria-hidden="true">›</b></Link></div>
+   <ProfileInvite/>
+   {accountRole==='passenger'&&<details className="profile-boost"><summary className="profile-setting-row"><i aria-hidden="true">✧</i><span>Travelers Boost / 旅行分享助力</span><b aria-hidden="true">›</b></summary><TravelShareCampaign/></details>}
+  </section>
+  <section className="form" aria-labelledby="personal-details-title">
+   <h2 id="personal-details-title">{locale==='zh-CN'?'个人资料':pc.details}</h2>
+   {services&&<form onSubmit={save}>
+    <div className="passenger-name-row"><label>{pc.name} *<input required maxLength={78} value={displayName} onChange={e=>setDisplayName(e.target.value)}/></label><fieldset><legend>称谓 *</legend><label><input required type="radio" name="salutation" checked={salutation==='先生'} onChange={()=>setSalutation('先生')}/>先生</label><label><input required type="radio" name="salutation" checked={salutation==='女士'} onChange={()=>setSalutation('女士')}/>女士</label></fieldset></div>
+    <label>{pc.phone} *<input required name="phone" type="tel" maxLength={40} value={profile.phone} onChange={e=>setProfile({...profile,phone:e.target.value})}/></label>
+    <label>{pc.emergencyName} *<input required name="emergencyName" maxLength={80} value={profile.emergencyName} onChange={e=>setProfile({...profile,emergencyName:e.target.value})}/></label>
+    <label>{pc.emergencyPhone} *<input required name="emergencyPhone" type="tel" maxLength={40} value={profile.emergencyPhone} onChange={e=>setProfile({...profile,emergencyPhone:e.target.value})}/></label>
+    <LanguageSelect/>
+    <p className="privacy">{pc.email}：{state.user?.email??pc.signedOut} · 邮箱密码登录</p>
+    <label className="check"><input required name="terms" type="checkbox"/>{pc.agree} <Link to="/terms">{pc.terms}</Link></label>
+    <label className="check"><input required name="privacy" type="checkbox"/>{pc.agree} <Link to="/privacy">{pc.privacy}</Link></label>
+    <button className="button full" disabled={status!=='ready'}>{status==='loading'?pc.loading:status==='saving'?pc.saving:locale==='zh-CN'?'保存个人资料':pc.save}</button>
+   </form>}
+   {notice&&<p className="notice" role="status">{notice}</p>}
+   <button className="button full profile-logout" disabled={status==='saving'} onClick={()=>void logout()}>{services&&state.user?pc.logout:pc.reset}</button>
+   <p className="privacy">{pc.logoutText}</p>
+  </section>
+ </div>;
 }
 export function NotFound() {
   const location = useLocation();

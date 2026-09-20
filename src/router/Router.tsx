@@ -1,4 +1,5 @@
 import { Route, Routes, useLocation } from "react-router-dom";
+import {PassengerMessages} from '../app/PassengerMessages';
 import {lazy,Suspense,useEffect,type ReactNode} from "react";
 import {
   WebsiteLayout,
@@ -121,6 +122,7 @@ export function Router() {
         }
       />
       <Route path="/app/notifications" element={<AppShell nav><AppNotifications /></AppShell>} />
+      <Route path="/app/messages" element={<RequireAccount><AppShell nav><PassengerMessages/></AppShell></RequireAccount>} />
       <Route path="/app/guides" element={<AppShell nav><AppGuides /></AppShell>} />
       <Route path="/app/support" element={<AppShell nav><AppSupport /></AppShell>} />
       <Route

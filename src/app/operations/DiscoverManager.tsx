@@ -34,10 +34,10 @@ export function DiscoverManager() {
    <div className="discover-manager-list">{rows.map(row=><button type="button" key={row.id} onClick={()=>select(row.id)} aria-pressed={selected===row.id}>
      <img src={row.poster_url} alt=""/><span><b>{row.translations['zh-CN']?.title||products.find(p=>p.id===row.product_id||p.slug===row.product_slug)?.title||row.product_slug||'未命名视频'}</b><small>{row.product_id||row.product_slug?'路线':'Soul'} · {row.enabled?'启用':'停用'} · 排序 {row.sort_order}</small></span>
    </button>)}</div>
-   {edited&&<div onChangeCapture={()=>setDirty(true)}><DiscoverEditor key={edited.id} hero={edited} products={products} writable={loaded} onSaved={row=>{setDirty(false);setRows(current=>current.map(item=>item.id===row.id?row:item));setNotice('已保存；刷新发现页可读取最新内容')}}/></div>}
+   {edited&&<div onChangeCapture={()=>setDirty(true)}><DiscoverEditor key={edited.id} hero={edited} products={products} writable={loaded} onDeleted={id=>{setRows(current=>current.filter(item=>item.id!==id));setSelected(null);setDirty(false);setNotice('已删除')}} onSaved={row=>{setDirty(false);setRows(current=>current.map(item=>item.id===row.id?row:item));setNotice('已保存；刷新发现页可读取最新内容')}}/></div>}
  </section>;
 }
-function DiscoverEditor({hero,products,writable,onSaved}:{hero:DiscoverHero;products:OperationsProduct[];writable:boolean;onSaved:(hero:DiscoverHero)=>void}) {
+function DiscoverEditor({hero,products,writable,onSaved,onDeleted}:{hero:DiscoverHero;products:OperationsProduct[];writable:boolean;onSaved:(hero:DiscoverHero)=>void;onDeleted:(id:string)=>void}) {
  const {services}=useApp();
  const [draft,setDraft]=useState(hero);
  const [saved,setSaved]=useState(JSON.stringify(hero));
@@ -78,6 +78,17 @@ function DiscoverEditor({hero,products,writable,onSaved}:{hero:DiscoverHero;prod
    }catch(error){setNotice((error instanceof Error?error.message:String(error))+'；输入已保留。版本冲突请先核对另一位运营的修改。')}
    finally{setBusy(false)}
  }
+ async function remove(){
+   if(!services||busy||!writable||draft.version<1)return;
+   if(!window.confirm('确定删除这个 Discover 视频吗？删除后游客端将不再显示。'))return;
+   setBusy(true);setNotice('');
+   try{
+     const result=await services.operations.deleteDiscoverHero(draft.id,draft.version);
+     if(result.error)throw new Error(result.error);
+     onDeleted(draft.id);
+   }catch(error){setNotice((error instanceof Error?error.message:String(error))+'；删除失败，输入已保留。')}
+   finally{setBusy(false)}
+ }
  const text=draft.translations[locale]??{title:'',subtitle:''};
  return <div className="discover-editor">
    <video src={draft.video_url||undefined} poster={draft.poster_url||undefined} controls playsInline preload="metadata"/>
@@ -94,6 +105,7 @@ function DiscoverEditor({hero,products,writable,onSaved}:{hero:DiscoverHero;prod
      <label><input type="checkbox" checked={draft.enabled} onChange={event=>setDraft({...draft,enabled:event.target.checked})}/> 启用</label>
      <p role="status">{notice||(!writable?'本地结构预览；数据库迁移未应用，不能保存':dirty?'未保存':'已保存')}</p>
      <button type="button" disabled={busy||!writable||!draft.video_url||!draft.poster_url} onClick={()=>void save()}>{busy?'处理中…':'保存内容'}</button>
+     <button className="discover-delete" type="button" disabled={busy||!writable||draft.version<1} onClick={()=>void remove()}>删除此视频</button>
    </div>
  </div>;
 }

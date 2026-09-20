@@ -64,7 +64,7 @@ describe('production 用户可见文案',()=>{
   });
   it('账户中心提供订单与乘车资料及行程消息入口',()=>{
     render(<MemoryRouter><AppProvider><Profile/></AppProvider></MemoryRouter>);
-    expect(screen.getByRole('link',{name:'订单与乘车资料'})).toHaveAttribute('href','/app/orders');
-    expect(screen.getByRole('link',{name:'行程消息'})).toHaveAttribute('href','/app/my-trip/room');
+    expect(screen.getByRole('link',{name:'我的订单'})).toHaveAttribute('href','/app/orders');
+    expect(screen.getByRole('link',{name:'行程消息'})).toHaveAttribute('href','/app/messages');
   });
 });
