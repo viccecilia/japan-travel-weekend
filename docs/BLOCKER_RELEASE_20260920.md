@@ -10,17 +10,22 @@
 - 包已上传服务器：`/home/ubuntu/jtw-manual-20260920-103950-4a3f441.tar.gz`，本地/远端 SHA256 一致：`a392ddc2e9d33d9d995e2dbd241e6c38379a9a37e15f2a8bb7a3b6fac34aa8c9`；远端安装脚本语法检查通过。
 - 本批没有 API 源码或依赖版本变动，API 服务不重装、不修改支付配置。公网 `/api/ready` 为 200、application/json，mode=test，database/stripeModeSafe/webhookSecret/notificationReceiptSecret 均 true。
 
-## 等待人工密码：不能标记前端部署完成
+## 前端发布完成（10:42 JST），10:43 核验
 
-已打开 PowerShell 部署窗口，停在 `sudo` 密码输入。当前前端仍为：
+用户已在 PowerShell 窗口完成 sudo 验证，安装成功。保留的上一版本为：
 
 `/var/www/jtw-test-releases/jtw-manual-20260914-190041-8a4fbde`
 
-当前线上前端 SHA：`8a4fbde01a9daf99323748e77d0d69360cd52fe6`。
+当前线上前端 SHA：`4a3f441b9ecf05e660e1e58cfd7737d430e54f35`。
 
-目标前端目录：`/var/www/jtw-test-releases/jtw-manual-20260920-103950-4a3f441`。安装脚本保留原目录并写入 `ROLLBACK_FROM`；切换失败时恢复原链接及 Nginx 配置。
+实际前端目录：`/var/www/jtw-test-releases/jtw-manual-20260920-103950-4a3f441`。已核对当前链接、RELEASE_SHA 与 ROLLBACK_FROM；原目录保留。
 
-密码完成后仍须核对新发布链接、前端 SHA、Nginx、API、资源哈希和近期日志。上传成功、健康接口 200 均不代表新页面已经上线或业务登录验收通过。
+- Nginx、18773 测试 API 与实际承接 `/api/` 的 18774 API 服务均 active；18774 虽使用 live-api 服务名，当前健康回执 mode=test，未改变支付模式。
+- 按 Nginx 实际上游核对：内部 18774 `/health`、`/ready` 与公网 `/api/health`、`/api/ready` 均 200、application/json；ready 所有检查 true。首次误查 8787 端口失败，纠正为实际配置的 18774 后通过，不将错误端口探测当服务故障。
+- 近期 15 分钟两个 API 服务日志均无新增条目。18773 历史日志有 9/13 的 lifecycle scheduler database_error，本批没有宣称历史定时业务已验收。
+- 本地与远端 `index.html` SHA256 一致：`a71fdcd7b63e1756341e92818c01c54111cd3418bdb364d0eacd90ebf5d0fd52`。
+- 本地与远端 `sw.js` SHA256 一致：`628e3bc33e5076c64eb9956c3e933cce8dfa5003d30e299163233eb948ad9e65`。
+- 此记录后续文档提交不改变已部署应用代码 SHA。服务器发布成功不等于真实身份页面/旧 PWA 升级验收通过。
 
 ## 已知边界
 
