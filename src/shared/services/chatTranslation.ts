@@ -6,6 +6,7 @@ export const chatLanguages = [
   { code: "vi", label: "Tiếng Việt" },
   { code: "ne", label: "नेपाली" },
   { code: "ko", label: "한국어" },
+  { code: "es", label: "Español" },
 ] as const;
 
 export type ChatLanguage = (typeof chatLanguages)[number]["code"];
@@ -19,6 +20,7 @@ const normalizeLanguage = (value: string): ChatLanguage | null => {
   if (code.startsWith("vi")) return "vi";
   if (code.startsWith("ne")) return "ne";
   if (code.startsWith("ko")) return "ko";
+  if (code.startsWith("es")) return "es";
   return null;
 };
 
@@ -32,6 +34,7 @@ export function preferredChatLanguage(languages: readonly string[]): ChatLanguag
 
 export const staffTemplateTranslations: Record<string, Record<ChatLanguage, string>> = {
   introduce: {
+    es: "Hola, soy parte del equipo de este vehículo. Mañana les ayudaré con el encuentro y el embarque en este grupo.",
     "zh-CN": "大家好，我是本车工作人员。明天我会在群内协助大家集合与乘车。",
     "zh-TW": "大家好，我是本車工作人員。明天我會在群內協助大家集合與乘車。",
     ja: "皆さま、こんにちは。本車両のスタッフです。明日の集合と乗車をこのグループでサポートします。",
@@ -41,6 +44,7 @@ export const staffTemplateTranslations: Record<string, Record<ChatLanguage, stri
     ko: "안녕하세요. 이 차량 담당 스태프입니다. 내일 집합과 승차를 이 그룹에서 안내해 드리겠습니다.",
   },
   confirm_meeting: {
+    es: "Confirmen la hora de mañana y el punto de encuentro fijado en el grupo. Lleguen con antelación.",
     "zh-CN": "请确认明天的集合时间与置顶集合地点，并提前到达。",
     "zh-TW": "請確認明天的集合時間與置頂集合地點，並提前到達。",
     ja: "明日の集合時刻と固定表示された集合場所をご確認のうえ、早めにお越しください。",
@@ -50,6 +54,7 @@ export const staffTemplateTranslations: Record<string, Record<ChatLanguage, stri
     ko: "내일 집합 시간과 상단에 고정된 집합 장소를 확인하고 일찍 도착해 주세요.",
   },
   vehicle_arrived: {
+    es: "El vehículo ya está en el punto de encuentro. Consulten la información fijada para identificarlo.",
     "zh-CN": "车辆已经到达集合点，请按置顶车辆信息寻找本车。",
     "zh-TW": "車輛已經到達集合點，請按置頂車輛資訊尋找本車。",
     ja: "車両は集合場所に到着しました。固定表示された車両情報を確認してお探しください。",
@@ -59,6 +64,7 @@ export const staffTemplateTranslations: Record<string, Record<ChatLanguage, stri
     ko: "차량이 집합 장소에 도착했습니다. 상단에 고정된 차량 정보를 확인해 찾아 주세요.",
   },
   departing_10: {
+    es: "El vehículo saldrá en 10 minutos. Regresen lo antes posible.",
     "zh-CN": "车辆将在 10 分钟后出发，请尽快返回。",
     "zh-TW": "車輛將在 10 分鐘後出發，請儘快返回。",
     ja: "車両は10分後に出発します。お早めにお戻りください。",
@@ -68,6 +74,7 @@ export const staffTemplateTranslations: Record<string, Record<ChatLanguage, stri
     ko: "차량은 10분 후 출발합니다. 가능한 한 빨리 돌아와 주세요.",
   },
   departing_5: {
+    es: "El vehículo saldrá en 5 minutos. Regresen ahora, por favor.",
     "zh-CN": "车辆将在 5 分钟后出发，请立即返回。",
     "zh-TW": "車輛將在 5 分鐘後出發，請立即返回。",
     ja: "車両は5分後に出発します。すぐにお戻りください。",
@@ -77,6 +84,7 @@ export const staffTemplateTranslations: Record<string, Record<ChatLanguage, stri
     ko: "차량은 5분 후 출발합니다. 즉시 돌아와 주세요.",
   },
   return_vehicle: {
+    es: "Regresen al vehículo. Si se han separado del grupo, pueden compartir su ubicación temporalmente.",
     "zh-CN": "请返回车辆；如已走散，可主动临时共享位置。",
     "zh-TW": "請返回車輛；如已走散，可主動暫時共享位置。",
     ja: "車両へお戻りください。はぐれた場合は、一時的に位置情報を共有できます。",
@@ -86,6 +94,7 @@ export const staffTemplateTranslations: Record<string, Record<ChatLanguage, stri
     ko: "차량으로 돌아와 주세요. 일행과 떨어진 경우 위치를 일시적으로 공유할 수 있습니다.",
   },
   traffic_delay: {
+    es: "Hay un retraso por el tráfico. Consulten la información fijada para conocer las novedades.",
     "zh-CN": "因交通情况行程有所延误，请关注置顶信息。",
     "zh-TW": "因交通情況行程有所延誤，請關注置頂資訊。",
     ja: "交通事情により行程が遅れています。固定表示された最新情報をご確認ください。",
@@ -95,6 +104,7 @@ export const staffTemplateTranslations: Record<string, Record<ChatLanguage, stri
     ko: "교통 상황으로 일정이 지연되고 있습니다. 상단의 최신 안내를 확인해 주세요.",
   },
   meeting_changed: {
+    es: "El punto de encuentro ha cambiado. Sigan la información actualizada fijada en el grupo.",
     "zh-CN": "集合地点已经变更，请以最新置顶集合信息为准。",
     "zh-TW": "集合地點已經變更，請以最新置頂集合資訊為準。",
     ja: "集合場所が変更されました。最新の固定表示された集合情報をご確認ください。",

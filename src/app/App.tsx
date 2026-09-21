@@ -8,6 +8,9 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import { travelRepository } from "../shared/data/repository";
+import {passengerNavigation} from '../shared/i18n/passengerFrame';
+import {ResumeOrderPayment} from './ResumeOrderPayment';
+import {resumePaymentCopy} from '../shared/i18n/resumePayment';
 import { backend } from "../shared/backend";
 import {Discover} from './Discover';
 import {ProfileInvite} from './ProfileInvite';
@@ -234,13 +237,14 @@ export function AppShell({
   const c=passengerCoreCopy[locale];
   const screen = pathname.split("/").filter(Boolean).slice(1, 2)[0] ?? "home";
   const activeSection=passengerNavSection(pathname);
+  const navCopy=passengerNavigation[locale];
   const isDiscover=pathname==='/app';
   const navigation:Array<{id:PassengerNavSection,to:string,icon:string,label:string}>=[
-    {id:'home',to:'/app',icon:'⌂',label:discoverLabels[locale].discover},
-    {id:'trips',to:'/app/trips',icon:'◇',label:discoverLabels[locale].trips},
-    {id:'orders',to:'/app/orders',icon:'▤',label:c.orders},
-    {id:'messages',to:'/app/messages',icon:'◉',label:c.messages},
-    {id:'profile',to:'/app/profile',icon:'○',label:c.profile},
+    {id:'home',to:'/app',icon:'⌂',label:navCopy.home},
+    {id:'trips',to:'/app/trips',icon:'◇',label:navCopy.trips},
+    {id:'orders',to:'/app/orders',icon:'▤',label:navCopy.orders},
+    {id:'messages',to:'/app/messages',icon:'◉',label:navCopy.messages},
+    {id:'profile',to:'/app/profile',icon:'○',label:navCopy.profile},
   ];
   return (
     <div className="app-stage">
@@ -251,7 +255,7 @@ export function AppShell({
             <i>JT</i>
             <span>Japan Travel Weekend{isDiscover&&<small className="discover-brand-jp" lang="ja">ジャパン・トラベル・ウィークエンド</small>}</span>
           </Link>
-          <div className="passenger-header-actions">{!isDiscover&&<Link className="passenger-notification-bell" to="/app/notifications" aria-label={locale==='zh-CN'?'系统通知':locale==='zh-TW'?'系統通知':'Notifications'}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9a6 6 0 0 1 12 0v5l2 3H4l2-3V9m4 11h4"/></svg></Link>}<LanguageSelect compact /></div>
+          <div className="passenger-header-actions">{!isDiscover&&<Link className="passenger-notification-bell" to="/app/notifications" aria-label={navCopy.notifications}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9a6 6 0 0 1 12 0v5l2 3H4l2-3V9m4 11h4"/></svg></Link>}<LanguageSelect compact /></div>
         </header>
         <main className="app-content passenger-screen">{children}</main>
         {nav && (
@@ -2218,7 +2222,7 @@ export function Orders() {
             const bill=billingById[o.id];
             return <Link className="passenger-order-link" key={o.id} to={'/app/orders/'+encodeURIComponent(o.id)} state={{returnTo:'/app/orders'+(search.size?'?'+search.toString():'')}}>
               <img src={trip?.heroImage??'/icons/icon.svg'} alt=""/>
-              <div><b>{bill?.title??trip?.title??c.ownOrder}</b><small>{(bill?.departsAt??o.departure?.departs_at)?new Date((bill?.departsAt??o.departure?.departs_at)!).toLocaleString(locale,{timeZone:'Asia/Tokyo'}):departure?.dateLabel??c.pending}</small><span>{o.seat_count} {c.seats} · {localizedOrderStatus(locale,o.status)}</span><strong>{c.viewOrder} →</strong>{o.status==='pending_payment'&&<small>待付款 · 进入订单核对付款状态</small>}{o.status==='pending_manual_review'&&o.manual_payment_due_at&&<small>{c.paymentDue}: {new Date(o.manual_payment_due_at).toLocaleString(locale,{timeZone:'Asia/Tokyo'})}</small>}</div>
+              <div><b>{bill?.title??trip?.title??c.ownOrder}</b><small>{(bill?.departsAt??o.departure?.departs_at)?new Date((bill?.departsAt??o.departure?.departs_at)!).toLocaleString(locale,{timeZone:'Asia/Tokyo'}):departure?.dateLabel??c.pending}</small><span>{o.seat_count} {c.seats} · {localizedOrderStatus(locale,o.status)}</span><strong>{c.viewOrder} →</strong>{o.status==='pending_payment'&&<small>{resumePaymentCopy[locale].action}</small>}{o.status==='pending_manual_review'&&o.manual_payment_due_at&&<small>{c.paymentDue}: {new Date(o.manual_payment_due_at).toLocaleString(locale,{timeZone:'Asia/Tokyo'})}</small>}</div>
             </Link>
           })}{!remote.rows.some(o=>matchesFilter(o))&&<p role="status">当前筛选下暂无订单</p>}</>
         ) : (
@@ -2376,6 +2380,7 @@ export function OrderDetail() {
           title={trip?.shortTitle ?? c.tripOrder}
         />
         <div className="status">{c.status}：{orderStatusLabel}</div>
+        {remoteOrder.status==='pending_payment'&&<ResumeOrderPayment key={remoteOrder.id} orderId={remoteOrder.id}/>}
         {['paid','confirmed'].includes(remoteOrder.status)&&<section className="order-publication-notice"><b>{journeyCopy.paid}</b><p>{publishLabel?`${publishLabel}${journeyCopy.publish}`:c.wait}</p></section>}
         <div className="receipt">
           <div>
@@ -2800,6 +2805,7 @@ export function Profile() {
  const locale=state.ui.locale??'zh-CN',pc=profileCopy[locale];
  const nav=useNavigate();
  const [profile,setProfile]=useState({phone:'',emergencyName:'',emergencyPhone:''});
+ const [consent,setConsent]=useState({terms:false,privacy:false});
  const [displayName,setDisplayName]=useState('');
  const [salutation,setSalutation]=useState<PassengerSalutation>('');
  const [accountRole,setAccountRole]=useState<string|null>(null);
@@ -2813,6 +2819,7 @@ export function Profile() {
    setAccountRole(role);
    if(result.error||nameResult.error){setNotice(result.error??nameResult.error??'读取失败');setStatus('unavailable');return}
    if(result.data)setProfile({phone:result.data.phone,emergencyName:result.data.emergency_name,emergencyPhone:result.data.emergency_phone});
+   setConsent({terms:!!result.data?.accepted_terms_at,privacy:!!result.data?.accepted_privacy_at});
    const identity=splitPassengerDisplayName(nameResult.data||result.data?.display_name||'');
    setDisplayName(identity.name);setSalutation(identity.salutation);setStatus('ready');
   }).catch(error=>{if(active){setNotice(error instanceof Error?error.message:'资料读取失败');setStatus('unavailable')}});
@@ -2828,6 +2835,7 @@ export function Profile() {
    // Reuse the two existing APIs; do not imply a cross-RPC transaction.
    const personal=await services.updateOwnAccountProfile({displayName:name,...profile,acceptedTerms:!!form.get('terms'),acceptedPrivacy:!!form.get('privacy')});
    if(!personal.ok)throw new Error(personal.error??'个人资料保存失败');
+   setConsent({terms:true,privacy:true});
    const publicName=await services.updateOwnDisplayName(name);
    if(!publicName.ok)throw new Error('联系资料已保存，公开称呼未保存：'+(publicName.error??'请重试'));
    setNotice(locale==='zh-CN'?'已保存 ✓':pc.saved);
@@ -2856,8 +2864,8 @@ export function Profile() {
     <label>{pc.emergencyPhone} *<input required name="emergencyPhone" type="tel" maxLength={40} value={profile.emergencyPhone} onChange={e=>setProfile({...profile,emergencyPhone:e.target.value})}/></label>
     <LanguageSelect/>
     <p className="privacy">{pc.email}：{state.user?.email??pc.signedOut} · 邮箱密码登录</p>
-    <label className="check"><input required name="terms" type="checkbox"/>{pc.agree} <Link to="/terms">{pc.terms}</Link></label>
-    <label className="check"><input required name="privacy" type="checkbox"/>{pc.agree} <Link to="/privacy">{pc.privacy}</Link></label>
+    {consent.terms?<p className="privacy"><Link to="/terms">{pc.terms}</Link></p>:<label className="check"><input required name="terms" type="checkbox"/>{pc.agree} <Link to="/terms">{pc.terms}</Link></label>}
+    {consent.privacy?<p className="privacy"><Link to="/privacy">{pc.privacy}</Link></p>:<label className="check"><input required name="privacy" type="checkbox"/>{pc.agree} <Link to="/privacy">{pc.privacy}</Link></label>}
     <button className="button full" disabled={status!=='ready'}>{status==='loading'?pc.loading:status==='saving'?pc.saving:locale==='zh-CN'?'保存个人资料':pc.save}</button>
    </form>}
    {notice&&<p className="notice" role="status">{notice}</p>}

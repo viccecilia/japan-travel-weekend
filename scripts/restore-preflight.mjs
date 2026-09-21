@@ -21,6 +21,12 @@ export const ADDITIONAL_MIGRATIONS = [
   '20260919101135_restore_korean_translation_context.sql',
   '20260920054451_discover_video_heroes.sql',
   '20260920070417_delete_discover_hero.sql',
+  '20260921011836_account_profile_consent_once.sql',
+  '20260921011919_chat_spanish_language.sql',
+  '20260921013345_resume_existing_order_payment.sql',
+  '20260921014034_round1_contact_window.sql',
+  '20260921014412_passenger_location_coordinates.sql',
+  '20260921014907_private_trip_chat_photos.sql',
 ];
 export const EXPECTED_MIGRATION_COUNT = LEGACY_MIGRATION_COUNT + ADDITIONAL_MIGRATIONS.length;
 

@@ -756,6 +756,17 @@ export class SupabaseTripRoomRepository {
     });
     return !error;
   }
+  async publishOwnLocationShare(vehicleGroupId:string,point:{latitude:number;longitude:number;accuracy:number|null;sampledAt:string}){
+    if(!this.client)return false;
+    const {error}=await this.client.rpc('publish_own_location_share',{p_vehicle_group:vehicleGroupId,p_latitude:point.latitude,p_longitude:point.longitude,p_accuracy:point.accuracy,p_sampled_at:point.sampledAt,p_confirmed:true});
+    return !error;
+  }
+  async loadPassengerLocations(vehicleGroupId:string){
+    if(!this.client)throw Error('Location service unavailable');
+    const {data,error}=await this.client.rpc('get_passenger_location_shares',{p_vehicle_group:vehicleGroupId});
+    if(error)throw error;
+    return (data??[]) as {id:string;subject_id:string;display_name:string|null;latitude:number;longitude:number;accuracy_meters:number|null;sampled_at:string;expires_at:string}[];
+  }
   async stopOwnLocationShare(vehicleGroupId: string) {
     if (!this.client) return false;
     const { error } = await this.client.rpc("stop_own_location_share", {
@@ -773,12 +784,18 @@ export class SupabaseTripRoomRepository {
     minutes = 15,
   ) {
     if (!this.client) return false;
-    const { error } = await this.client.rpc("publish_driver_location", {
+    const {data:session,error:sessionError}=await this.client.rpc('start_driver_location_session_v2',{
+      p_vehicle_group:vehicleGroupId,p_minutes:minutes,
+    });
+    if(sessionError||typeof session?.sessionId!=='string')return false;
+    const { error } = await this.client.rpc("append_driver_location_point", {
       p_vehicle_group: vehicleGroupId,
+      p_session:session.sessionId,
       p_latitude: coordinates.latitude,
       p_longitude: coordinates.longitude,
       p_accuracy_meters: coordinates.accuracy,
-      p_minutes: minutes,
+      p_sampled_at:new Date().toISOString(),
+      p_sequence:1,
     });
     return !error;
   }
@@ -799,7 +816,25 @@ export class SupabaseTripRoomRepository {
   async loadMessages(roomId: string) {
     if (!this.client) return [];
     const { data, error } = await this.client.rpc('get_trip_room_messages_for_member',{p_room:roomId});
-    return error ? [] : (data ?? []);
+    if(error)return [];
+    const {data:photos}=await this.client.from('trip_room_photos').select('id,object_path').eq('room_id',roomId).not('published_at','is',null);
+    const paths=new Map((photos??[]).map(photo=>[photo.id,photo.object_path]));
+    return (data??[]).map((message:{id:string})=>({...message,photoPath:paths.get(message.id)}));
+  }
+  async sendPhoto(roomId:string,messageId:string,file:File){
+    if(!this.client||file.size<1||file.size>5*1024*1024||!['image/jpeg','image/png','image/webp','image/gif'].includes(file.type))return false;
+    const {data:path,error}=await this.client.rpc('prepare_trip_room_photo',{p_room:roomId,p_message:messageId,p_mime:file.type,p_bytes:file.size});
+    if(error||typeof path!=='string')return false;
+    // No overwrite. A retry after an uncertain upload is resolved by the final
+    // RPC checking the existing object and publishing this same message ID.
+    await this.client.storage.from('trip-chat-media').upload(path,file,{contentType:file.type,upsert:false});
+    const result=await this.client.rpc('publish_trip_room_photo',{p_message:messageId});
+    return !result.error&&result.data===messageId;
+  }
+  async downloadPhoto(path:string){
+    if(!this.client)return null;
+    const {data,error}=await this.client.storage.from('trip-chat-media').download(path);
+    return error?null:data;
   }
   async sendMessage(
     roomId: string,
@@ -823,7 +858,7 @@ export class SupabaseTripRoomRepository {
     return error ? null : data;
   }
   async saveTranslationPreference(
-    targetLanguage: "zh-CN" | "zh-TW" | "ja" | "en" | "vi" | "ne" | "ko",
+    targetLanguage: "zh-CN" | "zh-TW" | "ja" | "en" | "vi" | "ne" | "ko" | "es",
     autoTranslate: boolean,
     followDeviceLanguage: boolean,
   ) {

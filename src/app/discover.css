@@ -35,15 +35,15 @@
 .discover-edge svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 .discover-edge{position:absolute;top:48%;height:50px;width:28px;min-width:0;border-radius:18px;font:26px/1 serif;padding:0;display:grid;place-items:center}
 .discover-previous{left:5px}.discover-next{right:5px}
-.discover-up{position:absolute;bottom:calc(118px + env(safe-area-inset-bottom));right:5px;width:32px;height:54px;border-radius:18px;display:grid;place-items:center;animation:discover-nudge 1.5s ease-out 1}
-.discover-up svg{width:22px;height:34px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.discover-up{position:absolute;bottom:calc(118px + env(safe-area-inset-bottom));right:5px;width:32px;height:54px;border-radius:18px;display:grid;place-items:center}
+.discover-up svg{width:22px;height:34px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;animation:discover-nudge 2.2s ease-in-out infinite}
 .discover-cta{z-index:2;color:#241b15!important;background:#edcc70!important;border:1px solid #edcc70!important;text-decoration:none;position:absolute;left:50%;transform:translateX(-50%);bottom:calc(225px + env(safe-area-inset-bottom));border-radius:26px;padding:12px 22px;font-size:14px;white-space:nowrap;min-height:44px}
 .discover-dots{position:absolute;bottom:calc(102px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);display:flex;z-index:2}
 .discover-dots button{border:0;background:transparent;width:34px;height:44px;padding:12px;display:grid;place-items:center;color:white}
 .discover-dots span{width:4px;height:4px;border-radius:5px;background:currentColor}
 .discover-dots [aria-current=true] span{width:20px;height:3px;background:#edcc70}
 .discover-empty{position:absolute;top:40%;width:100%;text-align:center}
-@keyframes discover-nudge{0%,100%{translate:0 0}50%{translate:0 -7px}}
+@keyframes discover-nudge{0%,100%{translate:0 0}50%{translate:0 5px}}
 .route-catalog .discover-route-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 12px}
 .discover-route-card{min-width:0;text-decoration:none;color:inherit;background:white;border-radius:16px;overflow:clip;box-shadow:0 2px 12px #00000008}
 .discover-route-card img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}
@@ -54,6 +54,8 @@
 .route-catalog>.discover-charters:first-child{margin-top:0}
 .passenger-v2 .route-catalog .passenger-vip-card{margin-inline:0}
 .route-catalog>h1{font-size:22px;margin:24px 0 16px}
-.discover-route-card p{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.route-catalog .discover-route-card h3,.route-catalog .discover-route-card p,.route-catalog .discover-route-card small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.route-catalog .discover-route-card h3{min-height:3em}
+.route-catalog .discover-route-card p,.route-catalog .discover-route-card small{min-height:3.3em}
 @media(min-width:900px){.discover-title{left:12%;max-width:620px}.discover-hero .discover-film img,.discover-hero .discover-film video{object-fit:contain;background:#172326}.discover-frame .app-top{padding-inline:32px}.discover-route-card img{aspect-ratio:16/9}}
-@media(prefers-reduced-motion:reduce){.discover-up{animation:none}.discover-control,.discover-title{transition:none}}
+@media(prefers-reduced-motion:reduce){.discover-up svg{animation:none}.discover-control,.discover-title{transition:none}}

@@ -1,6 +1,6 @@
 import {cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
-import {MemoryRouter,Route,Routes} from 'react-router-dom';
+import {MemoryRouter,Route,Routes,useLocation} from 'react-router-dom';
 import {Orders,OrderDetail,Profile,AppTrips,AppShell} from '../src/app/App';
 import {PassengerMessages} from '../src/app/PassengerMessages';
 const mock=vi.hoisted(()=>{
@@ -25,6 +25,7 @@ beforeEach(()=>{
  mock.services.updateOwnDisplayName.mockResolvedValue({ok:true,error:null});
 });
 const mount=(node:React.ReactNode,path='/')=>render(<MemoryRouter initialEntries={[path]}>{node}</MemoryRouter>);
+const RoomDestination=()=>{const location=useLocation();return <p>ROOM {location.search}</p>};
 describe('passenger frame closure',()=>{
  it('VIP precedes two-column route cards and groups stay last',()=>{
   mount(<AppTrips/>);const root=document.querySelector('.route-catalog')!;
@@ -71,13 +72,28 @@ describe('passenger frame closure',()=>{
   expect(screen.getByText(/2026\/10\/1/)).toBeVisible();
   expect(screen.queryByRole('link',{name:'进入本车群聊'})).toBeNull();
  });
- it('open room links to that group; unknown requested group cannot fall back to another',async()=>{
+ it('one open room redirects to that group; unknown requested group cannot fall back to another',async()=>{
   mock.services.tripRoom.loadAccessibleRoom.mockResolvedValue({data:{room_id:'r',vehicle_group_id:'g',room_status:'open'},error:null});
-  const view=mount(<PassengerMessages/>);
-  expect(await screen.findByRole('link',{name:'进入本车群聊'})).toHaveAttribute('href','/app/my-trip/room?vehicleGroup=g');
+  const view=mount(<Routes><Route path="/" element={<PassengerMessages/>}/><Route path="/app/my-trip/room" element={<RoomDestination/>}/></Routes>);
+  expect(await screen.findByText('ROOM ?vehicleGroup=g')).toBeVisible();
   view.unmount();mount(<PassengerMessages/>,'/?vehicleGroup=other');
   expect(await screen.findByRole('alert')).toHaveTextContent('无法访问指定旅行团');
   expect(screen.queryByRole('link',{name:'进入本车群聊'})).toBeNull();
+ });
+ it('two open rooms keep the explicit group picker instead of silently choosing',async()=>{
+  mock.services.loadOwnOrderFulfilment.mockResolvedValue({vehicle_group_id:'second'});
+  mock.services.tripRoom.loadAccessibleRoom.mockImplementation(async(id?:string)=>({data:{room_id:'r-'+(id??'first'),vehicle_group_id:id??'first',room_status:'open'},error:null}));
+  mount(<PassengerMessages/>);
+  expect(await screen.findByRole('combobox',{name:'选择本车行程'})).toBeVisible();
+  expect(screen.getByRole('combobox')).toHaveValue('second');
+  fireEvent.change(screen.getByRole('combobox'),{target:{value:'first'}});
+  expect(await screen.findByRole('link',{name:'进入本车群聊'})).toHaveAttribute('href','/app/my-trip/room?vehicleGroup=first');
+ });
+ it('closed rooms offer history without an enabled composer',async()=>{
+  mock.services.tripRoom.loadAccessibleRoom.mockResolvedValue({data:{room_id:'r',vehicle_group_id:'g',room_status:'closed'},error:null});
+  mount(<PassengerMessages/>);
+  expect(await screen.findByRole('link',{name:'查看历史群聊'})).toHaveAttribute('href','/app/my-trip/room?vehicleGroup=g');
+  expect(screen.getByRole('textbox',{name:'聊天消息'})).toBeDisabled();
  });
  it('no group stays a chat empty state, without simulated messages',async()=>{
   mount(<PassengerMessages/>);
@@ -103,5 +119,15 @@ describe('passenger frame closure',()=>{
   fireEvent.submit(screen.getByRole('button',{name:'保存个人资料'}).closest('form')!);
   expect(await screen.findByRole('status')).toHaveTextContent('联系资料已保存，公开称呼未保存');
   expect(screen.getByLabelText(/紧急联系人姓名/)).toHaveValue('测试联系人');
+ });
+ it('existing consent hides checkboxes while retaining policy links and saves without fresh consent',async()=>{
+  mock.services.loadOwnAccountProfile.mockResolvedValue({data:{display_name:'测试先生',phone:'00000',emergency_name:'测试联系人',emergency_phone:'11111',accepted_terms_at:'2026-01-01T00:00:00Z',accepted_privacy_at:'2026-01-01T00:00:00Z'},error:null});
+  mount(<Profile/>);
+  await waitFor(()=>expect(screen.getByRole('button',{name:'保存个人资料'})).toBeEnabled());
+  expect(screen.queryByRole('checkbox',{name:/服务条款/})).toBeNull();
+  expect(screen.queryByRole('checkbox',{name:/隐私政策/})).toBeNull();
+  expect(screen.getByRole('link',{name:'服务条款'})).toHaveAttribute('href','/terms');
+  fireEvent.submit(screen.getByRole('button',{name:'保存个人资料'}).closest('form')!);
+  await waitFor(()=>expect(mock.services.updateOwnAccountProfile).toHaveBeenCalledWith(expect.objectContaining({acceptedTerms:false,acceptedPrivacy:false})));
  });
 });

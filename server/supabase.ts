@@ -64,6 +64,7 @@ export class SupabasePaymentIntentRecorder{
 
 export class SupabasePaymentEventStore{
   constructor(private readonly client:SupabaseClient|null){}
+  async applyIntent(input:{providerEventId:string;orderId:string;status:'succeeded'|'failed'|'cancelled';createdAt:string;payloadDigest:string;paymentIntentId:string}){if(!this.client)return false;const {data,error}=await this.client.rpc('apply_current_payment_intent_event',{p_intent:input.paymentIntentId,p_event_id:input.providerEventId,p_order:input.orderId,p_status:input.status,p_created:input.createdAt,p_digest:input.payloadDigest});if(error)throw error;return data===true}
   async has(providerEventId:string){if(!this.client)return false;const {count,error}=await this.client.from('payment_events').select('id',{count:'exact',head:true}).eq('provider_event_id',providerEventId);if(error)throw error;return (count??0)>0}
   async findOrderIdByPaymentIntent(paymentIntentId:string){if(!this.client)return null;const {data,error}=await this.client.from('orders').select('id').eq('payment_intent_id',paymentIntentId).maybeSingle();if(error)throw error;return data?.id??null}
   async apply(input:{providerEventId:string;orderId:string;status:'succeeded'|'failed'|'cancelled';createdAt:string;payloadDigest:string}){if(!this.client)return false;const {data,error}=await this.client.rpc('apply_payment_event',{p_event_id:input.providerEventId,p_order:input.orderId,p_status:input.status,p_created:input.createdAt,p_digest:input.payloadDigest});if(error)throw error;return data===true}

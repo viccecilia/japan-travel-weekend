@@ -7,6 +7,7 @@ import { travelRepository } from "../shared/data/repository";
 import type { ProductionBrowserServices } from "../shared/backend/productionServices";
 import { driverLocationNavigationUrl } from "../shared/capabilities/locationLinks";
 import { attendanceSummary } from "../shared/services/attendance";
+import { contactPassenger } from "../shared/services/contactPassenger";
 import {
   chatLanguages,
   preferredChatLanguage,
@@ -15,6 +16,8 @@ import {
 } from "../shared/services/chatTranslation";
 import { useApp } from "./store";
 import { PassengerChatRoom } from "./PassengerChatRoom";
+import {PassengerLocationShare} from './PassengerLocationShare';
+import {ChatPhoto,ChatPhotoUpload} from './ChatPhoto';
 import { passengerChatDemo } from "../shared/data/passengerChatDemo";
 import {projectItineraryStops} from "../shared/services/itineraryMeeting";
 import type {PassengerLocale} from '../shared/i18n/passengerLocale';
@@ -208,6 +211,7 @@ export function TripRoom() {
 }
 
 type RemoteMessage = {
+  photoPath?:string;
   id: string;
   content: string;
   original_content?: string | null;
@@ -331,10 +335,6 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
   const [notice, setNotice] = useState("");
   const [boardingToken, setBoardingToken] = useState("");
   const [boardingResult, setBoardingResult] = useState("");
-  const [localPhoto, setLocalPhoto] = useState<{
-    name: string;
-    url: string;
-  } | null>(null);
   const [driverLocation, setDriverLocation] =
     useState<RemoteDriverLocation | null>(null);
   const [locatingDriver, setLocatingDriver] = useState(false);
@@ -344,7 +344,6 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
   const subscription = useRef<{
     close(): void;
   } | null>(null);
-  const photoInputRef=useRef<HTMLInputElement|null>(null);
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -593,21 +592,15 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
     setNotice("乘客签到状态已更新。");
   };
   const requestContact = async (passengerId: string) => {
-    const ok = await services.tripRoom.recordContact(
-      room.vehicle_group_id,
-      passengerId,
-      "contact_requested",
+    const ok = await contactPassenger(
+      () => services.tripRoom.loadStaffPassengerContact(room.vehicle_group_id, passengerId),
+      url => window.location.assign(url),
     );
     if (!ok) {
-      setNotice("尚未到人工联系时间，或电话联系服务未授权。请由运营协助处理。");
+      setNotice(ui("尚未进入集合联系窗口、没有可用电话或权限不足，请联系运营。", "Contact is unavailable: the meeting/contact window is closed, the number is missing, or access is denied. Contact operations."));
       return;
     }
-    setAttendance(
-      (await services.tripRoom.loadAttendance(
-        room.vehicle_group_id,
-      )) as RemoteAttendance[],
-    );
-    setNotice("已向运营提交电话联系请求；当前不会显示乘客电话号码。");
+    setNotice(ui("已请求打开拨号，是否接通请在电话中确认。", "Dialer requested. This does not confirm the call connected."));
   };
   const shareLocation = async (minutes: 15 | 30) => {
     const ok = await services.tripRoom.startOwnLocationShare(
@@ -756,18 +749,6 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
       )) as RemoteBoarding[],
     );
   };
-  const previewPhoto = (file: File | undefined) => {
-    if (!file) return;
-    if (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) {
-      setNotice("请选择不超过 5 MB 的图片文件。");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () =>
-      typeof reader.result === "string" &&
-      setLocalPhoto({ name: file.name, url: reader.result });
-    reader.readAsDataURL(file);
-  };
   if (passenger) {
     const meetingAt = meeting?.meeting_at ?? room.departs_at;
     const remoteStop = {
@@ -813,6 +794,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
           : message.author_name??"本车成员",
       role: (message.author_role??"passenger") as "passenger" | "driver" | "guide" | "operations",
       content: message.original_content ?? message.content,
+      photo:message.photoPath?<ChatPhoto key={message.id} repository={services.tripRoom} locale={locale} path={message.photoPath}/>:undefined,
       translated: translatedMessage(message) ?? undefined,
       sourceLanguage: message.source_language,
       time: message.created_at
@@ -872,6 +854,8 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
         stops={matchedIndex>=0?itineraryStops:[remoteStop,...itineraryStops]}
         messages={passengerMessages}
         readOnly={!access.enabled}
+        locationControl={<PassengerLocationShare key={room.vehicle_group_id} repository={services.tripRoom} groupId={room.vehicle_group_id} locale={locale} disabled={!access.enabled}/>}
+        photoControl={<ChatPhotoUpload key={room.room_id} repository={services.tripRoom} roomId={room.room_id} locale={locale} disabled={!access.enabled} onSent={()=>void services.tripRoom.loadMessages(room.room_id).then(value=>setMessages(value as RemoteMessage[]))}/>}
         onSend={(content) =>
           void services.tripRoom.sendMessage(room.room_id, content)
         }
@@ -1149,7 +1133,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
                         className="room-action"
                         onClick={() => void requestContact(item.passenger_id)}
                       >
-                        {ui("请求电话联系","Request phone contact")}
+                        {ui("联系乘客","Contact passenger")}
                       </button>
                     )}
                 </div>
@@ -1159,9 +1143,10 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
         </div>
         {staff && (
           <p className="privacy">
-            {ui("电话号码不会展示在群组或看板中。超过集中配置的等待时间后，可请求运营通过受控电话能力联系；电话中继尚未连接时不会伪装已拨打。","Phone numbers are not shown in the group or board. After the configured wait time, operations can be asked to make controlled contact.")}
+            {ui("集合开始或进入允许的联系窗口后，本车授权工作人员可点击临时拨号；号码不在成员列表展示，访问会记录审计。","Assigned staff can request a call during an active meeting or the configured contact window. Numbers are not listed; access is audited.")}
           </p>
         )}
+        {staff&&<PassengerLocationShare key={room.vehicle_group_id} repository={services.tripRoom} groupId={room.vehicle_group_id} locale={locale} staff/>}
       </section>
       {staff && (
         <section className="staff-panel">
@@ -1299,6 +1284,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
             <header>
               <b>{m.author_id === currentUserId ? ui("我","Me") : ui("本车成员","Vehicle member")}</b>
             </header>
+            {m.photoPath&&<ChatPhoto repository={services.tripRoom} locale={locale} path={m.photoPath}/>}
             <p>
               <small>
                 {ui("原文","Original")}
@@ -1340,13 +1326,10 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
             placeholder={access.enabled ? ui("输入本车消息","Enter a vehicle message") : access.reason}
           />
         </label>
-        {localPhoto&&<div className="chat-photo-preview"><img src={localPhoto.url} alt={ui("仅保存在当前浏览器会话的照片预览","Photo preview stored only in this browser session")}/><span>{localPhoto.name}</span><button type="button" onClick={()=>setLocalPhoto(null)} aria-label={ui("移除本地预览","Remove photo")}>×</button></div>}
         <div className="chat-composer-actions">
-          <input ref={photoInputRef} className="visually-hidden" type="file" accept="image/*" capture="environment" disabled={!access.enabled} onChange={(event)=>previewPhoto(event.target.files?.[0])}/>
-          <button type="button" className="chat-attachment-button" disabled={!access.enabled} onClick={()=>photoInputRef.current?.click()} aria-label={ui("拍摄或选择图片","Take or choose a photo")}>＋</button>
+          <ChatPhotoUpload repository={services.tripRoom} roomId={room.room_id} locale={locale} disabled={!access.enabled} onSent={()=>void services.tripRoom.loadMessages(room.room_id).then(value=>setMessages(value as RemoteMessage[]))}/>
           <button className="button chat-send-button" disabled={!access.enabled || !draft.trim()} onClick={send}>{access.enabled ? ui("发送消息","Send message") : access.reason}</button>
         </div>
-        <p className="privacy">{ui("图片发送功能将在安全存储与内容审核接通后开放。","Photo sending will open after secure storage and moderation are connected.")}</p>
         {notice && (
           <p role="status" className="notice">
             {notice}

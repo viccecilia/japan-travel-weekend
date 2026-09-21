@@ -1,10 +1,17 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
-import { GoogleCloudTranslationProvider, translateVehicleMessage, type TranslationProvider } from "../server/translation";
+import { GoogleCloudTranslationProvider, translateVehicleMessage, isTranslationTarget, type TranslationProvider } from "../server/translation";
 
 const migration=readFileSync('supabase/migrations/202608260020_chat_translation_preferences.sql','utf8');
 
 describe("本车聊天翻译后端",()=>{
+  it("Spanish uses the existing authorized translation gateway",async()=>{
+    expect(isTranslationTarget('es')).toBe(true);
+    const gateway={context:vi.fn(async()=>({message_id:'m',source_content:'Hello',source_language:'en',cached_translation:null})),store:vi.fn(async()=>true)};
+    const provider={available:true,name:'test',translate:vi.fn(async()=> 'Hola')} satisfies TranslationProvider;
+    expect(await translateVehicleMessage({accountId:'a',messageId:'m',targetLanguage:'es'},gateway as never,provider)).toMatchObject({status:200});
+    expect(provider.translate).toHaveBeenCalledWith({text:'Hello',sourceLanguage:'en',targetLanguage:'es'});
+  });
   it("数据库按本人偏好和本车成员资格隔离译文",()=>{
     expect(migration).toContain('own_chat_translation_preference');
     expect(migration).toContain('public.can_receive_vehicle_group(r.vehicle_group_id)');

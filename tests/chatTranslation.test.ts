@@ -8,13 +8,14 @@ describe("聊天翻译语言与重要模板", () => {
     expect(preferredChatLanguage(["vi-VN"])).toBe("vi");
     expect(preferredChatLanguage(["ne-NP"])).toBe("ne");
     expect(preferredChatLanguage(["ko-KR"])).toBe("ko");
+    expect(preferredChatLanguage(["es-MX"])).toBe("es");
     expect(preferredChatLanguage(["fr-FR"])).toBe("en");
   });
 
-  it("八种重要模板都有七语非空内容，简体中文不重复显示译文", () => {
+  it("八种重要模板都有八语非空内容，简体中文不重复显示译文", () => {
     expect(Object.keys(staffTemplateTranslations)).toHaveLength(8);
     for (const translations of Object.values(staffTemplateTranslations)) {
-      expect(Object.keys(translations)).toEqual(expect.arrayContaining(["zh-CN", "zh-TW", "ja", "en", "vi", "ne", "ko"]));
+      expect(Object.keys(translations)).toEqual(expect.arrayContaining(["zh-CN", "zh-TW", "ja", "en", "vi", "ne", "ko", "es"]));
       expect(Object.values(translations).every(value => value.trim().length > 0)).toBe(true);
     }
     expect(templateTranslation("vehicle_arrived", "ja")).toContain("車両");

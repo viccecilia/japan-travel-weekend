@@ -18,6 +18,7 @@ export class StripeTestAdapter{
     },{idempotencyKey:input.idempotencyKey});
   }
   async cancelPaymentIntent(id:string){if(!this.stripe)return false;await this.stripe.paymentIntents.cancel(id);return true}
+  async retrievePaymentIntent(id:string){if(!this.stripe)return null;return this.stripe.paymentIntents.retrieve(id)}
   async createRefund(input:{paymentIntentId:string;amount:number;idempotencyKey:string}){if(!this.stripe||!input.paymentIntentId.startsWith('pi_')||!Number.isSafeInteger(input.amount)||input.amount<1)return null;return this.stripe.refunds.create({payment_intent:input.paymentIntentId,amount:input.amount,metadata:{jtw_payment_mode:this.mode}},{idempotencyKey:input.idempotencyKey})}
   async handleWebhook(rawBody:Buffer,signature:string,store:PaymentEventStore){
     if(!this.available||!this.stripe)return {accepted:false,reason:'unavailable'} as const;
@@ -30,7 +31,9 @@ export class StripeTestAdapter{
     const createdAt=new Date(event.created*1000).toISOString();const payloadDigest=createHash('sha256').update(rawBody).digest('hex');
     const applied=status==='refund_updated'
       ?event.type==='charge.refunded'?await store.applyRefund(refundEventInput(event,orderId,createdAt,payloadDigest)):store.applyRefundStatus?await store.applyRefundStatus(refundStatusEventInput(event,orderId,createdAt,payloadDigest)):false
-      :await store.apply({providerEventId:event.id,orderId,status,createdAt,payloadDigest});
+      :'applyIntent' in store&&typeof store.applyIntent==='function'
+        ?await store.applyIntent({providerEventId:event.id,orderId,status,createdAt,payloadDigest,paymentIntentId:(event.data.object as Stripe.PaymentIntent).id})
+        :await store.apply({providerEventId:event.id,orderId,status,createdAt,payloadDigest});
     return {accepted:applied,duplicate:false} as const;
   }
 }

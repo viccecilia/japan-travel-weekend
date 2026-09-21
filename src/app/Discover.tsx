@@ -53,7 +53,7 @@ export function Discover() {
      </div>
    </>:<p className="discover-empty">{c.empty}</p>}
    <Link className="discover-up discover-control" to="/app/trips" aria-label={c.trips}>
-     <svg viewBox="0 0 24 34" aria-hidden="true"><path d="m5 14 7-7 7 7M5 26l7-7 7 7"/></svg>
+     <svg viewBox="0 0 24 34" aria-hidden="true"><path d="m5 7 7 7 7-7M5 19l7 7 7-7"/></svg>
    </Link>
  </section>;
 }

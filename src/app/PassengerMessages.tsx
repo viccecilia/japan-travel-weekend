@@ -1,5 +1,5 @@
 import {useEffect,useState} from 'react';
-import {Link,useSearchParams} from 'react-router-dom';
+import {Link,Navigate,useSearchParams} from 'react-router-dom';
 import {useApp} from './store';
 
 type Room={room_id:string;vehicle_group_id:string;room_status:string;opens_at:string|null;departs_at:string|null;vehicle_label:string|null};
@@ -41,6 +41,11 @@ export function PassengerMessages(){
  },[services,retry,requested]);
  const room=requested?result.rooms.find(r=>r.vehicle_group_id===requested):result.rooms[0];
  const missingRequested=!!requested&&!room&&!result.loading&&!result.error;
+ const openRooms=result.rooms.filter(candidate=>candidate.room_status==='open');
+ // Never redirect an explicit deep link to a different group.
+ if(!result.loading&&!result.error&&!missingRequested&&openRooms.length===1&&(!requested||requested===openRooms[0].vehicle_group_id)){
+  return <Navigate replace to={'/app/my-trip/room?vehicleGroup='+encodeURIComponent(openRooms[0].vehicle_group_id)}/>;
+ }
  return <section className="passenger-message-page">
   <h1>本车群聊</h1>
   {result.rooms.length>1&&<label>选择本车行程<select aria-label="选择本车行程" value={room?.vehicle_group_id??''} onChange={e=>setSearch({vehicleGroup:e.target.value})}><option value="" disabled>请选择</option>{result.rooms.map(r=><option value={r.vehicle_group_id} key={r.vehicle_group_id}>{r.departs_at?new Date(r.departs_at).toLocaleString('zh-CN',{timeZone:'Asia/Tokyo'}):'日期待确认'} · {r.vehicle_label??'本车'}</option>)}</select></label>}

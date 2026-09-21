@@ -190,6 +190,7 @@ export class ProductionBrowserServices {
   createCheckout(input: CheckoutRequest) {
     return this.checkout.checkout(input);
   }
+  resumePayment(input:{orderId:string;idempotencyKey:string}){return this.checkout.resumePayment(input)}
   createQuote(input:{departureId:string;seats:number;couponId?:string}){return this.checkout.quote(input)}
   issueBoardingCredential(orderId: string) {
     return this.checkout.issueBoardingCredential(orderId);
@@ -203,7 +204,7 @@ export class ProductionBrowserServices {
   }
   translateMessage(input: {
     messageId: string;
-    targetLanguage: "zh-CN" | "zh-TW" | "ja" | "en" | "vi" | "ne" | "ko";
+    targetLanguage: "zh-CN" | "zh-TW" | "ja" | "en" | "vi" | "ne" | "ko" | "es";
   }) {
     return this.checkout.translateMessage(input);
   }

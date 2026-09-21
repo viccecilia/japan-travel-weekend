@@ -613,6 +613,30 @@
     {
       "name": "20260920070417_delete_discover_hero.sql",
       "sha256": "da71cde44394b7d2ba2b9419210eebb3352eacc619e96c628bf47f8e165f6b31"
+    },
+    {
+      "name": "20260921011836_account_profile_consent_once.sql",
+      "sha256": "1d83b540061465647f0688dd2dc5f8836e1ec0dff5922ad52344daa106e0f110"
+    },
+    {
+      "name": "20260921011919_chat_spanish_language.sql",
+      "sha256": "e40449defe729e684fa4539e9c958b7e7e86c53d5cc2a9687d1bd27c955c290d"
+    },
+    {
+      "name": "20260921013345_resume_existing_order_payment.sql",
+      "sha256": "0138f3365c0aae059faa72fe721e6e31fa5eb8a83ab03a2e52d90212c34532a1"
+    },
+    {
+      "name": "20260921014034_round1_contact_window.sql",
+      "sha256": "0be66c5b841d0332109b74620fb696c487a7f8614cb867ad06b756632a3b46d6"
+    },
+    {
+      "name": "20260921014412_passenger_location_coordinates.sql",
+      "sha256": "3b5b40ede5befe1eec50f17bf577baaa4642381f986bfb89eb19431c84c655de"
+    },
+    {
+      "name": "20260921014907_private_trip_chat_photos.sql",
+      "sha256": "2a40430ee67341fd08d3d8c7021c23ac6af651ffb6486c38288619045d491761"
     }
   ]
 }
