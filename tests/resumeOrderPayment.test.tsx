@@ -17,7 +17,7 @@ describe('resume existing order interaction',()=>{
   mocks.resume.mockResolvedValue({orderId:'existing-order',amount:11000,clientSecret:'test-secret'});open();
   fireEvent.click(screen.getByRole('button',{name:'Continue payment'}));
   expect(await screen.findByText('Payment for existing-order')).toBeVisible();
-  expect(screen.getByText('JPY 11,000')).toBeVisible();
+  expect(screen.getByText('Amount due: ¥11,000')).toBeVisible();
   expect(mocks.resume).toHaveBeenCalledWith({orderId:'existing-order',idempotencyKey:expect.any(String)});
  });
  it('prevents repeated clicks while waiting and permits retry after network failure',async()=>{
@@ -27,7 +27,7 @@ describe('resume existing order interaction',()=>{
   fireEvent.click(button);fireEvent.click(button);
   expect(mocks.resume).toHaveBeenCalledTimes(1);expect(button).toBeDisabled();
   reject(Error('offline'));
-  expect(await screen.findByRole('alert')).toHaveTextContent('No new order was created');
+  expect(await screen.findByRole('alert')).toHaveTextContent(/no new order will be created/i);
   mocks.resume.mockResolvedValue({orderId:'existing-order',amount:11000,clientSecret:'test-secret'});
   fireEvent.click(screen.getByRole('button',{name:'Continue payment'}));
   await screen.findByText('Payment for existing-order');expect(mocks.resume).toHaveBeenCalledTimes(2);
@@ -45,6 +45,6 @@ describe('resume existing order interaction',()=>{
  it('uses Spanish loading and failure feedback',async()=>{
   mocks.locale='es';mocks.resume.mockResolvedValue(null);open();
   fireEvent.click(screen.getByRole('button',{name:'Continuar el pago'}));
-  expect(await screen.findByRole('alert')).toHaveTextContent('No se ha creado otra reserva');
+  expect(await screen.findByRole('alert')).toHaveTextContent(/no se creará otra reserva/i);
  });
 });

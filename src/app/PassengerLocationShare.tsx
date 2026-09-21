@@ -1,12 +1,12 @@
 import {useEffect,useRef,useState} from 'react';
 import type {SupabaseTripRoomRepository} from '../shared/integrations/supabaseProduction';
 import type {PassengerLocale} from '../shared/i18n/passengerLocale';
-import {locationShareCopy} from '../shared/i18n/locationShare';
+import {passengerRound1Copy} from '../shared/i18n/passengerRound1';
 
 type Point={latitude:number;longitude:number;accuracy:number|null;sampledAt:string};
 type Props={repository:SupabaseTripRoomRepository;groupId:string;locale:PassengerLocale;disabled?:boolean;staff?:boolean};
 export function PassengerLocationShare({repository,groupId,locale,disabled=false,staff=false}:Props){
- const c=locationShareCopy[locale];
+ const c=passengerRound1Copy[locale].location;
  const [rows,setRows]=useState<Awaited<ReturnType<SupabaseTripRoomRepository['loadPassengerLocations']>>>([]);
  const [point,setPoint]=useState<Point|null>(null),[error,setError]=useState(false),[busy,setBusy]=useState(false);
  const [panel,setPanel]=useState(false);
@@ -45,7 +45,7 @@ export function PassengerLocationShare({repository,groupId,locale,disabled=false
    {rows.length>0&&<><p>{c.shared}</p><button disabled={busy} onClick={()=>void change(true)}>{c.stop}</button></>}
    {error&&<p role="alert">{c.failed}</p>}
    {busy&&!point&&<p role="status">{c.working}</p>}
-   <button disabled={busy} onClick={()=>{setPanel(false);setPoint(null);setError(false)}}>{c.cancel}</button>
+   <button disabled={busy} onClick={()=>{setPanel(false);setPoint(null);setError(false)}}>{passengerRound1Copy[locale].common.cancel}</button>
   </section></div>}
  </>;
 }

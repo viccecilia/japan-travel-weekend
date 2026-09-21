@@ -10,7 +10,7 @@ import {
 import { travelRepository } from "../shared/data/repository";
 import {passengerNavigation} from '../shared/i18n/passengerFrame';
 import {ResumeOrderPayment} from './ResumeOrderPayment';
-import {resumePaymentCopy} from '../shared/i18n/resumePayment';
+import {passengerRound1Copy} from '../shared/i18n/passengerRound1';
 import { backend } from "../shared/backend";
 import {Discover} from './Discover';
 import {ProfileInvite} from './ProfileInvite';
@@ -2080,7 +2080,7 @@ export function Orders() {
   const filter=search.get("status")??"all";
   const [billingById,setBillingById]=useState<Record<string,{title:string|null;departsAt:string|null}>>({});
   const locale=state.ui.locale ?? "zh-CN";
-  const c=passengerOrderCopy[locale];
+  const c={...passengerOrderCopy[locale],...passengerRound1Copy[locale].orders};
   const [remote, setRemote] = useState<{
     loading: boolean;
     error: string | null;
@@ -2133,7 +2133,7 @@ export function Orders() {
             manual_payment_due_at?: string | null;
           }>,
         });
-      }).catch(error=>setRemote({loading:false,error:error instanceof Error?error.message:'订单读取失败',rows:[]}));
+      }).catch(error=>setRemote({loading:false,error:error instanceof Error?error.message:c.loadFailed,rows:[]}));
   }, [services]);
   const matchesFilter=(o:typeof remote.rows[number])=>{
     const completed=['paid','confirmed'].includes(o.status)&&o.departure?.status==='completed';
@@ -2141,12 +2141,12 @@ export function Orders() {
   };
   return (
     <>
-      <AppTitle eyebrow={c.trips} title={locale==='zh-CN'?'我的订单':c.title} />
-      <div className="passenger-order-filters" aria-label="订单筛选">{[['all','全部'],['pending','待付款'],['paid','已支付'],['completed','已完成'],['cancelled','已取消']].map(([key,label])=><button key={key} aria-pressed={filter===key} onClick={()=>setSearch(key==='all'?{}:{status:key})}>{label}</button>)}</div>
+      <AppTitle eyebrow={c.trips} title={c.title} />
+      <div className="passenger-order-filters" aria-label={c.filterLabel}>{(['all','pending','paid','completed','cancelled'] as const).map(key=><button key={key} aria-pressed={filter===key} onClick={()=>setSearch(key==='all'?{}:{status:key})}>{c.filters[key]}</button>)}</div>
       {state.tripRoom && (
         <Link className="my-trip-banner" to="/app/my-trip">
           <span>{c.seed}</span>
-          <b>京都与奈良</b>
+          <b>{passengerRound1Copy[locale].messages.thisVehicle}</b>
           <small>{c.openRoom}</small>
         </Link>
       )}
@@ -2222,9 +2222,9 @@ export function Orders() {
             const bill=billingById[o.id];
             return <Link className="passenger-order-link" key={o.id} to={'/app/orders/'+encodeURIComponent(o.id)} state={{returnTo:'/app/orders'+(search.size?'?'+search.toString():'')}}>
               <img src={trip?.heroImage??'/icons/icon.svg'} alt=""/>
-              <div><b>{bill?.title??trip?.title??c.ownOrder}</b><small>{(bill?.departsAt??o.departure?.departs_at)?new Date((bill?.departsAt??o.departure?.departs_at)!).toLocaleString(locale,{timeZone:'Asia/Tokyo'}):departure?.dateLabel??c.pending}</small><span>{o.seat_count} {c.seats} · {localizedOrderStatus(locale,o.status)}</span><strong>{c.viewOrder} →</strong>{o.status==='pending_payment'&&<small>{resumePaymentCopy[locale].action}</small>}{o.status==='pending_manual_review'&&o.manual_payment_due_at&&<small>{c.paymentDue}: {new Date(o.manual_payment_due_at).toLocaleString(locale,{timeZone:'Asia/Tokyo'})}</small>}</div>
+              <div><b>{bill?.title??trip?.title??c.ownOrder}</b><small>{(bill?.departsAt??o.departure?.departs_at)?new Date((bill?.departsAt??o.departure?.departs_at)!).toLocaleString(locale,{timeZone:'Asia/Tokyo'}):departure?.dateLabel??c.pending}</small><span>{c.seats.replace('{count}',String(o.seat_count))} · {localizedOrderStatus(locale,o.status)}</span><strong>{c.viewOrder} →</strong>{o.status==='pending_payment'&&<small>{passengerRound1Copy[locale].resumePayment.action}</small>}{o.status==='pending_manual_review'&&o.manual_payment_due_at&&<small>{c.paymentDue}: {new Date(o.manual_payment_due_at).toLocaleString(locale,{timeZone:'Asia/Tokyo'})}</small>}</div>
             </Link>
-          })}{!remote.rows.some(o=>matchesFilter(o))&&<p role="status">当前筛选下暂无订单</p>}</>
+          })}{!remote.rows.some(o=>matchesFilter(o))&&<p role="status">{c.emptyFiltered}</p>}</>
         ) : (
           <Empty title={c.empty} text={c.emptyText} />
         )
@@ -2238,13 +2238,13 @@ export function Orders() {
           <Link className="order-card" key={o.id} to={`/app/orders/${o.id}`}>
             <b>{travelRepository.getTrip(o.tripSlug)?.shortTitle}</b>
             <span>
-              {o.id} · {o.guests} 个座位
+              {o.id} · {c.seats.replace('{count}',String(o.guests))}
             </span>
             <small>{o.status}</small>
           </Link>
         ))
       ) : (
-        <Empty title="暂无订单" text="完成真实支付后，订单会显示在这里。" />
+        <Empty title={c.empty} text={c.emptyText} />
       )}
     </>
   );
@@ -2802,7 +2802,7 @@ function ReferralPanel(){
 }
 export function Profile() {
  const {state,reset,clearIdentity,services}=useApp();
- const locale=state.ui.locale??'zh-CN',pc=profileCopy[locale];
+ const locale=state.ui.locale??'zh-CN',pc={...profileCopy[locale],...passengerRound1Copy[locale].profile};
  const nav=useNavigate();
  const [profile,setProfile]=useState({phone:'',emergencyName:'',emergencyPhone:''});
  const [consent,setConsent]=useState({terms:false,privacy:false});
@@ -2817,12 +2817,12 @@ export function Profile() {
   void Promise.all([services.loadOwnAccountProfile(),services.loadOwnDisplayName(),services.currentRole()]).then(([result,nameResult,role])=>{
    if(!active)return;
    setAccountRole(role);
-   if(result.error||nameResult.error){setNotice(result.error??nameResult.error??'读取失败');setStatus('unavailable');return}
+   if(result.error||nameResult.error){setNotice(result.error??nameResult.error??pc.profileLoadFailed);setStatus('unavailable');return}
    if(result.data)setProfile({phone:result.data.phone,emergencyName:result.data.emergency_name,emergencyPhone:result.data.emergency_phone});
    setConsent({terms:!!result.data?.accepted_terms_at,privacy:!!result.data?.accepted_privacy_at});
    const identity=splitPassengerDisplayName(nameResult.data||result.data?.display_name||'');
    setDisplayName(identity.name);setSalutation(identity.salutation);setStatus('ready');
-  }).catch(error=>{if(active){setNotice(error instanceof Error?error.message:'资料读取失败');setStatus('unavailable')}});
+  }).catch(error=>{if(active){setNotice(error instanceof Error?error.message:pc.profileLoadFailed);setStatus('unavailable')}});
   return()=>{active=false};
  },[services]);
  async function save(event:FormEvent<HTMLFormElement>){
@@ -2834,39 +2834,39 @@ export function Profile() {
   try{
    // Reuse the two existing APIs; do not imply a cross-RPC transaction.
    const personal=await services.updateOwnAccountProfile({displayName:name,...profile,acceptedTerms:!!form.get('terms'),acceptedPrivacy:!!form.get('privacy')});
-   if(!personal.ok)throw new Error(personal.error??'个人资料保存失败');
+   if(!personal.ok)throw new Error(personal.error??pc.saveFailed);
    setConsent({terms:true,privacy:true});
    const publicName=await services.updateOwnDisplayName(name);
-   if(!publicName.ok)throw new Error('联系资料已保存，公开称呼未保存：'+(publicName.error??'请重试'));
-   setNotice(locale==='zh-CN'?'已保存 ✓':pc.saved);
-  }catch(error){setNotice((error instanceof Error?error.message:'保存失败')+'；输入已保留。')}
+   if(!publicName.ok)throw new Error(pc.partialPublicNameSaveFailed.replace('{error}',publicName.error??pc.saveFailed));
+   setNotice(pc.saved);
+  }catch(error){setNotice(error instanceof Error?error.message:pc.saveFailed)}
   finally{setStatus('ready')}
  }
  async function logout(){
   try{if(services)await services.signOut();else reset();clearIdentity();nav('/app/login')}
-  catch{setNotice('退出失败，请重试')}
+  catch{setNotice(pc.logoutFailed)}
  }
  return <div className="passenger-profile-sections">
-  <AppTitle eyebrow={pc.eyebrow} title={locale==='zh-CN'?'我的':pc.title}/>
+  <AppTitle eyebrow={pc.eyebrow} title={pc.title}/>
   <section className="form" aria-labelledby="account-center-title">
    <h2 id="account-center-title">{pc.center}</h2>
-   <div className="account-summary"><div className="profile-info-row"><span>登录状态</span><b>{state.user?pc.signed:pc.signedOut}</b></div><div className="profile-info-row"><span>当前邮箱</span><b>{state.user?.email??pc.signedOut}</b></div></div>
-   <div className="account-center-actions"><Link className="profile-setting-row" to="/app/orders"><i aria-hidden="true">▤</i><span>{locale==='zh-CN'?'我的订单':pc.orders}</span><b aria-hidden="true">›</b></Link><Link className="profile-setting-row" to="/app/messages"><i aria-hidden="true">◉</i><span>{pc.messages}</span><b aria-hidden="true">›</b></Link></div>
+   <div className="account-summary"><div className="profile-info-row"><span>{pc.loginStatus}</span><b>{state.user?pc.signedIn:pc.signedOut}</b></div><div className="profile-info-row"><span>{pc.currentEmail}</span><b>{state.user?.email??pc.signedOut}</b></div></div>
+   <div className="account-center-actions"><Link className="profile-setting-row" to="/app/orders"><i aria-hidden="true">▤</i><span>{pc.myOrders}</span><b aria-hidden="true">›</b></Link><Link className="profile-setting-row" to="/app/messages"><i aria-hidden="true">◉</i><span>{pc.tripMessages}</span><b aria-hidden="true">›</b></Link></div>
    <ProfileInvite/>
-   {accountRole==='passenger'&&<details className="profile-boost"><summary className="profile-setting-row"><i aria-hidden="true">✧</i><span>Travelers Boost / 旅行分享助力</span><b aria-hidden="true">›</b></summary><TravelShareCampaign/></details>}
+   {accountRole==='passenger'&&<details className="profile-boost"><summary className="profile-setting-row"><i aria-hidden="true">✧</i><span>{pc.boost}</span><b aria-hidden="true">›</b></summary><TravelShareCampaign/></details>}
   </section>
   <section className="form" aria-labelledby="personal-details-title">
-   <h2 id="personal-details-title">{locale==='zh-CN'?'个人资料':pc.details}</h2>
+   <h2 id="personal-details-title">{pc.personal}</h2>
    {services&&<form onSubmit={save}>
-    <div className="passenger-name-row"><label>{pc.name} *<input required maxLength={78} value={displayName} onChange={e=>setDisplayName(e.target.value)}/></label><fieldset><legend>称谓 *</legend><label><input required type="radio" name="salutation" checked={salutation==='先生'} onChange={()=>setSalutation('先生')}/>先生</label><label><input required type="radio" name="salutation" checked={salutation==='女士'} onChange={()=>setSalutation('女士')}/>女士</label></fieldset></div>
+    <div className="passenger-name-row"><label>{pc.displayName} *<input required maxLength={78} value={displayName} onChange={e=>setDisplayName(e.target.value)}/></label><fieldset><legend>{pc.salutation} *</legend><label><input required type="radio" name="salutation" checked={salutation==='先生'} onChange={()=>setSalutation('先生')}/>{pc.mr}</label><label><input required type="radio" name="salutation" checked={salutation==='女士'} onChange={()=>setSalutation('女士')}/>{pc.ms}</label></fieldset></div>
     <label>{pc.phone} *<input required name="phone" type="tel" maxLength={40} value={profile.phone} onChange={e=>setProfile({...profile,phone:e.target.value})}/></label>
     <label>{pc.emergencyName} *<input required name="emergencyName" maxLength={80} value={profile.emergencyName} onChange={e=>setProfile({...profile,emergencyName:e.target.value})}/></label>
     <label>{pc.emergencyPhone} *<input required name="emergencyPhone" type="tel" maxLength={40} value={profile.emergencyPhone} onChange={e=>setProfile({...profile,emergencyPhone:e.target.value})}/></label>
     <LanguageSelect/>
-    <p className="privacy">{pc.email}：{state.user?.email??pc.signedOut} · 邮箱密码登录</p>
+    <p className="privacy">{pc.currentEmail}：{state.user?.email??pc.signedOut} · {pc.emailPassword}</p>
     {consent.terms?<p className="privacy"><Link to="/terms">{pc.terms}</Link></p>:<label className="check"><input required name="terms" type="checkbox"/>{pc.agree} <Link to="/terms">{pc.terms}</Link></label>}
     {consent.privacy?<p className="privacy"><Link to="/privacy">{pc.privacy}</Link></p>:<label className="check"><input required name="privacy" type="checkbox"/>{pc.agree} <Link to="/privacy">{pc.privacy}</Link></label>}
-    <button className="button full" disabled={status!=='ready'}>{status==='loading'?pc.loading:status==='saving'?pc.saving:locale==='zh-CN'?'保存个人资料':pc.save}</button>
+    <button className="button full" disabled={status!=='ready'}>{status==='loading'?pc.loading:status==='saving'?pc.saving:pc.saveProfile}</button>
    </form>}
    {notice&&<p className="notice" role="status">{notice}</p>}
    <button className="button full profile-logout" disabled={status==='saving'} onClick={()=>void logout()}>{services&&state.user?pc.logout:pc.reset}</button>

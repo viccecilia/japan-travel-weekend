@@ -117,7 +117,7 @@ describe('passenger frame closure',()=>{
   mock.services.updateOwnDisplayName.mockResolvedValue({ok:false,error:'network failure'});
   mount(<Profile/>);await waitFor(()=>expect(screen.getByRole('button',{name:'保存个人资料'})).toBeEnabled());
   fireEvent.submit(screen.getByRole('button',{name:'保存个人资料'}).closest('form')!);
-  expect(await screen.findByRole('status')).toHaveTextContent('联系资料已保存，公开称呼未保存');
+  expect(await screen.findByRole('status')).toHaveTextContent(/联系资料已保存.*公开显示名称未保存.*network failure/);
   expect(screen.getByLabelText(/紧急联系人姓名/)).toHaveValue('测试联系人');
  });
  it('existing consent hides checkboxes while retaining policy links and saves without fresh consent',async()=>{

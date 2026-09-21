@@ -1,10 +1,10 @@
 import {useEffect,useRef,useState} from 'react';
 import type {SupabaseTripRoomRepository} from '../shared/integrations/supabaseProduction';
 import type {PassengerLocale} from '../shared/i18n/passengerLocale';
-import {chatPhotoCopy} from '../shared/i18n/chatPhoto';
+import {passengerRound1Copy} from '../shared/i18n/passengerRound1';
 type Props={repository:SupabaseTripRoomRepository;locale:PassengerLocale};
 export function ChatPhoto({repository,locale,path}:Props&{path:string}){
- const c=chatPhotoCopy[locale], [url,setUrl]=useState(''),[failed,setFailed]=useState(false),[retry,setRetry]=useState(0);
+ const c=passengerRound1Copy[locale].photo, [url,setUrl]=useState(''),[failed,setFailed]=useState(false),[retry,setRetry]=useState(0);
  useEffect(()=>{
   let alive=true,objectUrl='';
   void repository.downloadPhoto(path).then(blob=>{
@@ -16,7 +16,7 @@ export function ChatPhoto({repository,locale,path}:Props&{path:string}){
  return failed?<button onClick={()=>setRetry(value=>value+1)}>{c.photo} · {c.retry}</button>:url?<img src={url} alt={c.photo} style={{maxWidth:'100%',maxHeight:300,objectFit:'contain'}} onError={()=>setFailed(true)}/>:<span role="status">{c.photo}…</span>;
 }
 export function ChatPhotoUpload({repository,locale,roomId,disabled,onSent}:Props&{roomId:string;disabled:boolean;onSent:()=>void}){
- const c=chatPhotoCopy[locale],input=useRef<HTMLInputElement>(null),lock=useRef(false);
+ const c=passengerRound1Copy[locale].photo,input=useRef<HTMLInputElement>(null),lock=useRef(false);
  const [selected,setSelected]=useState<{file:File;id:string}|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState('');
  async function send(){
   if(!selected||disabled||lock.current)return;lock.current=true;setBusy(true);setError('');

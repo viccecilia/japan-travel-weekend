@@ -4,11 +4,11 @@ import {Elements} from '@stripe/react-stripe-js';
 import {useApp} from './store';
 import {stripeClient,stripeMode} from '../shared/integrations/stripeClient';
 import {StripePaymentForm} from './StripePaymentForm';
-import {resumePaymentCopy} from '../shared/i18n/resumePayment';
+import {passengerRound1Copy} from '../shared/i18n/passengerRound1';
 
 export function ResumeOrderPayment({orderId}:{orderId:string}){
  const {services,state}=useApp();
- const locale=state.ui.locale??'zh-CN',c=resumePaymentCopy[locale];
+ const locale=state.ui.locale??'zh-CN',c=passengerRound1Copy[locale].resumePayment;
  const navigate=useNavigate();
  const [session,setSession]=useState<{orderId:string;clientSecret:string;amount:number}|null>(null);
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
@@ -27,6 +27,6 @@ export function ResumeOrderPayment({orderId}:{orderId:string}){
   {!session&&<button className="button" disabled={busy||!stripeClient||stripeMode!=='test'} onClick={()=>void resume()}>{busy?c.loading:c.action}</button>}
   {(!stripeClient||stripeMode!=='test')&&<p role="status">{c.unavailable}</p>}
   {error&&<p role="alert">{error}</p>}
-  {session&&stripeClient&&<><p>JPY {session.amount.toLocaleString(locale)}</p><Elements stripe={stripeClient} options={{clientSecret:session.clientSecret}}><StripePaymentForm locale={locale} orderId={orderId} onComplete={(id,status)=>navigate('/app/payment-result?order_id='+encodeURIComponent(id)+(status==='processing'?'&processing=1':''))}/></Elements></>}
+  {session&&stripeClient&&<><p>{c.amount.replace('{amount}',session.amount.toLocaleString(locale))}</p><p>{c.security}</p><Elements stripe={stripeClient} options={{clientSecret:session.clientSecret}}><StripePaymentForm locale={locale} orderId={orderId} onComplete={(id,status)=>navigate('/app/payment-result?order_id='+encodeURIComponent(id)+(status==='processing'?'&processing=1':''))}/></Elements></>}
  </section>;
 }
