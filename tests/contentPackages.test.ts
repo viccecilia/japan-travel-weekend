@@ -1,5 +1,6 @@
 import {describe, expect, it} from 'vitest';
-import {applyHeroTranslationPackage, applyRouteTranslationPackage, buildHeroContentTemplate, buildHeroTranslationPackage, buildRouteContentTemplate, buildRouteTranslationPackage, pendingTranslationPackage, sanitizeRouteContent, validateContentPackage, validateTranslationPackage} from '../src/shared/contentPackages';
+import {applyHeroTranslationPackage, applyRouteTranslationPackage, buildHeroContentTemplate, buildHeroTranslationPackage, buildRouteContentTemplate, buildRouteTranslationPackage, localizedRouteList, pendingTranslationPackage, sanitizeRouteContent, validateContentPackage, validateTranslationPackage} from '../src/shared/contentPackages';
+import {draftFromProduct, localizedDraft} from '../src/app/operations/productDraft';
 import type {OperationsProduct} from '../src/shared/integrations/supabaseOperations';
 import type {DiscoverHero} from '../src/shared/discover';
 
@@ -45,6 +46,55 @@ describe('JTW content and translation packages', () => {
     expect(nextTitle.translations.en?.status).toBe('stale');
     expect(pendingTranslationPackage(next).fields.some(field => field.id === nextTitle.id)).toBe(true);
     expect(applyRouteTranslationPackage(changed, first).imported).toBe(0);
+  });
+
+  it('writes list translations under their own locale keys and keeps their stable IDs when the Chinese text changes', () => {
+    const original = {...product(), content: {...product().content, included: ['往返车辆'], excluded: ['午餐'], preparation: ['舒适鞋'], notices: ['准时集合'], highlights: ['秋日风景']}};
+    const first = buildRouteTranslationPackage(original);
+    for (const [key, english] of [['included', 'Round-trip vehicle'], ['excluded', 'Lunch'], ['preparation', 'Comfortable shoes'], ['notices', 'Meet on time'], ['highlights', 'Autumn scenery']] as const) {
+      const field = first.fields.find(item => item.field_key === key)!; field.translations.en = {text: english, status: 'draft', source_hash: field.source_hash};
+    }
+    const applied = applyRouteTranslationPackage(original, first);
+    const en = (applied.content.locales as Record<string, Record<string, unknown>>).en;
+    expect(en.included).toEqual({'list-included-1': 'Round-trip vehicle'});
+    expect(en.excluded).toEqual({'list-excluded-1': 'Lunch'});
+    expect(en.itinerary).toBeUndefined();
+    expect(localizedRouteList(en, (applied.content.translationListItems as {included: Array<{id: string; source: string}>}).included, 'included', ['往返车辆'])).toEqual(['Round-trip vehicle']);
+    const changed = {...original, content: {...applied.content, included: ['往返巴士']}};
+    const next = buildRouteTranslationPackage(changed); const included = next.fields.find(item => item.field_key === 'included')!;
+    expect(included.item_id).toBe('list-included-1'); expect(included.translations.en?.status).toBe('stale');
+    expect(localizedRouteList(en, (next.locked.translation_list_items as {included: Array<{id: string; source: string}>}).included, 'included', ['往返巴士'])).toEqual(['往返巴士']);
+  });
+
+  it('returns translated lists and every travel note through the same preview draft for English and Japanese', () => {
+    const original = {...product(), content: {...product().content, included: ['往返车辆'], excluded: ['午餐'], preparation: ['舒适鞋'], bookingNotice: '提前集合', cancellationPolicy: '取消规则', participantRules: '参加规则', weatherNotice: '天气提醒', baggageNotice: '行李说明', safetyNotice: '安全提示'}};
+    const exported = buildRouteTranslationPackage(original);
+    const english: Record<string, string> = {included: 'Round-trip transport', excluded: 'Lunch', preparation: 'Comfortable shoes', bookingNotice: 'Meet early', cancellationPolicy: 'Cancellation policy', participantRules: 'Participant rules', weatherNotice: 'Weather notice', baggageNotice: 'Baggage notice', safetyNotice: 'Safety notice'};
+    const japanese: Record<string, string> = {included: '往復車両', excluded: '昼食', preparation: '歩きやすい靴', bookingNotice: '早めに集合', cancellationPolicy: 'キャンセル規定', participantRules: '参加規約', weatherNotice: '天候のご案内', baggageNotice: '荷物のご案内', safetyNotice: '安全に関するご案内'};
+    for (const row of exported.fields) {
+      if (english[row.field_key]) row.translations.en = {text: english[row.field_key], status: 'draft', source_hash: row.source_hash};
+      if (japanese[row.field_key]) row.translations.ja = {text: japanese[row.field_key], status: 'draft', source_hash: row.source_hash};
+    }
+    const applied = applyRouteTranslationPackage(original, exported);
+    const draft = draftFromProduct({...original, content: applied.content});
+    expect(localizedDraft(draft, 'en')).toMatchObject({included: ['Round-trip transport'], excluded: ['Lunch'], preparation: ['Comfortable shoes'], bookingNotice: 'Meet early', cancellationPolicy: 'Cancellation policy', participantRules: 'Participant rules', weatherNotice: 'Weather notice', baggageNotice: 'Baggage notice', safetyNotice: 'Safety notice'});
+    expect(localizedDraft(draft, 'ja')).toMatchObject({included: ['往復車両'], excluded: ['昼食'], preparation: ['歩きやすい靴'], bookingNotice: '早めに集合', cancellationPolicy: 'キャンセル規定', participantRules: '参加規約', weatherNotice: '天候のご案内', baggageNotice: '荷物のご案内', safetyNotice: '安全に関するご案内'});
+  });
+
+  it('rejects a translation package when immutable field or package metadata was changed', () => {
+    const original = product(); const exported = buildRouteTranslationPackage(original);
+    const field = exported.fields.find(item => item.field_key === 'title')!; field.translations.en = {text: 'Autumn day trip', status: 'draft', source_hash: field.source_hash};
+    for (const mutate of [
+      (item: typeof field) => { item.field_key = 'included'; },
+      (item: typeof field) => { item.item_id = 'tampered-item'; },
+      (item: typeof field) => { item.path = 'content.tampered'; },
+    ]) {
+      const mutatedField = structuredClone(exported); mutate(mutatedField.fields.find(item => item.id === field.id)!);
+      expect(applyRouteTranslationPackage(original, mutatedField).imported).toBe(0);
+      expect(applyRouteTranslationPackage(original, mutatedField).warnings[0]?.code).toBe('immutable_field_metadata');
+    }
+    const mutatedEnvelope = structuredClone(exported); mutatedEnvelope.entity.source_version += 1;
+    expect(applyRouteTranslationPackage(original, mutatedEnvelope).warnings[0]?.code).toBe('immutable_package_metadata');
   });
 
   it('rejects malformed translation package identifiers and retains only supported locale fields', () => {

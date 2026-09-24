@@ -26,27 +26,26 @@ function page(query=''){
   </MemoryRouter>);
 }
 describe('连续路线详情与班次锁定',()=>{
-  it('最近班次不是最低价，两个预约入口传递展示报价的同一个 ID',async()=>{
+  it('当前 Route V2 使用唯一 CTA，并传递最近可售班次 ID',async()=>{
     page();
-    await waitFor(()=>expect(screen.getAllByRole('link').filter(link=>link.getAttribute('href')?.includes('departureId=nearest'))).toHaveLength(2));
-    expect(document.querySelector('.route-booking-bar')).toHaveTextContent('¥8,800');
-    expect(document.querySelector('.route-booking-bar')).not.toHaveTextContent('¥8,000');
-    expect(screen.queryByRole('tab')).toBeNull();
-    for(const section of ['highlights','schedule','prep'])expect(document.getElementById('route-'+section)).toBeVisible();
+    await waitFor(()=>expect(screen.getByRole('link',{name:'查看班次'})).toHaveAttribute('href','/app/booking/kyoto-nara-classic?departureId=nearest'));
+    expect(document.querySelector('.route-detail-v2')).toBeInTheDocument();
+    expect(document.querySelector('.route-v2-hero')).toBeInTheDocument();
+    expect(document.querySelectorAll('.route-v2-cta a')).toHaveLength(1);
+    expect(document.querySelector('.route-booking-bar')).toBeNull();
   });
-  it('明确选中的有效班次优先；外路线或过期 ID 不被传递',async()=>{
+  it('明确选中的有效班次优先；过期 ID 回退到最近可售 CTA',async()=>{
     const view=page('?departureId=cheaper-later');
-    await waitFor(()=>expect(document.querySelector('.route-booking-bar a')).toHaveAttribute('href','/app/booking/kyoto-nara-classic?departureId=cheaper-later'));
-    expect(document.querySelector('.route-booking-bar')).toHaveTextContent('¥8,000');
+    await waitFor(()=>expect(screen.getByRole('link',{name:'查看班次'})).toHaveAttribute('href','/app/booking/kyoto-nara-classic?departureId=cheaper-later'));
     view.unmount();page('?departureId=past');
-    await waitFor(()=>expect(document.querySelector('.route-booking-bar a')).toHaveAttribute('href','/app/booking/kyoto-nara-classic?departureId=nearest'));
+    await waitFor(()=>expect(screen.getByRole('link',{name:'查看班次'})).toHaveAttribute('href','/app/booking/kyoto-nara-classic?departureId=nearest'));
   });
-  it('公开内容缺失不生成包含费用或服务语言的承诺',async()=>{
+  it('公开内容缺失时不渲染空费用区或伪造视频',async()=>{
     const original=travelRepository.getTrip('kyoto-nara-classic')!;
     vi.spyOn(travelRepository,'getTrip').mockReturnValue({...original,catalogSource:'published',included:[],excluded:[],languages:[],mealOptions:'',suitableFor:[],packingList:[],clothingAdvice:'',friendlyReminders:[],notices:[],timeline:[],summary:''});
     const view=page();
-    await waitFor(()=>expect(view.container.querySelector('.route-selected-departure')).toBeInTheDocument());
-    expect(view.container.querySelector('.route-detail-grid')).not.toHaveTextContent('往返交通');
+    await waitFor(()=>expect(view.container.querySelector('.route-detail-v2')).toBeInTheDocument());
+    expect(view.container.querySelector('.route-v2-info-grid')).toBeNull();
     expect(view.container.querySelector('video')).toBeNull();
   });
   it('普通多人订单仅一席折扣，不叠加周末系数',()=>{

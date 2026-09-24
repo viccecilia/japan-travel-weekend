@@ -1,4 +1,5 @@
 import type {OperationsProduct} from '../../shared/integrations/supabaseOperations';
+import {localizedRouteList, reconcileRouteListItems, type RouteListItems} from '../../shared/contentPackages';
 import {productSpotStableId, type ProductSpotVideo} from './productSpotVideo';
 
 export type ProductEditorLocale = Record<string, unknown> & {
@@ -48,6 +49,7 @@ export type ProductDraft = {
   weatherNotice: string;
   baggageNotice: string;
   safetyNotice: string;
+  translationListItems: RouteListItems;
   heroImageUrl: string;
   gallery: string[];
   itinerary: ProductEditorStop[];
@@ -92,6 +94,7 @@ export function draftFromProduct(product: OperationsProduct): ProductDraft {
     weatherNotice: text(content.weatherNotice),
     baggageNotice: text(content.baggageNotice),
     safetyNotice: text(content.safetyNotice),
+    translationListItems: reconcileRouteListItems(content.translationListItems, {highlights: strings(content.highlights), included: strings(content.included), excluded: strings(content.excluded), preparation: strings(content.preparation), notices: strings(content.notices)}),
     heroImageUrl: product.heroImageUrl ?? '',
     gallery: [...product.gallery],
     itinerary: Array.isArray(content.itinerary)
@@ -109,6 +112,7 @@ export function persistedItinerary(items: ProductEditorStop[]) {
 
 export function draftContent(product: OperationsProduct, draft: ProductDraft) {
   const itinerary = persistedItinerary(draft.itinerary);
+  const translationListItems = reconcileRouteListItems(draft.translationListItems, {highlights: draft.highlights, included: draft.included, excluded: draft.excluded, preparation: draft.preparation, notices: draft.notices});
   return {
     ...product.content,
     summary: draft.summary,
@@ -136,6 +140,7 @@ export function draftContent(product: OperationsProduct, draft: ProductDraft) {
     weatherNotice: draft.weatherNotice,
     baggageNotice: draft.baggageNotice,
     safetyNotice: draft.safetyNotice,
+    translationListItems,
     locales: draft.locales,
   };
 }
@@ -154,6 +159,17 @@ export function localizedDraft(draft: ProductDraft, locale: string) {
     heroHighlightPhrase: text(localized.heroHighlightPhrase) || draft.heroHighlightPhrase,
     region: text(localized.region) || draft.region,
     duration: text(localized.duration) || draft.duration,
+    highlights: localizedRouteList(localized, draft.translationListItems.highlights ?? [], 'highlights', draft.highlights),
+    included: localizedRouteList(localized, draft.translationListItems.included ?? [], 'included', draft.included),
+    excluded: localizedRouteList(localized, draft.translationListItems.excluded ?? [], 'excluded', draft.excluded),
+    preparation: localizedRouteList(localized, draft.translationListItems.preparation ?? [], 'preparation', draft.preparation),
+    notices: localizedRouteList(localized, draft.translationListItems.notices ?? [], 'notices', draft.notices),
+    bookingNotice: text(localized.bookingNotice) || draft.bookingNotice,
+    cancellationPolicy: text(localized.cancellationPolicy) || draft.cancellationPolicy,
+    participantRules: text(localized.participantRules) || draft.participantRules,
+    weatherNotice: text(localized.weatherNotice) || draft.weatherNotice,
+    baggageNotice: text(localized.baggageNotice) || draft.baggageNotice,
+    safetyNotice: text(localized.safetyNotice) || draft.safetyNotice,
     itinerary: draft.itinerary.map((item) => {
       const stopId = String(item.id ?? item.stopId ?? item.placeId ?? ''); const translation = object(localizedStops[stopId]);
       return {...item, title: text(translation.stop_title) || text(translation.title) || item.title, subtitle: text(translation.subtitle) || item.subtitle, shortDescription: text(translation.shortDescription) || item.shortDescription, longDescription: text(translation.longDescription) || item.longDescription, description: text(translation.shortDescription) || text(translation.description) || item.description, tip: text(translation.tip) || item.tip};

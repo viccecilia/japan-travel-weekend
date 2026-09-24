@@ -7,6 +7,10 @@ export const SOURCE_LOCALE = 'zh-CN' as const;
 export const TARGET_LOCALES = ['zh-TW', 'ja', 'en', 'ko', 'es', 'vi', 'ne'] as const;
 export type TargetLocale = typeof TARGET_LOCALES[number];
 export type TranslationStatus = 'missing' | 'draft' | 'reviewed' | 'published' | 'stale';
+export const ROUTE_LIST_KEYS = ['highlights', 'included', 'excluded', 'preparation', 'notices'] as const;
+export type RouteListKey = typeof ROUTE_LIST_KEYS[number];
+export type RouteListItem = {id: string; source: string};
+export type RouteListItems = Partial<Record<RouteListKey, RouteListItem[]>>;
 export type TranslationProfile = 'hero_title' | 'hero_subtitle' | 'highlight_phrase' | 'theme_chip' | 'route_title' | 'route_summary' | 'spot_name' | 'spot_short_description' | 'spot_long_description' | 'itinerary_step' | 'meeting_instruction' | 'included_item' | 'excluded_item' | 'preparation' | 'cta' | 'policy' | 'safety_notice' | 'nav_short_label' | 'generic_body';
 
 type Json = string | number | boolean | null | Json[] | {[key: string]: Json};
@@ -70,6 +74,45 @@ const asRecord = (value: unknown): Record<string, unknown> => value && typeof va
 const string = (value: unknown) => typeof value === 'string' ? value : '';
 const strings = (value: unknown) => Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
 const id = (prefix: string, ...parts: string[]) => `${prefix}:${parts.map(part => encodeURIComponent(part)).join(':')}`;
+const routeListKey = (value: string): value is RouteListKey => (ROUTE_LIST_KEYS as readonly string[]).includes(value);
+const asListItems = (value: unknown): RouteListItem[] => Array.isArray(value) ? value.flatMap(item => {
+  const row = asRecord(item); const itemId = string(row.id).trim(); const source = string(row.source);
+  return itemId && source ? [{id: itemId, source}] : [];
+}) : [];
+
+/**
+ * List values remain strings for the route editor, while this sidecar stores
+ * durable IDs. Exact source matches preserve IDs across reordering; an
+ * unmatched row keeps its prior position's ID so an edit becomes stale rather
+ * than a new, unrelated translation.
+ */
+export function reconcileRouteListItems(previous: unknown, values: Partial<Record<RouteListKey, string[]>>): RouteListItems {
+  const stored = asRecord(previous); const result: RouteListItems = {};
+  for (const key of ROUTE_LIST_KEYS) {
+    const prior = asListItems(stored[key]); const remaining = new Set(prior.map(item => item.id));
+    result[key] = (values[key] ?? []).map((source, index) => {
+      const exact = prior.find(item => remaining.has(item.id) && item.source === source);
+      const positional = prior[index]; const chosen = exact ?? (positional && remaining.has(positional.id) ? positional : undefined);
+      const itemId = chosen?.id ?? `list-${key}-${index + 1}`;
+      remaining.delete(itemId);
+      return {id: itemId, source};
+    });
+  }
+  return result;
+}
+export function routeListItems(content: Record<string, unknown>, key: RouteListKey): RouteListItem[] {
+  return reconcileRouteListItems(content.translationListItems, {[key]: strings(content[key])})[key] ?? [];
+}
+export function localizedRouteList(localeValue: unknown, listItems: RouteListItem[], key: RouteListKey, fallback: string[]) {
+  const locale = asRecord(localeValue); const translations = asRecord(locale[key]); const fields = Object.values(asRecord(asRecord(locale._content_package).fields)).map(asRecord);
+  return listItems.map((item, index) => {
+    const meta = fields.find(fieldValue => string(fieldValue.item_id) === item.id && string(fieldValue.field_key) === key);
+    const translated = string(translations[item.id]) || string(meta?.text);
+    const currentSource = contentHash(item.source);
+    const sourceMatches = string(meta?.source_hash) === currentSource && string(meta?.source_text) === item.source;
+    return translated && sourceMatches && string(meta?.status) !== 'stale' ? translated : (fallback[index] ?? item.source);
+  });
+}
 
 /** Stable, non-cryptographic change detector. It is deliberately portable to browser and node tests. */
 export function contentHash(value: string) {
@@ -167,6 +210,7 @@ export function buildRouteTranslationPackage(product: OperationsProduct): Transl
   const content = product.content ?? {};
   const entityId = product.id;
   const fields: PackageField[] = [];
+  const listIdentities = reconcileRouteListItems(content.translationListItems, Object.fromEntries(ROUTE_LIST_KEYS.map(key => [key, strings(content[key])])) as Record<RouteListKey, string[]>);
   const add = (key: string, source: string, path: string, profile = profileFor(key), itemId?: string, context = '游客路线详情页') => {
     if (!source.trim()) return;
     const item = field({entity_type: 'route', entity_id: entityId, item_id: itemId, field_key: key, path, source_text: source, translation_profile: profile, context, max_length: profile === 'route_title' ? 100 : undefined, single_line: profile === 'route_title' || profile === 'spot_name'});
@@ -185,8 +229,8 @@ export function buildRouteTranslationPackage(product: OperationsProduct): Transl
   add('subtitle', string(content.subtitle), 'content.subtitle', 'theme_chip', undefined, '路线短标签');
   add('summary', string(content.summary), 'content.summary', 'route_summary');
   add('description', string(content.description), 'content.description', 'generic_body');
-  for (const listKey of ['highlights', 'included', 'excluded', 'preparation', 'notices'] as const) {
-    strings(content[listKey]).forEach((value) => add(listKey, value, `content.${listKey}`, profileFor(listKey), `text-${contentHash(value)}`, listKey === 'notices' ? '游客路线页注意事项' : '游客路线页内容列表'));
+  for (const listKey of ROUTE_LIST_KEYS) {
+    listIdentities[listKey]?.forEach((item) => add(listKey, item.source, `content.${listKey}[id=${item.id}]`, profileFor(listKey), item.id, listKey === 'notices' ? '游客路线页注意事项' : '游客路线页内容列表'));
   }
   for (const key of ['bookingNotice', 'cancellationPolicy', 'participantRules', 'weatherNotice', 'baggageNotice', 'safetyNotice'] as const) add(key, string(content[key]), `content.${key}`, profileFor(key), undefined, '游客路线详情出行须知');
   const itinerary = Array.isArray(content.itinerary) ? content.itinerary : [];
@@ -200,7 +244,7 @@ export function buildRouteTranslationPackage(product: OperationsProduct): Transl
     add('videoLabel', string(stop.videoLabel), `content.itinerary[id=${stopId}].videoLabel`, 'cta', stopId, '游客路线详情中的视频播放标签');
     add('tip', string(stop.tip), `content.itinerary[id=${stopId}].tip`, 'policy', stopId, '游客路线详情中的景点提示');
   });
-  return {schema_version: TRANSLATION_PACKAGE_SCHEMA, package_id: `route-${product.slug}-${product.catalogVersion}-${contentHash(product.id)}`, source_locale: SOURCE_LOCALE, target_locales: [...TARGET_LOCALES], entity: {entity_type: 'route', entity_id: entityId, entity_slug: product.slug, source_version: product.catalogVersion}, task_instructions: translationInstructions, translator_instructions: translationInstructions, translation_profiles: translationProfiles, glossary: defaultGlossary, locked: {slug: product.slug, catalog_version: product.catalogVersion, hero_image_url: product.heroImageUrl, gallery: product.gallery}, fields};
+  return {schema_version: TRANSLATION_PACKAGE_SCHEMA, package_id: `route-${product.slug}-${product.catalogVersion}-${contentHash(product.id)}`, source_locale: SOURCE_LOCALE, target_locales: [...TARGET_LOCALES], entity: {entity_type: 'route', entity_id: entityId, entity_slug: product.slug, source_version: product.catalogVersion}, task_instructions: translationInstructions, translator_instructions: translationInstructions, translation_profiles: translationProfiles, glossary: defaultGlossary, locked: {slug: product.slug, catalog_version: product.catalogVersion, hero_image_url: product.heroImageUrl, gallery: product.gallery, translation_list_items: listIdentities}, fields};
 }
 
 export function buildHeroTranslationPackage(hero: DiscoverHero): TranslationPackage {
@@ -262,29 +306,49 @@ export function validateTranslationPackage(input: unknown): {package: Translatio
 }
 
 export type TranslationApplyResult = {content: Record<string, unknown>; imported: number; skipped: number; warnings: PackageIssue[]};
+const sameJson = (left: unknown, right: unknown) => JSON.stringify(left) === JSON.stringify(right);
+const sameTargetLocales = (left: readonly string[], right: readonly string[]) => left.length === right.length && left.every((locale, index) => locale === right[index]);
+const immutableFieldMatches = (actual: PackageField, expected: PackageField) => actual.id === expected.id
+  && actual.entity_type === expected.entity_type && actual.entity_id === expected.entity_id
+  && actual.item_id === expected.item_id && actual.field_key === expected.field_key
+  && actual.path === expected.path && actual.source_text === expected.source_text
+  && actual.source_hash === expected.source_hash && actual.translation_profile === expected.translation_profile;
+const packageEnvelopeMatches = (actual: TranslationPackage, expected: TranslationPackage) => actual.source_locale === expected.source_locale
+  && sameTargetLocales(actual.target_locales, expected.target_locales)
+  && actual.entity.entity_type === expected.entity.entity_type && actual.entity.entity_id === expected.entity.entity_id
+  && actual.entity.entity_slug === expected.entity.entity_slug && actual.entity.source_version === expected.entity.source_version
+  && sameJson(actual.locked, expected.locked);
+const rejectPackage = (imported: TranslationPackage, expected: TranslationPackage): TranslationApplyResult | null => {
+  if (packageEnvelopeMatches(imported, expected)) return null;
+  return {content: {}, imported: 0, skipped: imported.fields.length, warnings: [{severity: 'warning', code: 'immutable_package_metadata', path: 'package', message: '译文包的来源语言、目标语言、路线版本或锁定元数据与当前路线不一致，已拒绝导入。'}]};
+};
 export function applyRouteTranslationPackage(product: OperationsProduct, imported: TranslationPackage): TranslationApplyResult {
-  const expected = buildRouteTranslationPackage(product); const expectedById = new Map(expected.fields.map(item => [item.id, item])); const content = structuredClone(product.content ?? {}) as Record<string, unknown>; const locales = asRecord(content.locales); let importedCount = 0; let skipped = 0; const warnings: PackageIssue[] = [];
+  const expected = buildRouteTranslationPackage(product); const rejected = rejectPackage(imported, expected); if (rejected) return {...rejected, content: structuredClone(product.content ?? {}) as Record<string, unknown>};
+  const expectedById = new Map(expected.fields.map(item => [item.id, item])); const content = structuredClone(product.content ?? {}) as Record<string, unknown>; const locales = asRecord(content.locales); let importedCount = 0; let skipped = 0; const warnings: PackageIssue[] = [];
   for (const fieldValue of imported.fields) {
-    const expectedField = expectedById.get(fieldValue.id); if (!expectedField || expectedField.source_hash !== fieldValue.source_hash || expectedField.path !== fieldValue.path) { skipped += 1; warnings.push({severity: 'warning', code: 'stale_or_unknown', path: fieldValue.path, message: '中文来源已经变化或字段不属于当前路线，已跳过'}); continue; }
+    const expectedField = expectedById.get(fieldValue.id); if (!expectedField || !immutableFieldMatches(fieldValue, expectedField)) { skipped += 1; warnings.push({severity: 'warning', code: 'immutable_field_metadata', path: fieldValue.path, message: '译文字段元数据与当前路线不一致，已跳过'}); continue; }
     for (const locale of TARGET_LOCALES) {
       const translated = fieldValue.translations[locale]; if (!translated?.text.trim()) continue;
-      const local = asRecord(locales[locale]); const meta = asRecord(local._content_package); const fieldMap = asRecord(meta.fields); fieldMap[fieldValue.id] = {text: translated.text.trim(), source_hash: expectedField.source_hash, status: 'draft'}; locales[locale] = {...local, _content_package: {...meta, fields: fieldMap}}; importedCount += 1;
-      if (!fieldValue.item_id && ['title', 'summary', 'description', 'heroTitle', 'heroSubtitle', 'heroHighlightPhrase', 'subtitle'].includes(fieldValue.field_key)) locales[locale] = {...asRecord(locales[locale]), [fieldValue.field_key]: translated.text.trim()};
-      if (fieldValue.item_id) {
+      const local = asRecord(locales[locale]); const meta = asRecord(local._content_package); const fieldMap = asRecord(meta.fields); fieldMap[fieldValue.id] = {text: translated.text.trim(), source_text: expectedField.source_text, source_hash: expectedField.source_hash, status: 'draft', entity_type: expectedField.entity_type, entity_id: expectedField.entity_id, item_id: expectedField.item_id, field_key: expectedField.field_key, path: expectedField.path, translation_profile: expectedField.translation_profile}; locales[locale] = {...local, _content_package: {...meta, fields: fieldMap}}; importedCount += 1;
+      if (!fieldValue.item_id && ['title', 'summary', 'description', 'heroTitle', 'heroSubtitle', 'heroHighlightPhrase', 'subtitle', 'bookingNotice', 'cancellationPolicy', 'participantRules', 'weatherNotice', 'baggageNotice', 'safetyNotice'].includes(fieldValue.field_key)) locales[locale] = {...asRecord(locales[locale]), [fieldValue.field_key]: translated.text.trim()};
+      if (fieldValue.item_id && routeListKey(fieldValue.field_key)) {
+        const list = asRecord(asRecord(locales[locale])[fieldValue.field_key]); list[fieldValue.item_id] = translated.text.trim(); locales[locale] = {...asRecord(locales[locale]), [fieldValue.field_key]: list};
+      } else if (fieldValue.item_id) {
         const itinerary = asRecord(asRecord(locales[locale]).itinerary); const existing = asRecord(itinerary[fieldValue.item_id]);
         itinerary[fieldValue.item_id] = {...existing, [fieldValue.field_key]: translated.text.trim()}; locales[locale] = {...asRecord(locales[locale]), itinerary};
       }
     }
   }
-  content.locales = locales; return {content, imported: importedCount, skipped, warnings};
+  content.translationListItems = expected.locked.translation_list_items as RouteListItems; content.locales = locales; return {content, imported: importedCount, skipped, warnings};
 }
 
 export function applyHeroTranslationPackage(hero: DiscoverHero, imported: TranslationPackage): {hero: DiscoverHero; imported: number; skipped: number; warnings: PackageIssue[]} {
   const expected = buildHeroTranslationPackage(hero); const expectedById = new Map(expected.fields.map(item => [item.id, item]));
+  if (!packageEnvelopeMatches(imported, expected)) return {hero, imported: 0, skipped: imported.fields.length, warnings: [{severity: 'warning', code: 'immutable_package_metadata', path: 'package', message: '译文包的锁定元数据与当前 Hero 不一致，已拒绝导入。'}]};
   const next = structuredClone(hero) as DiscoverHero; let importedCount = 0; let skipped = 0; const warnings: PackageIssue[] = [];
   for (const row of imported.fields) {
     const expectedField = expectedById.get(row.id);
-    if (!expectedField || expectedField.source_hash !== row.source_hash || expectedField.path !== row.path) { skipped += 1; warnings.push({severity: 'warning', code: 'stale_or_unknown', path: row.path, message: '中文来源已经变化或字段不属于当前 Hero，已跳过'}); continue; }
+    if (!expectedField || !immutableFieldMatches(row, expectedField)) { skipped += 1; warnings.push({severity: 'warning', code: 'immutable_field_metadata', path: row.path, message: '译文字段元数据与当前 Hero 不一致，已跳过'}); continue; }
     for (const locale of TARGET_LOCALES) {
       const translated = row.translations[locale]; if (!translated?.text.trim()) continue;
       const current = next.translations[locale] ?? {title: '', subtitle: ''};
