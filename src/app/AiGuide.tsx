@@ -74,7 +74,7 @@ function TripCompanion({group}:{group:string|null}){
   const validCoordinates=meeting&&Number.isFinite(meeting.latitude)&&Number.isFinite(meeting.longitude)&&Math.abs(meeting.latitude)<=90&&Math.abs(meeting.longitude)<=180;
   const destination=validCoordinates?`${meeting.latitude},${meeting.longitude}`:meeting?.meeting_address;
   return <div className="trip-companion">
-    <header><small>本车行程</small><h1>{snapshot?.context?.trip_title??'本次行程导览'}</h1><Link to={`/app/my-trip/room?vehicleGroup=${encodeURIComponent(group)}`}>本车群与工作人员 →</Link></header>
+    <header><small>本车行程</small><h1>{snapshot?.context?.trip_title??'本次行程导览'}</h1><Link to={`/app/trip-map?vehicleGroup=${encodeURIComponent(group)}`}>打开地图与导览 →</Link><Link to={`/app/my-trip/room?vehicleGroup=${encodeURIComponent(group)}`}>本车群与工作人员 →</Link></header>
     {error&&<section role="alert"><p>{error}。导览已暂停，集合信息需重新核对。</p><button onClick={()=>void refreshRef.current()}>重新读取</button></section>}
     {!snapshot&&!error&&<p role="status">正在读取本车路线与集合安排…</p>}
     {snapshot&&<section className={gathering?'trip-companion-meeting active':'trip-companion-meeting'}>

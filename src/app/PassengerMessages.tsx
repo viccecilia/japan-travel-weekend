@@ -22,7 +22,7 @@ export function PassengerMessages(){
     const preferred=await services.tripRoom.loadAccessibleRoom();
     if(preferred.error)throw new Error(preferred.error);
     const preferredRoom=preferred.data as Room|null;
-    const fulfilments=await Promise.all(orders.data.filter(o=>['paid','confirmed'].includes(o.status)).map(o=>services.loadOwnOrderFulfilment(o.id)));
+    const fulfilments=await Promise.all(orders.data.filter(o=>['paid','confirmed','completed'].includes(o.status)).map(o=>services.loadOwnOrderFulfilment(o.id)));
     const ids=[...new Set([...fulfilments.map(f=>(f as {vehicle_group_id?:string}|null)?.vehicle_group_id),preferredRoom?.vehicle_group_id,requested].filter((id):id is string=>!!id))];
     const rooms=await Promise.all(ids.map(async id=>{
      const response=await services.tripRoom.loadAccessibleRoom(id);

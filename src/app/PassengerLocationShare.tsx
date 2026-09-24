@@ -4,8 +4,8 @@ import type {PassengerLocale} from '../shared/i18n/passengerLocale';
 import {passengerRound1Copy} from '../shared/i18n/passengerRound1';
 
 type Point={latitude:number;longitude:number;accuracy:number|null;sampledAt:string};
-type Props={repository:SupabaseTripRoomRepository;groupId:string;locale:PassengerLocale;disabled?:boolean;staff?:boolean};
-export function PassengerLocationShare({repository,groupId,locale,disabled=false,staff=false}:Props){
+type Props={repository:SupabaseTripRoomRepository;groupId:string;locale:PassengerLocale;disabled?:boolean;staff?:boolean;presentation?:'toolbar'|'more';onActivated?:()=>void};
+export function PassengerLocationShare({repository,groupId,locale,disabled=false,staff=false,presentation='toolbar',onActivated}:Props){
  const c=passengerRound1Copy[locale].location;
  const [rows,setRows]=useState<Awaited<ReturnType<SupabaseTripRoomRepository['loadPassengerLocations']>>>([]);
  const [point,setPoint]=useState<Point|null>(null),[error,setError]=useState(false),[busy,setBusy]=useState(false);
@@ -39,7 +39,7 @@ export function PassengerLocationShare({repository,groupId,locale,disabled=false
  };
  if(staff)return <section className="room-panel"><h3>{c.staff}</h3>{error?<p role="alert">{c.failed}</p>:rows.length===0?<p>{c.empty}</p>:rows.map((row,index)=><p key={row.id}><a href={`https://www.google.com/maps/search/?api=1&query=${Number(row.latitude)},${Number(row.longitude)}`} target="_blank" rel="noreferrer">{row.display_name||`#${index+1}`} · {new Date(row.sampled_at).toLocaleTimeString(locale,{timeZone:'Asia/Tokyo'})}</a></p>)}</section>;
  return <>
-  <button type="button" aria-label={c.send} title={c.send} disabled={disabled||busy} onClick={locate}>⌖</button>
+  <button className={presentation==='more'?'pc-more-action':''} type="button" aria-label={c.send} title={c.send} disabled={disabled||busy} onClick={()=>{onActivated?.();locate()}}>{presentation==='more'?<><span aria-hidden="true">⌖</span><span>{c.send}</span></>:'⌖'}</button>
   {panel&&<div className="pc-modal-backdrop"><section className="pc-modal" role="dialog" aria-modal="true" aria-label={c.send} onKeyDown={event=>{if(event.key==='Escape'&&!busy){setPanel(false);setPoint(null)}}}>
    {point&&<><p>{c.confirm}</p><button disabled={busy||disabled} onClick={()=>void change(false)}>{busy?c.working:c.send}</button></>}
    {rows.length>0&&<><p>{c.shared}</p><button disabled={busy} onClick={()=>void change(true)}>{c.stop}</button></>}

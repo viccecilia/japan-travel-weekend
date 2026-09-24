@@ -813,6 +813,16 @@ export class SupabaseTripRoomRepository {
       .maybeSingle();
     return error ? null : data;
   }
+  async loadSharedPlaces(vehicleGroupId:string){
+    if(!this.client)return [] as Array<{id:string;trip_room_id:string;vehicle_group_id:string;label:string;address:string|null;latitude:number;longitude:number;author_name:string|null;created_at:string}>;
+    const {data,error}=await this.client.rpc('get_trip_room_shared_places',{p_vehicle_group:vehicleGroupId});
+    return error||!Array.isArray(data)?[]:data as Array<{id:string;trip_room_id:string;vehicle_group_id:string;label:string;address:string|null;latitude:number;longitude:number;author_name:string|null;created_at:string}>;
+  }
+  async createSharedPlace(roomId:string,input:{label:string;address?:string;latitude:number;longitude:number;clientKey?:string}){
+    if(!this.client)return null;
+    const {data,error}=await this.client.rpc('create_trip_room_shared_place',{p_room:roomId,p_label:input.label,p_address:input.address??'',p_latitude:input.latitude,p_longitude:input.longitude,p_client_key:input.clientKey??crypto.randomUUID()});
+    return error||!Array.isArray(data)?null:data[0]??null;
+  }
   async loadMessages(roomId: string) {
     if (!this.client) return [];
     const { data, error } = await this.client.rpc('get_trip_room_messages_for_member',{p_room:roomId});

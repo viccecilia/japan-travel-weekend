@@ -268,6 +268,8 @@ export const passengerRound1Copy: Record<PassengerLocale, any> = {
     },
     "photo": {
       "add": "添加图片",
+      "library": "相册",
+      "camera": "拍照",
       "send": "发送图片",
       "busy": "上传并发送中…",
       "failed": "图片未能发送，请重试。",
@@ -532,6 +534,8 @@ export const passengerRound1Copy: Record<PassengerLocale, any> = {
     },
     "photo": {
       "add": "新增圖片",
+      "library": "相簿",
+      "camera": "拍照",
       "send": "傳送圖片",
       "busy": "上傳並傳送中…",
       "failed": "圖片未能傳送，請重試。",
@@ -796,6 +800,8 @@ export const passengerRound1Copy: Record<PassengerLocale, any> = {
     },
     "photo": {
       "add": "写真を追加",
+      "library": "アルバム",
+      "camera": "カメラ",
       "send": "写真を送信",
       "busy": "アップロード・送信中…",
       "failed": "写真を送信できません。再試行してください。",
@@ -1060,6 +1066,8 @@ export const passengerRound1Copy: Record<PassengerLocale, any> = {
     },
     "photo": {
       "add": "Add photo",
+      "library": "Photo library",
+      "camera": "Camera",
       "send": "Send photo",
       "busy": "Uploading and sending…",
       "failed": "Photo could not be sent. Please try again.",
@@ -1324,6 +1332,8 @@ export const passengerRound1Copy: Record<PassengerLocale, any> = {
     },
     "photo": {
       "add": "사진 추가",
+      "library": "사진첩",
+      "camera": "카메라",
       "send": "사진 보내기",
       "busy": "업로드 및 전송 중…",
       "failed": "사진을 보내지 못했습니다. 다시 시도해 주세요.",
@@ -1588,6 +1598,8 @@ export const passengerRound1Copy: Record<PassengerLocale, any> = {
     },
     "photo": {
       "add": "Añadir foto",
+      "library": "Galería",
+      "camera": "Cámara",
       "send": "Enviar foto",
       "busy": "Subiendo y enviando…",
       "failed": "No se pudo enviar la foto. Inténtalo de nuevo.",
@@ -1852,6 +1864,8 @@ export const passengerRound1Copy: Record<PassengerLocale, any> = {
     },
     "photo": {
       "add": "Thêm ảnh",
+      "library": "Thư viện ảnh",
+      "camera": "Máy ảnh",
       "send": "Gửi ảnh",
       "busy": "Đang tải lên và gửi…",
       "failed": "Không gửi được ảnh. Vui lòng thử lại.",
@@ -2116,6 +2130,8 @@ export const passengerRound1Copy: Record<PassengerLocale, any> = {
     },
     "photo": {
       "add": "फोटो थप्नुहोस्",
+      "library": "फोटो एल्बम",
+      "camera": "क्यामेरा",
       "send": "फोटो पठाउनुहोस्",
       "busy": "अपलोड र पठाउँदै…",
       "failed": "फोटो पठाउन सकिएन। फेरि प्रयास गर्नुहोस्।",

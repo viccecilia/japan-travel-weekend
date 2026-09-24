@@ -52,6 +52,7 @@ import {AccountStatus,AuthCallback,CreateAccount,ForgotPassword,ResetPassword} f
 import {DesignLab} from "../app/DesignLab";
 import {StaffPortal,StaffTaskAction} from "../app/StaffPortal";
 import {AiGuide} from "../app/AiGuide";
+import {TripMap} from '../app/TripMap';
 import {VipCharter} from '../app/VipCharter';
 import {OperationsLayout} from "../app/operations/OperationsLayout";
 const OperationsDashboard=lazy(()=>import('../app/OperationsDashboard').then(module=>({default:module.OperationsDashboard})));
@@ -190,6 +191,7 @@ export function Router() {
         }
       />
       <Route path="/app/ai-guide" element={<RequireAccount><AppShell nav><AiGuide/></AppShell></RequireAccount>} />
+      <Route path="/app/trip-map" element={<RequireAccount><AppShell><TripMap/></AppShell></RequireAccount>} />
       <Route
         path="/app/private-groups"
         element={

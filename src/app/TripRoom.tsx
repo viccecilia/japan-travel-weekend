@@ -8,12 +8,7 @@ import type { ProductionBrowserServices } from "../shared/backend/productionServ
 import { driverLocationNavigationUrl } from "../shared/capabilities/locationLinks";
 import { attendanceSummary } from "../shared/services/attendance";
 import { contactPassenger } from "../shared/services/contactPassenger";
-import {
-  chatLanguages,
-  preferredChatLanguage,
-  templateTranslation,
-  type ChatLanguage,
-} from "../shared/services/chatTranslation";
+import {chatLanguages,templateTranslation,type ChatLanguage} from "../shared/services/chatTranslation";
 import { useApp } from "./store";
 import { PassengerChatRoom } from "./PassengerChatRoom";
 import {PassengerLocationShare} from './PassengerLocationShare';
@@ -21,6 +16,7 @@ import {ChatPhoto,ChatPhotoUpload} from './ChatPhoto';
 import { passengerChatDemo } from "../shared/data/passengerChatDemo";
 import {projectItineraryStops} from "../shared/services/itineraryMeeting";
 import type {PassengerLocale} from '../shared/i18n/passengerLocale';
+import {passengerRound1Copy} from '../shared/i18n/passengerRound1';
 const myTripCopy:Record<PassengerLocale,{empty:string;emptyText:string;browse:string;eyebrow:string;title:string}>={
   'zh-CN':{empty:'暂无进行中的行程',emptyText:'正式环境不会自动生成车辆、司机、倒计时、聊天或位置数据。',browse:'浏览路线',eyebrow:'我的行程',title:'行程履约'},
   'zh-TW':{empty:'目前沒有進行中的行程',emptyText:'正式環境不會自動產生車輛、司機、倒數、聊天或位置資料。',browse:'瀏覽路線',eyebrow:'我的行程',title:'行程服務'},
@@ -196,7 +192,7 @@ export function MyTrip() {
   );
 }
 export function TripRoom() {
-  const { state, services } = useApp();
+  const { state, services, setUi } = useApp();
   if (services) return <RemoteTripRoom services={services} />;
   if (appConfig.runtimeMode === "production")
     return (
@@ -207,7 +203,7 @@ export function TripRoom() {
     );
   const room = state.tripRoom;
   if (!room) return <Empty locale={state.ui.locale??'zh-CN'} />;
-  return <PassengerChatRoom {...passengerChatDemo} />;
+  return <PassengerChatRoom {...passengerChatDemo} onLocaleChange={(next) => setUi({ ...state.ui, locale: next })} />;
 }
 
 type RemoteMessage = {
@@ -220,7 +216,7 @@ type RemoteMessage = {
   important?: boolean;
   author_id?: string;
   author_name?: string;
-  author_role?: "passenger"|"driver"|"guide"|"operations";
+  author_role?: "passenger"|"driver"|"guide"|"driver_guide"|"operations";
   created_at?: string;
   trip_room_message_translations?: Array<{
     target_language: string;
@@ -244,6 +240,7 @@ type RemoteDriverLocation = {
   updated_at: string;
   expires_at: string;
 };
+type RemoteSharedPlace = {id:string;label:string;address:string|null;latitude:number;longitude:number;author_name:string|null;created_at:string};
 type RemoteMeeting = {
   vehicle_group_id: string;
   meeting_at: string;
@@ -307,10 +304,11 @@ type RemoteRoom = {
   total_orders: number;
 };
 function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
-  const {state}=useApp();
+  const {state,setUi}=useApp();
   const [searchParams]=useSearchParams();
   const requestedVehicleGroup=searchParams.get('vehicleGroup');
   const locale=state.ui.locale??'zh-CN';
+  const chatCopy=passengerRound1Copy[locale].chat;
   const ui=(zh:string,en:string)=>locale==='en'?en:zh;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -318,14 +316,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
   const [role, setRole] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [messages, setMessages] = useState<RemoteMessage[]>([]);
-  const [translationLanguage, setTranslationLanguage] = useState<ChatLanguage>(
-    () =>
-      preferredChatLanguage(
-        typeof navigator === "undefined" ? [] : navigator.languages,
-      ),
-  );
   const [autoTranslate, setAutoTranslate] = useState(true);
-  const [followDeviceLanguage, setFollowDeviceLanguage] = useState(true);
   const [boardings, setBoardings] = useState<RemoteBoarding[]>([]);
   const [attendance, setAttendance] = useState<RemoteAttendance[]>([]);
   const [connection, setConnection] = useState<
@@ -341,6 +332,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
   const [meeting, setMeeting] = useState<RemoteMeeting | null>(null);
   const [passengerContext,setPassengerContext]=useState<PassengerTripContext|null>(null);
   const [routeStops,setRouteStops]=useState<RemoteItineraryStop[]>([]);
+  const [sharedPlaces,setSharedPlaces]=useState<RemoteSharedPlace[]>([]);
   const subscription = useRef<{
     close(): void;
   } | null>(null);
@@ -359,14 +351,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
       setRole(currentRole);
       const preference = await services.tripRoom.loadTranslationPreference();
       if (preference) {
-        const follow = Boolean(preference.follow_device_language);
         setAutoTranslate(Boolean(preference.auto_translate));
-        setFollowDeviceLanguage(follow);
-        setTranslationLanguage(
-          follow
-            ? preferredChatLanguage(navigator.languages)
-            : (preference.target_language as ChatLanguage),
-        );
       }
       const result = await services.tripRoom.loadAccessibleRoom(requestedVehicleGroup);
       if (cancelled) return;
@@ -395,6 +380,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
           nextRoom.vehicle_group_id,
         )) as RemoteDriverLocation | null,
       );
+      setSharedPlaces((await services.tripRoom.loadSharedPlaces(nextRoom.vehicle_group_id)) as RemoteSharedPlace[]);
       setMessages(
         (await services.tripRoom.loadMessages(
           nextRoom.room_id,
@@ -418,10 +404,10 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
       }
       const live = await services.realtime.subscribeTripRoom(
         nextRoom.room_id,
-        () =>
-          void services.tripRoom
-            .loadMessages(nextRoom.room_id)
-            .then((value) => setMessages(value as RemoteMessage[])),
+        () => {
+          void services.tripRoom.loadMessages(nextRoom.room_id).then((value) => setMessages(value as RemoteMessage[]));
+          void services.tripRoom.loadSharedPlaces(nextRoom.vehicle_group_id).then((value) => setSharedPlaces(value as RemoteSharedPlace[]));
+        },
         (roomStatus) =>
           setRoom((value) =>
             value ? { ...value, room_status: roomStatus } : value,
@@ -465,18 +451,19 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
       void services.tripRoom
         .loadCurrentMeeting(room.vehicle_group_id)
         .then((value) => setMeeting(value as RemoteMeeting | null));
+      void services.tripRoom.loadSharedPlaces(room.vehicle_group_id).then((value) => setSharedPlaces(value as RemoteSharedPlace[]));
     };
     const timer = window.setInterval(refresh, 15000);
     return () => window.clearInterval(timer);
   }, [room, services]);
   useEffect(() => {
-    if (!autoTranslate || translationLanguage === "zh-CN" || !room) return;
+    if (!autoTranslate || locale === "zh-CN" || !room) return;
     const missing = messages.filter(
       (message) =>
         !message.template_key &&
-        message.source_language !== translationLanguage &&
+        message.source_language !== locale &&
         !message.trip_room_message_translations?.some(
-          (item) => item.target_language === translationLanguage,
+          (item) => item.target_language === locale,
         ),
     );
     if (!missing.length) return;
@@ -485,7 +472,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
       missing.map((message) =>
         services.translateMessage({
           messageId: message.id,
-          targetLanguage: translationLanguage,
+          targetLanguage: locale,
         }),
       ),
     ).then((results) => {
@@ -497,7 +484,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
     return () => {
       cancelled = true;
     };
-  }, [autoTranslate, messages, room, services, translationLanguage]);
+  }, [autoTranslate, locale, messages, room, services]);
   const send = async () => {
     if (
       !room ||
@@ -677,35 +664,21 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
     );
     setNotice("重要模板通知已发送并保留原文。");
   };
-  const saveTranslationSettings = async (
-    nextLanguage: ChatLanguage,
-    nextAuto = autoTranslate,
-    nextFollow = followDeviceLanguage,
-  ) => {
-    const effective = nextFollow
-      ? preferredChatLanguage(navigator.languages)
-      : nextLanguage;
-    setTranslationLanguage(effective);
-    setAutoTranslate(nextAuto);
-    setFollowDeviceLanguage(nextFollow);
-    const ok = await services.tripRoom.saveTranslationPreference(
-      effective,
-      nextAuto,
-      nextFollow,
-    );
-    setNotice(
-      ok
-        ? "聊天翻译偏好已保存。"
-        : "翻译偏好暂时只在当前页面生效；数据库迁移尚未连接。",
-    );
-  };
   const translatedMessage = (message: RemoteMessage) => {
     if (!autoTranslate) return null;
     const stored = message.trip_room_message_translations?.find(
-      (item) => item.target_language === translationLanguage,
+      (item) => item.target_language === locale,
     )?.translated_content;
     if (stored) return stored;
-    return templateTranslation(message.template_key, translationLanguage);
+    return templateTranslation(message.template_key, locale);
+  };
+  const saveAutoTranslate = async (nextAuto: boolean) => {
+    setAutoTranslate(nextAuto);
+    await services.tripRoom.saveTranslationPreference(
+      locale as ChatLanguage,
+      nextAuto,
+      false,
+    );
   };
   const markBoarded = async (orderId: string) => {
     const ok = await services.tripRoom.markOrderBoarded(
@@ -754,8 +727,8 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
     const remoteStop = {
       id: `meeting-${room.vehicle_group_id}-${meeting?.revision ?? 0}`,
       name: "当前集合",
-      meetingTime: meetingAt
-        ? new Date(meetingAt).toLocaleTimeString("zh-CN", {
+        meetingTime: meetingAt
+          ? new Date(meetingAt).toLocaleTimeString(locale, {
             timeZone: "Asia/Tokyo",
             hour: "2-digit",
             minute: "2-digit",
@@ -784,31 +757,35 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
     const projected=projectItineraryStops(routeStops,remoteStop.meetingPointName);
     const matchedIndex=projected.currentIndex;
     const itineraryStops=routeStops.length?projected.stops:(passengerContext?.itinerary??[]).filter(name=>name!==remoteStop.meetingPointName).map((name,index)=>({id:`route-${index}`,name,meetingTime:"时间待司导更新",meetingPointName:name,meetingPointDescription:"具体停留与集合安排以司导在群内发布的信息为准。",latitude:remoteStop.latitude,longitude:remoteStop.longitude,status:'upcoming' as const}));
-    if(!routeStops.length&&passengerContext?.return_at)itineraryStops.push({id:'return',name:'预计返程到达',meetingTime:new Date(passengerContext.return_at).toLocaleTimeString('zh-CN',{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit',hour12:false}),meetingPointName:'返回地点以订单与司导通知为准',meetingPointDescription:'预计到达时间会受当天交通影响。',latitude:remoteStop.latitude,longitude:remoteStop.longitude,status:'upcoming' as const});
-    const passengerMessages = messages.map((message) => ({
+    if(!routeStops.length&&passengerContext?.return_at)itineraryStops.push({id:'return',name:'预计返程到达',meetingTime:new Date(passengerContext.return_at).toLocaleTimeString(locale,{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit',hour12:false}),meetingPointName:'返回地点以订单与司导通知为准',meetingPointDescription:'预计到达时间会受当天交通影响。',latitude:remoteStop.latitude,longitude:remoteStop.longitude,status:'upcoming' as const});
+    const passengerMessages = messages.map((message) => {
+      const sharedId=/^\[\[jtw:shared_place:([^\]]+)\]\]/.exec(message.content)?.[1];
+      const sharedPlace=sharedId?sharedPlaces.find(place=>place.id===sharedId):undefined;
+      return {
       id: message.id,
       senderId: message.author_id ?? "operations",
       name:
         message.author_id === currentUserId
           ? "我"
           : message.author_name??"本车成员",
-      role: (message.author_role??"passenger") as "passenger" | "driver" | "guide" | "operations",
-      content: message.original_content ?? message.content,
+      role: (message.author_role??"passenger") as "passenger" | "driver" | "guide" | "driver_guide" | "operations",
+      content: sharedPlace?'':message.original_content ?? message.content,
       photo:message.photoPath?<ChatPhoto key={message.id} repository={services.tripRoom} locale={locale} path={message.photoPath}/>:undefined,
+      location:sharedPlace?<div className="pc-location-card"><b>📍 {sharedPlace.label}</b>{sharedPlace.address&&<small>{sharedPlace.address}</small>}<Link to={`/app/trip-map?vehicleGroup=${encodeURIComponent(room.vehicle_group_id)}`}>查看地图 →</Link></div>:undefined,
       translated: translatedMessage(message) ?? undefined,
       sourceLanguage: message.source_language,
       time: message.created_at
-        ? new Date(message.created_at).toLocaleTimeString("zh-CN", {
+        ? new Date(message.created_at).toLocaleTimeString(locale, {
             timeZone: "Asia/Tokyo",
             hour: "2-digit",
             minute: "2-digit",
             hour12: false,
           })
         : "",
-    }));
+    };});
     return (
       <PassengerChatRoom
-        tripName={passengerContext?.trip_title??room.vehicle_label ?? "本车旅行团"}
+        tripName={passengerContext?.trip_title??room.vehicle_label ?? passengerRound1Copy[locale].messages.thisVehicle}
         status={
           room.room_status === "closed"
             ? "ended"
@@ -818,13 +795,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
                 ? "traveling"
                 : "preparing"
         }
-        stage={
-          meeting?.status === "active"
-            ? "正在集合"
-            : room.room_status === "open"
-              ? "行程进行中"
-              : "出发准备"
-        }
+        stage={meeting?.status === "active" ? chatCopy.status.meeting : room.room_status === "open" ? chatCopy.status.traveling : chatCopy.status.preparing}
         meetingActive={
           meeting?.status === "active" ||
           messages.some(
@@ -841,7 +812,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
         }}
         guide={{
           name: passengerContext?.staff_name??"当班工作人员待分配",
-          role: passengerContext?.staff_role==='guide'?"导游":passengerContext?.staff_role==='driver_guide'?"司导":passengerContext?.staff_role==='driver'?"司机":"工作人员",
+          role: passengerContext?.staff_role==='guide'?passengerRound1Copy[locale].chat.guide:passengerContext?.staff_role==='driver_guide'?passengerRound1Copy[locale].chat.driverGuide:passengerContext?.staff_role==='driver'?passengerRound1Copy[locale].chat.driver:passengerRound1Copy[locale].chat.operations,
           phone: passengerContext?.staff_phone??"",
           avatar: "导",
           vehicle: {
@@ -854,8 +825,9 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
         stops={matchedIndex>=0?itineraryStops:[remoteStop,...itineraryStops]}
         messages={passengerMessages}
         readOnly={!access.enabled}
-        locationControl={<PassengerLocationShare key={room.vehicle_group_id} repository={services.tripRoom} groupId={room.vehicle_group_id} locale={locale} disabled={!access.enabled}/>}
-        photoControl={<ChatPhotoUpload key={room.room_id} repository={services.tripRoom} roomId={room.room_id} locale={locale} disabled={!access.enabled} onSent={()=>void services.tripRoom.loadMessages(room.room_id).then(value=>setMessages(value as RemoteMessage[]))}/>}
+        mapHref={`/app/trip-map?vehicleGroup=${encodeURIComponent(room.vehicle_group_id)}`}
+        onLocaleChange={(next)=>setUi({...state.ui,locale:next})}
+        renderMoreControls={()=><><PassengerLocationShare key={room.vehicle_group_id} repository={services.tripRoom} groupId={room.vehicle_group_id} locale={locale} disabled={!access.enabled} presentation="more"/><ChatPhotoUpload key={`${room.room_id}-library`} repository={services.tripRoom} roomId={room.room_id} locale={locale} disabled={!access.enabled} presentation="more" source="library" onSent={()=>void services.tripRoom.loadMessages(room.room_id).then(value=>setMessages(value as RemoteMessage[]))}/><ChatPhotoUpload key={`${room.room_id}-camera`} repository={services.tripRoom} roomId={room.room_id} locale={locale} disabled={!access.enabled} presentation="more" source="camera" onSent={()=>void services.tripRoom.loadMessages(room.room_id).then(value=>setMessages(value as RemoteMessage[]))}/></>}
         onSend={(content) =>
           void services.tripRoom.sendMessage(room.room_id, content)
         }
@@ -1225,27 +1197,10 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
         <fieldset className="translation-settings">
           <legend>{ui("聊天翻译","Chat translation")}</legend>
           <label>
-            <input
-              type="checkbox"
-              checked={followDeviceLanguage}
-              onChange={(event) =>
-                void saveTranslationSettings(
-                  translationLanguage,
-                  autoTranslate,
-                  event.target.checked,
-                )
-              }
-            />{" "}
-            {ui("跟随手机系统语言","Follow device language")}
-          </label>
-          <label>
-            {ui("翻译成","Translate into")}
+            {ui("应用语言","App language")}
             <select
-              value={translationLanguage}
-              disabled={followDeviceLanguage}
-              onChange={(event) =>
-                void saveTranslationSettings(event.target.value as ChatLanguage)
-              }
+              value={locale}
+              onChange={(event) => setUi({...state.ui,locale:event.target.value as ChatLanguage})}
             >
               {chatLanguages.map((language) => (
                 <option key={language.code} value={language.code}>
@@ -1258,19 +1213,14 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
             <input
               type="checkbox"
               checked={autoTranslate}
-              onChange={(event) =>
-                void saveTranslationSettings(
-                  translationLanguage,
-                  event.target.checked,
-                )
-              }
+              onChange={(event) => void saveAutoTranslate(event.target.checked)}
             />{" "}
             {ui("自动显示译文","Show translations automatically")}
           </label>
           <p className="privacy">
             {ui("当前目标：","Current target: ")}
             {
-              chatLanguages.find((item) => item.code === translationLanguage)
+              chatLanguages.find((item) => item.code === locale)
                 ?.label
             }
             {ui("。始终保留原文；重要模板使用预置译文，自由聊天需翻译服务连接后才生成译文。",". Original text is always preserved. Important templates use prepared translations; free chat is translated only when the translation service is connected.")}
@@ -1300,7 +1250,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
                 <small>
                   {
                     chatLanguages.find(
-                      (item) => item.code === translationLanguage,
+                        (item) => item.code === locale,
                     )?.label
                   }
                   {ui("译文"," translation")}
@@ -1309,7 +1259,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
                 {translatedMessage(m)}
               </p>
             ) : autoTranslate &&
-              translationLanguage !== "zh-CN" &&
+              locale !== "zh-CN" &&
               !m.template_key ? (
               <p className="translation-unavailable">
                 {ui("自由聊天翻译服务尚未连接，当前保留原文。","Free-chat translation is not connected; the original text is shown.")}

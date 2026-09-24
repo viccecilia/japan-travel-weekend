@@ -245,11 +245,11 @@ export function AppShell({
   const navCopy=passengerNavigation[locale];
   const isDiscover=pathname==='/app';
   const navigation:Array<{id:PassengerNavSection,to:string,icon:string,label:string}>=[
-    {id:'home',to:'/app',icon:'⌂',label:navCopy.home},
-    {id:'trips',to:'/app/trips',icon:'◇',label:navCopy.trips},
-    {id:'orders',to:'/app/orders',icon:'▤',label:navCopy.orders},
-    {id:'messages',to:'/app/messages',icon:'◉',label:navCopy.messages},
-    {id:'profile',to:'/app/profile',icon:'○',label:navCopy.profile},
+    {id:'home',to:'/app',icon:'⌂',label:navCopy.bottom.home},
+    {id:'trips',to:'/app/trips',icon:'◇',label:navCopy.bottom.trips},
+    {id:'orders',to:'/app/orders',icon:'▤',label:navCopy.bottom.orders},
+    {id:'messages',to:'/app/messages',icon:'◉',label:navCopy.bottom.messages},
+    {id:'profile',to:'/app/profile',icon:'○',label:navCopy.bottom.profile},
   ];
   return (
     <div className="app-stage">

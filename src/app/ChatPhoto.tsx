@@ -15,7 +15,7 @@ export function ChatPhoto({repository,locale,path}:Props&{path:string}){
  },[repository,path,retry]);
  return failed?<button onClick={()=>setRetry(value=>value+1)}>{c.photo} · {c.retry}</button>:url?<img src={url} alt={c.photo} style={{maxWidth:'100%',maxHeight:300,objectFit:'contain'}} onError={()=>setFailed(true)}/>:<span role="status">{c.photo}…</span>;
 }
-export function ChatPhotoUpload({repository,locale,roomId,disabled,onSent}:Props&{roomId:string;disabled:boolean;onSent:()=>void}){
+export function ChatPhotoUpload({repository,locale,roomId,disabled,onSent,source='library',presentation='toolbar',onActivated}:Props&{roomId:string;disabled:boolean;onSent:()=>void;source?:'library'|'camera';presentation?:'toolbar'|'more';onActivated?:()=>void}){
  const c=passengerRound1Copy[locale].photo,input=useRef<HTMLInputElement>(null),lock=useRef(false);
  const [selected,setSelected]=useState<{file:File;id:string}|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState('');
  async function send(){
@@ -24,12 +24,12 @@ export function ChatPhotoUpload({repository,locale,roomId,disabled,onSent}:Props
   catch{setError(c.failed)}finally{lock.current=false;setBusy(false)}
  }
  return <>
-  <input ref={input} type="file" className="visually-hidden" accept="image/jpeg,image/png,image/webp,image/gif" aria-label={c.add} disabled={disabled||busy} onChange={event=>{
+   <input ref={input} type="file" className="visually-hidden" accept="image/jpeg,image/png,image/webp,image/gif" capture={source==='camera'?'environment':undefined} aria-label={presentation==='more'?(source==='camera'?c.camera:c.library):c.add} disabled={disabled||busy} onChange={event=>{
    const file=event.target.files?.[0];event.target.value='';if(!file)return;
    if(file.size<1||file.size>5*1024*1024||!['image/jpeg','image/png','image/webp','image/gif'].includes(file.type)){setError(c.limits);return}
    setSelected({file,id:crypto.randomUUID()});setError('');
   }}/>
-  <button type="button" aria-label={c.add} title={c.limits} disabled={disabled||busy} onClick={()=>input.current?.click()}>＋</button>
+   <button className={presentation==='more'?'pc-more-action':''} type="button" aria-label={presentation==='more'?(source==='camera'?c.camera:c.library):c.add} title={c.limits} disabled={disabled||busy} onClick={()=>{onActivated?.();input.current?.click()}}>{presentation==='more'?<><span aria-hidden="true">{source==='camera'?'◉':'▧'}</span><span>{source==='camera'?c.camera:c.library}</span></>:'＋'}</button>
   {(selected||error)&&<div className="pc-modal-backdrop"><section className="pc-modal" role="dialog" aria-modal="true" aria-label={c.add}>
    <p>{c.limits}</p>{selected&&<p>{selected.file.name}</p>}
    {error&&<p role="alert">{error}</p>}
