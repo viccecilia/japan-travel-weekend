@@ -15,6 +15,7 @@ import {PassengerLocationShare} from './PassengerLocationShare';
 import {ChatPhoto,ChatPhotoUpload} from './ChatPhoto';
 import { passengerChatDemo } from "../shared/data/passengerChatDemo";
 import {projectItineraryStops} from "../shared/services/itineraryMeeting";
+import {sharedPlaceMapHref} from '../shared/services/mapSession';
 import type {PassengerLocale} from '../shared/i18n/passengerLocale';
 import {passengerRound1Copy} from '../shared/i18n/passengerRound1';
 const myTripCopy:Record<PassengerLocale,{empty:string;emptyText:string;browse:string;eyebrow:string;title:string}>={
@@ -771,7 +772,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
       role: (message.author_role??"passenger") as "passenger" | "driver" | "guide" | "driver_guide" | "operations",
       content: sharedPlace?'':message.original_content ?? message.content,
       photo:message.photoPath?<ChatPhoto key={message.id} repository={services.tripRoom} locale={locale} path={message.photoPath}/>:undefined,
-      location:sharedPlace?<div className="pc-location-card"><b>📍 {sharedPlace.label}</b>{sharedPlace.address&&<small>{sharedPlace.address}</small>}<Link to={`/app/trip-map?vehicleGroup=${encodeURIComponent(room.vehicle_group_id)}`}>查看地图 →</Link></div>:undefined,
+      location:sharedPlace?<div className="pc-location-card"><b>📍 {sharedPlace.label}</b>{sharedPlace.address&&<small>{sharedPlace.address}</small>}<Link to={sharedPlaceMapHref(room.vehicle_group_id,sharedPlace.id)}>查看地图 →</Link></div>:undefined,
       translated: translatedMessage(message) ?? undefined,
       sourceLanguage: message.source_language,
       time: message.created_at

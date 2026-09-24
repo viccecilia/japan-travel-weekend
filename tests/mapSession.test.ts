@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { buildMapMarkers, resolveMapSessionMode } from '../src/shared/services/mapSession';
+import { describe, expect, it, vi } from 'vitest';
+import { buildMapMarkers, resolveFocusedMapMarker, resolveMapSessionMode, resolveSelectedMapMarker, sharedPlaceMapHref, startLocationFollow } from '../src/shared/services/mapSession';
 
 describe('trip map session', () => {
   it('uses the active meeting before driver lookup and never creates passenger-peer markers', () => {
@@ -18,5 +18,27 @@ describe('trip map session', () => {
   it('keeps the guide session when no meeting or live driver has been published', () => {
     expect(resolveMapSessionMode({roomStatus: 'open', meeting: null, driver: null})).toBe('guide');
     expect(resolveMapSessionMode({roomStatus: 'open', meeting: {status: 'scheduled'}, driver: null})).toBe('meeting');
+  });
+
+  it('does not let a driver marker override an explicit guide or meeting session', () => {
+    const driver={latitude:35,longitude:135};
+    expect(resolveMapSessionMode({roomStatus:'open',meeting:null,driver,requestedMode:'guide'})).toBe('guide');
+    expect(resolveMapSessionMode({roomStatus:'open',meeting:{status:'scheduled'},driver,requestedMode:'meeting'})).toBe('meeting');
+    expect(resolveMapSessionMode({roomStatus:'open',meeting:{status:'active'},driver,requestedMode:'guide'})).toBe('return_to_meeting');
+  });
+
+  it('prefers an explicitly selected shared or guide marker over the mode default', () => {
+    const markers=buildMapMarkers({roomStatus:'open',meeting:{status:'scheduled',latitude:35,longitude:135},driver:{latitude:35.1,longitude:135.1},shared:[{id:'shared-1',latitude:35.2,longitude:135.2,label:'Shared place'}],guide:[{id:'guide-1',latitude:35.3,longitude:135.3,name:'Guide node'}]});
+    expect(resolveSelectedMapMarker(markers,'shared:shared-1','driver')?.id).toBe('shared:shared-1');
+    expect(resolveSelectedMapMarker(markers,'guide:guide-1','meeting')?.id).toBe('guide:guide-1');
+    expect(resolveSelectedMapMarker(markers,null,'driver')?.id).toBe('driver');
+    expect(resolveFocusedMapMarker(markers,'shared:shared-1')?.id).toBe('shared:shared-1');
+    expect(sharedPlaceMapHref('vehicle 1','place/1')).toBe('/app/trip-map?vehicleGroup=vehicle%201&focus=shared%3Aplace%2F1');
+  });
+
+  it('starts and cleans up a continuous location watch', () => {
+    const clearWatch=vi.fn();const watchPosition=vi.fn((_ok:PositionCallback,_fail:PositionErrorCallback)=>42);
+    const stop=startLocationFollow({watchPosition,clearWatch},vi.fn(),vi.fn());
+    expect(watchPosition).toHaveBeenCalledOnce();stop();expect(clearWatch).toHaveBeenCalledWith(42);
   });
 });
