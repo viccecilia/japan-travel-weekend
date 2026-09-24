@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {applyHeroTranslationPackage, applyRouteTranslationPackage, buildHeroContentTemplate, buildHeroTranslationPackage, buildRouteContentTemplate, buildRouteTranslationPackage, localizedRouteList, pendingTranslationPackage, sanitizeRouteContent, validateContentPackage, validateTranslationPackage} from '../src/shared/contentPackages';
+import {applyHeroTranslationPackage, applyRouteTranslationPackage, buildHeroContentTemplate, buildHeroTranslationPackage, buildRouteContentTemplate, buildRouteTranslationPackage, localizedRouteList, pendingTranslationPackage, reconcileRouteListItems, sanitizeRouteContent, validateContentPackage, validateTranslationPackage} from '../src/shared/contentPackages';
 import {draftFromProduct, localizedDraft} from '../src/app/operations/productDraft';
 import type {OperationsProduct} from '../src/shared/integrations/supabaseOperations';
 import type {DiscoverHero} from '../src/shared/discover';
@@ -64,6 +64,24 @@ describe('JTW content and translation packages', () => {
     const next = buildRouteTranslationPackage(changed); const included = next.fields.find(item => item.field_key === 'included')!;
     expect(included.item_id).toBe('list-included-1'); expect(included.translations.en?.status).toBe('stale');
     expect(localizedRouteList(en, (next.locked.translation_list_items as {included: Array<{id: string; source: string}>}).included, 'included', ['往返巴士'])).toEqual(['往返巴士']);
+  });
+
+  it('reconciles list IDs without positional drift for inserts, deletion, edits, reordering, and duplicate text', () => {
+    const prior = {included: [
+      {id: 'list-included-1', source: '京都秋日'},
+      {id: 'list-included-2', source: '往返车辆'},
+      {id: 'list-included-3', source: '午餐'},
+    ]};
+    const ids = (items: ReturnType<typeof reconcileRouteListItems>['included']) => items?.map(item => item.id);
+    expect(ids(reconcileRouteListItems(prior, {included: ['新项目', '京都秋日', '往返车辆', '午餐']}).included)).toEqual(['list-included-4', 'list-included-1', 'list-included-2', 'list-included-3']);
+    expect(ids(reconcileRouteListItems(prior, {included: ['京都秋日', '新项目', '往返车辆', '午餐']}).included)).toEqual(['list-included-1', 'list-included-4', 'list-included-2', 'list-included-3']);
+    expect(ids(reconcileRouteListItems(prior, {included: ['京都秋日', '午餐']}).included)).toEqual(['list-included-1', 'list-included-3']);
+    const edited = reconcileRouteListItems(prior, {included: ['京都秋日（更新）', '往返车辆', '午餐']}).included!;
+    expect(edited).toEqual([{id: 'list-included-1', source: '京都秋日（更新）'}, {id: 'list-included-2', source: '往返车辆'}, {id: 'list-included-3', source: '午餐'}]);
+    expect(ids(reconcileRouteListItems(prior, {included: ['午餐', '京都秋日', '往返车辆']}).included)).toEqual(['list-included-3', 'list-included-1', 'list-included-2']);
+
+    const duplicates = {included: [{id: 'list-included-1', source: '饮用水'}, {id: 'list-included-2', source: '饮用水'}, {id: 'list-included-3', source: '午餐'}]};
+    expect(ids(reconcileRouteListItems(duplicates, {included: ['饮用水', '午餐', '饮用水', '饮用水']}).included)).toEqual(['list-included-1', 'list-included-3', 'list-included-2', 'list-included-4']);
   });
 
   it('returns translated lists and every travel note through the same preview draft for English and Japanese', () => {

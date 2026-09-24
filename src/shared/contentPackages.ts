@@ -80,23 +80,46 @@ const asListItems = (value: unknown): RouteListItem[] => Array.isArray(value) ? 
   return itemId && source ? [{id: itemId, source}] : [];
 }) : [];
 
+const normalizeListSource = (value: string) => value.trim().replace(/\s+/g, '').toLocaleLowerCase();
+const isClearListEdit = (previous: string, next: string) => {
+  const before = normalizeListSource(previous); const after = normalizeListSource(next);
+  if (!before || !after || before === after) return false;
+  let sharedPrefix = 0;
+  while (sharedPrefix < before.length && sharedPrefix < after.length && before[sharedPrefix] === after[sharedPrefix]) sharedPrefix += 1;
+  return sharedPrefix >= 2 && sharedPrefix / Math.max(before.length, after.length) >= 0.5;
+};
+const nextListItemId = (key: RouteListKey, used: Set<string>) => {
+  let ordinal = 1; let candidate = `list-${key}-${ordinal}`;
+  while (used.has(candidate)) { ordinal += 1; candidate = `list-${key}-${ordinal}`; }
+  used.add(candidate); return candidate;
+};
+
 /**
  * List values remain strings for the route editor, while this sidecar stores
- * durable IDs. Exact source matches preserve IDs across reordering; an
- * unmatched row keeps its prior position's ID so an edit becomes stale rather
- * than a new, unrelated translation.
+ * durable IDs. Exact source matches are consumed globally before any edit
+ * heuristic runs, so inserting a row cannot shift later items' identities.
+ * A prior ID is reused for changed text only for one unambiguous, clearly
+ * similar remaining pair; ambiguous replacements are deliberately new rows.
  */
 export function reconcileRouteListItems(previous: unknown, values: Partial<Record<RouteListKey, string[]>>): RouteListItems {
   const stored = asRecord(previous); const result: RouteListItems = {};
   for (const key of ROUTE_LIST_KEYS) {
-    const prior = asListItems(stored[key]); const remaining = new Set(prior.map(item => item.id));
-    result[key] = (values[key] ?? []).map((source, index) => {
-      const exact = prior.find(item => remaining.has(item.id) && item.source === source);
-      const positional = prior[index]; const chosen = exact ?? (positional && remaining.has(positional.id) ? positional : undefined);
-      const itemId = chosen?.id ?? `list-${key}-${index + 1}`;
-      remaining.delete(itemId);
-      return {id: itemId, source};
+    const prior = asListItems(stored[key]); const sources = values[key] ?? [];
+    const usedIds = new Set(prior.map(item => item.id)); const available = new Set(prior.map(item => item.id));
+    const reconciled: Array<RouteListItem | undefined> = sources.map(source => {
+      const exact = prior.find(item => available.has(item.id) && item.source === source);
+      if (!exact) return undefined;
+      available.delete(exact.id); return {id: exact.id, source};
     });
+    const unmatchedIndexes = reconciled.flatMap((item, index) => item ? [] : [index]);
+    const unmatchedPrior = prior.filter(item => available.has(item.id));
+    if (unmatchedIndexes.length === 1 && unmatchedPrior.length === 1) {
+      const index = unmatchedIndexes[0]; const candidate = unmatchedPrior[0];
+      if (isClearListEdit(candidate.source, sources[index])) {
+        reconciled[index] = {id: candidate.id, source: sources[index]}; available.delete(candidate.id);
+      }
+    }
+    result[key] = reconciled.map((item, index) => item ?? {id: nextListItemId(key, usedIds), source: sources[index]});
   }
   return result;
 }
