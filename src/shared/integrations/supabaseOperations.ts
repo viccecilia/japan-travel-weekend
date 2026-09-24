@@ -605,7 +605,7 @@ export class SupabaseOperationsRepository {
     });
     return { ok: !error, error: error?.message ?? null };
   }
-  async createProduct(input: { slug: string; title: string }) {
+  async createProduct(input: { slug: string; title: string; content?: Record<string, unknown>; heroImageUrl?: string | null; gallery?: string[] }) {
     if (!this.client)
       return {
         ok: false,
@@ -615,7 +615,7 @@ export class SupabaseOperationsRepository {
     const { data, error } = await this.client.rpc("operations_create_product", {
       p_slug: input.slug,
       p_title: input.title,
-      p_content: {
+      p_content: input.content ?? {
         summary: "",
         description: "",
         itinerary: [],
@@ -623,8 +623,8 @@ export class SupabaseOperationsRepository {
         excluded: [],
         locales: {},
       },
-      p_hero_image_url: null,
-      p_gallery: [],
+      p_hero_image_url: input.heroImageUrl ?? null,
+      p_gallery: input.gallery ?? [],
     });
     return {
       ok: !error,

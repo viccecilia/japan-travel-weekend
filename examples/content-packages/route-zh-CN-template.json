@@ -1,0 +1,15 @@
+{
+  "schema_version": "jtw-content-package/v1",
+  "package_id": "route-zh-CN-template",
+  "source_locale": "zh-CN",
+  "authoring_instructions": [
+    "严格保留 schema、实体 ID 和 itinerary stable id。",
+    "只根据 Word/PDF 原始资料填写；不能确认的事实写 needs_review 并列入 review_notes。",
+    "时间、价格、人数、地址、退款、安全与费用不能猜测。",
+    "Hero 强调词必须是 Hero 标题中的连续文字；短介绍与详细介绍分开。",
+    "路线详情 Hero 与景点媒体默认 16:9 横版框；图片和视频元数据跨语言共用，仅翻译播放标签、说明和替代文字。"
+  ],
+  "review_notes": [],
+  "entity": {"entity_type": "route", "slug": "new-route-slug", "mode": "create"},
+  "route": {"title": "待填写路线标题", "hero_image_url": null, "gallery": [], "content": {"heroTitle": "待填写 Hero 标题", "heroSubtitle": "", "heroHighlightPhrase": "", "heroAspectRatio": "16:9", "heroVideo": {"url": "", "storagePath": "", "mimeType": "video/mp4", "sizeBytes": 0, "posterUrl": "", "durationSeconds": 0, "aspectRatio": "16:9"}, "departureCity": "needs_review", "summary": "待填写一句话简介", "included": [], "excluded": [], "preparation": [], "bookingNotice": "", "cancellationPolicy": "", "participantRules": "", "weatherNotice": "", "baggageNotice": "", "safetyNotice": "", "itinerary": [{"id": "spot_example_001", "title": "needs_review", "subtitle": "", "time": "", "stayMinutes": 0, "shortDescription": "needs_review", "longDescription": "", "videoLabel": "", "location": "", "type": "spot", "tags": [], "imageUrl": "", "video": {"url": "", "storagePath": "", "mimeType": "video/mp4", "sizeBytes": 0, "posterUrl": "", "durationSeconds": 0, "aspectRatio": "16:9"}}]}}
+}

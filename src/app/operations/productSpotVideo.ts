@@ -4,6 +4,8 @@ export type ProductSpotVideo = {
   url: string;
   storagePath: string;
   posterUrl?: string;
+  durationSeconds?: number;
+  aspectRatio?: string;
   mimeType: 'video/mp4';
   sizeBytes: number;
 };

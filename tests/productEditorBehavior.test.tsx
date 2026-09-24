@@ -79,6 +79,19 @@ it('景点视频绑定稳定ID，改名排序后保存仍跟随原景点', async
   expect(payload.content.itinerary[1]).toMatchObject({id: 'stop-1', title: '清水寺新名称', video: {storagePath: 'trip-edit/stops/stop-1/video.mp4'}});
 });
 
+it('Hero 视频经同一受控存储上传后只写入当前草稿', async () => {
+  vi.stubGlobal('URL', {...URL, createObjectURL: vi.fn(() => 'blob:hero-video'), revokeObjectURL: vi.fn()});
+  const operations = open();
+  const video = new File(['....avc1....mp4a'], 'hero.mp4', {type: 'video/mp4'});
+  fireEvent.change(await screen.findByLabelText('上传 Hero 视频'), {target: {files: [video]}});
+  await vi.waitFor(() => expect(operations.uploadProductSpotVideo).toHaveBeenCalledWith('trip-edit', 'hero', video, expect.any(Function)));
+  expect(await screen.findByText(/Hero 视频上传成功/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', {name: '保存草稿'}));
+  await vi.waitFor(() => expect(operations.saveProductDraft).toHaveBeenCalled());
+  const payload = operations.saveProductDraft.mock.calls[0][0] as {content: {heroVideo?: {storagePath?: string}}};
+  expect(payload.content.heroVideo?.storagePath).toContain('trip-edit/stops/stop-1/video.mp4');
+});
+
 it('不兼容景点视频明确报错且不调用存储上传', async () => {
   const operations = open();
   fireEvent.click(await screen.findByRole('button', {name: '景点行程'}));

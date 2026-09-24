@@ -1,0 +1,13 @@
+{
+  "schema_version": "jtw-translation-package/v1",
+  "package_id": "route-sample-7",
+  "source_locale": "zh-CN",
+  "target_locales": ["zh-TW", "ja", "en", "ko", "es", "vi", "ne"],
+  "entity": {"entity_type": "route", "entity_id": "route-osaka-katsuoji", "entity_slug": "osaka-katsuoji-miyama-arashiyama", "source_version": 7},
+  "task_instructions": ["Source language is zh-CN. Fill only fields[].translations for requested target locales.", "Keep IDs, paths, source hashes, locked media values and field order unchanged.", "Do not alter prices, dates, times, capacities, route order, URLs or media metadata.", "Return the complete valid JSON only."],
+  "translator_instructions": ["Source language is zh-CN. Fill only fields[].translations. Keep schema, IDs, paths and locked values unchanged."],
+  "translation_profiles": {"route_title": ["Natural route name; do not add destinations."], "route_summary": ["Accurate and concise; do not add facts."], "spot_name": ["Prefer common official Japanese place names."], "spot_description": ["Do not change stop order or duration."], "hero_title": ["Keep readable on mobile."], "hero_subtitle": ["Short and natural."], "highlight_phrase": ["Must occur in the locale title."], "itinerary_step": ["Preserve time and place."], "included_item": ["Preserve scope."], "excluded_item": ["Preserve scope."], "preparation": ["Keep practical and accurate."], "policy": ["Preserve all conditions and numbers."], "generic_body": ["Natural and faithful."]},
+  "glossary": [{"source": "Japan Travel Weekend", "preferred": "Japan Travel Weekend"}],
+  "locked": {"slug": "osaka-katsuoji-miyama-arashiyama", "catalog_version": 7},
+  "fields": [{"id": "route:route-osaka-katsuoji:route:title", "entity_type": "route", "entity_id": "route-osaka-katsuoji", "field_key": "title", "path": "title", "source_text": "大阪到胜尾寺、美山与岚山一日游", "source_hash": "fnv1a-sample", "translation_profile": "route_title", "context": "游客路线卡片和路线详情标题", "translations": {"zh-TW": {"text": "", "status": "missing", "source_hash": "fnv1a-sample"}, "ja": {"text": "", "status": "missing", "source_hash": "fnv1a-sample"}, "en": {"text": "", "status": "missing", "source_hash": "fnv1a-sample"}}}]
+}

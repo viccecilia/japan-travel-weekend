@@ -2,6 +2,7 @@ import {FormEvent, useEffect, useRef, useState, type ReactNode} from 'react';
 import {Link, useLocation, useNavigate, useSearchParams} from 'react-router-dom';
 import {useApp} from '../store';
 import type {OperationsProduct} from '../../shared/integrations/supabaseOperations';
+import {isRouteContentPackage, parseJsonFile, sanitizeRouteContent, validateContentPackage} from '../../shared/contentPackages';
 
 type ProductStatusFilter = 'all' | 'published' | 'draft' | 'archived';
 
@@ -68,6 +69,7 @@ export function ProductCenter() {
   const [newSlug, setNewSlug] = useState('');
   const [newTitle, setNewTitle] = useState('');
   const [totalCount, setTotalCount] = useState(0);
+  const contentPackageInput = useRef<HTMLInputElement>(null);
   const pageSize = 10;
 
   const returnTo = encodeURIComponent(`${location.pathname}${location.search}`);
@@ -123,6 +125,31 @@ export function ProductCenter() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const importChineseContentPackage = async (file: File) => {
+    if (!services || busy) return;
+    setBusy(true); setNotice('');
+    try {
+      const result = validateContentPackage(await parseJsonFile(file));
+      if (!result.package || !isRouteContentPackage(result.package)) throw new Error(result.issues.map(issue => issue.message).join('；') || '不是有效的路线中文内容包');
+      const contentPackage = result.package;
+      const sanitized = sanitizeRouteContent(contentPackage.route.content).content;
+      const existing = products.find(product => product.id === contentPackage.entity.entity_id || product.slug === contentPackage.entity.slug);
+      if (existing) {
+        const saved = await services.operations.saveProductDraft({id: existing.id, expectedVersion: existing.catalogVersion, title: contentPackage.route.title, content: {...existing.content, ...sanitized}, heroImageUrl: contentPackage.route.hero_image_url ?? existing.heroImageUrl, gallery: contentPackage.route.gallery ?? existing.gallery});
+        if (!saved.ok) throw new Error(saved.error ?? '中文草稿保存失败');
+        setNotice('中文内容包已写入已有路线的新草稿；公开版本未改变。');
+        navigate(`/app/operations/products/${encodeURIComponent(existing.id)}/edit?returnTo=${returnTo}`);
+      } else {
+        const created = await services.operations.createProduct({slug: contentPackage.entity.slug, title: contentPackage.route.title, content: sanitized, heroImageUrl: contentPackage.route.hero_image_url ?? null, gallery: contentPackage.route.gallery ?? []});
+        if (!created.ok || !created.id) throw new Error(created.error ?? '新路线草稿建立失败');
+        setNotice('中文内容包已建立新路线草稿；尚未发布。');
+        navigate(`/app/operations/products/${encodeURIComponent(created.id)}/edit?returnTo=${returnTo}`);
+      }
+    } catch (error) {
+      setNotice(`导入中文内容包失败：${error instanceof Error ? error.message : '文件或网络异常'}`);
+    } finally { setBusy(false); }
   };
 
   const openCopy = (source: OperationsProduct) => {
@@ -185,16 +212,7 @@ export function ProductCenter() {
           <h1>产品管理</h1>
           <p>维护路线内容与版本；发布与下架仅变更游客端可见性。</p>
         </div>
-        <button
-          type="button"
-          className="button secondary"
-          onClick={() => {
-            setCreateOpen((value) => !value);
-            setNotice('');
-          }}
-        >
-          新建路线
-        </button>
+        <div className="operations-task-actions"><button type="button" className="button secondary" onClick={() => contentPackageInput.current?.click()} disabled={busy}>导入中文内容包</button><button type="button" className="button secondary" onClick={() => { setCreateOpen((value) => !value); setNotice(''); }}>新建路线</button><input ref={contentPackageInput} hidden type="file" accept="application/json,.json" onChange={event => { const file = event.target.files?.[0]; event.currentTarget.value = ''; if (file) void importChineseContentPackage(file); }}/></div>
       </header>
 
       {notice && !createOpen && !copyForm && <p className="operations-notice">{notice}</p>}

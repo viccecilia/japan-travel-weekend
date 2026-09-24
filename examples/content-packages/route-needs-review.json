@@ -1,0 +1,9 @@
+{
+  "schema_version": "jtw-content-package/v1",
+  "package_id": "example-needs-review",
+  "source_locale": "zh-CN",
+  "authoring_instructions": ["这是错误示例，needs_review 未解决前不得导入。"],
+  "review_notes": ["原始资料没有确认集合地点与景点停留时间。"],
+  "entity": {"entity_type": "route", "slug": "needs-review-example", "mode": "create"},
+  "route": {"title": "needs_review", "content": {"itinerary": [{"id": "spot_unknown_001", "title": "needs_review", "shortDescription": "needs_review"}]}}
+}

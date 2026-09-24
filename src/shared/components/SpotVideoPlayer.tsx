@@ -1,20 +1,10 @@
 import {useState} from 'react';
 
-export function SpotVideoPlayer({url, posterUrl, title, compact = false}: Readonly<{url: string; posterUrl?: string; title: string; compact?: boolean}>) {
+export function SpotVideoPlayer({url, posterUrl, title, compact = false, playLabel = '播放视频', unavailableLabel = '视频暂时无法播放，景点图文仍可正常查看。'}: Readonly<{url: string; posterUrl?: string; title: string; compact?: boolean; playLabel?: string; unavailableLabel?: string}>) {
   const [failed, setFailed] = useState(false);
-  if (failed) return <p className="spot-video-fallback" role="status">视频暂时无法播放，景点图文仍可正常查看。</p>;
+  const [playing, setPlaying] = useState(false);
+  if (failed) return <p className="spot-video-fallback" role="status">{unavailableLabel}</p>;
   return <div className={compact ? 'spot-video-player compact' : 'spot-video-player'}>
-    <video
-      controls
-      controlsList="nodownload"
-      preload="none"
-      playsInline
-      poster={posterUrl}
-      aria-label={`${title}景点视频`}
-      onError={() => setFailed(true)}
-    >
-      <source src={url} type="video/mp4" />
-      您的浏览器暂不支持 MP4 视频播放。
-    </video>
+    {!playing ? <button type="button" className="spot-video-poster" style={posterUrl ? {backgroundImage: `url(${posterUrl})`} : undefined} onClick={() => setPlaying(true)} aria-label={`${playLabel}: ${title}`}><span>▶</span><b>{playLabel}</b></button> : <video controls controlsList="nodownload" preload="metadata" playsInline autoPlay poster={posterUrl} aria-label={`${title} ${playLabel}`} onError={() => setFailed(true)}><source src={url} type="video/mp4" /></video>}
   </div>;
 }

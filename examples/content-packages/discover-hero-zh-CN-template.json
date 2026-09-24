@@ -1,0 +1,9 @@
+{
+  "schema_version": "jtw-content-package/v1",
+  "package_id": "discover-hero-zh-CN-template",
+  "source_locale": "zh-CN",
+  "authoring_instructions": ["只填写中文标题、副标题和标题强调词。强调词必须连续存在于标题中。", "媒体与产品关联需由运营在后台确认；不确定信息使用 needs_review。"],
+  "review_notes": [],
+  "entity": {"entity_type": "discover_hero", "mode": "create"},
+  "hero": {"title": "needs_review", "subtitle": "", "highlight_phrase": "", "video_url": "", "poster_url": "", "product_id": null, "product_slug": null, "enabled": false, "sort_order": 0}
+}

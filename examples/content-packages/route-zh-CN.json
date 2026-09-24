@@ -1,0 +1,7 @@
+{
+  "schema_version": "jtw-content-package/v1",
+  "package_id": "sample-osaka-katsuoji-route",
+  "source_locale": "zh-CN",
+  "entity": {"entity_type": "route", "slug": "osaka-katsuoji-miyama-arashiyama-sample", "mode": "create"},
+  "route": {"title": "大阪到胜尾寺、美山与岚山一日游", "hero_image_url": "/media/sample-route-hero.jpg", "gallery": ["/media/sample-route-hero.jpg"], "content": {"summary": "从大阪出发，依次探访胜尾寺、美山与岚山。", "description": "这是用于后台导入和翻译流程验证的示例中文草稿，不含真实订单、价格或班次数据。", "included": ["往返车辆与司导服务"], "excluded": ["餐食及个人消费"], "notices": ["集合时间以所选班次和出发前通知为准。"], "itinerary": [{"id": "stop-katsuoji-001", "title": "胜尾寺", "description": "参观达摩文化与山寺景观。", "stayMinutes": 60, "latitude": 34.866, "longitude": 135.478}, {"id": "stop-miyama-001", "title": "美山茅草屋之里", "description": "漫步保存良好的传统聚落。", "stayMinutes": 70, "latitude": 35.274, "longitude": 135.553}, {"id": "stop-arashiyama-001", "title": "岚山", "description": "在渡月桥周边自由活动。", "stayMinutes": 75, "latitude": 35.009, "longitude": 135.677}]}}
+}

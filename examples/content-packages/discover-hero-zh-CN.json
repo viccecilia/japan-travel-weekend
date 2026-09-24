@@ -1,0 +1,7 @@
+{
+  "schema_version": "jtw-content-package/v1",
+  "package_id": "sample-soul-autumn-hero",
+  "source_locale": "zh-CN",
+  "entity": {"entity_type": "discover_hero", "mode": "create"},
+  "hero": {"video_url": "/media/discover/autumn-soul.mp4", "poster_url": "/media/discover/autumn-soul.jpg", "product_id": null, "product_slug": null, "enabled": false, "sort_order": 99, "title": "这一生，总要看一次京都的秋天。", "subtitle": "这个秋天，别只在照片里见过京都。", "highlight_phrase": "京都的秋天"}
+}
