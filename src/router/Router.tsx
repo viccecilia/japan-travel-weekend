@@ -54,6 +54,7 @@ import {StaffPortal,StaffTaskAction} from "../app/StaffPortal";
 import {AiGuide} from "../app/AiGuide";
 import {TripMap} from '../app/TripMap';
 import {VipCharter} from '../app/VipCharter';
+import {ReferralGrowth,TravelMoments} from '../app/GrowthPages';
 import {OperationsLayout} from "../app/operations/OperationsLayout";
 const OperationsDashboard=lazy(()=>import('../app/OperationsDashboard').then(module=>({default:module.OperationsDashboard})));
 const ProductCenter=lazy(()=>import('../app/operations/ProductCenter').then(module=>({default:module.ProductCenter})));
@@ -216,9 +217,10 @@ export function Router() {
       <Route
         path="/app/referral"
         element={
-          <RequireAccount><AppShell><Referral /></AppShell></RequireAccount>
+          <RequireAccount><AppShell nav><ReferralGrowth /></AppShell></RequireAccount>
         }
       />
+      <Route path="/app/travel-moments" element={<RequireAccount><AppShell nav><TravelMoments /></AppShell></RequireAccount>} />
       <Route
         path="/app/profile"
         element={

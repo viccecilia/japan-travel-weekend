@@ -1225,7 +1225,7 @@ export class SupabaseOperationsRepository {
       this.client
         .from("link_campaign_submissions")
         .select(
-          "id,campaign_id,platform,post_url,platform_account,status,created_at",
+          "id,campaign_id,order_id,platform,post_url,platform_account,status,created_at,authorization_scope,account:profiles(display_name),order:orders(id,departure:departures(departs_at,trip:trips(title)))",
         )
         .order("created_at", { ascending: false })
         .limit(100),
@@ -1234,6 +1234,31 @@ export class SupabaseOperationsRepository {
       campaigns: (campaigns.data ?? []) as Array<Record<string, unknown>>,
       submissions: (submissions.data ?? []) as Array<Record<string, unknown>>,
       error: (campaigns.error ?? submissions.error)?.message ?? null,
+    };
+  }
+  async verifyTravelMomentSubmission(input: {
+    submissionId: string;
+    status: "valid" | "needs_information";
+    reason: string;
+  }) {
+    if (!this.client) return { ok: false, error: "运营数据服务未配置" };
+    const valid = input.status === "valid";
+    const { data, error } = await this.client.rpc(
+      "operations_verify_travel_share_link",
+      {
+        p_submission: input.submissionId,
+        p_status: input.status,
+        p_mention: valid,
+        p_ownership: valid,
+        p_trip: valid,
+        p_metrics: {},
+        p_observed_at: valid ? new Date().toISOString() : null,
+        p_reason: input.reason.trim(),
+      },
+    );
+    return {
+      ok: data === true && !error,
+      error: error?.message ?? (data === true ? null : "投稿状态未更新"),
     };
   }
   async listOrders(input: {

@@ -13,7 +13,6 @@ import {ResumeOrderPayment} from './ResumeOrderPayment';
 import {passengerRound1Copy} from '../shared/i18n/passengerRound1';
 import { backend } from "../shared/backend";
 import {Discover} from './Discover';
-import {ProfileInvite} from './ProfileInvite';
 import {discoverLabels} from '../shared/discover';
 import { appConfig, nextTier, tierFor } from "../shared/config/businessRules";
 import {
@@ -43,7 +42,7 @@ import {singleSeatQuote} from '../shared/services/singleSeatPricing';
 import type {ServerQuote} from '../shared/backend/testApi';
 import {isHomeSellableDeparture} from './homeUpcomingDepartures';
 import './routeDetailContinuous.css';
-import {TravelShareCampaign} from './TravelShareCampaign';
+import {GrowthEntry,GrowthProfileRows} from './GrowthPages';
 import {useCurrentTime} from './useCurrentTime';
 import './passengerFrame.css';
 const homePriceUnit:Record<PassengerLocale,string>={'zh-CN':'人','zh-TW':'人',ja:'人',en:'person',es:'persona',vi:'người',ne:'व्यक्ति',ko:'인'};
@@ -2891,8 +2890,7 @@ export function Profile() {
    <h2 id="account-center-title">{pc.center}</h2>
    <div className="account-summary"><div className="profile-info-row"><span>{pc.loginStatus}</span><b>{state.user?pc.signedIn:pc.signedOut}</b></div><div className="profile-info-row"><span>{pc.currentEmail}</span><b>{state.user?.email??pc.signedOut}</b></div></div>
    <div className="account-center-actions"><Link className="profile-setting-row" to="/app/orders"><i aria-hidden="true">▤</i><span>{pc.myOrders}</span><b aria-hidden="true">›</b></Link><Link className="profile-setting-row" to="/app/messages"><i aria-hidden="true">◉</i><span>{pc.tripMessages}</span><b aria-hidden="true">›</b></Link></div>
-   <ProfileInvite/>
-   {accountRole==='passenger'&&<details className="profile-boost"><summary className="profile-setting-row"><i aria-hidden="true">✧</i><span>{pc.boost}</span><b aria-hidden="true">›</b></summary><TravelShareCampaign/></details>}
+   {accountRole==='passenger'&&<GrowthProfileRows/>}
   </section>
   <section className="form" aria-labelledby="personal-details-title">
    <h2 id="personal-details-title">{pc.personal}</h2>

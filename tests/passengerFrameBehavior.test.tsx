@@ -27,9 +27,10 @@ beforeEach(()=>{
 const mount=(node:React.ReactNode,path='/')=>render(<MemoryRouter initialEntries={[path]}>{node}</MemoryRouter>);
 const RoomDestination=()=>{const location=useLocation();return <p>ROOM {location.search}</p>};
 describe('passenger frame closure',()=>{
- it('VIP precedes two-column route cards and groups stay last',()=>{
+ it('growth entry precedes route cards while VIP and groups remain after routes',()=>{
   mount(<AppTrips/>);const root=document.querySelector('.route-catalog')!;
-  expect(root.firstElementChild?.querySelector('a')).toHaveAttribute('href','/app/vip-charter');
+  expect(root.firstElementChild?.querySelector('a')).toHaveAttribute('href','/app/referral');
+  expect(root.firstElementChild).toHaveTextContent('Travel Moments');
   expect(root.lastElementChild?.querySelector('a')).toHaveAttribute('href','/app/private-groups');
   expect(screen.getByRole('heading',{name:'精选线路'})).toBeVisible();
   expect(screen.queryByText('下一次想去哪里？')).toBeNull();
