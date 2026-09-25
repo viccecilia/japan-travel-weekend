@@ -1,4 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
+import {createPortal} from 'react-dom';
 import type {SupabaseTripRoomRepository} from '../shared/integrations/supabaseProduction';
 import type {PassengerLocale} from '../shared/i18n/passengerLocale';
 import {passengerRound1Copy} from '../shared/i18n/passengerRound1';
@@ -30,11 +31,11 @@ export function ChatPhotoUpload({repository,locale,roomId,disabled,onSent,source
    setSelected({file,id:crypto.randomUUID()});setError('');
   }}/>
    <button className={presentation==='more'?'pc-more-action':''} type="button" aria-label={presentation==='more'?(source==='camera'?c.camera:c.library):c.add} title={c.limits} disabled={disabled||busy} onClick={()=>{onActivated?.();input.current?.click()}}>{presentation==='more'?<><span aria-hidden="true">{source==='camera'?'◉':'▧'}</span><span>{source==='camera'?c.camera:c.library}</span></>:'＋'}</button>
-  {(selected||error)&&<div className="pc-modal-backdrop"><section className="pc-modal" role="dialog" aria-modal="true" aria-label={c.add}>
+  {(selected||error)&&createPortal(<div className="pc-modal-backdrop"><section className="pc-modal" role="dialog" aria-modal="true" aria-label={c.add}>
    <p>{c.limits}</p>{selected&&<p>{selected.file.name}</p>}
    {error&&<p role="alert">{error}</p>}
    {selected&&<button disabled={disabled||busy} onClick={()=>void send()}>{busy?c.busy:error?c.retry:c.send}</button>}
    <button disabled={busy} onClick={()=>{setSelected(null);setError('')}}>{c.remove}</button>
-  </section></div>}
+  </section></div>,document.body)}
  </>;
 }

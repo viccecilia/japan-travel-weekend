@@ -5,12 +5,46 @@ import './tripMap.css';
 
 type Point={lat:number;lng:number};
 type Props={markers:MapMarker[];activeMarkerId?:string|null;followMarkerId?:string|null;onMarkerClick?:(marker:MapMarker)=>void;onMapClick?:(point:Point)=>void;onUserMapInteraction?:()=>void;interactive:boolean;emptyLabel:string;unavailableLabel:string};
-declare global {interface Window {google?:any;__jtwGoogleMapsPromise?:Promise<void>}}
+declare global {interface Window {google?:any;__jtwGoogleMapsPromise?:Promise<void>;__jtwGoogleMapsReady?:()=>void}}
 const googleMapsKey=import.meta.env.VITE_GOOGLE_MAPS_BROWSER_KEY as string|undefined;
+const mapsScriptId='jtw-google-maps-script';
 function loadGoogleMaps(){
   if(window.google?.maps)return Promise.resolve();
   if(!googleMapsKey?.trim())return Promise.reject(new Error('missing_google_maps_key'));
-  if(!window.__jtwGoogleMapsPromise)window.__jtwGoogleMapsPromise=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(googleMapsKey)}&v=weekly`;script.async=true;script.onload=()=>resolve();script.onerror=()=>reject(new Error('google_maps_load_failed'));document.head.append(script)});
+  if(!window.__jtwGoogleMapsPromise){
+    let script=document.getElementById(mapsScriptId) as HTMLScriptElement|null;
+    // A script created by an older HMR revision did not have our readiness
+    // callback. It cannot resolve this loader, so replace it instead of
+    // leaving the page waiting forever after a failed/partial load.
+    if(script&&!script.src.includes('callback=__jtwGoogleMapsReady')){
+      script.remove();
+      script=null;
+    }
+    let promise:Promise<void>;
+    promise=new Promise((resolve,reject)=>{
+      const fail=()=>{
+        script?.remove();
+        if(window.__jtwGoogleMapsPromise===promise)delete window.__jtwGoogleMapsPromise;
+        delete window.__jtwGoogleMapsReady;
+        reject(new Error('google_maps_load_failed'));
+      };
+      window.__jtwGoogleMapsReady=()=>{
+        if(window.google?.maps){
+          delete window.__jtwGoogleMapsReady;
+          resolve();
+        }else fail();
+      };
+      if(!script){
+        script=document.createElement('script');script.id=mapsScriptId;
+        script.src=`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(googleMapsKey)}&v=weekly&loading=async&libraries=marker&callback=__jtwGoogleMapsReady`;
+        script.async=true;script.defer=true;
+        script.addEventListener('error',fail,{once:true});document.head.append(script);
+      }else{
+        script.addEventListener('error',fail,{once:true});
+      }
+    });
+    window.__jtwGoogleMapsPromise=promise;
+  }
   return window.__jtwGoogleMapsPromise;
 }
 export function MapSurface({markers,activeMarkerId,followMarkerId,onMarkerClick,onMapClick,onUserMapInteraction,interactive,emptyLabel,unavailableLabel}:Props){

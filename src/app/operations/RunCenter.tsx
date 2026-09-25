@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useApp } from "../store";
 import type {
@@ -33,14 +33,36 @@ const journeyStatusText = (value: string) =>
     completed: "已完成",
     data_inconsistent: "历史状态待核对",
   })[value] ?? value;
+const tokyoDateTimeLocal = (value: string) =>
+  new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  })
+    .format(new Date(value))
+    .replace(" ", "T");
+const tokyoLocalToIso = (value: string) => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
+  if (!match) return null;
+  const [, year, month, day, hour, minute] = match;
+  return new Date(
+    Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour) - 9, Number(minute)),
+  ).toISOString();
+};
 export function RunCenter() {
   const { services } = useApp();
   const [searchParams, setSearchParams] = useSearchParams();
   const date = searchParams.get("date") ?? tokyoToday();
   const selectedDeparture = searchParams.get("departure") ?? "";
+  const selectedMeetingGroup = searchParams.get("meetingVehicleGroup") ?? "";
   const [rows, setRows] = useState<OperationsRunRow[]>([]);
   const [drivers, setDrivers] = useState<OperationsDriverStatistic[]>([]);
   const [notice, setNotice] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     let active = true;
@@ -84,6 +106,9 @@ export function RunCenter() {
     ? rows.filter((row) => row.departureId === selectedDeparture)
     : [];
   const selectedRow = selectedRows[0];
+  const selectedMeetingRow = selectedRows.find(
+    (row) => row.vehicleGroupId === selectedMeetingGroup,
+  );
   const listUrl = `/app/operations/run?date=${date}`;
   if (loading)
     return (
@@ -122,6 +147,7 @@ export function RunCenter() {
             <p role="alert">运行数据读取失败：{notice}</p>
           ) : selectedRow ? (
             <>
+              {success && <p role="status">{success}</p>}
               <header>
                 <div>
                   <span>{date} · 日本时间</span>
@@ -199,6 +225,19 @@ export function RunCenter() {
                     {row.openIncidents > 0 && row.vehicleGroupId && (
                       <Link to={`/app/operations/incidents?date=${encodeURIComponent(date)}&departure=${encodeURIComponent(row.departureId)}&vehicleGroup=${encodeURIComponent(row.vehicleGroupId)}`}>查看本车异常</Link>
                     )}
+                    {row.vehicleGroupId && (
+                      <button
+                        type="button"
+                        className="button secondary"
+                        onClick={() => {
+                          const next = new URLSearchParams(searchParams);
+                          next.set("meetingVehicleGroup", row.vehicleGroupId!);
+                          setSearchParams(next, { replace: true });
+                        }}
+                      >
+                        编辑本车集合点
+                      </button>
+                    )}
                   </article>
                 ))}
               </div>
@@ -219,6 +258,18 @@ export function RunCenter() {
                   </Link>
                 )}
               </div>
+              {selectedMeetingRow?.vehicleGroupId && (
+                <VehicleGroupMeetingEditor
+                  vehicleGroupId={selectedMeetingRow.vehicleGroupId}
+                  vehicleLabel={selectedMeetingRow.vehicleLabel ?? "本车"}
+                  onClose={() => {
+                    const next = new URLSearchParams(searchParams);
+                    next.delete("meetingVehicleGroup");
+                    setSearchParams(next, { replace: true });
+                  }}
+                  onSaved={(message) => setSuccess(message)}
+                />
+              )}
             </>
           ) : (
             <p role="alert">
@@ -319,5 +370,127 @@ export function RunCenter() {
         </>
       )}
     </main>
+  );
+}
+
+function VehicleGroupMeetingEditor({
+  vehicleGroupId,
+  vehicleLabel,
+  onClose,
+  onSaved,
+}: {
+  vehicleGroupId: string;
+  vehicleLabel: string;
+  onClose: () => void;
+  onSaved: (message: string) => void;
+}) {
+  const { services } = useApp();
+  const [meetingAt, setMeetingAt] = useState("");
+  const [meetingName, setMeetingName] = useState("");
+  const [meetingAddress, setMeetingAddress] = useState("");
+  const [latitude, setLatitude] = useState("");
+  const [longitude, setLongitude] = useState("");
+  const [landmark, setLandmark] = useState("");
+  const [reason, setReason] = useState("");
+  const [revision, setRevision] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [result, setResult] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    if (!services) return;
+    void services.loadStaffMeeting(vehicleGroupId).then((meeting) => {
+      if (!active) return;
+      if (meeting) {
+        setMeetingAt(tokyoDateTimeLocal(meeting.meeting_at));
+        setMeetingName(meeting.meeting_name);
+        setMeetingAddress(meeting.meeting_address);
+        setLatitude(String(meeting.latitude));
+        setLongitude(String(meeting.longitude));
+        setLandmark(meeting.landmark_description ?? "");
+        setRevision(meeting.revision);
+      }
+      setLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [services, vehicleGroupId]);
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const meetingIso = tokyoLocalToIso(meetingAt);
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+    if (
+      !services ||
+      !meetingIso ||
+      !meetingName.trim() ||
+      !meetingAddress.trim() ||
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng) ||
+      reason.trim().length < 3
+    ) {
+      setResult("请填写集合时间、地点、坐标和至少三个字的变更原因。");
+      return;
+    }
+    setSaving(true);
+    const nextRevision = await services.updateStaffMeeting({
+      vehicleGroupId,
+      meetingAt: meetingIso,
+      meetingName: meetingName.trim(),
+      meetingAddress: meetingAddress.trim(),
+      latitude: lat,
+      longitude: lng,
+      landmarkDescription: landmark.trim(),
+      reason: reason.trim(),
+    });
+    setSaving(false);
+    if (nextRevision == null) {
+      setResult("集合信息未保存，请检查本车权限、坐标和变更原因后重试。");
+      return;
+    }
+    setRevision(nextRevision);
+    setReason("");
+    setResult("已保存。游客与本车工作人员刷新后将读取新的集合点；开放群会收到集合信息变更记录。");
+    onSaved("本车集合点已保存；运行台保留原班次数据。 ");
+  };
+
+  return (
+    <div className="operations-modal-backdrop" role="presentation" onMouseDown={onClose}>
+      <section
+        className="operations-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="vehicle-group-meeting-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <header>
+          <div>
+            <span>VEHICLE GROUP MEETING</span>
+            <h2 id="vehicle-group-meeting-title">编辑本车集合点 · {vehicleLabel}</h2>
+            <p>仅修改当前车辆组集合信息；班次集合字段、订单归属和车辆分配不会被改写。</p>
+          </div>
+          <button type="button" className="button secondary" onClick={onClose}>关闭</button>
+        </header>
+        {loading ? <p role="status">正在读取当前集合点与版本…</p> : (
+          <form className="operations-meeting-form" onSubmit={(event) => void submit(event)}>
+            <p className="operations-hint">当前版本：{revision ?? "尚未建立"}。所有时间按日本时间填写；提交会保留变更原因与历史记录。</p>
+            <label>集合时间（日本时间）<input aria-label="本车集合时间" type="datetime-local" required value={meetingAt} onChange={(event) => setMeetingAt(event.target.value)} /></label>
+            <label>集合点名称<input aria-label="本车集合点名称" required value={meetingName} onChange={(event) => setMeetingName(event.target.value)} /></label>
+            <label>详细地址<input aria-label="本车集合详细地址" required value={meetingAddress} onChange={(event) => setMeetingAddress(event.target.value)} /></label>
+            <div className="operations-form-grid">
+              <label>纬度<input aria-label="本车集合纬度" required inputMode="decimal" value={latitude} onChange={(event) => setLatitude(event.target.value)} /></label>
+              <label>经度<input aria-label="本车集合经度" required inputMode="decimal" value={longitude} onChange={(event) => setLongitude(event.target.value)} /></label>
+            </div>
+            <label>地标说明（选填）<textarea aria-label="本车集合地标说明" value={landmark} onChange={(event) => setLandmark(event.target.value)} /></label>
+            <label>变更原因<input aria-label="本车集合变更原因" required minLength={3} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="例如：道路管制，改至东侧出口" /></label>
+            {result && <p role="status">{result}</p>}
+            <footer><button type="button" className="button secondary" onClick={onClose}>取消</button><button type="submit" className="button" disabled={saving}>{saving ? "正在保存…" : "保存本车集合点"}</button></footer>
+          </form>
+        )}
+      </section>
+    </div>
   );
 }

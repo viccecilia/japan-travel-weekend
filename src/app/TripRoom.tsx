@@ -826,6 +826,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
         stops={matchedIndex>=0?itineraryStops:[remoteStop,...itineraryStops]}
         messages={passengerMessages}
         readOnly={!access.enabled}
+        readOnlyNotice={room.room_status === "frozen" ? passengerRound1Copy[locale].chat.locked : undefined}
         mapHref={`/app/trip-map?vehicleGroup=${encodeURIComponent(room.vehicle_group_id)}`}
         onLocaleChange={(next)=>setUi({...state.ui,locale:next})}
         renderMoreControls={()=><><PassengerLocationShare key={room.vehicle_group_id} repository={services.tripRoom} groupId={room.vehicle_group_id} locale={locale} disabled={!access.enabled} presentation="more"/><ChatPhotoUpload key={`${room.room_id}-library`} repository={services.tripRoom} roomId={room.room_id} locale={locale} disabled={!access.enabled} presentation="more" source="library" onSent={()=>void services.tripRoom.loadMessages(room.room_id).then(value=>setMessages(value as RemoteMessage[]))}/><ChatPhotoUpload key={`${room.room_id}-camera`} repository={services.tripRoom} roomId={room.room_id} locale={locale} disabled={!access.enabled} presentation="more" source="camera" onSent={()=>void services.tripRoom.loadMessages(room.room_id).then(value=>setMessages(value as RemoteMessage[]))}/></>}

@@ -2,6 +2,7 @@ import {useEffect,useRef,useState,type FormEvent} from 'react';
 import {Link} from 'react-router-dom';
 import {useApp} from './store';
 import type {StaffTask} from './StaffPortal';
+import {ChatPhotoUpload} from './ChatPhoto';
 import {passengerLocales,type PassengerLocale} from '../shared/i18n/passengerLocale';
 import './staffChat.css';
 
@@ -58,11 +59,18 @@ export function StaffChat({task}:{task:StaffTask}){
     catch{setNotice('成员读取失败，请重试');setShowMembers(false)}
   };
   const locate=()=>{
-    if(!navigator.geolocation){setNotice('设备不支持定位，请使用集合点入口');return}
+    if(!navigator.geolocation||!services||!task.room_id){setNotice('设备不支持定位，或本车群尚未就绪。');return}
+    setNotice('正在读取司机位置；定位未授权时不会共享旧位置。');
     navigator.geolocation.getCurrentPosition(position=>{
-      setDraft(`我的位置（${new Date(position.timestamp).toLocaleTimeString('zh-CN',{timeZone:'Asia/Tokyo'})}）：https://www.google.com/maps/search/?api=1&query=${position.coords.latitude},${position.coords.longitude}`);
-      requestKey.current=crypto.randomUUID();setNotice('位置已填入输入框，确认发送后才分享给本车群。');
-    },()=>setNotice('定位不可用，未发送任何位置；可手动说明所在地点。'),{timeout:10000,maximumAge:0});
+      void services.tripRoom.publishDriverLocation(task.vehicle_group_id,{latitude:position.coords.latitude,longitude:position.coords.longitude,accuracy:Number.isFinite(position.coords.accuracy)?position.coords.accuracy:null},15).then(ok=>{
+        setNotice(ok?'司机位置已更新并向本车旅客共享 15 分钟。':'司机位置未能共享；请检查房间状态、定位和本车工作人员权限。');
+      }).catch(()=>setNotice('司机位置未能共享；请检查网络后重试。'));
+    },()=>setNotice('定位不可用，司机位置没有被共享。'),{enableHighAccuracy:true,timeout:10000,maximumAge:15000});
+  };
+  const stopLocation=async()=>{
+    if(!services)return;
+    const ok=await services.tripRoom.stopDriverLocation(task.vehicle_group_id);
+    setNotice(ok?'司机位置共享已停止；旅客不会再将旧位置显示为实时位置。':'没有可停止的位置共享或权限不足。');
   };
   return <section className="staff-chat-v2">
     <header><h2>{task.trip_title}</h2><small>{task.vehicle_label??'车牌待确认'} · {open?'本车群开放':'本车群只读／尚未开放'}</small>
@@ -81,9 +89,9 @@ export function StaffChat({task}:{task:StaffTask}){
     <div className="staff-chat-compose-wrap">
       {notice&&<p role="status">{notice}</p>}
       {expanded&&<div className="staff-chat-tools" aria-label="更多聊天功能">
-        <button disabled={!open||busy} onClick={()=>setNotice('群相册上传尚未接通；私人资料请使用订单受限上传入口，不发送到全群。')}>相册</button>
-        <button disabled={!open||busy} onClick={()=>setNotice('群内拍照上传尚未接通，可以在设备相机拍摄后保留原件。')}>拍照</button>
-        <button disabled={!open||busy} onClick={locate}>当前位置</button>
+        {services&&task.room_id&&<><ChatPhotoUpload repository={services.tripRoom} roomId={task.room_id} locale={language} disabled={!open||busy} presentation="more" source="library" onSent={()=>{setExpanded(false);void refreshRef.current()}}/><ChatPhotoUpload repository={services.tripRoom} roomId={task.room_id} locale={language} disabled={!open||busy} presentation="more" source="camera" onSent={()=>{setExpanded(false);void refreshRef.current()}}/></>}
+        <button disabled={!open||busy} onClick={locate}>开始／更新位置</button>
+        <button disabled={!open||busy} onClick={()=>void stopLocation()}>停止位置共享</button>
         <Link to={`/staff/tasks/${task.staff_assignment_id}/support`}>联系运营</Link>
       </div>}
       <form className="staff-composer" onSubmit={event=>void send(event)}>

@@ -14,7 +14,10 @@ export type MapSessionInput = {
 const valid = (latitude:unknown, longitude:unknown) => Number.isFinite(latitude) && Number.isFinite(longitude) && Math.abs(Number(latitude)) <= 90 && Math.abs(Number(longitude)) <= 180;
 export const resolveMapSessionMode = (input:Pick<MapSessionInput,'roomStatus'|'meeting'|'driver'|'requestedMode'>):MapSessionMode => {
   if (input.roomStatus !== 'open') return 'ended';
-  if (input.meeting?.status === 'active') return 'return_to_meeting';
+  // The persisted status does not distinguish an initial active meeting from a
+  // later recall. Keep the first case neutral instead of incorrectly saying
+  // that passengers should return to their initial meeting point.
+  if (input.meeting?.status === 'active') return 'meeting';
   if (input.requestedMode === 'find_driver' && input.driver) return 'find_driver';
   if (input.requestedMode === 'guide') return 'guide';
   if (input.requestedMode === 'meeting' && input.meeting) return 'meeting';

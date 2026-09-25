@@ -28,7 +28,7 @@ describe('本车紧凑群聊',()=>{
     expect(screen.getByText('司机：测试司机')).toBeVisible();
     expect(document.querySelector('a[href^="tel:"]')).toBeNull();
   });
-  it('失败保留输入，重试同一幂等键；更多面板如实报告未接通上传',async()=>{
+  it('失败保留输入，重试同一幂等键；更多面板复用本车图片上传',async()=>{
     const {sendMessage}=setup();await screen.findByText('原文');
     fireEvent.change(screen.getByRole('textbox',{name:'发送到本车群组'}),{target:{value:'请按时集合'}});
     fireEvent.click(screen.getByRole('button',{name:'发送'}));
@@ -40,7 +40,8 @@ describe('本车紧凑群聊',()=>{
     expect(await screen.findByText('消息已保存到本车群。')).toBeVisible();
     expect(screen.getByRole('textbox')).toHaveValue('');
     fireEvent.click(screen.getByRole('button',{name:'更多聊天功能'}));
-    fireEvent.click(screen.getByRole('button',{name:'相册'}));
-    expect(screen.getByRole('status')).toHaveTextContent('群相册上传尚未接通');
+    expect(screen.getByRole('button',{name:'相册'})).toBeVisible();
+    expect(screen.getByRole('button',{name:'拍照'})).toBeVisible();
+    expect(screen.getByRole('button',{name:'开始／更新位置'})).toBeVisible();
   });
 });

@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { buildMapMarkers, resolveFocusedMapMarker, resolveMapSessionMode, resolveSelectedMapMarker, sharedPlaceMapHref, startLocationFollow } from '../src/shared/services/mapSession';
 
 describe('trip map session', () => {
-  it('uses the active meeting before driver lookup and never creates passenger-peer markers', () => {
-    expect(resolveMapSessionMode({roomStatus: 'open', meeting: {status: 'active'}, driver: {latitude: 35, longitude: 135}})).toBe('return_to_meeting');
+  it('uses a neutral meeting mode for the initial active meeting and never creates passenger-peer markers', () => {
+    expect(resolveMapSessionMode({roomStatus: 'open', meeting: {status: 'active'}, driver: {latitude: 35, longitude: 135}})).toBe('meeting');
     const markers = buildMapMarkers({roomStatus: 'open', meeting: {status: 'active', latitude: 35, longitude: 135, meeting_name: 'North gate'}, driver: {latitude: 35.01, longitude: 135.01}, user: {latitude: 35.02, longitude: 135.02}, shared: [{id: 'place-1', latitude: 35.03, longitude: 135.03, label: 'Temporary stop'}], guide: [{id: 'stop-1', latitude: 35.04, longitude: 135.04, name: 'First stop'}]});
     expect(markers.map((marker) => marker.type)).toEqual(['user_location', 'meeting_point', 'driver_vehicle', 'shared_place', 'guide_node']);
     expect(markers.some((marker) => marker.type === ('passenger_location' as never))).toBe(false);
@@ -24,7 +24,7 @@ describe('trip map session', () => {
     const driver={latitude:35,longitude:135};
     expect(resolveMapSessionMode({roomStatus:'open',meeting:null,driver,requestedMode:'guide'})).toBe('guide');
     expect(resolveMapSessionMode({roomStatus:'open',meeting:{status:'scheduled'},driver,requestedMode:'meeting'})).toBe('meeting');
-    expect(resolveMapSessionMode({roomStatus:'open',meeting:{status:'active'},driver,requestedMode:'guide'})).toBe('return_to_meeting');
+    expect(resolveMapSessionMode({roomStatus:'open',meeting:{status:'active'},driver,requestedMode:'guide'})).toBe('meeting');
   });
 
   it('prefers an explicitly selected shared or guide marker over the mode default', () => {

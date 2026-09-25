@@ -1,4 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
+import {createPortal} from 'react-dom';
 import type {SupabaseTripRoomRepository} from '../shared/integrations/supabaseProduction';
 import type {PassengerLocale} from '../shared/i18n/passengerLocale';
 import {passengerRound1Copy} from '../shared/i18n/passengerRound1';
@@ -40,12 +41,12 @@ export function PassengerLocationShare({repository,groupId,locale,disabled=false
  if(staff)return <section className="room-panel"><h3>{c.staff}</h3>{error?<p role="alert">{c.failed}</p>:rows.length===0?<p>{c.empty}</p>:rows.map((row,index)=><p key={row.id}><a href={`https://www.google.com/maps/search/?api=1&query=${Number(row.latitude)},${Number(row.longitude)}`} target="_blank" rel="noreferrer">{row.display_name||`#${index+1}`} · {new Date(row.sampled_at).toLocaleTimeString(locale,{timeZone:'Asia/Tokyo'})}</a></p>)}</section>;
  return <>
   <button className={presentation==='more'?'pc-more-action':''} type="button" aria-label={c.send} title={c.send} disabled={disabled||busy} onClick={()=>{onActivated?.();locate()}}>{presentation==='more'?<><span aria-hidden="true">⌖</span><span>{c.send}</span></>:'⌖'}</button>
-  {panel&&<div className="pc-modal-backdrop"><section className="pc-modal" role="dialog" aria-modal="true" aria-label={c.send} onKeyDown={event=>{if(event.key==='Escape'&&!busy){setPanel(false);setPoint(null)}}}>
+  {panel&&createPortal(<div className="pc-modal-backdrop"><section className="pc-modal" role="dialog" aria-modal="true" aria-label={c.send} onKeyDown={event=>{if(event.key==='Escape'&&!busy){setPanel(false);setPoint(null)}}}>
    {point&&<><p>{c.confirm}</p><button disabled={busy||disabled} onClick={()=>void change(false)}>{busy?c.working:c.send}</button></>}
    {rows.length>0&&<><p>{c.shared}</p><button disabled={busy} onClick={()=>void change(true)}>{c.stop}</button></>}
    {error&&<p role="alert">{c.failed}</p>}
    {busy&&!point&&<p role="status">{c.working}</p>}
    <button disabled={busy} onClick={()=>{setPanel(false);setPoint(null);setError(false)}}>{passengerRound1Copy[locale].common.cancel}</button>
-  </section></div>}
+  </section></div>,document.body)}
  </>;
 }
