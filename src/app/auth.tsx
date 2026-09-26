@@ -17,7 +17,7 @@ export function loginSurfaceForReturnTo(returnTo:string):LoginSurface{
 
 export const accessDestinationPath=(destination:string|null|undefined)=>destination==='operations'?'/app/operations':destination==='staff'?'/staff':destination==='staff_pending'||destination==='staff_blocked'?'/app/account-status':'/app';
 
-const passengerOnlyPaths=['/app/passengers','/app/checkout','/app/payment','/app/payment-result','/app/orders','/app/messages','/app/my-trip','/app/ai-guide','/app/private-groups','/app/boarding-pass','/app/rewards','/app/referral','/app/profile'];
+const passengerOnlyPaths=['/app/passengers','/app/checkout','/app/payment','/app/payment-result','/app/orders','/app/messages','/app/my-trip','/app/ai-guide','/app/private-groups','/app/boarding-pass','/app/rewards','/app/referral','/app/ambassador','/app/profile'];
 export const isPassengerOnlyPath=(value:string)=>passengerOnlyPaths.some(path=>value===path||value.startsWith(`${path}/`)||value.startsWith(`${path}?`));
 export const passengerAccountBoundaryPath=(returnTo:string)=>`/app/account-status?reason=passenger-required&returnTo=${encodeURIComponent(safeReturnTo(returnTo))}`;
 

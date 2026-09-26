@@ -75,6 +75,9 @@ export class ProductionBrowserServices {
   }
   loadOwnReferralSummary(){return this.auth.loadOwnReferralSummary()}
   loadOwnCashCommissionSummary(){return this.auth.loadOwnCashCommissionSummary()}
+  loadOwnAmbassadorDashboard(){return this.auth.loadOwnAmbassadorDashboard()}
+  listOwnReferralRecords(offset=0,limit=30){return this.auth.listOwnReferralRecords(offset,limit)}
+  listOwnCommissionHistory(offset=0,limit=30){return this.auth.listOwnCommissionHistory(offset,limit)}
   requestOwnCommissionPayout(idempotencyKey:string){return this.auth.requestOwnCommissionPayout(idempotencyKey)}
   applyForAmbassador(note=''){return this.auth.applyForAmbassador(note)}
   requestPasswordReset(email: string,returnTo="/app") {

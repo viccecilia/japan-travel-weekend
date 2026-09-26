@@ -637,6 +637,42 @@
     {
       "name": "20260921014907_private_trip_chat_photos.sql",
       "sha256": "2a40430ee67341fd08d3d8c7021c23ac6af651ffb6486c38288619045d491761"
+    },
+    {
+      "name": "20260926043656_growth_operations_phase1.sql",
+      "sha256": "f82e37c1e0a14d2b3154179218c15ed1963dd942bb60cbaf1409afd7f3fee0eb"
+    },
+    {
+      "name": "20260926054340_growth_operations_phase2_ambassador_center.sql",
+      "sha256": "3f3f1431acd7e58e3e225b47f65d4a24ac470649073f22cc5eabc5dcc34ec73a"
+    },
+    {
+      "name": "20260926082708_growth_operations_phase3_referral_tree.sql",
+      "sha256": "4629ddec8eee7f1d47971b8a1744ad6a3b5acfdc297a695f0883b27b84ef8294"
+    },
+    {
+      "name": "20260926083645_growth_operations_phase3_tree_details.sql",
+      "sha256": "95f0b5d92a0ff2bc61aba56446bd107ea1831ab12f48c2e935e269be66ee43bf"
+    },
+    {
+      "name": "20260926084520_growth_operations_phase3_anomaly_scope.sql",
+      "sha256": "fc1988bc3a3e36421c43c06229ea813b253a79656f2ba3c03500edebaeb630d4"
+    },
+    {
+      "name": "20260926084628_growth_operations_phase3_root_counts.sql",
+      "sha256": "c3a7c2bcff925a64a9d5e70421f93d826cb746838dc457696e4fc27a97a4ee2c"
+    },
+    {
+      "name": "20260926085302_growth_operations_phase3_tree_focus.sql",
+      "sha256": "c0a010174b2cf3db97122965060129a233cdd0158d1696e598ce890a1a659c25"
+    },
+    {
+      "name": "20260926090500_growth_operations_phase3_root_financials.sql",
+      "sha256": "dcc441ef3706395c5e8587e33fce67c9070ba6b911a744da6d78a21d3408e7af"
+    },
+    {
+      "name": "20260926091500_growth_operations_phase3_period_context.sql",
+      "sha256": "897ab961e706051227ebd8e530699d46904229123efb51911864012cb0431713"
     }
   ]
 }

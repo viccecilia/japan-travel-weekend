@@ -13,7 +13,8 @@ const navigation:NavigationGroup[]=[
   {label:'订单与售后',children:[{label:'全部订单',to:'/app/operations/orders',match:(pathname,search)=>pathname==='/app/operations/orders'&&!new URLSearchParams(search).has('afterSale')},{label:'取消退款',to:'/app/operations/orders?afterSale=refund_pending'},{label:'VIP包车需求',to:'/app/operations/orders/charters'}]},
   {label:'调度与运行',children:[{label:'当日运行',to:'/app/operations/run'},{label:'异常工单',to:'/app/operations/incidents'}]},
   {label:'司导与车辆',children:[{label:'司导档案',to:'/app/operations/staff'},{label:'车辆档案',to:'/app/operations/vehicles'},{label:'申请与请假',to:'/app/operations/staff-requests'}]},
-  {label:'推广与财务',children:[{label:'推广与佣金',to:'/app/operations/commissions'},{label:'提现与对账',to:'/app/operations/commissions?queue=payout'}]},
+  {label:'增长运营',children:[{label:'投稿活动',to:'/app/operations/marketing'},{label:'推广大使',to:'/app/operations/commissions'}]},
+  {label:'推广与推荐',children:[{label:'关系图',to:'/app/operations/referrals/tree'},{label:'推荐用户',to:'/app/operations/referrals/tree?view=users'},{label:'推荐完成首单',to:'/app/operations/referrals/tree?view=first-paid'},{label:'推广奖励',to:'/app/operations/commissions'},{label:'优惠券与奖励',to:'/app/operations/commissions?queue=payout'}]},
   {label:'数据统计',children:[{label:'经营 Dashboard',to:'/app/operations/analytics'}]},
   {label:'系统设置',children:[{label:'系统状态与版本',to:'/app/operations/settings'}]},
 ];

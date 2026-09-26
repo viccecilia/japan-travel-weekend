@@ -1,4 +1,4 @@
-import { Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 import {PassengerMessages} from '../app/PassengerMessages';
 import {lazy,Suspense,useEffect,type ReactNode} from "react";
 import {
@@ -55,6 +55,8 @@ import {AiGuide} from "../app/AiGuide";
 import {TripMap} from '../app/TripMap';
 import {VipCharter} from '../app/VipCharter';
 import {ReferralGrowth,TravelMoments} from '../app/GrowthPages';
+import {AmbassadorCenter} from '../app/AmbassadorCenter';
+import {PassengerPageHeader} from '../app/PassengerPageHeader';
 import {OperationsLayout} from "../app/operations/OperationsLayout";
 const OperationsDashboard=lazy(()=>import('../app/OperationsDashboard').then(module=>({default:module.OperationsDashboard})));
 const ProductCenter=lazy(()=>import('../app/operations/ProductCenter').then(module=>({default:module.ProductCenter})));
@@ -64,12 +66,15 @@ const RunCenter=lazy(()=>import('../app/operations/RunCenter').then(module=>({de
 const IncidentCenter=lazy(()=>import('../app/operations/IncidentCenter').then(module=>({default:module.IncidentCenter})));
 const MarketingCenter=lazy(()=>import('../app/operations/MarketingCenter').then(module=>({default:module.MarketingCenter})));
 const CommissionCenter=lazy(()=>import('../app/operations/CommissionCenter').then(module=>({default:module.CommissionCenter})));
+const ReferralTreeCenter=lazy(()=>import('../app/operations/ReferralTreeCenter').then(module=>({default:module.ReferralTreeCenter})));
 const SystemSettings=lazy(()=>import('../app/operations/SystemSettings').then(module=>({default:module.SystemSettings})));
 const ResourceCenter=lazy(()=>import('../app/operations/ResourceCenter').then(module=>({default:module.ResourceCenter})));
 const CharterRequestCenter=lazy(()=>import('../app/operations/CharterRequestCenter').then(module=>({default:module.CharterRequestCenter})));
 const OperationsPage=({children}:{children:ReactNode})=><RequireAccount><RequireOperations><OperationsLayout><Suspense fallback={<main className="operations-page"><p>正在加载管理功能…</p></main>}>{children}</Suspense></OperationsLayout></RequireOperations></RequireAccount>;
 const OperationsNotFound=()=> <main className="operations-page"><section className="operations-error" role="alert"><h2>管理页面不存在</h2><p>该管理链接可能来自旧版本，请通过左侧导航进入现有模块。</p></section></main>;
 function ScrollToTop(){const {pathname}=useLocation();useEffect(()=>{if(!navigator.userAgent.includes('jsdom'))window.scrollTo({top:0,left:0,behavior:'auto'});},[pathname]);return null;}
+function ReferralLink(){const {code=''}=useParams();return <Navigate replace to={`/app/create-account?ref=${encodeURIComponent(code)}`}/>;}
+const PassengerSubpage=({backTo,children}:{backTo:string;children:ReactNode})=><><PassengerPageHeader backTo={backTo}/>{children}</>;
 export function Router() {
   return (
     <><ScrollToTop/><Routes>
@@ -102,6 +107,7 @@ export function Router() {
           </AppShell>
         }
       />
+      <Route path="/r/:code" element={<ReferralLink/>}/>
       <Route path="/app/create-account" element={<AppShell><CreateAccount /></AppShell>} />
       <Route path="/app/forgot-password" element={<AppShell><ForgotPassword /></AppShell>} />
       <Route path="/app/reset-password" element={<AppShell><ResetPassword /></AppShell>} />
@@ -217,10 +223,11 @@ export function Router() {
       <Route
         path="/app/referral"
         element={
-          <RequireAccount><AppShell nav><ReferralGrowth /></AppShell></RequireAccount>
+          <RequireAccount><AppShell nav><PassengerSubpage backTo="/app/profile"><ReferralGrowth /></PassengerSubpage></AppShell></RequireAccount>
         }
       />
-      <Route path="/app/travel-moments" element={<RequireAccount><AppShell nav><TravelMoments /></AppShell></RequireAccount>} />
+      <Route path="/app/travel-moments" element={<RequireAccount><AppShell nav><PassengerSubpage backTo="/app/profile"><TravelMoments /></PassengerSubpage></AppShell></RequireAccount>} />
+      <Route path="/app/ambassador" element={<RequireAccount><AppShell nav><PassengerSubpage backTo="/app/profile"><AmbassadorCenter /></PassengerSubpage></AppShell></RequireAccount>} />
       <Route
         path="/app/profile"
         element={
@@ -236,6 +243,7 @@ export function Router() {
       <Route path="/app/operations/incidents" element={<OperationsPage><IncidentCenter/></OperationsPage>} />
       <Route path="/app/operations/marketing" element={<OperationsPage><MarketingCenter/></OperationsPage>} />
       <Route path="/app/operations/commissions" element={<OperationsPage><CommissionCenter/></OperationsPage>} />
+      <Route path="/app/operations/referrals/tree" element={<OperationsPage><ReferralTreeCenter/></OperationsPage>} />
       <Route path="/app/operations/settings" element={<OperationsPage><SystemSettings/></OperationsPage>} />
       <Route path="/app/operations/staff" element={<OperationsPage><ResourceCenter kind="staff"/></OperationsPage>} />
       <Route path="/app/operations/vehicles" element={<OperationsPage><ResourceCenter kind="vehicles"/></OperationsPage>} />

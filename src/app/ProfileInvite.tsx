@@ -12,7 +12,7 @@ export function ProfileInvite(){
  const [notice,setNotice]=useState('');
  const [qr,setQr]=useState('');
  const [showQr,setShowQr]=useState(false);
- const link=code?`${window.location.origin}/app/create-account?ref=${encodeURIComponent(code)}`:'';
+ const link=code?`${window.location.origin}/r/${encodeURIComponent(code)}`:'';
  async function load(){
   if(busy||code)return;
   setBusy(true);setNotice('');

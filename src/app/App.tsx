@@ -413,6 +413,7 @@ export function Login() {
               placeholder={a.passwordRule}
             /><button type="button" className="text-button" aria-pressed={showPassword} onClick={()=>setShowPassword(value=>!value)}>{showPassword?'隐藏密码':'显示密码'}</button></span>
         </label>
+        {services?.authAvailable&&<div className="login-forgot"><Link to={forgotPasswordHref}>{a.forgotPassword}?</Link></div>}
         {!services && !production && (
           <label>
             {c.referral} <small>{c.optional}</small>
@@ -450,12 +451,7 @@ export function Login() {
               ? a.unavailablePrivacy
               : a.localPrivacy}
         </p>
-        {production && services?.authAvailable && (
-          <div className="auth-links">
-            <Link to={createAccountHref}>{a.createAccount}</Link>
-            <Link to={forgotPasswordHref}>{a.forgotPassword}</Link>
-          </div>
-        )}
+        {services?.authAvailable&&<p className="login-create-account"><span>{a.newToJtw}</span><Link to={createAccountHref}>{a.createAccount}</Link></p>}
       </form>
     </>
   );
@@ -2808,7 +2804,7 @@ function ReferralPanel(){
   useEffect(()=>{let active=true;void services?.loadOwnReferralSummary().then(value=>{if(active)setSummary(value)});return()=>{active=false}},[services]);
   useEffect(()=>{let active=true;void services?.loadOwnCashCommissionSummary().then(value=>{if(active)setCommission(value)});return()=>{active=false}},[services]);
   if(!summary)return <div className="empty-card"><p>{c.loading}</p></div>;
-  const link=`${window.location.origin}/app/create-account?ref=${encodeURIComponent(summary.code)}`;
+  const link=`${window.location.origin}/r/${encodeURIComponent(summary.code)}`;
   const copy=async()=>{await navigator.clipboard.writeText(link);setNotice(c.copied)};
   const share=async()=>{if(navigator.share)await navigator.share({title:c.title,text:c.intro.replace('{percent}',String(summary.discountPercent)),url:link});else await copy()};
   const activeCount=summary.coupons.filter(item=>item.status==='active'&&new Date(item.expiresAt).getTime()>now).length;

@@ -1,6 +1,18 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Departure, SeatStatus } from "../types";
 
+export type AmbassadorDashboard={
+  qualification:{active:boolean;status:string;achievedAt:string|null;source:string|null;currentValidReferrals:number};
+  referralCode:string;
+  currentMonth:{registered:number;firstPaid:number;validReferrals:number;rewardAmount:number};
+  previousMonth:{registered:number;firstPaid:number;validReferrals:number;rewardAmount:number};
+  lifetime:{registered:number;validReferrals:number;totalReward:number;totalPaidOut:number;currentBalance:number};
+  withdrawal:{threshold:number;eligibleAmount:number;requestedThisMonth:boolean;status:string};
+  cashRule:{id:string;percent:number};
+};
+export type AmbassadorReferralRecords={total:number;records:Array<{id:string;referredUser:string;referredAt:string;stage:'registered'|'first_paid'|'completed_first_trip'|'invalid';rewardAmount:number|null;rewardStatus:string}>};
+export type AmbassadorCommissionHistory={entries:Array<{id:string;referredUser:string;createdAt:string;confirmedAt:string|null;amountJpy:number;status:string;invalidReason:string|null}>;payouts:Array<{id:string;periodMonth:string;amountJpy:number;status:string;requestedAt:string;paidAt:string|null}>};
+
 type SellableDepartureRow = {
   id: string;
   trip_slug: string;
@@ -244,6 +256,9 @@ export class SupabaseAuthRepository {
   }
   async loadOwnReferralSummary(){if(!this.client)return null;try{const {data,error}=await this.client.rpc('get_own_referral_summary');return error?null:data as {code:string;active:boolean;discountPercent:number;validityDays:number;successfulInvites:number;completedInvites:number;pendingInvites:number;achievementKey:string;nextMilestone:number|null;coupons:Array<{id:string;discountPercent:number;status:string;expiresAt:string;recipientKind:string;activatedAt:string|null;availableAt:string|null;qualifyingTripStartsAt:string|null}>}}catch{return null}}
   async loadOwnCashCommissionSummary(){if(!this.client)return null;const {data,error}=await this.client.rpc('get_own_cash_commission_summary');return error?null:data as {qualificationStatus:string;pendingJpy:number;availableJpy:number;lockedJpy:number;paidJpy:number;recoveryDueJpy:number;entries:Array<{id:string;sourceOrderId:string;basisAmountJpy:number;commissionPercent:number;amountJpy:number;status:string;unlockedAt:string|null}>;payouts:Array<{id:string;weekStart:string;amountJpy:number;status:string;requestedAt:string}>}}
+  async loadOwnAmbassadorDashboard(){if(!this.client)return null;const {data,error}=await this.client.rpc('get_ambassador_dashboard');return error?null:data as AmbassadorDashboard}
+  async listOwnReferralRecords(offset=0,limit=30){if(!this.client)return null;const {data,error}=await this.client.rpc('list_own_referral_records',{p_offset:offset,p_limit:limit});return error?null:data as AmbassadorReferralRecords}
+  async listOwnCommissionHistory(offset=0,limit=30){if(!this.client)return null;const {data,error}=await this.client.rpc('list_own_commission_history',{p_offset:offset,p_limit:limit});return error?null:data as AmbassadorCommissionHistory}
   async applyForAmbassador(note=''){if(!this.client)return {ok:false,error:'账户服务未配置'};const {error}=await this.client.rpc('apply_for_ambassador',{p_note:note});return {ok:!error,error:error?.message??null}}
   async requestOwnCommissionPayout(idempotencyKey:string){if(!this.client)return {ok:false,error:'账户服务未配置'};const {error}=await this.client.rpc('request_own_commission_payout',{p_idempotency_key:idempotencyKey});return {ok:!error,error:error?.message??null}}
   async requestPasswordReset(email: string, returnTo="/app") {

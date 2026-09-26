@@ -1,0 +1,15 @@
+import {MemoryRouter} from 'react-router-dom';
+import {cleanup,fireEvent,render,screen} from '@testing-library/react';
+import {afterEach,describe,expect,it,vi} from 'vitest';
+import {AppProvider} from '../src/app/store';
+import {ReferralTreeCenter} from '../src/app/operations/ReferralTreeCenter';
+
+const root={id:'root-1',code:'G3RELAY2026',name:'机构 B（双中继）',kind:'organization',registered:10,firstPaid:6,validTrips:6,downstream:10};
+const node={sourceId:'u10',relationId:'r10',label:'U***10',depth:1,status:'registered',registeredAt:'2026-09-20T00:00:00Z',firstPaidAt:null,firstTripAt:null,childCount:4,validChildren:3,highValue:true};
+const operations={listReferralRoots:vi.fn(async()=>({data:[root],error:null})),loadReferralRootSummary:vi.fn(async()=>({data:{directRegistered:2,indirectRegistered:8,downstream:10,firstPaid:6,validTrips:6,invalid:0,maxDepth:2,salesJpy:60000,commissionJpy:6000,avgRegistrationToPaymentDays:null,avgRegistrationToTripDays:null},error:null})),loadReferralTreeAnalysis:vi.fn(async()=>({data:{propagationType:'multi_relay',relayCount:2,highValueSourceIds:['u10'],funnel:{registered:10,firstPaid:6,validTrips:6,invalid:0},conversion:{registrationToPaid:60,paidToTrip:100,registrationToTrip:60}},error:null})),listReferralTreeAnomalies:vi.fn(async()=>({data:[],error:null})),loadReferralTreeChildren:vi.fn(async()=>({data:{items:[node],nextOffset:40},error:null})),loadReferralNodeDetail:vi.fn(async()=>({data:{basic:{sourceId:'u10',user:'U***10',nickname:'T***',registeredAt:'2026-09-20T00:00:00Z',parentSourceId:'root-1',rootSourceId:'root-1',depth:1,lifecycle:'registered'},travel:{completedFirstTrip:false,firstPaidAt:null,firstTripAt:null,completedTrips:0,validSpendJpy:0,invalid:false,firstOrderId:null},propagation:{directReferrals:4,downstream:4,validDescendants:3,salesJpy:30000,maxDepth:1},cash:{totals:{generated:3000,pending:0,available:3000,withdrawalPending:0,paid:0,invalid:0},entries:[]},coupons:{activeJpy:0,historicalJpy:0,usedJpy:0,expiredJpy:0,items:[]}},error:null}))};
+const services={loadSellableDepartures:vi.fn(async()=>({data:[],error:null})),currentUser:vi.fn(async()=>null),onAuthStateChange:()=>()=>{},operations};
+afterEach(cleanup);
+describe('ReferralTreeCenter',()=>{
+  it('shows the root funnel and a relay interpretation from operations data',async()=>{render(<MemoryRouter><AppProvider services={services as never}><ReferralTreeCenter/></AppProvider></MemoryRouter>);fireEvent.click(await screen.findByRole('button',{name:/机构 B/}));expect(await screen.findByText(/发现 2 个明显传播节点/)).toBeTruthy();expect(screen.getByText(/注册 10/)).toBeTruthy();});
+  it('lazily loads children and opens a privacy-safe node drawer',async()=>{render(<MemoryRouter><AppProvider services={services as never}><ReferralTreeCenter/></AppProvider></MemoryRouter>);fireEvent.click(await screen.findByRole('button',{name:/机构 B/}));fireEvent.click(await screen.findByRole('button',{name:'展开下级'}));fireEvent.click(await screen.findByRole('button',{name:/U\*\*\*10/}));const drawer=await screen.findByRole('dialog',{name:'推荐节点详情'});expect(drawer.textContent).toContain('下游有效首旅');});
+});

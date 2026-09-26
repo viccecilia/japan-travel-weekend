@@ -207,6 +207,12 @@ export type OperationsReferralSummary = {
   relations: OperationsReferralRelation[];
   unavailableSignals: string[];
 };
+export type OperationsReferralRoot={id:string;code:string;name:string;kind:string;registered:number;firstPaid:number;validTrips:number;downstream:number};
+export type OperationsReferralTreeNode={sourceId:string;relationId:string;label:string;depth:number;status:string;registeredAt:string;firstPaidAt:string|null;firstTripAt:string|null;childCount:number;validChildren:number;highValue?:boolean;isAmbassador?:boolean};
+export type OperationsReferralRootSummary={directRegistered:number;indirectRegistered:number;downstream:number;firstPaid:number;validTrips:number;invalid:number;maxDepth:number;salesJpy:number;cumulativeSalesJpy:number;commissionJpy:number;commissionPaidJpy:number;commissionInvalidJpy:number;couponBySource:Record<string,number>;avgRegistrationToPaymentDays:number|null;avgRegistrationToTripDays:number|null};
+export type OperationsReferralTreeAnalysis={propagationType:'flat'|'multi_relay'|'deep'|'mixed';relayCount:number;highValueSourceIds:string[];funnel:{registered:number;firstPaid:number;validTrips:number;invalid:number};conversion:{registrationToPaid:number;paidToTrip:number;registrationToTrip:number}};
+export type OperationsReferralNodeDetail={basic:{sourceId:string;user:string;nickname:string|null;registeredAt:string|null;parentSourceId:string|null;rootSourceId:string;depth:number;lifecycle:string};travel:{completedFirstTrip:boolean;firstPaidAt:string|null;firstTripAt:string|null;completedTrips:number;validSpendJpy:number;invalid:boolean;firstOrderId:string|null};propagation:{directReferrals:number;downstream:number;validDescendants:number;salesJpy:number;maxDepth:number};cash:{totals:{generated:number;pending:number;available:number;withdrawalPending:number;paid:number;invalid:number};entries:Array<{id:string;referredUser:string;relationId:string|null;orderId:string|null;tripId:string|null;eligibleAmountJpy:number|null;rule:string|null;amountJpy:number;status:string;createdAt:string}>};coupons:{activeJpy:number;historicalJpy:number;usedJpy:number;expiredJpy:number;items:Array<{id:string;faceValueJpy:number|null;remainingValueJpy:number|null;sourceType:string;sourceEventId:string|null;orderId:string|null;tripId:string|null;issuedAt:string;status:string}>}};
+export type OperationsReferralAnomaly={type:string;referenceId:string;sourceId:string|null};
 export type OperationsProduct = {
   id: string;
   slug: string;
@@ -1883,6 +1889,42 @@ export class SupabaseOperationsRepository {
       p_action: action,
       p_reason: reason,
     });
+  }
+  async listReferralRoots(from?:string,to?:string,kind='all'){
+    if(!this.client)return {data:[] as OperationsReferralRoot[],error:'运营数据服务未配置'};
+    const {data,error}=await this.client.rpc('list_operations_referral_roots',{p_from:from??null,p_to:to??null,p_kind:kind});
+    return {data:(Array.isArray(data)?data:[]) as OperationsReferralRoot[],error:error?.message??null};
+  }
+  async loadReferralTreeChildren(rootId:string,parentId:string,from?:string,to?:string,offset=0,limit=40){
+    if(!this.client)return {data:{items:[] as OperationsReferralTreeNode[],nextOffset:offset},error:'运营数据服务未配置'};
+    const {data,error}=await this.client.rpc('get_operations_referral_tree_children',{p_root:rootId,p_parent:parentId,p_from:from??null,p_to:to??null,p_offset:offset,p_limit:limit});
+    const value=(data??{}) as {items?:OperationsReferralTreeNode[];nextOffset?:number};
+    return {data:{items:value.items??[],nextOffset:value.nextOffset??offset},error:error?.message??null};
+  }
+  async loadReferralRootSummary(rootId:string,from?:string,to?:string){
+    if(!this.client)return {data:null as OperationsReferralRootSummary|null,error:'运营数据服务未配置'};
+    const {data,error}=await this.client.rpc('get_operations_referral_root_summary',{p_root:rootId,p_from:from??null,p_to:to??null});
+    return {data:(data??null) as OperationsReferralRootSummary|null,error:error?.message??null};
+  }
+  async loadReferralTreeAnalysis(rootId:string,from?:string,to?:string){
+    if(!this.client)return {data:null as OperationsReferralTreeAnalysis|null,error:'运营数据服务未配置'};
+    const {data,error}=await this.client.rpc('get_operations_referral_tree_analysis',{p_root:rootId,p_from:from??null,p_to:to??null});
+    return {data:(data??null) as OperationsReferralTreeAnalysis|null,error:error?.message??null};
+  }
+  async loadReferralNodeDetail(rootId:string,sourceId:string){
+    if(!this.client)return {data:null as OperationsReferralNodeDetail|null,error:'运营数据服务未配置'};
+    const {data,error}=await this.client.rpc('get_operations_referral_node_detail',{p_root:rootId,p_source:sourceId});
+    return {data:(data??null) as OperationsReferralNodeDetail|null,error:error?.message??null};
+  }
+  async loadReferralTreePath(rootId:string,sourceId:string){
+    if(!this.client)return {data:[] as string[],error:'运营数据服务未配置'};
+    const {data,error}=await this.client.rpc('get_operations_referral_tree_path',{p_root:rootId,p_source:sourceId});
+    return {data:(Array.isArray(data)?data:[]) as string[],error:error?.message??null};
+  }
+  async listReferralTreeAnomalies(rootId:string){
+    if(!this.client)return {data:[] as OperationsReferralAnomaly[],error:'运营数据服务未配置'};
+    const {data,error}=await this.client.rpc('list_operations_referral_anomalies',{p_root:rootId});
+    return {data:(Array.isArray(data)?data:[]) as OperationsReferralAnomaly[],error:error?.message??null};
   }
   private async transition(name: string, args: Record<string, unknown>) {
     if (!this.client) return { ok: false, error: "运营数据服务未配置" };

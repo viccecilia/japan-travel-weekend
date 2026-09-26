@@ -27,6 +27,15 @@ export const ADDITIONAL_MIGRATIONS = [
   '20260921014034_round1_contact_window.sql',
   '20260921014412_passenger_location_coordinates.sql',
   '20260921014907_private_trip_chat_photos.sql',
+  '20260926043656_growth_operations_phase1.sql',
+  '20260926054340_growth_operations_phase2_ambassador_center.sql',
+  '20260926082708_growth_operations_phase3_referral_tree.sql',
+  '20260926083645_growth_operations_phase3_tree_details.sql',
+  '20260926084520_growth_operations_phase3_anomaly_scope.sql',
+  '20260926084628_growth_operations_phase3_root_counts.sql',
+  '20260926085302_growth_operations_phase3_tree_focus.sql',
+  '20260926090500_growth_operations_phase3_root_financials.sql',
+  '20260926091500_growth_operations_phase3_period_context.sql',
 ];
 export const EXPECTED_MIGRATION_COUNT = LEGACY_MIGRATION_COUNT + ADDITIONAL_MIGRATIONS.length;
 
