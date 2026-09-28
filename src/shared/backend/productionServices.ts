@@ -12,6 +12,7 @@ import {
 import { SupabaseRealtimeAdapter } from "../integrations/supabaseClient";
 import { SupabaseOperationsRepository } from "../integrations/supabaseOperations";
 import {SupabaseVipCharterRepository} from '../integrations/supabaseVipCharter';
+import {SupabaseAttractionGuideRepository} from '../integrations/supabaseAttractions';
 export class ProductionBrowserServices {
   readonly auth;
   readonly orders;
@@ -24,6 +25,7 @@ export class ProductionBrowserServices {
   readonly staff;
   readonly accountProfile;
   readonly vipCharter;
+  readonly attractionGuides;
   constructor(
     client: SupabaseClient | null,
     apiBaseUrl: string | undefined,
@@ -39,6 +41,7 @@ export class ProductionBrowserServices {
     this.staff = new SupabaseStaffRepository(client);
     this.accountProfile = new SupabaseAccountProfileRepository(client);
     this.vipCharter = new SupabaseVipCharterRepository(client);
+    this.attractionGuides = new SupabaseAttractionGuideRepository(client);
     this.checkout = new TestBackendApi(
       apiBaseUrl,
       async () =>
@@ -154,6 +157,7 @@ export class ProductionBrowserServices {
   }
   loadPublishedCatalog(){return this.catalog.listPublished()}
   loadVipCharterRoutePrices(serviceDate:string){return this.vipCharter.listRoutePrices(serviceDate)}
+  loadAttractionGuide(slug:string,locale:Parameters<SupabaseAttractionGuideRepository['load']>[1]){return this.attractionGuides.load(slug,locale)}
   quoteVipCharter(departureId:string,passengerCount:number,vehicleType:Parameters<SupabaseVipCharterRepository['getQuote']>[2],englishDriver=false){return this.vipCharter.getQuote(departureId,passengerCount,vehicleType,englishDriver)}
   submitVipCharterRequest(input:Parameters<SupabaseVipCharterRepository['submit']>[0]){return this.vipCharter.submit(input)}
   loadOwnVipCharterRequests(){return this.vipCharter.listOwn()}
@@ -194,7 +198,7 @@ export class ProductionBrowserServices {
     return this.checkout.checkout(input);
   }
   resumePayment(input:{orderId:string;idempotencyKey:string}){return this.checkout.resumePayment(input)}
-  createQuote(input:{departureId:string;seats:number;couponId?:string}){return this.checkout.quote(input)}
+  createQuote(input:{departureId:string;seats:number;couponId?:string;acceptedLocale?:Parameters<TestBackendApi['quote']>[0]['acceptedLocale']}){return this.checkout.quote(input)}
   issueBoardingCredential(orderId: string) {
     return this.checkout.issueBoardingCredential(orderId);
   }

@@ -8,7 +8,7 @@ type NavigationChild={label:string;to:string;match?:(pathname:string,search:stri
 type NavigationGroup={label:string;children:NavigationChild[]};
 const navigation:NavigationGroup[]=[
   {label:'工作台',children:[{label:'今日概况',to:'/app/operations'},{label:'待办与异常',to:'/app/operations/incidents'}]},
-  {label:'产品与班次',children:[{label:'产品管理',to:'/app/operations/products'},{label:'班次日历',to:'/app/operations/departures'},{label:'价格与销售时间',to:'/app/operations/departures?panel=pricing'}]},
+  {label:'产品与班次',children:[{label:'产品管理',to:'/app/operations/products'},{label:'景点库',to:'/app/operations/attractions'},{label:'通用规则模板',to:'/app/operations/policies'},{label:'班次日历',to:'/app/operations/departures'},{label:'价格与销售时间',to:'/app/operations/departures?panel=pricing'}]},
   {label:'素材与营销',children:[{label:'首页推荐',to:'/app/operations/marketing'},{label:'季节专题',to:'/app/operations/marketing?panel=seasonal'}]},
   {label:'订单与售后',children:[{label:'全部订单',to:'/app/operations/orders',match:(pathname,search)=>pathname==='/app/operations/orders'&&!new URLSearchParams(search).has('afterSale')},{label:'取消退款',to:'/app/operations/orders?afterSale=refund_pending'},{label:'VIP包车需求',to:'/app/operations/orders/charters'}]},
   {label:'调度与运行',children:[{label:'当日运行',to:'/app/operations/run'},{label:'异常工单',to:'/app/operations/incidents'}]},

@@ -200,6 +200,7 @@ export class SupabaseDepartureRepository {
   }
 }
 export type PublicCatalogRow={id:string;slug:string;title:string;content:Record<string,unknown>|null;hero_image_url:string|null;gallery:unknown;revision_number:number;updated_at:string};
+export type PublicRoutePolicies=Record<string,{templateKey:string;versionId:string;version:number;sections:Record<string,{title?:string;body?:string}>|null}>;
 export class SupabaseCatalogRepository{
   constructor(private readonly client:SupabaseClient|null){}
   async listPublished(){
@@ -208,6 +209,14 @@ export class SupabaseCatalogRepository{
       if(error||!Array.isArray(data))return {data:[],error:'无法读取已发布产品目录'};
       return {data:(data as PublicCatalogRow[]).map(row=>({id:row.id,slug:row.slug,title:row.title,content:row.content??{},heroImageUrl:row.hero_image_url,gallery:Array.isArray(row.gallery)?row.gallery.filter((item):item is string=>typeof item==='string'):[],revisionNumber:Number(row.revision_number),updatedAt:row.updated_at})),error:null};
     }catch{return {data:[],error:'无法读取已发布产品目录'}}
+  }
+  async loadRoutePolicies(tripId:string,locale:string){
+    if(!this.client)return null;
+    try{const {data,error}=await this.client.rpc('get_public_route_policies',{p_trip:tripId,p_locale:locale});return error||!data?null:data as PublicRoutePolicies}catch{return null}
+  }
+  async loadRoutePoliciesBySlug(slug:string,locale:string){
+    if(!this.client)return null;
+    try{const {data,error}=await this.client.rpc('get_public_route_policies_by_slug',{p_slug:slug,p_locale:locale});return error||!data?null:data as PublicRoutePolicies}catch{return null}
   }
 }
 export class SupabaseAuthRepository {
@@ -364,7 +373,8 @@ export class SupabaseOrderRepository {
   async loadOwnOrderBilling(orderId:string){
     if(!this.client)return null;
     const {data,error}=await this.client.rpc('get_own_order_billing',{p_order:orderId});
-    return error||!data?null:data as {orderId:string;status:string;currency:string;amountPaidJpy:number;grossAmountJpy:number;discountAmountJpy:number;lineItems:Array<{kind:string;label:string;quantity:number;unitPriceJpy:number;amountJpy:number}>;paymentKind:string|null;paymentStatus:string|null;userConfirmedAt:string|null;title:string|null;departsAt:string|null;meetingName:string|null;meetingAddress:string|null;cancellationPolicy:string|null;cancellationPolicyVersion:string|null;refunds:Array<{status:string;amountJpy:number|null;completedAt:string|null;channel:string}>;snapshotAvailable:boolean};
+    const row=Array.isArray(data)?data[0]:data;
+    return error||!row?null:row as {orderId:string;status:string;currency:string;amountPaidJpy:number;grossAmountJpy:number;discountAmountJpy:number;lineItems:Array<{kind:string;label:string;quantity:number;unitPriceJpy:number;amountJpy:number}>;paymentKind:string|null;paymentStatus:string|null;userConfirmedAt:string|null;title:string|null;departsAt:string|null;meetingName:string|null;meetingAddress:string|null;cancellationPolicy:string|null;cancellationPolicyVersion:string|null;policyVersionId:string|null;serviceTimePolicyVersionId?:string|null;cancellationPolicyVersionId?:string|null;acceptedLocale?:string|null;agreementSnapshot?:Record<string,unknown>|null;agreementAcceptedAt?:string|null;refunds:Array<{status:string;amountJpy:number|null;completedAt:string|null;channel:string}>;snapshotAvailable:boolean};
   }
   async loadOwnNotifications() {
     if (!this.client) return { data: [], error: "通知服务未配置" };

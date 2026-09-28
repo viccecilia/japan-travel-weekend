@@ -4,6 +4,7 @@ import {productSpotStableId, type ProductSpotVideo} from './productSpotVideo';
 
 export type ProductEditorLocale = Record<string, unknown> & {
   title?: string;
+  tagline?: string;
   summary?: string;
   description?: string;
   region?: string;
@@ -18,6 +19,9 @@ export type ProductEditorStop = Record<string, unknown> & {
   location?: string;
   time?: string;
   stayMinutes?: number;
+  attractionId?: string;
+  selectedImageIds?: string[];
+  selectedVideoIds?: string[];
   imageUrl?: string;
   gallery?: string[];
   tip?: string;
@@ -26,6 +30,7 @@ export type ProductEditorStop = Record<string, unknown> & {
 
 export type ProductDraft = {
   title: string;
+  tagline: string;
   summary: string;
   description: string;
   heroTitle: string;
@@ -53,6 +58,7 @@ export type ProductDraft = {
   heroImageUrl: string;
   gallery: string[];
   itinerary: ProductEditorStop[];
+  routeReminders: Array<{id:string;type:string;sortOrder:number;enabled:boolean;locales:Record<string,{title:string;body:string}>}>;
   locales: Record<string, ProductEditorLocale>;
 };
 
@@ -71,6 +77,7 @@ export function draftFromProduct(product: OperationsProduct): ProductDraft {
   const rawLocales = object(content.locales);
   return {
     title: product.title,
+    tagline: text(content.tagline),
     summary: text(content.summary),
     description: text(content.description),
     heroTitle: text(content.heroTitle),
@@ -102,6 +109,9 @@ export function draftFromProduct(product: OperationsProduct): ProductDraft {
         ? (() => { const value = item as Record<string, unknown>; const id = productSpotStableId(value, index); return [{...value, id, editorId: `stop-${id}`} as ProductEditorStop]; })()
         : [])
       : [],
+    routeReminders: Array.isArray(content.routeReminders) ? content.routeReminders.flatMap((item,index) => {
+      const value=object(item); const id=text(value.id)||`reminder-${index + 1}`; const rawLocales=object(value.locales); const locales=Object.fromEntries(Object.entries(rawLocales).flatMap(([locale,row])=>{const localized=object(row);const body=text(localized.body);return body?[[locale,{title:text(localized.title),body}]]:[]})); return Object.keys(locales).length ? [{id,type:text(value.type)||'other',sortOrder:Number(value.sortOrder??index),enabled:value.enabled!==false,locales}] : [];
+    }) : [],
     locales: Object.fromEntries(Object.entries(rawLocales).map(([key, value]) => [key, object(value) as ProductEditorLocale])),
   };
 }
@@ -116,6 +126,7 @@ export function draftContent(product: OperationsProduct, draft: ProductDraft) {
   return {
     ...product.content,
     summary: draft.summary,
+    tagline: draft.tagline,
     description: draft.description,
     heroTitle: draft.heroTitle,
     heroSubtitle: draft.heroSubtitle,
@@ -129,6 +140,7 @@ export function draftContent(product: OperationsProduct, draft: ProductDraft) {
     languages: draft.languages,
     stops: itinerary.map((item) => String(item.title ?? item.name ?? '')).filter(Boolean),
     itinerary,
+    routeReminders: draft.routeReminders.map((item,index)=>({id:item.id,type:item.type,sortOrder:index,enabled:item.enabled,locales:item.locales})),
     highlights: draft.highlights,
     included: draft.included,
     excluded: draft.excluded,
@@ -152,6 +164,7 @@ export function localizedDraft(draft: ProductDraft, locale: string) {
   return {
     ...draft,
     title: text(localized.title) || draft.title,
+    tagline: text(localized.tagline) || draft.tagline,
     summary: text(localized.summary) || draft.summary,
     description: text(localized.description) || draft.description,
     heroTitle: text(localized.heroTitle) || draft.heroTitle,
@@ -170,6 +183,11 @@ export function localizedDraft(draft: ProductDraft, locale: string) {
     weatherNotice: text(localized.weatherNotice) || draft.weatherNotice,
     baggageNotice: text(localized.baggageNotice) || draft.baggageNotice,
     safetyNotice: text(localized.safetyNotice) || draft.safetyNotice,
+    routeReminders: draft.routeReminders.flatMap((item) => {
+      if(item.enabled===false)return [];
+      const localized=object(item.locales[locale]); const value=text(localized.body)?localized:object(item.locales['zh-CN']);
+      return text(value.body) ? [{...item, locales:{[locale]:{title:text(value.title),body:text(value.body)}}}] : [];
+    }),
     itinerary: draft.itinerary.map((item) => {
       const stopId = String(item.id ?? item.stopId ?? item.placeId ?? ''); const translation = object(localizedStops[stopId]);
       return {...item, title: text(translation.stop_title) || text(translation.title) || item.title, subtitle: text(translation.subtitle) || item.subtitle, shortDescription: text(translation.shortDescription) || item.shortDescription, longDescription: text(translation.longDescription) || item.longDescription, description: text(translation.shortDescription) || text(translation.description) || item.description, tip: text(translation.tip) || item.tip};

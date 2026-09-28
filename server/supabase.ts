@@ -30,9 +30,9 @@ export class SupabaseManualPaymentGateway{
 
 export class SupabaseCheckoutAttemptGateway{
   constructor(private readonly client:SupabaseClient|null){}
-  async begin(accountId:string,input:{departureId:string;seats:number;idempotencyKey:string;paymentMethod:'card'|'bank_transfer';draftId?:string;quoteId?:string}){
+  async begin(accountId:string,input:{departureId:string;seats:number;idempotencyKey:string;paymentMethod:'card'|'bank_transfer';draftId?:string;quoteId?:string;acceptedLocale?:'zh-CN'|'ja'|'en'|'ko'|'vi'|'ne'|'es'}){
     if(!this.client)return null;
-    const {data,error}=await this.client.rpc('begin_checkout_attempt',{p_account:accountId,p_key:input.idempotencyKey,p_draft:input.draftId??null,p_departure:input.departureId,p_seats:input.seats,p_method:input.paymentMethod,p_quote:input.quoteId??null});
+    const {data,error}=await this.client.rpc('begin_checkout_attempt',{p_account:accountId,p_key:input.idempotencyKey,p_draft:input.draftId??null,p_departure:input.departureId,p_seats:input.seats,p_method:input.paymentMethod,p_quote:input.quoteId??null,p_accepted_locale:input.acceptedLocale??'zh-CN'});
     const row=Array.isArray(data)?data[0]:data;
     return error||!row?null:{attemptId:String(row.attempt_id),status:String(row.attempt_status),orderId:row.attempt_order_id?String(row.attempt_order_id):null,response:row.response_payload&&typeof row.response_payload==='object'?row.response_payload as Record<string,unknown>:null};
   }
@@ -52,7 +52,7 @@ export class SupabaseServerPricingGateway{
     const amount=unit*seats;return Number.isSafeInteger(amount)?{amount,unitPrice:unit,currency:'JPY' as const}:null;
   }
   async applyCoupon(accountId:string,orderId:string,couponId:string,grossAmount:number){if(!this.client||!accountId||!orderId||!couponId||!Number.isSafeInteger(grossAmount)||grossAmount<1)return null;const {data,error}=await this.client.rpc('price_order_with_coupon',{p_account:accountId,p_order:orderId,p_coupon:couponId,p_expected_gross:grossAmount});const row=data?.[0];if(error||!row)return null;return {amount:Number(row.amount),grossAmount:Number(row.gross_amount),discountAmount:Number(row.discount_amount),discountPercent:Number(row.discount_percent),discountedSeats:Number(row.discounted_seats),discountedUnitPrice:Number(row.discounted_unit_price),sourceType:String(row.source_type)}}
-  async createQuote(accountId:string,input:{departureId:string;seats:number;couponId?:string}){if(!this.client)return null;const {data,error}=await this.client.rpc('create_order_quote',{p_account:accountId,p_departure:input.departureId,p_seats:input.seats,p_coupon:input.couponId??null});return error||!data?null:data as Record<string,unknown>}
+  async createQuote(accountId:string,input:{departureId:string;seats:number;couponId?:string;acceptedLocale?:'zh-CN'|'ja'|'en'|'ko'|'vi'|'ne'|'es'}){if(!this.client)return null;const {data,error}=await this.client.rpc('create_order_quote',{p_account:accountId,p_departure:input.departureId,p_seats:input.seats,p_coupon:input.couponId??null,p_accepted_locale:input.acceptedLocale??'zh-CN'});return error||!data?null:data as Record<string,unknown>}
   async applyQuote(accountId:string,orderId:string,quoteId:string){if(!this.client)return null;const {data,error}=await this.client.rpc('apply_order_quote',{p_account:accountId,p_order:orderId,p_quote:quoteId});const row=data?.[0];if(error||!row)return null;return {amount:Number(row.amount),grossAmount:Number(row.gross_amount),discountAmount:Number(row.discount_amount),discountPercent:Number(row.discount_percent),discountedSeats:Number(row.discounted_seats),discountedUnitPrice:Number(row.discounted_unit_price),sourceType:String(row.source_type??'')}}
   async confirmFree(accountId:string,orderId:string){if(!this.client)return false;const {data,error}=await this.client.rpc('confirm_coupon_covered_order',{p_account:accountId,p_order:orderId});return !error&&data===true}
 }

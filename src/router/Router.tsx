@@ -60,6 +60,9 @@ import {PassengerPageHeader} from '../app/PassengerPageHeader';
 import {OperationsLayout} from "../app/operations/OperationsLayout";
 const OperationsDashboard=lazy(()=>import('../app/OperationsDashboard').then(module=>({default:module.OperationsDashboard})));
 const ProductCenter=lazy(()=>import('../app/operations/ProductCenter').then(module=>({default:module.ProductCenter})));
+const AttractionGuidePage=lazy(()=>import('../app/AttractionGuidePage').then(module=>({default:module.AttractionGuidePage})));
+const AttractionLibrary=lazy(()=>import('../app/operations/AttractionLibrary').then(module=>({default:module.AttractionLibrary})));
+const PolicyTemplateManager=lazy(()=>import('../app/operations/PolicyTemplateManager').then(module=>({default:module.PolicyTemplateManager})));
 const ProductEditPage=lazy(()=>import('../app/operations/ProductEditPage').then(module=>({default:module.ProductEditPage})));
 const DepartureCenter=lazy(()=>import('../app/operations/DepartureCenter').then(module=>({default:module.DepartureCenter})));
 const RunCenter=lazy(()=>import('../app/operations/RunCenter').then(module=>({default:module.RunCenter})));
@@ -75,6 +78,12 @@ const OperationsNotFound=()=> <main className="operations-page"><section classNa
 function ScrollToTop(){const {pathname}=useLocation();useEffect(()=>{if(!navigator.userAgent.includes('jsdom'))window.scrollTo({top:0,left:0,behavior:'auto'});},[pathname]);return null;}
 function ReferralLink(){const {code=''}=useParams();return <Navigate replace to={`/app/create-account?ref=${encodeURIComponent(code)}`}/>;}
 const PassengerSubpage=({backTo,children}:{backTo:string;children:ReactNode})=><><PassengerPageHeader backTo={backTo}/>{children}</>;
+function AttractionGuideRoute(){
+  const {search}=useLocation();
+  const requestedBackTo=new URLSearchParams(search).get('returnTo');
+  const backTo=requestedBackTo?.startsWith('/app/')?requestedBackTo:'/app/trips';
+  return <AppShell nav><PassengerSubpage backTo={backTo}><Suspense fallback={<main className="app-content"><p>Loading guide…</p></main>}><AttractionGuidePage/></Suspense></PassengerSubpage></AppShell>;
+}
 export function Router() {
   return (
     <><ScrollToTop/><Routes>
@@ -141,6 +150,7 @@ export function Router() {
           </AppShell>
         }
       />
+      <Route path="/app/attractions/:attractionId" element={<AttractionGuideRoute/>} />
       <Route
         path="/app/booking/:slug"
         element={
@@ -237,6 +247,8 @@ export function Router() {
       <Route path="/app-demo/*" element={<LegacyAppRedirect />} />
       <Route path="/app/operations" element={<OperationsPage><OperationsDashboard/></OperationsPage>} />
       <Route path="/app/operations/products" element={<OperationsPage><ProductCenter/></OperationsPage>} />
+      <Route path="/app/operations/attractions" element={<OperationsPage><AttractionLibrary/></OperationsPage>} />
+      <Route path="/app/operations/policies" element={<OperationsPage><PolicyTemplateManager/></OperationsPage>} />
       <Route path="/app/operations/products/:productId/edit" element={<OperationsPage><ProductEditPage/></OperationsPage>} />
       <Route path="/app/operations/departures" element={<OperationsPage><DepartureCenter/></OperationsPage>} />
       <Route path="/app/operations/run" element={<OperationsPage><RunCenter/></OperationsPage>} />

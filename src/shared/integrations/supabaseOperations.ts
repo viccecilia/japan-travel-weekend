@@ -233,6 +233,9 @@ export type OperationsProductRevision = {
   createdAt: string;
   publishedAt: string | null;
 };
+export type OperationsAttraction={id:string;slug:string;status:'draft'|'published'|'archived';catalogVersion:number;textComplete:number;audioComplete:number;routeReferences:string[]};
+export type OperationsAttractionDetail={id:string;slug:string;status:'draft'|'published'|'archived';catalogVersion:number;guides:Record<string,{title:string;body:string}>;audio:Record<string,{storagePath?:string|null;audioUrl?:string|null;voice?:string|null;status:string}>};
+export type OperationsPolicyTemplate={templateId:string;templateKey:string;status:'active'|'archived';versionId:string|null;versionNumber:number|null;versionState:'draft'|'published'|'superseded'|'archived'|null;localizations:Record<string,Record<string,string>>};
 export type OperationsRunRow = {
   departureId: string;
   tripTitle: string;
@@ -700,6 +703,46 @@ export class SupabaseOperationsRepository {
       })),
       error: error?.message ?? null,
     };
+  }
+  async listAttractions(){
+    if(!this.client)return {data:[] as OperationsAttraction[],error:'运营数据服务未配置'};
+    const {data,error}=await this.client.rpc('get_operations_attractions');
+    return {data:((data??[]) as Array<Record<string,unknown>>).map(row=>({id:String(row.id),slug:String(row.slug),status:String(row.status) as OperationsAttraction['status'],catalogVersion:Number(row.catalog_version),textComplete:Number(row.text_complete??0),audioComplete:Number(row.audio_complete??0),routeReferences:Array.isArray(row.route_references)?row.route_references.map(String):[]})),error:error?.message??null};
+  }
+  async listPolicyTemplates(){
+    if(!this.client)return {data:[] as OperationsPolicyTemplate[],error:'运营数据服务未配置'};
+    const {data,error}=await this.client.rpc('get_operations_policy_templates');
+    return {data:((data??[]) as Array<Record<string,unknown>>).map(row=>({templateId:String(row.template_id),templateKey:String(row.template_key),status:String(row.status) as OperationsPolicyTemplate['status'],versionId:row.version_id?String(row.version_id):null,versionNumber:row.version_number==null?null:Number(row.version_number),versionState:row.version_state?String(row.version_state) as OperationsPolicyTemplate['versionState']:null,localizations:(row.localizations??{}) as Record<string,Record<string,string>>})),error:error?.message??null};
+  }
+  async savePolicyDraft(templateId:string,localizations:Record<string,Record<string,string>>){
+    if(!this.client)return {ok:false,id:null as string|null,error:'运营数据服务未配置'};
+    const {data,error}=await this.client.rpc('operations_save_policy_draft',{p_template:templateId,p_localizations:localizations});
+    return {ok:!error,id:data?String(data):null,error:error?.message??null};
+  }
+  async publishPolicyDraft(templateId:string){
+    if(!this.client)return {ok:false,id:null as string|null,error:'运营数据服务未配置'};
+    const {data,error}=await this.client.rpc('operations_publish_policy_draft',{p_template:templateId});
+    return {ok:!error,id:data?String(data):null,error:error?.message??null};
+  }
+  async getAttraction(slug:string){
+    if(!this.client)return {data:null as OperationsAttractionDetail|null,error:'运营数据服务未配置'};
+    const {data,error}=await this.client.rpc('get_operations_attraction',{p_slug:slug});
+    if(error||!data)return {data:null,error:error?.message??'景点不存在或无访问权限'};
+    const row=data as Record<string,unknown>;
+    return {data:{id:String(row.id),slug:String(row.slug),status:String(row.status) as OperationsAttractionDetail['status'],catalogVersion:Number(row.catalog_version),guides:(row.guides??{}) as OperationsAttractionDetail['guides'],audio:(row.audio??{}) as OperationsAttractionDetail['audio']},error:null};
+  }
+  async saveAttraction(input:{slug:string;expectedVersion:number;status:'draft'|'published'|'archived';guides:OperationsAttractionDetail['guides'];audio:OperationsAttractionDetail['audio']}){
+    if(!this.client)return {ok:false,data:null as Record<string,unknown>|null,error:'运营数据服务未配置'};
+    const {data,error}=await this.client.rpc('save_operations_attraction',{p_slug:input.slug,p_expected_version:input.expectedVersion,p_status:input.status,p_guides:input.guides,p_audio:input.audio});
+    return {ok:!error,data:(data??null) as Record<string,unknown>|null,error:error?.message??null};
+  }
+  async uploadAttractionGuideAudio(slug:string,locale:string,file:File){
+    if(!this.client)return {url:null as string|null,storagePath:null as string|null,error:'运营数据服务未配置'};
+    if(!['audio/mpeg','audio/mp4','audio/aac','audio/ogg'].includes(file.type)||file.size<=0||file.size>30*1024*1024)return {url:null,storagePath:null,error:'仅支持不超过30MB的 MP3、AAC、M4A 或 OGG 音频'};
+    const extension=file.name.split('.').pop()?.toLowerCase()||'mp3';const path=`${slug}/${locale}/${crypto.randomUUID()}.${extension}`;
+    const {error}=await this.client.storage.from('attraction-guide-audio').upload(path,file,{contentType:file.type,upsert:false});
+    if(error)return {url:null,storagePath:null,error:error.message};
+    return {url:this.client.storage.from('attraction-guide-audio').getPublicUrl(path).data.publicUrl,storagePath:path,error:null};
   }
   async uploadProductImage(productId: string, file: File) {
     if (!this.client)

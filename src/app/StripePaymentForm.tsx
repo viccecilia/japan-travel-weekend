@@ -31,7 +31,7 @@ export function StripePaymentForm({orderId,onComplete,locale='zh-CN'}:{orderId:s
     setError(c.incomplete);setSubmitting(false);
   };
   return <form className="stripe-payment form" onSubmit={submit} aria-label={c.form}>
-    <PaymentElement options={{layout:'tabs'}}/>
+    <PaymentElement options={{layout:'tabs'}} onLoadError={event=>setError(event.error.message??c.connection)}/>
     {error&&<div className="danger" role="alert">{error}</div>}
     <button className="button full" disabled={!stripe||!elements||submitting}>{submitting?c.confirming:c.confirm}</button>
     <p className="privacy">{c.privacy}</p>

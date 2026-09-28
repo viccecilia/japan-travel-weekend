@@ -1,6 +1,7 @@
 import type {OrderInventoryGateway,VerifiedSession} from '../supabase.js';
-export type ServerCheckoutInput={departureId:string;seats:number;idempotencyKey:string;paymentMethod:'card'|'bank_transfer';draftId?:string;couponId?:string;quoteId?:string};
-export type ServerQuoteInput={departureId:string;seats:number;couponId?:string};
+type CheckoutLocale='zh-CN'|'ja'|'en'|'ko'|'vi'|'ne'|'es';
+export type ServerCheckoutInput={departureId:string;seats:number;idempotencyKey:string;paymentMethod:'card'|'bank_transfer';draftId?:string;couponId?:string;quoteId?:string;acceptedLocale?:CheckoutLocale};
+export type ServerQuoteInput={departureId:string;seats:number;couponId?:string;acceptedLocale?:CheckoutLocale};
 export interface AccessTokenVerifier{verify(token:string):Promise<VerifiedSession|null>}
 export interface CardPaymentSessionGateway{available:boolean;create(input:{orderId:string;amount:number;idempotencyKey:string}):Promise<{clientSecret:string}|null>}
 export interface ManualPaymentGateway{markPending(orderId:string,amount:number):Promise<{dueAt:string}|null>}
@@ -11,11 +12,11 @@ export interface CheckoutAttemptGateway{
 export interface ServerPricingGateway{quote(departureId:string,seats:number):Promise<{amount:number;unitPrice:number;currency:'JPY'}|null>;createQuote?(accountId:string,input:ServerQuoteInput):Promise<Record<string,unknown>|null>;applyQuote?(accountId:string,orderId:string,quoteId:string):Promise<{amount:number;grossAmount:number;discountAmount:number;discountPercent:number;discountedSeats:number;discountedUnitPrice:number;sourceType:string}|null>;applyCoupon?(accountId:string,orderId:string,couponId:string,grossAmount:number):Promise<{amount:number;grossAmount:number;discountAmount:number;discountPercent:number;discountedSeats:number;discountedUnitPrice:number;sourceType:string}|null>;confirmFree?(accountId:string,orderId:string):Promise<boolean>}
 export class CheckoutEndpoint{
   constructor(private readonly auth:AccessTokenVerifier,private readonly inventory:OrderInventoryGateway,private readonly card:CardPaymentSessionGateway,private readonly manual:ManualPaymentGateway,private readonly pricing:ServerPricingGateway,private readonly now=()=>new Date(),private readonly attempts?:CheckoutAttemptGateway){}
-  async quote(authorization:string|undefined,input:ServerQuoteInput){const token=authorization?.match(/^Bearer (.+)$/)?.[1];if(!token)return {status:401,body:{error:'unauthorized'}};const session=await this.auth.verify(token);if(!session)return {status:401,body:{error:'unauthorized'}};if(!input.departureId||!Number.isInteger(input.seats)||input.seats<1)return {status:400,body:{error:'invalid_request'}};const quote=await this.pricing.createQuote?.(session.accountId,input);return quote?{status:200,body:quote}:{status:409,body:{error:'quote_unavailable'}}}
+  async quote(authorization:string|undefined,input:ServerQuoteInput){const token=authorization?.match(/^Bearer (.+)$/)?.[1];if(!token)return {status:401,body:{error:'unauthorized'}};const session=await this.auth.verify(token);if(!session)return {status:401,body:{error:'unauthorized'}};if(!input.departureId||!Number.isInteger(input.seats)||input.seats<1||(input.acceptedLocale!=null&&!['zh-CN','ja','en','ko','vi','ne','es'].includes(input.acceptedLocale)))return {status:400,body:{error:'invalid_request'}};const quote=await this.pricing.createQuote?.(session.accountId,input);return quote?{status:200,body:quote}:{status:409,body:{error:'quote_unavailable'}}}
   async post(authorization:string|undefined,input:ServerCheckoutInput){
     const token=authorization?.match(/^Bearer (.+)$/)?.[1];if(!token)return {status:401,body:{error:'unauthorized'}};
     const session=await this.auth.verify(token);if(!session)return {status:401,body:{error:'unauthorized'}};
-    if(!input.departureId||input.seats<1||!Number.isInteger(input.seats)||!input.idempotencyKey||!['card','bank_transfer'].includes(input.paymentMethod))return {status:400,body:{error:'invalid_request'}};
+    if(!input.departureId||input.seats<1||!Number.isInteger(input.seats)||!input.idempotencyKey||!['card','bank_transfer'].includes(input.paymentMethod)||(input.acceptedLocale!=null&&!['zh-CN','ja','en','ko','vi','ne','es'].includes(input.acceptedLocale)))return {status:400,body:{error:'invalid_request'}};
     const attempt=await this.attempts?.begin(session.accountId,input);
     if(this.attempts&&!attempt)return {status:409,body:{error:'checkout_idempotency_conflict'}};
     if(attempt?.response&&['requires_payment_action','pending_manual_review','confirmed_no_payment','paid'].includes(attempt.status))return {status:200,body:{...attempt.response,replayed:true}};

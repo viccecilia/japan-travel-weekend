@@ -5,3 +5,5 @@
 .route-detail-page .route-selected-departure strong{font-size:20px;color:#745a00}
 .route-detail-page .route-selected-departure a{grid-column:1/-1;min-height:44px;display:flex;align-items:center;justify-content:center;background:#ffe357;border-radius:10px;font-weight:700;color:#1e2e37}
 .route-detail-page .route-selected-departure span{overflow-wrap:anywhere}
+.route-v2-guide-link{display:inline-flex;align-items:center;margin:.45rem 0 .7rem;color:#735300;font-size:.84rem;font-weight:800;text-decoration:none}
+.route-v2-reminder{padding:13px 14px;border-radius:14px;background:#fff5ce;border:1px solid #ead28b;margin:9px 0}.route-v2-reminder p{margin:5px 0 0;line-height:1.55}
