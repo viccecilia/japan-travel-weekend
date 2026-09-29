@@ -1,0 +1,10 @@
+import {describe,expect,it} from 'vitest';
+import {canonicalizeTravelMomentUrl,normalizeSocialAccount,publicStatus} from '../src/shared/travelMoments';
+import {DeterministicSocialMetricsProvider} from '../server/travelMoments';
+
+describe('Phase 4.1 Travel Moments rules',()=>{
+ it('canonicalizes tracking URLs into stable TikTok and Instagram identities',()=>{expect(canonicalizeTravelMomentUrl('https://www.tiktok.com/@JTW/video/12345?is_copy_url=1')).toMatchObject({platform:'tiktok',canonicalUrl:'https://tiktok.com/@jtw/video/12345',contentId:'tiktok:12345'});expect(canonicalizeTravelMomentUrl('https://www.instagram.com/reels/AbC/?utm_source=share')).toMatchObject({platform:'instagram',contentId:'instagram:abc'});});
+ it('keeps malformed, profile, and unsupported links distinct',()=>{expect(canonicalizeTravelMomentUrl('no')).toEqual({reason:'INVALID_URL'});expect(canonicalizeTravelMomentUrl('https://instagram.com/jtw')).toEqual({reason:'PROFILE_URL_NOT_POST'});expect(canonicalizeTravelMomentUrl('https://example.com/post/1')).toEqual({reason:'UNSUPPORTED_PLATFORM'});});
+ it('normalizes handles only for comparison and keeps user status friendly',()=>{expect(normalizeSocialAccount('@JTW.travel-Info')).toBe('jtwtravelinfo');expect(publicStatus('checking')).toBe('pending_review');expect(publicStatus('eligible')).toBe('eligible');expect(publicStatus('ineligible')).toBe('ineligible');});
+ it('uses deterministic test evidence and never treats unavailable provider data as a failure',async()=>{const provider=new DeterministicSocialMetricsProvider(true);expect((await provider.resolvePost('https://www.tiktok.com/@j/video/1001','@j')).reasonCodes).toEqual([]);expect((await provider.resolvePost('https://www.tiktok.com/@j/video/1002','@j')).reasonCodes).toEqual(['MISSING_OFFICIAL_MENTION']);expect((await provider.resolvePost('https://www.tiktok.com/@j/video/1007','@j')).reasonCodes).toEqual(['EXTERNAL_CHECK_UNAVAILABLE']);const unavailable=new DeterministicSocialMetricsProvider(false);expect((await unavailable.resolvePost('https://www.tiktok.com/@j/video/1001','@j')).reasonCodes).toEqual(['EXTERNAL_CHECK_UNAVAILABLE']);});
+});

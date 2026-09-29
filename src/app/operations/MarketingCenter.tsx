@@ -1,66 +1,28 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { useApp } from "../store";
-import type { OperationsMerchandising } from "../../shared/integrations/supabaseOperations";
+import {useEffect,useState} from 'react';
+import {Link} from 'react-router-dom';
+import {useApp} from '../store';
+import type {OperationsMerchandising} from '../../shared/integrations/supabaseOperations';
 import {DiscoverManager} from './DiscoverManager';
-export function MarketingCenter() {
-  const { services } = useApp();
-  const [rows, setRows] = useState<OperationsMerchandising[]>([]);
-  const [linkReview,setLinkReview]=useState<{campaigns:Array<Record<string,unknown>>;submissions:Array<Record<string,unknown>>}|null>(null);
-  const [notice, setNotice] = useState("");
-  const [reviewing,setReviewing]=useState<Record<string,boolean>>({});
-  const refreshLinkReview=async()=>{const review=await services?.operations.loadLinkCampaignReview();if(review){setLinkReview(review);setNotice(review.error??'')}};
-  useEffect(() => {
-    void Promise.all([services?.operations.listMerchandising(),services?.operations.loadLinkCampaignReview()]).then(([result,review])=>{setRows(result?.data??[]);if(review)setLinkReview(review);setNotice(result?.error??review?.error??"")});
-  }, [services]);
-  return (
-    <main className="operations-page">
-      <header className="operations-hero">
-        <div>
-          <span>MERCHANDISING</span>
-          <h1>首页推荐与季节专题</h1>
-          <p>展示排序、季节有效期与销售班次彼此独立；红叶状态不作天气保证。</p>
-        </div>
-        <Link className="button secondary" to="/app/operations">
-          返回工作台
-        </Link>
-      </header>
-      <DiscoverManager/>
-      <section className="operations-section">
-        {notice && <p role="alert">{notice}</p>}
-        <div className="operations-dispatch-list">
-          {rows.map((row) => (
-            <article key={row.tripId}>
-              <div>
-                <b>{row.title}</b>
-                <span>
-                  首页顺序 {row.featuredRank ?? "未设置"} ·{" "}
-                  {row.campaignKey ?? "常规路线"}
-                </span>
-              </div>
-              <strong>
-                {row.travelFrom && row.travelUntil
-                  ? `${row.travelFrom} 至 ${row.travelUntil}`
-                  : "全年内容，实际可订日看班次"}
-              </strong>
-              <small>
-                翻译准备：
-                {Object.entries(row.localeReadiness)
-                  .filter(([, ready]) => ready)
-                  .map(([locale]) => locale)
-                  .join("、") || "待核对"}
-              </small>
-            </article>
-          ))}
-        </div>
-      </section>
-      <section className="operations-section">
-        <header><div><span>TRAVEL MOMENTS</span><h2>旅行作品投稿</h2></div><small>默认关闭 · 不接收游客视频文件</small></header>
-        <p>仅保存 TikTok、Instagram 帖子链接、账号、真实完团订单、核验记录和明确转载授权。评分规则、官方账号及统计窗口未配置前，系统禁止公布排名和发券。</p>
-        <div className="operations-dispatch-list">{linkReview?.campaigns.map(campaign=><article key={String(campaign.id)}><b>{String(campaign.campaign_month)} · {String(campaign.status)}</b><span>投稿 {linkReview.submissions.filter(item=>item.campaign_id===campaign.id).length} 条</span><small>{JSON.stringify(campaign.scoring_rules)==='{}'?'评分规则待配置':'评分规则已配置'} · {JSON.stringify(campaign.official_handles)==='{}'?'官方账号待配置':'官方账号已配置'}</small></article>)}</div>
-        <div className="operations-dispatch-list">{linkReview?.submissions.map(item=>{const account=item.account as {display_name?:string}|null;const order=item.order as {id?:string;departure?:{departs_at?:string;trip?:{title?:string}}}|null;const id=String(item.id);const update=async(status:'valid'|'needs_information')=>{const reason=window.prompt(status==='valid'?'核验说明（至少 3 个字）':'请说明需要补充的内容（至少 3 个字）','已核验公开作品、@账号与完团订单');if(!reason)return;setReviewing(value=>({...value,[id]:true}));const result=await services?.operations.verifyTravelMomentSubmission({submissionId:id,status,reason});setReviewing(value=>({...value,[id]:false}));setNotice(result?.error??(status==='valid'?'已设为有效投稿':'已标记为需要补充'));if(result?.ok)void refreshLinkReview()};return <article key={id}><b>{String(item.platform).toUpperCase()} · {String(item.status)}</b><span>{account?.display_name??'JTW user'} · {order?.departure?.trip?.title??'路线待读取'} · {order?.departure?.departs_at??''}</span><a href={String(item.post_url)} target="_blank" rel="noreferrer">{String(item.platform_account)} · 打开原帖</a><small>订单 {String(item.order_id)} · {String(item.created_at)} · mention {String((item.authorization_scope as Record<string,unknown>|null)?.mention_confirmed===true)} · 授权 {String((item.authorization_scope as Record<string,unknown>|null)?.authorized===true)}</small>{String(item.status)==='pending'&&<div className="operations-inline-actions"><button className="button secondary" disabled={reviewing[id]} onClick={()=>void update('needs_information')}>需要补充</button><button className="button" disabled={reviewing[id]} onClick={()=>void update('valid')}>核验有效</button></div>}</article>})}</div>
-        {!linkReview?.campaigns.length&&<p className="operations-notice">当前没有活动记录，公开入口保持关闭。</p>}
-      </section>
-    </main>
-  );
+
+const dash=(value:unknown)=>value===null||value===undefined||value===''?'—':String(value);
+const itemList=(value:unknown)=>Array.isArray(value)?value as any[]:[];
+const checks=[['public','Public','public'],['official_mention','Official mention','officialMention'],['campaign_hashtag','Campaign hashtag','campaignHashtag'],['author','Author match','authorMatches']] as const;
+const resultText=(value:unknown)=>value===true?'confirmed':value===false?'rejected':'unknown';
+
+function MomentDetail({item,onBack,refresh}:{item:Record<string,any>;onBack:()=>void;refresh:()=>Promise<void>}){
+  const {services}=useApp();const [reason,setReason]=useState('');const [busy,setBusy]=useState(false);const [notice,setNotice]=useState('');
+  const id=String(item.id),generation=Number(item.verification_generation??1),order=item.order as any,departure=order?.departure as any,trip=departure?.trip??item.trip as any,metrics=itemList(item.metrics)[0];
+  const currentRuns=itemList(item.runs).filter(run=>Number(run.verification_generation??1)===generation);const provider=currentRuns.filter(run=>!['internal','pending'].includes(String(run.provider))).sort((a,b)=>String(b.completed_at??b.started_at).localeCompare(String(a.completed_at??a.started_at)))[0]?.external_result??{};
+  const currentManuals=itemList(item.manuals).filter(record=>Number(record.verification_generation??1)===generation);
+  const manual=(field:typeof checks[number][0],decision:'confirmed'|'rejected')=>async()=>{if(!services||!reason.trim()||busy)return;setBusy(true);const result=await services.operations.manualVerifyTravelMoment({submissionId:id,field,decision,reason:reason.trim()});setBusy(false);setNotice(result.error??'人工核验已追加，并已重新计算资格。');if(result.ok)await refresh()};
+  const confirmAll=async()=>{if(!services||!reason.trim()||busy)return;setBusy(true);const result=await services.operations.confirmAllTravelMomentExternal(id,reason.trim());setBusy(false);setNotice(result.error??'所有当前未解决外部事实已分别记录，并已重新计算资格。');if(result.ok)await refresh()};
+  const recheck=async()=>{if(!services||busy)return;setBusy(true);const queued=await services.operations.recheckTravelMoment(id);if(queued.ok&&queued.generation)await services.checkTravelMoment({submissionId:id,trigger:'admin_recheck',expectedGeneration:queued.generation});setBusy(false);setNotice(queued.error??'核验完成。');if(queued.ok)await refresh()};
+  return <section className="operations-section"><header><div><span>TRAVEL MOMENTS</span><h2>投稿详情 · {dash(item.submission_number)}</h2></div><button className="button secondary" onClick={onBack}>返回投稿池</button></header>{notice&&<p role="status">{notice}</p>}<div className="operations-dispatch-list"><article><b>基本信息</b><small>状态：{dash(item.status)} · 当前核验代次：G{generation}</small><small>旅行者：{dash((item.account as any)?.display_name)} · 平台：{dash(item.platform).toUpperCase()}</small><a href={dash(item.post_url)} target="_blank" rel="noreferrer">{dash(item.post_url)}</a><small>社交账号：{dash(item.social_account_name)}</small></article><article><b>JTW 关联与内部资格</b><small>订单：{dash(order?.id)} · 支付状态：{dash(order?.status)}</small><small>行程：{dash(trip?.title)} · 出发日期：{dash(departure?.departs_at)}</small><small>原因代码：{itemList(item.reason_codes).join('、')||'—'}</small></article><article><b>指标</b><small>Views：{dash(metrics?.views)} · Likes：{dash(metrics?.likes)} · Comments：{dash(metrics?.comments)}</small><small>Shares：{dash(metrics?.shares)} · Saves：{dash(metrics?.saves)} · Captured At：{dash(metrics?.captured_at)}</small></article></div><section className="operations-section"><h3>External Verification · G{generation}</h3><p>Provider 与人工判断均为事实来源；Effective result 仅用于统一资格计算。</p><div className="operations-dispatch-list">{checks.map(([field,label,key])=>{const record=currentManuals.filter(manual=>manual.field===field).sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)))[0];const providerResult=resultText(provider?.[key]);const manualResult=record?.decision??'unknown';const effective=record?.decision??providerResult;return <article key={field}><b>{label}</b><small>Provider：{providerResult} · Manual：{manualResult} · Effective：{effective}</small>{effective==='unknown'&&<div className="operations-inline-actions"><button className="button secondary" disabled={busy||!reason.trim()} onClick={()=>void manual(field,'confirmed')}>确认符合</button><button className="button secondary" disabled={busy||!reason.trim()} onClick={()=>void manual(field,'rejected')}>确认不符合</button></div>}</article>})}</div><label>核验依据或补充说明<textarea value={reason} onChange={event=>setReason(event.target.value)} placeholder="说明人工核验依据（至少 3 个字符）"/></label><div className="operations-inline-actions"><button className="button secondary" disabled={busy||!reason.trim()} onClick={()=>void confirmAll()}>{busy?'正在记录…':'全部确认符合'}</button><button className="button secondary" disabled={busy} onClick={()=>void recheck()}>{busy?'正在重新核验…':'Admin Recheck'}</button></div></section><section className="operations-section"><h3>历史与审计</h3><div className="operations-dispatch-list"><article><b>Check Runs</b>{itemList(item.runs).map((run:any,index)=><small key={index}>G{dash(run.verification_generation)} · {dash(run.trigger)} · {dash(run.provider)} · {dash(run.status)} · {dash(run.completed_at??run.started_at)}</small>)}</article><article><b>Manual Verifications</b>{itemList(item.manuals).map((record:any,index)=><small key={index}>G{dash(record.verification_generation)} · {dash(record.field)} · {dash(record.decision)} · {dash(record.reason)} · {dash(record.created_at)}</small>)}</article><article><b>Eligibility Audit</b>{itemList(item.audits).map((record:any,index)=><small key={index}>{dash(record.old_status)} → {dash(record.new_status)} · {itemList(record.reason_codes).join('、')||'—'} · {dash(record.source)}</small>)}</article><article><b>Flags</b>{itemList(item.flags).map((flag:any,index)=><small key={index}>{dash(flag.code)} · {flag.resolved_at?'已处理':'未处理'}</small>)}</article></div></section></section>
+}
+
+export function MarketingCenter(){
+  const {services}=useApp();const [rows,setRows]=useState<OperationsMerchandising[]>([]);const [momentSubmissions,setMomentSubmissions]=useState<Array<Record<string,any>>>([]);const [selected,setSelected]=useState<Record<string,any>|null>(null);const [notice,setNotice]=useState('');
+  const refreshMoments=async()=>{const review=await services?.operations.loadTravelMomentReview();if(review){setMomentSubmissions(review.submissions);setSelected(current=>current?review.submissions.find(row=>String(row.id)===String(current.id))??null:null);setNotice(review.error??'')}};
+  useEffect(()=>{void Promise.all([services?.operations.listMerchandising(),services?.operations.loadTravelMomentReview()]).then(([result,review])=>{setRows(result?.data??[]);if(review)setMomentSubmissions(review.submissions);setNotice(result?.error??review?.error??'')})},[services]);
+  return <main className="operations-page"><header className="operations-hero"><div><span>MERCHANDISING</span><h1>首页推荐与季节专题</h1><p>展示排序、季节有效期与销售班次彼此独立；红叶状态不作天气保证。</p></div><Link className="button secondary" to="/app/operations">返回工作台</Link></header><DiscoverManager/>{selected?<MomentDetail item={selected} onBack={()=>setSelected(null)} refresh={refreshMoments}/>:<><section className="operations-section">{notice&&<p role="alert">{notice}</p>}<div className="operations-dispatch-list">{rows.map(row=><article key={row.tripId}><div><b>{row.title}</b><span>首页顺序 {row.featuredRank??'未设置'} · {row.campaignKey??'常规路线'}</span></div><strong>{row.travelFrom&&row.travelUntil?`${row.travelFrom} 至 ${row.travelUntil}`:'全年内容，实际可订日看班次'}</strong><small>翻译准备：{Object.entries(row.localeReadiness).filter(([,ready])=>ready).map(([locale])=>locale).join('、')||'待核对'}</small></article>)}</div></section><section className="operations-section"><header><div><span>TRAVEL MOMENTS</span><h2>投稿活动 · 全部投稿</h2></div><button className="button secondary" onClick={()=>void refreshMoments()}>刷新</button></header><p>仅处理投稿、即时资格、指标和审计；本阶段没有排名、获奖或优惠券动作。</p><div className="operations-dispatch-list">{momentSubmissions.map(item=>{const id=String(item.id),account=item.account as {display_name?:string}|null;return <article key={id}><b>{dash(item.submission_number)} · {dash(item.platform).toUpperCase()} · {dash(item.status)}</b><span>{account?.display_name??'JTW user'} · {dash((item.trip as any)?.title)}</span><a href={dash(item.post_url)} target="_blank" rel="noreferrer">{dash(item.social_account_name)} · 打开原帖</a><small>G{dash(item.verification_generation)} · 原因：{itemList(item.reason_codes).join('、')||'—'} · 最近核验：{dash(item.last_checked_at)}</small><div className="operations-inline-actions"><button className="button secondary" onClick={()=>setSelected(item)}>查看详情</button></div></article>})}</div>{!momentSubmissions.length&&<p className="operations-notice">尚无投稿。</p>}</section></>}</main>
 }

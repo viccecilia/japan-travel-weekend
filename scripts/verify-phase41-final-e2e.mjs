@@ -1,0 +1,36 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {randomUUID} from 'node:crypto';
+import {createClient} from '@supabase/supabase-js';
+
+const mark='PHASE41-FINAL-E2E';
+const parse=text=>Object.fromEntries(text.split(/\r?\n/).map(line=>line.trim()).filter(line=>line&&!line.startsWith('#')).map(line=>{const i=line.indexOf('=');return [line.slice(0,i),line.slice(i+1)]}));
+const env=parse(readFileSync('.env.server.test.local','utf8'));assert.equal(env.SUPABASE_URL,'https://hzxoofvodpqpdomtmzlf.supabase.co');
+const admin=createClient(env.SUPABASE_URL,env.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
+const password='Phase41FinalE2E!';
+const ensure=async(role,suffix)=>{const email=`phase41-final-e2e-${suffix}@example.invalid`;let page=1,user;while(page<8){const r=await admin.auth.admin.listUsers({page,perPage:100});if(r.error)throw r.error;user=r.data.users.find(x=>x.email===email);if(user||r.data.users.length<100)break;page++}if(!user){const r=await admin.auth.admin.createUser({email,password,email_confirm:true});if(r.error)throw r.error;user=r.data.user}const p=await admin.from('profiles').upsert({id:user.id,role,display_name:`${mark} ${suffix}`},{onConflict:'id'});if(p.error)throw p.error;return {id:user.id,email}};
+const fail=(label,r)=>{if(r.error)throw new Error(`${label}: ${r.error.message}`);return r.data};
+const [a,d,ops]=await Promise.all([ensure('passenger','a'),ensure('passenger','d'),ensure('operations','ops')]);
+const completed=fail('completed group',await admin.from('vehicle_group_journey_state').select('vehicle_group_id').eq('status','completed').limit(1).single());
+const group=fail('group',await admin.from('vehicle_groups').select('departure_id').eq('id',completed.vehicle_group_id).single());
+const departure=fail('departure',await admin.from('departures').select('trip_id').eq('id',group.departure_id).single());
+const order=async(account,key,status='paid')=>{const existing=await admin.from('orders').select('id').eq('idempotency_key',key).maybeSingle();if(existing.error)throw existing.error;let id=existing.data?.id;if(!id){id=randomUUID();fail('order',await admin.from('orders').insert({id,account_id:account,departure_id:group.departure_id,idempotency_key:key,seat_count:1,status,currency:'JPY',amount:101,is_test_order:false}))}if(status==='paid')fail('attach',await admin.from('vehicle_group_orders').upsert({vehicle_group_id:completed.vehicle_group_id,order_id:id},{onConflict:'order_id'}));return id};
+const [orderA,orderB,orderC,orderD]=await Promise.all([order(a.id,`${mark}-A`),order(a.id,`${mark}-B`),order(a.id,`${mark}-C`),order(d.id,`${mark}-D`)]);
+const sub=async(account,orderId,key,status='pending_review',reason=['EXTERNAL_CHECK_UNAVAILABLE'])=>{const url=`https://tiktok.com/@phase41/video/${key}`;const previous=await admin.from('travel_moment_submissions').select('id').eq('canonical_url',url).maybeSingle();if(previous.error)throw previous.error;if(previous.data)return previous.data.id;const r=await admin.from('travel_moment_submissions').insert({submission_number:`${mark}-${key}`,account_id:account,requested_order_id:orderId,order_id:orderId,trip_id:departure.trip_id,platform:'tiktok',post_url:url,canonical_url:url,canonical_content_id:`tiktok:${key}`,social_account_name:`@${mark.toLowerCase()}`,status,internal_verdict:'eligible',external_verdict:'unknown',reason_codes:reason,verification_generation:1}).select('id').single();return fail('submission',r).id};
+const [happy,unfinished,refund,cross]=await Promise.all([sub(a.id,orderA,'happy'),sub(a.id,orderB,'unfinished'),sub(a.id,orderC,'refund','eligible',[]),sub(d.id,orderD,'cross')]);
+const insertAll=async(id,g=1)=>{for(const field of ['public','official_mention','campaign_hashtag','author'])fail('manual fact',await admin.from('travel_moment_manual_verifications').insert({submission_id:id,operator_id:ops.id,field,decision:'confirmed',reason:mark,verification_generation:g}));};
+await insertAll(happy);await insertAll(refund);await insertAll(unfinished);
+const evaluate=async id=>fail('provider evaluate',await admin.rpc('record_travel_moment_provider_check',{p_submission:id,p_trigger:'initial_submit',p_provider:'PHASE41-FINAL-E2E',p_result:{public:true,officialMention:true,campaignHashtag:true,authorMatches:true},p_reason_codes:[],p_metrics:null,p_expected_generation:1}));
+assert.equal(await evaluate(happy),true);
+// B has no completed journey and remains a hard internal failure; C begins eligible.
+await admin.from('travel_moment_submissions').update({internal_verdict:'ineligible',status:'ineligible',reason_codes:['TRIP_NOT_COMPLETED']}).eq('id',unfinished);assert.equal(await evaluate(unfinished),true);
+assert.equal(await evaluate(refund),true);
+fail('refund',await admin.from('orders').update({status:'refunded'}).eq('id',orderC));
+const refunded=fail('refund submission',await admin.from('travel_moment_submissions').select('status,reason_codes').eq('id',refund).single());assert.equal(refunded.status,'ineligible');assert.deepEqual(refunded.reason_codes,['ORDER_REFUNDED']);
+const session=async email=>{const c=createClient(env.SUPABASE_URL,env.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false}});const r=await c.auth.signInWithPassword({email,password});if(r.error||!r.data.session)throw r.error??new Error('session');return createClient(env.SUPABASE_URL,env.SUPABASE_SERVICE_ROLE_KEY,{global:{headers:{Authorization:`Bearer ${r.data.session.access_token}`}},auth:{persistSession:false}})};
+const [clientA,clientD,clientOps]=await Promise.all([session(a.email),session(d.email),session(ops.email)]);
+const aOwn=await clientA.from('travel_moment_submissions').select('id').eq('id',happy);const aCross=await clientA.from('travel_moment_submissions').select('id').eq('id',cross);const dCross=await clientD.from('travel_moment_submissions').select('id').eq('id',happy);assert.equal(aOwn.data?.length,1);assert.equal(aCross.data?.length,0);assert.equal(dCross.data?.length,0);
+const protectedUpdate=await clientA.from('travel_moment_submissions').update({reason_codes:['ORDER_REFUNDED']}).eq('id',happy);assert.ok(protectedUpdate.error||protectedUpdate.data===null);
+const forbiddenManual=await clientA.rpc('operations_manual_verify_travel_moment',{p_submission:happy,p_field:'public',p_decision:'confirmed',p_reason:mark});assert.ok(forbiddenManual.error);
+const opsRead=await clientOps.from('travel_moment_submissions').select('id,travel_moment_check_runs(*),travel_moment_manual_verifications(*),travel_moment_eligibility_audits(*)').in('id',[happy,unfinished,refund,cross]);assert.equal(opsRead.data?.length,4);
+console.log(JSON.stringify({status:'PASS',project:'hzxoofvodpqpdomtmzlf',marker:mark,fixtures:{A:{order:orderA,submission:happy},B:{order:orderB,submission:unfinished},C:{order:orderC,submission:refund},D:{order:orderD,submission:cross}},happy:await admin.from('travel_moment_submissions').select('status').eq('id',happy).single().then(r=>r.data),unfinished:await admin.from('travel_moment_submissions').select('status,reason_codes').eq('id',unfinished).single().then(r=>r.data),refund:refunded,rls:{aOwn:aOwn.data?.length,aToD:aCross.data?.length,dToA:dCross.data?.length,protectedUpdate:Boolean(protectedUpdate.error),manualDenied:Boolean(forbiddenManual.error),opsRead:opsRead.data?.length}}));

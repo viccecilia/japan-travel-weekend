@@ -958,7 +958,7 @@ export function AppTrip() {
         </span>
       </div>
       <p className="route-lead">{routePitch?.lead ?? expandedSummary?.summary ?? (published?t.summary:routeText.lead(displayTrip.stops.join('、')))}</p>
-      {routePitch&&<div className="route-fit-tags" aria-label="适合人群">{routePitch.fit.map(item=><span key={item}>{item}</span>)}</div>}
+      {routePitch&&<div className="route-fit-tags" aria-label="适合人群">{routePitch?.fit.map(item=><span key={item}>{item}</span>)}</div>}
       <section className="route-trust-strip" aria-label={detail.trust}>
         <span>
           <b>{r.roundTrip}</b>

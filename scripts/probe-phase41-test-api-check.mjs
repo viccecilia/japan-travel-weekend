@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {createClient} from '@supabase/supabase-js';
+const parse=text=>Object.fromEntries(text.split(/\r?\n/).map(line=>line.trim()).filter(line=>line&&!line.startsWith('#')).map(line=>{const at=line.indexOf('=');return [line.slice(0,at),line.slice(at+1)]}));
+const env=parse(readFileSync('.env.server.test.local','utf8'));assert.equal(env.SUPABASE_URL,'https://hzxoofvodpqpdomtmzlf.supabase.co');
+const client=createClient(env.SUPABASE_URL,env.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false}});
+const listed=await client.auth.admin.listUsers({page:1,perPage:100});if(listed.error)throw listed.error;const user=listed.data.users.find(row=>row.email==='phase41-c0-smoke-20260929-operations@example.invalid');assert.ok(user,'test operations account missing');
+const target=await client.from('travel_moment_submissions').select('id,verification_generation').eq('canonical_url','https://www.tiktok.com/@c0/video/41004').single();if(target.error)throw target.error;
+const password='C0Smoke-20260929!';const auth=createClient(env.SUPABASE_URL,env.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false}});const signed=await auth.auth.signInWithPassword({email:String(user.email),password});if(signed.error||!signed.data.session)throw signed.error??new Error('test session unavailable');
+const response=await fetch('https://api-test.japan-travel.info/v1/travel-moments/check',{method:'POST',headers:{authorization:`Bearer ${signed.data.session.access_token}`,'content-type':'application/json',origin:'https://weekend.japan-travel.info'},body:JSON.stringify({submissionId:target.data.id,trigger:'admin_recheck',expectedGeneration:target.data.verification_generation})});const body=await response.json();console.log(JSON.stringify({status:response.status,body,generation:target.data.verification_generation}));

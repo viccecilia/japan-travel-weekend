@@ -20,4 +20,5 @@ export class TestBackendApi{
   verifyBoardingCredential(input:{token:string;vehicleGroupId:string;idempotencyKey:string}){return this.post<{status:string;boardingId:string|null;verifiedAt:string}>('/v1/boarding/verify',input)}
   translateMessage(input:{messageId:string;targetLanguage:'zh-CN'|'zh-TW'|'ja'|'en'|'vi'|'ne'|'ko'|'es'}){return this.post<{translated:true;cached:boolean}>('/v1/translations/message',input)}
   executeRefund(input:{requestId:string;idempotencyKey:string;manualReference?:string;actualAmount?:number;evidenceNote?:string}){return this.post<{accepted:true;requestId:string;status:'refund_processing'|'manual_refund_required'|'refund_completed'|'cancelled_without_refund'}>('/v1/operations/refunds',input)}
+  checkTravelMoment(input:{submissionId:string;trigger:'initial_submit'|'user_recheck'|'admin_recheck';expectedGeneration:number}){return this.post<{status:string;reasonCodes?:string[];stale?:boolean}>('/v1/travel-moments/check',input)}
 }

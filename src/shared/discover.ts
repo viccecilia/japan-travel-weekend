@@ -1,13 +1,15 @@
 import type {PassengerLocale} from './i18n/passengerLocale';
 import type {Trip} from './types';
 
+export type DiscoverHeroTranslation={title:string;subtitle:string;highlight_phrase?:string;_content_package?:{source_hash?:string;status?:'missing'|'draft'|'reviewed'|'published'|'stale'}};
+
 export type DiscoverHero = {
   id: string;
   video_url: string;
   poster_url: string;
   product_id: string | null;
   product_slug: string | null;
-  translations: Partial<Record<PassengerLocale, {title: string; subtitle: string}>>;
+  translations: Partial<Record<PassengerLocale, DiscoverHeroTranslation>>;
   enabled: boolean;
   sort_order: number;
   version: number;

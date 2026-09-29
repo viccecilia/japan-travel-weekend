@@ -125,6 +125,11 @@ export class ProductionBrowserServices {
   }
   loadOwnShareCampaign(){return this.orders.loadOwnShareCampaign()}
   submitShareLink(input:Parameters<SupabaseOrderRepository['submitShareLink']>[0]){return this.orders.submitShareLink(input)}
+  loadOwnTravelMoments(){return this.orders.loadOwnTravelMoments()}
+  createTravelMoment(input:Parameters<SupabaseOrderRepository['createTravelMoment']>[0]){return this.orders.createTravelMoment(input)}
+  requestTravelMomentRecheck(submissionId:string){return this.orders.requestTravelMomentRecheck(submissionId)}
+  updateOwnTravelMomentSubmission(input:Parameters<SupabaseOrderRepository['updateOwnTravelMomentSubmission']>[0]){return this.orders.updateOwnTravelMomentSubmission(input)}
+  checkTravelMoment(input:{submissionId:string;trigger:'initial_submit'|'user_recheck'|'admin_recheck';expectedGeneration:number}){return this.checkout.checkTravelMoment(input)}
   loadOwnAccountProfile() {
     return this.accountProfile.loadOwn();
   }

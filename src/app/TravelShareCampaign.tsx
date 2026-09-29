@@ -44,7 +44,7 @@ function ShareCampaign({services}:{services:ReturnType<typeof useApp>['services'
   return <section className="boost-card"><small>TRAVELERS BOOST</small><h2>让更多人看见你的旅程</h2>
     <p>在自己的平台发布 → @ JTW 对应官方账号 → 提交公开链接 → 等待人工核验。不会抓取或托管原视频，也不承诺播放量、涨粉或获选。</p>
     <form onSubmit={submit}>
-      <label>关联本人订单<select name="orderId" required><option value="">请选择已完成行程的订单</option>{data.orders.map(order=><option value={String(order.id)} key={String(order.id)}>{String(order.id).slice(0,8)}</option>)}</select></label>
+      <label>关联本人订单<select name="orderId" required><option value="">请选择已完成行程的订单</option>{data.orders.map((order:any)=><option value={String(order.id)} key={String(order.id)}>{String(order.id).slice(0,8)}</option>)}</select></label>
       <small>是否完成行程由服务端核验；仅付款不能取得活动资格。</small>
       <label>平台<select value={platform} onChange={event=>setPlatform(event.target.value as BoostPlatform)}><option value="tiktok">TikTok</option><option value="instagram">Instagram</option><option value="facebook">Facebook</option></select></label>
       <label>本人平台账号<input name="platformAccount" required minLength={2}/></label>
