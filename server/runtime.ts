@@ -10,7 +10,7 @@ import {GoogleCloudTranslationProvider,isTranslationTarget,SupabaseMessageTransl
 import {apiSecurityHeaders,FixedWindowRateLimiter,readRequestBody,RequestBodyTooLargeError,requestRateKey,sendRateLimit} from './security.js';
 import {SignedNotificationReceiptHandler,SupabaseNotificationReceiptStore} from './notifications.js';
 import {RefundEndpoint,SupabaseRefundGateway} from './refunds.js';
-import {DeterministicSocialMetricsProvider,TravelMomentCheckEndpoint} from './travelMoments.js';
+import {DeterministicSocialMetricsProvider,TravelMomentCheckEndpoint,TravelMomentMetricsRefreshJob} from './travelMoments.js';
 
 const port=Number(process.env.PORT||8787);const allowedOrigins=parseAllowedOrigins(process.env.ALLOWED_ORIGIN||'');
 const supabase=createSupabaseServerClient({url:process.env.SUPABASE_URL||'',serviceRoleKey:process.env.SUPABASE_SERVICE_ROLE_KEY||''});
@@ -24,7 +24,9 @@ const boarding=new SupabaseBoardingGateway(supabase);const sessions=new Supabase
 const translations=new SupabaseMessageTranslationGateway(supabase);const translationProvider=new GoogleCloudTranslationProvider(process.env.GOOGLE_TRANSLATION_API_KEY,process.env.JTW_TRANSLATION_ENABLED==='true');
 const notificationReceipts=new SignedNotificationReceiptHandler(process.env.NOTIFICATION_WEBHOOK_SECRET||'',new SupabaseNotificationReceiptStore(supabase));
 const refunds=new RefundEndpoint(new SupabaseRefundGateway(supabase),stripe);
-const travelMoments=new TravelMomentCheckEndpoint(new DeterministicSocialMetricsProvider(process.env.NODE_ENV==='test'||process.env.JTW_RUNTIME_MODE==='test'),supabase);
+const socialMetricsProvider=new DeterministicSocialMetricsProvider(process.env.NODE_ENV==='test'||process.env.JTW_RUNTIME_MODE==='test');
+const travelMoments=new TravelMomentCheckEndpoint(socialMetricsProvider,supabase);
+const travelMomentMetrics=new TravelMomentMetricsRefreshJob(socialMetricsProvider,supabase);
 const checkoutRate=new FixedWindowRateLimiter(30,60_000);const actionRate=new FixedWindowRateLimiter(60,60_000);
 
 function send(res:ServerResponse,status:number,body:unknown,corsOrigin:string|null=null,headers:Record<string,string>={}){res.writeHead(status,{...apiSecurityHeaders,'content-type':'application/json; charset=utf-8','cache-control':'no-store',...(corsOrigin?{'access-control-allow-origin':corsOrigin,'vary':'Origin'}:{}),...headers});res.end(JSON.stringify(body))}
@@ -46,7 +48,9 @@ const server=createServer(async(req,res)=>{const corsOrigin=allowedCorsOrigin(re
   return send(res,404,{error:'not_found'});
 }catch(error){const tooLarge=error instanceof RequestBodyTooLargeError;return send(res,tooLarge?413:error instanceof SyntaxError?400:500,{error:tooLarge?'body_too_large':error instanceof SyntaxError?'invalid_json':'server_error'})}});
 server.requestTimeout=15_000;server.headersTimeout=10_000;server.keepAliveTimeout=5_000;server.maxRequestsPerSocket=100;
-let scheduleRunning=false;
+let scheduleRunning=false;let travelMomentMetricsRunning=false;
 async function runLifecycleSchedule(){if(scheduleRunning||!supabase)return;scheduleRunning=true;try{const now=new Date().toISOString();for(const [name,params] of [['process_due_trip_room_openings',{p_now:now}],['process_due_departure_cutoffs',{p_now:now}],['enqueue_due_fulfilment_notifications',{p_now:now}]] as const){const {error}=await supabase.rpc(name,params);if(error)console.error(`lifecycle schedule ${name} failed`,error.code??'database_error')}}finally{scheduleRunning=false}}
-server.listen(port,'127.0.0.1',()=>{console.log(`Japan Travel Weekend test API listening on http://127.0.0.1:${port}`);void runLifecycleSchedule()});
+async function runTravelMomentMetricsSchedule(){if(travelMomentMetricsRunning)return;travelMomentMetricsRunning=true;try{const result=await travelMomentMetrics.run(`scheduled:${new Date().toISOString().slice(0,13)}`);if(result.error)console.error('travel moments metrics refresh failed',result.error)}finally{travelMomentMetricsRunning=false}}
+server.listen(port,'127.0.0.1',()=>{console.log(`Japan Travel Weekend test API listening on http://127.0.0.1:${port}`);void runLifecycleSchedule();void runTravelMomentMetricsSchedule()});
 setInterval(()=>void runLifecycleSchedule(),60_000).unref();
+setInterval(()=>void runTravelMomentMetricsSchedule(),6*60*60_000).unref();

@@ -29,3 +29,25 @@ export class TravelMomentCheckEndpoint{
   return {status:200,body:{status:String(current.data.status),reasonCodes:Array.isArray(current.data.reason_codes)?current.data.reason_codes:[],stale:Number(current.data.verification_generation)!==input.expectedGeneration}};
  }
 }
+
+/**
+ * A low-frequency, provider-agnostic metrics job.  It never recomputes Phase
+ * 4.1 eligibility and every successful poll receives a deterministic key, so
+ * retries cannot overwrite or duplicate snapshot history.
+ */
+export class TravelMomentMetricsRefreshJob{
+ constructor(private readonly provider:SocialMetricsProvider,private readonly db:SupabaseClient|null){}
+ async run(refreshKey:string){
+  if(!this.db)return {refreshed:0,skipped:0,error:'database_unavailable'};
+  const queue=await this.db.rpc('get_travel_moment_metrics_refresh_queue');
+  if(queue.error)return {refreshed:0,skipped:0,error:queue.error.message};
+  let refreshed=0,skipped=0;
+  for(const row of (Array.isArray(queue.data)?queue.data:[]) as Array<Record<string,unknown>>){
+   const check=await this.provider.resolvePost(String(row.post_url??''),String(row.social_account_name??''));
+   if(!check.metrics){skipped++;continue;}
+   const saved=await this.db.rpc('record_travel_moment_metric_snapshot',{p_submission:String(row.submission_id),p_provider:check.provider,p_metrics:check.metrics,p_refresh_key:`${refreshKey}:${row.submission_id}`});
+   if(saved.error||saved.data!==true)skipped++;else refreshed++;
+  }
+  return {refreshed,skipped,error:null as string|null};
+ }
+}
