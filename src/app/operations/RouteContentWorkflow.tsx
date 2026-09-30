@@ -62,7 +62,7 @@ export function RouteContentWorkflow({product, draft, update, onImportChinese, o
   </section>
   <section className="product-editor-card" aria-label="路线内容与特别提醒">
     <header><div><h2>路线内容与特别提醒</h2><p>只填写路线独有内容；景点导览和通用规则不复制到这里。缺少语言内容将保持缺失，不会自动翻译。</p></div><select aria-label="路线内容语言" value={contentLocale} onChange={event=>setContentLocale(event.target.value)}>{locales.map(locale=><option key={locale} value={locale}>{locale}</option>)}</select></header>
-    <Field label="路线标题"><input value={value('title')} onChange={event=>setLocalized('title',event.target.value)}/></Field>
+    <Field label="路线标题（内容包）"><input value={value('title')} onChange={event=>setLocalized('title',event.target.value)}/></Field>
     <Field label="一句话卖点"><textarea value={value('tagline')} onChange={event=>setLocalized('tagline',event.target.value)}/></Field>
     <Field label="路线总体介绍"><textarea value={value('description')} onChange={event=>setLocalized('description',event.target.value)}/></Field>
     <Field label="路线亮点（每行一项）"><textarea value={value('highlights')} onChange={event=>setLocalized('highlights',event.target.value)}/></Field>

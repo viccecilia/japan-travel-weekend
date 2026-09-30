@@ -251,6 +251,7 @@ export function Router() {
       <Route path="/app/operations/policies" element={<OperationsPage><PolicyTemplateManager/></OperationsPage>} />
       <Route path="/app/operations/products/:productId/edit" element={<OperationsPage><ProductEditPage/></OperationsPage>} />
       <Route path="/app/operations/departures" element={<OperationsPage><DepartureCenter/></OperationsPage>} />
+      <Route path="/app/operations/pricing" element={<OperationsPage><DepartureCenter view="pricing"/></OperationsPage>} />
       <Route path="/app/operations/run" element={<OperationsPage><RunCenter/></OperationsPage>} />
       <Route path="/app/operations/incidents" element={<OperationsPage><IncidentCenter/></OperationsPage>} />
       <Route path="/app/operations/marketing" element={<OperationsPage><MarketingCenter/></OperationsPage>} />

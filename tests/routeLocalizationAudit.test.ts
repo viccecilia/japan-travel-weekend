@@ -5,7 +5,8 @@ import {auditRouteLocalization} from '../src/shared/services/routeLocalizationAu
 describe('route localization audit',()=>{
   it('reports actual route-visible localization coverage without inventing translations',()=>{
     const report=auditRouteLocalization(trips);
-    expect(report.rows).toHaveLength(10);
+    expect(report.rows).toHaveLength(6);
+    expect(report.rows.map(row=>row.field)).not.toContain('itinerary');
     expect(report.missingTitles).toHaveLength(trips.length);
     expect(report.missingTitles.every(row=>row.sourceLocale==='zh-CN')).toBe(true);
   });

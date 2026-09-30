@@ -71,6 +71,13 @@ const video = (value: unknown): ProductSpotVideo | undefined => {
     ? row as ProductSpotVideo
     : undefined;
 };
+// Reviewed, exact legacy labels only.  This is deliberately not a normalized or
+// fuzzy matcher: anything not listed remains an explicit mapping gap.
+const reviewedRouteStopAttractionIds:Record<string,string>={'大原三千院':'sanzen-in','三千院':'sanzen-in'};
+const reviewedAttractionId=(value:Record<string,unknown>)=>{
+  const title=text(value.title)||text(value.name);
+  return text(value.attractionId)||reviewedRouteStopAttractionIds[title]||undefined;
+};
 
 export function draftFromProduct(product: OperationsProduct): ProductDraft {
   const content = product.content ?? {};
@@ -106,7 +113,7 @@ export function draftFromProduct(product: OperationsProduct): ProductDraft {
     gallery: [...product.gallery],
     itinerary: Array.isArray(content.itinerary)
       ? content.itinerary.flatMap((item, index) => item && typeof item === 'object' && !Array.isArray(item)
-        ? (() => { const value = item as Record<string, unknown>; const id = productSpotStableId(value, index); return [{...value, id, editorId: `stop-${id}`} as ProductEditorStop]; })()
+        ? (() => { const value = item as Record<string, unknown>; const id = productSpotStableId(value, index); return [{...value, attractionId:reviewedAttractionId(value), id, editorId: `stop-${id}`} as ProductEditorStop]; })()
         : [])
       : [],
     routeReminders: Array.isArray(content.routeReminders) ? content.routeReminders.flatMap((item,index) => {

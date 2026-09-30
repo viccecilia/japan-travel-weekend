@@ -36,7 +36,7 @@ const values = (form: FormData) => ({
   mapLat: Number(form.get("mapLat")),
   mapLng: Number(form.get("mapLng")),
 });
-export function DepartureCenter() {
+export function DepartureCenter({view='calendar'}:{view?:'calendar'|'pricing'}) {
   const { services } = useApp();
   const [searchParams,setSearchParams]=useSearchParams();
   const selectedDate=searchParams.get('date')??'';
@@ -216,23 +216,26 @@ export function DepartureCenter() {
     <main className="operations-page">
       <header className="departure-calendar-page-head">
         <div>
-          <span>产品与班次 / 班次日历</span>
-          <h1>班次日历</h1>
+          <span>产品与班次 / {view==='pricing'?'价格与销售时间':'班次日历'}</span>
+          <h1>{view==='pricing'?'价格与销售时间':'班次日历'}</h1>
         </div>
         <Link className="button secondary" to="/app/operations">
           返回工作台
         </Link>
       </header>
       <section className="operations-section departure-calendar-section">
-        <div className="departure-calendar-toolbar"><div><button type="button" onClick={() => updateFilter('month', shiftMonth(month, -1))}>上个月</button><button type="button" onClick={() => updateFilter('month', currentJapanMonth())}>本月</button><button type="button" onClick={() => updateFilter('month', shiftMonth(month, 1))}>下个月</button></div><strong>{month.replace('-', '年')}月</strong><label>状态<select value={statusFilter} onChange={event=>updateFilter('status',event.target.value)}><option value="all">全部状态</option><option value="open">销售中</option><option value="closed">停售</option><option value="cancelled">已取消</option><option value="draft">草稿</option></select></label></div>
-        {loadingCalendar ? <p className="operations-empty">正在读取班次月历…</p> : calendarError ? <p className="operations-error">{calendarError}</p> : <DepartureMonthCalendar key={`calendar:${month}:${editing?.id ?? ''}:${dispatchMode}`} month={month} departures={calendarDepartures.filter(item=>statusFilter==='all'||item.status===statusFilter)} selectedRoute={routeFilter} selectedDeparture={editing?.id ?? ''} openSelected={dispatchMode !== 'manual'&&!groupChangeId} onRouteChange={(value) => updateFilter('route', value)} onSelect={(item) => {setEditing(item);updateFilter('departure', item.id);}} onChangeVehicleGroup={(departure,vehicle:OperationsDepartureVehicle)=>{setEditing(departure);const next=new URLSearchParams(searchParams);next.set('departure',departure.id);next.set('groupChange',vehicle.vehicleGroupId??'');next.delete('dispatch');setSearchParams(next,{replace:true})}} />}
+        {view==='pricing'&&<p className="operations-hint">此页只管理每席价格、销售开始/截止与销售状态；日期、班次、报名人数、余位和运行状态请在「班次日历」处理。</p>}
+        {view==='calendar'&&
+        <div className="departure-calendar-toolbar"><div><button type="button" onClick={() => updateFilter('month', shiftMonth(month, -1))}>上个月</button><button type="button" onClick={() => updateFilter('month', currentJapanMonth())}>本月</button><button type="button" onClick={() => updateFilter('month', shiftMonth(month, 1))}>下个月</button></div><strong>{month.replace('-', '年')}月</strong><label>状态<select value={statusFilter} onChange={event=>updateFilter('status',event.target.value)}><option value="all">全部状态</option><option value="open">销售中</option><option value="closed">停售</option><option value="cancelled">已取消</option><option value="draft">草稿</option></select></label></div>}
+        {view==='calendar'&&(loadingCalendar ? <p className="operations-empty">正在读取班次月历…</p> : calendarError ? <p className="operations-error">{calendarError}</p> : <DepartureMonthCalendar key={`calendar:${month}:${editing?.id ?? ''}:${dispatchMode}`} month={month} departures={calendarDepartures.filter(item=>statusFilter==='all'||item.status===statusFilter)} selectedRoute={routeFilter} selectedDeparture={editing?.id ?? ''} openSelected={dispatchMode !== 'manual'&&!groupChangeId} onRouteChange={(value) => updateFilter('route', value)} onSelect={(item) => {setEditing(item);updateFilter('departure', item.id);}} onChangeVehicleGroup={(departure,vehicle:OperationsDepartureVehicle)=>{setEditing(departure);const next=new URLSearchParams(searchParams);next.set('departure',departure.id);next.set('groupChange',vehicle.vehicleGroupId??'');next.delete('dispatch');setSearchParams(next,{replace:true})}} />)}
+        {view==='pricing'&&!loadingCalendar&&!calendarError&&<div className="operations-table-scroll"><table className="operations-table"><thead><tr><th>班次</th><th>基础价格</th><th>销售开始</th><th>销售截止</th><th>销售状态</th><th/></tr></thead><tbody>{visibleDepartures.map(item=><tr key={item.id}><td>{item.tripTitle}<small>{local(item.departsAt)}</small></td><td>¥{item.price}</td><td>{local(item.salesOpenAt)}</td><td>{local(item.salesCloseAt)}</td><td>{item.status}</td><td><button type="button" onClick={()=>{setEditing(item);updateFilter('departure',item.id);}}>编辑价格</button></td></tr>)}</tbody></table></div>}
         {!loadingCalendar&&!calendarError&&visibleDepartures.length===0&&<p className="operations-empty">当前月份和状态范围内没有班次。</p>}
-        {dispatchMode === 'manual' && editing && (resourceError ? <p className="operations-error">配车资源读取失败：{resourceError}</p> : resources ? <ManualDispatchPanel key={`dispatch:${editing.id}:${editing.version}`} departure={calendarDepartures.find((item) => item.id === editing.id) ?? editing as OperationsCalendarDeparture} snapshot={resources} busy={busy} onSave={saveDispatch} onClose={() => updateFilter('dispatch', '')} /> : <p className="operations-empty">正在读取车辆与司机资源…</p>)}
+        {view==='calendar'&&dispatchMode === 'manual' && editing && (resourceError ? <p className="operations-error">配车资源读取失败：{resourceError}</p> : resources ? <ManualDispatchPanel key={`dispatch:${editing.id}:${editing.version}`} departure={calendarDepartures.find((item) => item.id === editing.id) ?? editing as OperationsCalendarDeparture} snapshot={resources} busy={busy} onSave={saveDispatch} onClose={() => updateFilter('dispatch', '')} /> : <p className="operations-empty">正在读取车辆与司机资源…</p>)}
         {groupChangeId&&(resourceError?<p className="operations-error">变更资源读取失败：{resourceError}</p>:resources&&changeTarget?<ConfirmedVehicleGroupChangeDialog key={`change:${groupChangeId}:${changeTarget.vehicle.groupVersion??1}`} departure={changeTarget.departure} vehicle={changeTarget.vehicle} snapshot={resources} onClose={()=>updateFilter('groupChange','')} onLoadHistory={loadGroupChangeHistory} onRequest={requestGroupChange} onApply={applyGroupChange} onRetryNotification={retryGroupChangeNotification} onApplied={reloadDepartures}/>:resources&&!loadingCalendar?<p className="operations-error">旅行团不存在、已完成或已不允许变更。</p>:<p className="operations-empty">正在读取旅行团变更资料…</p>)}
         {editing && (
           <form
             key={`${editing.id}:${editing.version}`}
-            className="operations-controls"
+            className={`operations-controls${view==='pricing'?' departure-pricing-form':''}`}
             onSubmit={update}
           >
             <label>
@@ -360,7 +363,7 @@ export function DepartureCenter() {
           </form>
         )}
       </section>
-      <section className="operations-section">
+      {view==='calendar'&&<section className="operations-section">
         <header>
           <div>
             <span>批量建班</span>
@@ -475,7 +478,7 @@ export function DepartureCenter() {
             生成预览
           </button>
         </form>
-      </section>
+      </section>}
       {notice && <p className="operations-notice">{notice}</p>}
       {preview.length > 0 && (
         <section className="operations-section">
