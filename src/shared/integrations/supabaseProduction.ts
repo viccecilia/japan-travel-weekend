@@ -201,6 +201,23 @@ export class SupabaseDepartureRepository {
 }
 export type PublicCatalogRow={id:string;slug:string;title:string;content:Record<string,unknown>|null;hero_image_url:string|null;gallery:unknown;revision_number:number;updated_at:string};
 export type PublicRoutePolicies=Record<string,{templateKey:string;versionId:string;version:number;sections:Record<string,{title?:string;body?:string}>|null}>;
+export type PublicRoutePolicyLoadResult=
+  | {status:'available';policies:PublicRoutePolicies}
+  | {status:'absent'}
+  | {status:'error'};
+
+function hasPolicySections(policies:PublicRoutePolicies,key:string){
+  const sections=policies[key]?.sections;
+  return Boolean(sections&&Object.keys(sections).length>0);
+}
+
+function routePolicyLoadResult(data:unknown):PublicRoutePolicyLoadResult{
+  if(!data||typeof data!=='object'||Array.isArray(data)||Object.keys(data).length===0)return {status:'absent'};
+  const policies=data as PublicRoutePolicies;
+  return ['global','service_time','cancellation'].every(key=>hasPolicySections(policies,key))
+    ? {status:'available',policies}
+    : {status:'error'};
+}
 export class SupabaseCatalogRepository{
   constructor(private readonly client:SupabaseClient|null){}
   async listPublished(){
@@ -215,8 +232,8 @@ export class SupabaseCatalogRepository{
     try{const {data,error}=await this.client.rpc('get_public_route_policies',{p_trip:tripId,p_locale:locale});return error||!data?null:data as PublicRoutePolicies}catch{return null}
   }
   async loadRoutePoliciesBySlug(slug:string,locale:string){
-    if(!this.client)return null;
-    try{const {data,error}=await this.client.rpc('get_public_route_policies_by_slug',{p_slug:slug,p_locale:locale});return error||!data?null:data as PublicRoutePolicies}catch{return null}
+    if(!this.client)return {status:'error'} as PublicRoutePolicyLoadResult;
+    try{const {data,error}=await this.client.rpc('get_public_route_policies_by_slug',{p_slug:slug,p_locale:locale});return error?{status:'error'} as PublicRoutePolicyLoadResult:routePolicyLoadResult(data)}catch{return {status:'error'} as PublicRoutePolicyLoadResult}
   }
 }
 export class SupabaseAuthRepository {

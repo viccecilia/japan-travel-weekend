@@ -1,5 +1,5 @@
 import {afterEach,describe,expect,it,vi} from 'vitest';
-import {installServiceWorkerUpdateChecks} from '../src/shared/pwaUpdate';
+import {activateServiceWorkerUpdate,installServiceWorkerUpdateChecks} from '../src/shared/pwaUpdate';
 
 afterEach(()=>vi.useRealTimers());
 
@@ -11,10 +11,10 @@ describe('PWA update checks',()=>{
     window.dispatchEvent(new Event('focus'));
     window.dispatchEvent(new Event('online'));
     await vi.advanceTimersByTimeAsync(1000);
-    expect(update).toHaveBeenCalledTimes(3);
+    expect(update).toHaveBeenCalledTimes(4);
     stop();
     await vi.advanceTimersByTimeAsync(1000);
-    expect(update).toHaveBeenCalledTimes(3);
+    expect(update).toHaveBeenCalledTimes(4);
   });
 
   it('does not check while the document is hidden',()=>{
@@ -25,5 +25,16 @@ describe('PWA update checks',()=>{
     expect(update).not.toHaveBeenCalled();
     stop();
     Object.defineProperty(document,'visibilityState',{configurable:true,value:'visible'});
+  });
+
+  it('checks immediately and activates one update per loaded build',async()=>{
+    const update=vi.fn(async()=>undefined);
+    const stop=installServiceWorkerUpdateChecks({update},1000);
+    expect(update).toHaveBeenCalledTimes(1);
+    const activate=vi.fn(async()=>undefined);
+    expect(activateServiceWorkerUpdate(activate,'build-a')).toBe(true);
+    expect(activateServiceWorkerUpdate(activate,'build-a')).toBe(false);
+    expect(activate).toHaveBeenCalledWith(true);
+    stop();
   });
 });

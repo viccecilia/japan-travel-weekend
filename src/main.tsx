@@ -1,13 +1,14 @@
 import React from 'react';import ReactDOM from 'react-dom/client';import {BrowserRouter} from 'react-router-dom';import {AppProvider} from './app/store';import {Router} from './router/Router';import './styles.css';import './golden-path.css';import './staff-v7.css';
 import {runtimeMode} from './shared/config/businessRules';import {createSupabaseBrowserClient} from './shared/integrations/supabaseClient';import {ProductionBrowserServices} from './shared/backend/productionServices';
 import {registerSW} from 'virtual:pwa-register';
-import {installServiceWorkerUpdateChecks} from './shared/pwaUpdate';
+import {activateServiceWorkerUpdate,installServiceWorkerUpdateChecks} from './shared/pwaUpdate';
 document.documentElement.lang='zh-CN';
 document.documentElement.dataset.buildSha=__JTW_BUILD_SHA__.slice(0,12);
 if('serviceWorker' in navigator){
  const updateSW=registerSW({immediate:true,onRegisteredSW(_swUrl,registration){
   if(registration)installServiceWorkerUpdateChecks(registration);
  },onNeedRefresh(){
+  if(activateServiceWorkerUpdate(updateSW,__JTW_BUILD_SHA__))return;
   const showNotice=()=>{
    document.getElementById('jtw-update-entry')?.remove();
    if(document.getElementById('jtw-update-ready'))return;
