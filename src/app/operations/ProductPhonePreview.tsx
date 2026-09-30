@@ -61,8 +61,6 @@ export function ProductPhonePreview({draft, locale, mode, dirty}: {draft: Produc
               <p>{view.included.length ? `${copy.included}: ${view.included.join('、')}` : ''}</p>
               {view.excluded.length > 0 && <p>{copy.excluded}: {view.excluded.join('、')}</p>}
               {view.preparation.length > 0 && <p>{copy.preparation}: {view.preparation.join('、')}</p>}
-              <h3>{copy.notes}</h3>
-              {[[copy.booking, view.bookingNotice], [copy.cancellation, view.cancellationPolicy], [copy.participants, view.participantRules], [copy.weather, view.weatherNotice], [copy.baggage, view.baggageNotice], [copy.safety, view.safetyNotice]].filter(([, value]) => Boolean(value)).map(([label, value]) => <p key={label}><b>{label}</b>：{value}</p>)}
             </div>
           </div>
         )}
