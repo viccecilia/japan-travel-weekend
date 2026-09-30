@@ -235,6 +235,7 @@ export type OperationsProductRevision = {
 };
 export type OperationsAttraction={id:string;slug:string;status:'draft'|'published'|'archived';catalogVersion:number;textComplete:number;audioComplete:number;routeReferences:string[]};
 export type OperationsAttractionDetail={id:string;slug:string;status:'draft'|'published'|'archived';catalogVersion:number;guides:Record<string,{title:string;body:string}>;audio:Record<string,{storagePath?:string|null;audioUrl?:string|null;voice?:string|null;status:string}>};
+export type OperationsAttractionMedia={id:string;attractionId:string;mediaType:'image'|'video';storagePath:string;originalFilename:string;mimeType:string;byteSize:number;status:'active'|'inactive';orientation:'landscape'|'portrait'|'square'|'unknown';season:'all-season'|'spring'|'summer'|'autumn'|'winter';createdAt:string;updatedAt:string;url:string};
 export type OperationsPolicyTemplate={templateId:string;templateKey:string;status:'active'|'archived';versionId:string|null;versionNumber:number|null;versionState:'draft'|'published'|'superseded'|'archived'|null;localizations:Record<string,Record<string,string>>};
 export type OperationsRunRow = {
   departureId: string;
@@ -736,6 +737,28 @@ export class SupabaseOperationsRepository {
     if(!this.client)return {ok:false,data:null as Record<string,unknown>|null,error:'运营数据服务未配置'};
     const {data,error}=await this.client.rpc('save_operations_attraction',{p_slug:input.slug,p_expected_version:input.expectedVersion,p_status:input.status,p_guides:input.guides,p_audio:input.audio});
     return {ok:!error,data:(data??null) as Record<string,unknown>|null,error:error?.message??null};
+  }
+  async listAttractionMedia(slug:string){
+    if(!this.client)return {data:[] as OperationsAttractionMedia[],error:'运营数据服务未配置'};
+    const {data,error}=await this.client.rpc('get_operations_attraction_media',{p_slug:slug});
+    const bucket=this.client.storage.from('route-media');
+    return {data:((data??[]) as Array<Record<string,unknown>>).map(row=>({id:String(row.id),attractionId:String(row.attraction_id),mediaType:String(row.media_type) as OperationsAttractionMedia['mediaType'],storagePath:String(row.storage_path),originalFilename:String(row.original_filename),mimeType:String(row.mime_type),byteSize:Number(row.byte_size),status:String(row.status) as OperationsAttractionMedia['status'],orientation:String(row.orientation) as OperationsAttractionMedia['orientation'],season:String(row.season) as OperationsAttractionMedia['season'],createdAt:String(row.created_at),updatedAt:String(row.updated_at),url:bucket.getPublicUrl(String(row.storage_path)).data.publicUrl})),error:error?.message??null};
+  }
+  async uploadAttractionMedia(input:{attractionId:string;slug:string;file:File;orientation:OperationsAttractionMedia['orientation'];season:OperationsAttractionMedia['season'];onProgress?:(value:number)=>void}):Promise<{data:OperationsAttractionMedia|null;error:string|null}>{
+    if(!this.client)return {data:null as OperationsAttractionMedia|null,error:'运营数据服务未配置'};
+    const image=['image/jpeg','image/png','image/webp'].includes(input.file.type);const video=input.file.type==='video/mp4';
+    if((!image&&!video)||input.file.size<=0||input.file.size>50*1024*1024)return {data:null,error:'仅支持不超过 50MB 的 JPG、PNG、WebP 或 MP4 文件'};
+    const extension=input.file.name.split('.').pop()?.toLowerCase()||(video?'mp4':'webp');const path=`attractions/${input.attractionId}/${crypto.randomUUID()}.${extension}`;
+    let uploadError:string|null=null;input.onProgress?.(0);
+    const {error:storageError}=await this.client.storage.from('route-media').upload(path,input.file,{contentType:input.file.type,upsert:false});
+    uploadError=storageError?'媒体存储暂时不可用，请重试':null;
+    if(uploadError)return {data:null,error:uploadError};input.onProgress?.(100);
+    const {data,error}=await this.client.rpc('create_operations_attraction_media',{p_slug:input.slug,p_media_type:video?'video':'image',p_storage_path:path,p_original_filename:input.file.name.slice(0,255),p_mime_type:input.file.type,p_byte_size:input.file.size,p_orientation:input.orientation,p_season:input.season});
+    if(error)return {data:null,error:'文件已上传，但元数据登记失败；请联系管理员核对素材池'};
+    return {data:{id:String(data),attractionId:input.attractionId,mediaType:(video?'video':'image') as OperationsAttractionMedia['mediaType'],storagePath:path,originalFilename:input.file.name,mimeType:input.file.type,byteSize:input.file.size,status:'active',orientation:input.orientation,season:input.season,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),url:this.client.storage.from('route-media').getPublicUrl(path).data.publicUrl},error:null};
+  }
+  async updateAttractionMedia(id:string,season:OperationsAttractionMedia['season'],status:OperationsAttractionMedia['status']){
+    if(!this.client)return {ok:false,error:'运营数据服务未配置'};const {error}=await this.client.rpc('update_operations_attraction_media',{p_media:id,p_season:season,p_status:status});return {ok:!error,error:error?'保存媒体设置失败，请重试':null};
   }
   async uploadAttractionGuideAudio(slug:string,locale:string,file:File){
     if(!this.client)return {url:null as string|null,storagePath:null as string|null,error:'运营数据服务未配置'};

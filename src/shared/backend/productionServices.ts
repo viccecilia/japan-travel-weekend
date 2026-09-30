@@ -163,6 +163,7 @@ export class ProductionBrowserServices {
   loadPublishedCatalog(){return this.catalog.listPublished()}
   loadVipCharterRoutePrices(serviceDate:string){return this.vipCharter.listRoutePrices(serviceDate)}
   loadAttractionGuide(slug:string,locale:Parameters<SupabaseAttractionGuideRepository['load']>[1]){return this.attractionGuides.load(slug,locale)}
+  loadAttractionMedia(slug:string){return this.attractionGuides.loadMedia(slug)}
   quoteVipCharter(departureId:string,passengerCount:number,vehicleType:Parameters<SupabaseVipCharterRepository['getQuote']>[2],englishDriver=false){return this.vipCharter.getQuote(departureId,passengerCount,vehicleType,englishDriver)}
   submitVipCharterRequest(input:Parameters<SupabaseVipCharterRepository['submit']>[0]){return this.vipCharter.submit(input)}
   loadOwnVipCharterRequests(){return this.vipCharter.listOwn()}

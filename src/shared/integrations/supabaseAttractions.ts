@@ -6,6 +6,11 @@ export type PublicAttractionGuide={
   audioUrl:string|null;audioStatus:string|null;audioVoice:string|null;
 };
 
+export type PublicAttractionMedia={
+  id:string;mediaType:'image'|'video';storagePath:string;originalFilename:string;
+  orientation:'landscape'|'portrait'|'square'|'unknown';season:'all-season'|'spring'|'summer'|'autumn'|'winter';url:string;
+};
+
 /** Public guide content is read through a narrowly-scoped published-only RPC. */
 export class SupabaseAttractionGuideRepository {
   constructor(private readonly client:SupabaseClient|null){}
@@ -21,5 +26,20 @@ export class SupabaseAttractionGuideRepository {
       audioVoice:typeof row.audio_voice==='string'?row.audio_voice:null,
     } satisfies PublicAttractionGuide:null;
     return {data:guide,error:error?.message??null};
+  }
+  async loadMedia(slug:string){
+    if(!this.client)return {data:[] as PublicAttractionMedia[],error:'导览服务未配置'};
+    const {data,error}=await this.client.rpc('get_public_attraction_media',{p_slug:slug});
+    const rows=Array.isArray(data)?data as Record<string,unknown>[]:[];
+    const media=rows.map((row)=>{
+      const storagePath=String(row.storage_path);
+      const {data:urlData}=this.client!.storage.from('route-media').getPublicUrl(storagePath);
+      return {
+        id:String(row.id),mediaType:String(row.media_type) as PublicAttractionMedia['mediaType'],storagePath,
+        originalFilename:String(row.original_filename),orientation:String(row.orientation) as PublicAttractionMedia['orientation'],
+        season:String(row.season) as PublicAttractionMedia['season'],url:urlData.publicUrl,
+      } satisfies PublicAttractionMedia;
+    });
+    return {data:media,error:error?.message??null};
   }
 }

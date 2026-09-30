@@ -5,14 +5,14 @@ import {attractionGuideCorpus,type AttractionGuideLocale,type AttractionRecord} 
 import {isAttractionLocale,type AttractionLocale} from '../shared/attractions';
 import './attractionGuide.css';
 
-const copy:Record<AttractionLocale,{audio:string;description:string;pending:string;unavailable:string}>={
-  'zh-CN':{audio:'语音导览',description:'景点介绍',pending:'',unavailable:'语音暂时无法播放'},
-  ja:{audio:'音声ガイド',description:'スポット紹介',pending:'',unavailable:'音声を再生できません'},
-  en:{audio:'Audio guide',description:'About this place',pending:'',unavailable:'Audio is temporarily unavailable'},
-  ko:{audio:'오디오 가이드',description:'명소 소개',pending:'',unavailable:'오디오를 재생할 수 없습니다'},
-  vi:{audio:'Hướng dẫn âm thanh',description:'Giới thiệu điểm đến',pending:'',unavailable:'Không thể phát âm thanh lúc này'},
-  ne:{audio:'अडियो गाइड',description:'स्थान परिचय',pending:'',unavailable:'अडियो अहिले चलाउन सकिँदैन'},
-  es:{audio:'Guía de audio',description:'Sobre este lugar',pending:'',unavailable:'El audio no está disponible temporalmente'},
+const copy:Record<AttractionLocale,{audio:string;description:string;media:string;pending:string;unavailable:string}>={
+  'zh-CN':{audio:'语音导览',description:'景点介绍',media:'图片与视频',pending:'',unavailable:'语音暂时无法播放'},
+  ja:{audio:'音声ガイド',description:'スポット紹介',media:'写真と動画',pending:'',unavailable:'音声を再生できません'},
+  en:{audio:'Audio guide',description:'About this place',media:'Photos and videos',pending:'',unavailable:'Audio is temporarily unavailable'},
+  ko:{audio:'오디오 가이드',description:'명소 소개',media:'사진 및 동영상',pending:'',unavailable:'오디오를 재생할 수 없습니다'},
+  vi:{audio:'Hướng dẫn âm thanh',description:'Giới thiệu điểm đến',media:'Ảnh và video',pending:'',unavailable:'Không thể phát âm thanh lúc này'},
+  ne:{audio:'अडियो गाइड',description:'स्थान परिचय',media:'तस्बिर र भिडियो',pending:'',unavailable:'अडियो अहिले चलाउन सकिँदैन'},
+  es:{audio:'Guía de audio',description:'Sobre este lugar',media:'Fotos y vídeos',pending:'',unavailable:'El audio no está disponible temporalmente'},
 };
 
 function guideLocale(locale:string):AttractionLocale{return isAttractionLocale(locale)?locale:'zh-CN';}
@@ -28,12 +28,13 @@ export function AttractionGuidePage(){
   const {attractionId=''}=useParams(); const location=useLocation(); const {state,services}=useApp(); const [params]=useSearchParams();const locale=guideLocale(state.ui.locale??'zh-CN'); const c=copy[locale];
   const staticGuide=(attractionGuideCorpus as AttractionRecord[]).find(item=>item.slug===attractionId)||null;
   const [remote,setRemote]=useState<{title:string;body:string;audioUrl:string|null}|null>(null);
+  const [media,setMedia]=useState<{id:string;mediaType:'image'|'video';url:string;originalFilename:string}[]>([]);
   const [loading,setLoading]=useState(Boolean(services));
-  useEffect(()=>{let live=true;setRemote(null);setLoading(Boolean(services));if(!services){setLoading(false);return;}void services.loadAttractionGuide(attractionId,locale).then(result=>{if(live){setRemote(result.data?{title:result.data.title,body:result.data.body,audioUrl:result.data.audioUrl}:null);setLoading(false);}}).catch(()=>{if(live)setLoading(false);});return()=>{live=false;};},[services,attractionId,locale]);
+  useEffect(()=>{let live=true;setRemote(null);setMedia([]);setLoading(Boolean(services));if(!services){setLoading(false);return;}void Promise.all([services.loadAttractionGuide(attractionId,locale),services.loadAttractionMedia(attractionId)]).then(([guideResult,mediaResult])=>{if(live){setRemote(guideResult.data?{title:guideResult.data.title,body:guideResult.data.body,audioUrl:guideResult.data.audioUrl}:null);setMedia(mediaResult.data);setLoading(false);}}).catch(()=>{if(live)setLoading(false);});return()=>{live=false;};},[services,attractionId,locale]);
   const guide=remote??staticGuide?.guides[locale]??null;
   const audioUrl=remote?.audioUrl??staticGuide?.audio[locale]?.audioUrl??null;
   const image=(location.state as {image?:string}|null)?.image??params.get('image');
   if(loading&&!guide)return <main className="attraction-guide-page"><p>Loading guide…</p></main>;
   if(!guide)return <main className="attraction-guide-page"><h1>Guide unavailable</h1></main>;
-  return <main className="attraction-guide-page"><header><span>ATTRACTION GUIDE</span><h1>{guide.title}</h1></header>{image&&<img className="attraction-guide-cover" src={image} alt="" loading="lazy"/>}{audioUrl&&<AudioGuide src={audioUrl} label={c.audio} unavailable={c.unavailable}/>}<section className="attraction-guide-body"><h2>{c.description}</h2>{guide.body.split(/\n{2,}/).map((paragraph,index)=><p key={index}>{paragraph}</p>)}</section></main>;
+  return <main className="attraction-guide-page"><header><span>ATTRACTION GUIDE</span><h1>{guide.title}</h1></header>{image&&<img className="attraction-guide-cover" src={image} alt="" loading="lazy"/>}{audioUrl&&<AudioGuide src={audioUrl} label={c.audio} unavailable={c.unavailable}/>}<section className="attraction-guide-body"><h2>{c.description}</h2>{guide.body.split(/\n{2,}/).map((paragraph,index)=><p key={index}>{paragraph}</p>)}</section>{media.length>0&&<section className="attraction-guide-media"><h2>{c.media}</h2><div>{media.map(item=>item.mediaType==='video'?<video key={item.id} controls preload="metadata" src={item.url} aria-label={item.originalFilename}/>:<img key={item.id} src={item.url} alt={item.originalFilename} loading="lazy"/>)}</div></section>}</main>;
 }
