@@ -3,6 +3,7 @@ import type { Trip } from "../types";
 import type {PassengerLocale} from '../i18n/passengerLocale';
 import {expandedRouteSummary} from '../i18n/routeExpansion';
 import {trips as baselineTrips} from '../data/trips';
+import {isRouteSourceLocale,localizedRouteText,presentRoute,routeLocaleContent} from '../routeLocalePresentation';
 const appCardCopy:Record<PassengerLocale,{route:string;view:string}>={
   'zh-CN':{route:'简要路线',view:'查看路线'},'zh-TW':{route:'簡要路線',view:'查看路線'},ja:{route:'主なルート',view:'ツアーを見る'},en:{route:'Route summary',view:'View trip'},es:{route:'Resumen de la ruta',view:'Ver viaje'},vi:{route:'Tuyến tóm tắt',view:'Xem chuyến'},ne:{route:'रुट सारांश',view:'यात्रा हेर्नुहोस्'},ko:{route:'간단 노선',view:'여행 보기'}
 };
@@ -58,6 +59,17 @@ const localizedTrips:Partial<Record<PassengerLocale,Record<string,{title:string;
   }
 };
 export const localizedTrip=(locale:PassengerLocale,trip:Trip)=>{
+  if(trip.catalogSource==='published'){
+    const content=routeLocaleContent(trip,locale);
+    const presentation=presentRoute(trip,locale);
+    return {
+      title:presentation.title,
+      region:localizedRouteText(content,'region',trip.region,isRouteSourceLocale(locale)),
+      duration:localizedRouteText(content,'duration',trip.duration,isRouteSourceLocale(locale)),
+      summary:presentation.summary||(!presentation.available?presentation.availabilityMessage:''),
+      stops:isRouteSourceLocale(locale)?trip.stops:[],
+    };
+  }
   const expanded=expandedRouteSummary(locale,trip.slug);
   const baseline=baselineTrips.find(item=>item.slug===trip.slug);
   return localizedTrips[locale]?.[trip.slug]??(expanded?{title:expanded.name,...expanded}:{

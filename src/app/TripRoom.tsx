@@ -18,6 +18,7 @@ import {projectItineraryStops} from "../shared/services/itineraryMeeting";
 import {sharedPlaceMapHref} from '../shared/services/mapSession';
 import type {PassengerLocale} from '../shared/i18n/passengerLocale';
 import {passengerRound1Copy} from '../shared/i18n/passengerRound1';
+import {isRouteSourceLocale,presentMeetingText,presentRoute,routeStopIdentity,unavailableMeetingPresentation} from '../shared/routeLocalePresentation';
 const myTripCopy:Record<PassengerLocale,{empty:string;emptyText:string;browse:string;eyebrow:string;title:string}>={
   'zh-CN':{empty:'暂无进行中的行程',emptyText:'正式环境不会自动生成车辆、司机、倒计时、聊天或位置数据。',browse:'浏览路线',eyebrow:'我的行程',title:'行程履约'},
   'zh-TW':{empty:'目前沒有進行中的行程',emptyText:'正式環境不會自動產生車輛、司機、倒數、聊天或位置資料。',browse:'瀏覽路線',eyebrow:'我的行程',title:'行程服務'},
@@ -105,8 +106,8 @@ export function MyTrip() {
           <div><span>订单编号</span><b>{remote.order.id}</b></div>
           <div><span>订单状态</span><b>{remote.order.status === "confirmed" ? "已确认" : "已付款"}</b></div>
           <div><span>出发时间</span><b>{fulfilment ? new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Tokyo", month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(fulfilment.departs_at)) : "等待运营确认"}</b></div>
-          <div><span>集合地点</span><b>{fulfilment?.meeting_name ?? "等待运营确认"}</b></div>
-          <div><span>集合地址</span><b>{fulfilment?.meeting_address ?? "等待运营确认"}</b></div>
+          <div><span>集合地点</span><b>{fulfilment?presentMeetingText(locale,fulfilment.meeting_name):"等待运营确认"}</b></div>
+          <div><span>集合地址</span><b>{fulfilment?presentMeetingText(locale,fulfilment.meeting_address):"等待运营确认"}</b></div>
         </div>
         <Link className="button secondary full" to={`/app/orders/${remote.order.id}`}>查看订单详情</Link>
         {fulfilment?.vehicle_group_id&&<Link className="button full" to={`/app/ai-guide?vehicleGroup=${encodeURIComponent(fulfilment.vehicle_group_id)}`}>{aiLabel}</Link>}
@@ -114,8 +115,8 @@ export function MyTrip() {
           <>
             <div className="trip-status">
               <span>车辆组与行程房间已建立</span>
-              <b>{fulfilment.meeting_name ?? "集合地点待确认"}</b>
-              <small>{fulfilment.meeting_address ?? "请留意最新通知"}</small>
+              <b>{presentMeetingText(locale,fulfilment.meeting_name)}</b>
+              <small>{presentMeetingText(locale,fulfilment.meeting_address)}</small>
             </div>
             <Link className="button full" to={`/app/my-trip/room?vehicleGroup=${encodeURIComponent(fulfilment.vehicle_group_id)}`}>进入本车行程房间</Link>
           </>
@@ -256,7 +257,7 @@ type RemoteMeeting = {
   changed_at: string;
   acknowledged: boolean;
 };
-type PassengerTripContext={trip_title:string;itinerary:string[];return_at:string|null;staff_name:string|null;staff_role:'driver'|'guide'|'driver_guide'|'operations'|null;staff_phone:string|null;vehicle_type:string;vehicle_label:string|null;vehicle_color:string|null;vehicle_photo_url:string|null};
+type PassengerTripContext={trip_slug?:string|null;trip_title:string;itinerary:string[];return_at:string|null;staff_name:string|null;staff_role:'driver'|'guide'|'driver_guide'|'operations'|null;staff_phone:string|null;vehicle_type:string;vehicle_label:string|null;vehicle_color:string|null;vehicle_photo_url:string|null};
 type RemoteItineraryStop={id:string;name:string;arrivalTime?:string;meetingTime:string;meetingPointName:string;meetingPointDescription?:string;meetingPointPhoto?:string;latitude:number;longitude:number};
 type RemoteAttendance = {
   passenger_id: string;
@@ -310,7 +311,9 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
   const requestedVehicleGroup=searchParams.get('vehicleGroup');
   const locale=state.ui.locale??'zh-CN';
   const chatCopy=passengerRound1Copy[locale].chat;
-  const ui=(zh:string,en:string)=>locale==='en'?en:zh;
+  // Structured operational labels may use the reviewed English UI fallback,
+  // but must never fall back to Chinese source strings on foreign locales.
+  const ui=(zh:string,en:string)=>isRouteSourceLocale(locale)?zh:en;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [room, setRoom] = useState<RemoteRoom | null>(null);
@@ -727,6 +730,8 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
     );
   };
   if (passenger) {
+    const sourceLocale=isRouteSourceLocale(locale);
+    const meetingUnavailable=unavailableMeetingPresentation(locale);
     const meetingAt = meeting?.meeting_at ?? room.departs_at;
     const remoteStop = {
       id: `meeting-${room.vehicle_group_id}-${meeting?.revision ?? 0}`,
@@ -739,13 +744,12 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
             hour12: false,
           })
         : "00:00",
-      meetingPointName:
-        meeting?.meeting_name ?? room.meeting_name ?? "集合地点待司导更新",
-      meetingPointDescription:
-        (meeting?.landmark_description ||
-          meeting?.meeting_address ||
-          room.meeting_address) ??
-        "集合地点说明尚未发布",
+      meetingPointName: sourceLocale
+        ? meeting?.meeting_name ?? room.meeting_name ?? "集合地点待司导更新"
+        : meetingUnavailable,
+      meetingPointDescription: sourceLocale
+        ? (meeting?.landmark_description || meeting?.meeting_address || room.meeting_address) ?? "集合地点说明尚未发布"
+        : meetingUnavailable,
       latitude: meeting
         ? Number(meeting.latitude)
         : room.map_lat == null
@@ -758,10 +762,11 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
           : Number(room.map_lng),
       status: "current" as const,
     };
-    const projected=projectItineraryStops(routeStops,remoteStop.meetingPointName);
+    const localizedRouteStops=sourceLocale?routeStops:routeStops.map((stop,index)=>({...stop,name:routeStopIdentity(locale,index,stop.id),meetingPointName:meetingUnavailable,meetingPointDescription:meetingUnavailable}));
+    const projected=projectItineraryStops(localizedRouteStops,remoteStop.meetingPointName);
     const matchedIndex=projected.currentIndex;
-    const itineraryStops=routeStops.length?projected.stops:(passengerContext?.itinerary??[]).filter(name=>name!==remoteStop.meetingPointName).map((name,index)=>({id:`route-${index}`,name,meetingTime:"时间待司导更新",meetingPointName:name,meetingPointDescription:"具体停留与集合安排以司导在群内发布的信息为准。",latitude:remoteStop.latitude,longitude:remoteStop.longitude,status:'upcoming' as const}));
-    if(!routeStops.length&&passengerContext?.return_at)itineraryStops.push({id:'return',name:'预计返程到达',meetingTime:new Date(passengerContext.return_at).toLocaleTimeString(locale,{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit',hour12:false}),meetingPointName:'返回地点以订单与司导通知为准',meetingPointDescription:'预计到达时间会受当天交通影响。',latitude:remoteStop.latitude,longitude:remoteStop.longitude,status:'upcoming' as const});
+    const itineraryStops=routeStops.length?projected.stops:(passengerContext?.itinerary??[]).filter(name=>name!==remoteStop.meetingPointName).map((name,index)=>({id:`route-${index}`,name:sourceLocale?name:routeStopIdentity(locale,index),meetingTime:sourceLocale?"时间待司导更新":meetingUnavailable,meetingPointName:sourceLocale?name:meetingUnavailable,meetingPointDescription:sourceLocale?"具体停留与集合安排以司导在群内发布的信息为准。":meetingUnavailable,latitude:remoteStop.latitude,longitude:remoteStop.longitude,status:'upcoming' as const}));
+    if(!routeStops.length&&passengerContext?.return_at)itineraryStops.push({id:'return',name:sourceLocale?'预计返程到达':routeStopIdentity(locale,itineraryStops.length,'return'),meetingTime:new Date(passengerContext.return_at).toLocaleTimeString(locale,{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit',hour12:false}),meetingPointName:sourceLocale?'返回地点以订单与司导通知为准':meetingUnavailable,meetingPointDescription:sourceLocale?'预计到达时间会受当天交通影响。':meetingUnavailable,latitude:remoteStop.latitude,longitude:remoteStop.longitude,status:'upcoming' as const});
     const passengerMessages = messages.map((message) => {
       const sharedId=/^\[\[jtw:shared_place:([^\]]+)\]\]/.exec(message.content)?.[1];
       const sharedPlace=sharedId?sharedPlaces.find(place=>place.id===sharedId):undefined;
@@ -789,7 +794,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
     };});
     return (
       <PassengerChatRoom
-        tripName={passengerContext?.trip_title??room.vehicle_label ?? passengerRound1Copy[locale].messages.thisVehicle}
+        tripName={passengerContext?.trip_slug&&travelRepository.getTrip(passengerContext.trip_slug)?presentRoute(travelRepository.getTrip(passengerContext.trip_slug)!,locale).title:(sourceLocale?passengerContext?.trip_title:undefined)??room.vehicle_label ?? passengerRound1Copy[locale].messages.thisVehicle}
         status={
           room.room_status === "closed"
             ? "ended"

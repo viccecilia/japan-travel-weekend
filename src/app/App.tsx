@@ -31,6 +31,7 @@ import { stripeClient,stripeMode } from "../shared/integrations/stripeClient";
 import { StripePaymentForm } from "./StripePaymentForm";
 import {passengerPaymentCopy,paymentState} from '../shared/i18n/passengerPayment';
 import { passengerBookingCopy, passengerCheckoutCopy, passengerCoreCopy, passengerFormCopy, passengerHomeCopy, passengerLocales, passengerLoginCopy, passengerOrderCopy, passengerRoutesCopy } from "../shared/i18n/passengerLocale";
+import {passengerAdultCount,passengerSeatCount} from '../shared/i18n/passengerCounts';
 import type {PassengerLocale} from '../shared/i18n/passengerLocale';
 import { featuredRoutePitch, featuredRouteSpots } from "../shared/i18n/spotContent";
 import {expandedRouteSummary} from '../shared/i18n/routeExpansion';
@@ -39,7 +40,7 @@ import {SpotVideoPlayer} from '../shared/components/SpotVideoPlayer';
 import {localizedRouteList} from '../shared/contentPackages';
 import {routePhotoAt} from '../shared/data/routePhotoCatalog';
 import {attractionGuideHref,resolveAttractionId} from '../shared/attractions';
-import {isRouteSourceLocale,localizedRouteText,localizedRouteTimeline,routeLocaleContent} from '../shared/routeLocalePresentation';
+import {isRouteSourceLocale,localizedRouteText,localizedRouteTimeline,presentMeetingText,presentRoute,routeLocaleContent} from '../shared/routeLocalePresentation';
 import {groupDeparturesByMonth, resolveDepartureSelection} from './bookingDepartureSelection';
 import {singleSeatQuote} from '../shared/services/singleSeatPricing';
 import type {ServerQuote} from '../shared/backend/testApi';
@@ -94,12 +95,15 @@ const tripSupplement:Record<string,Record<string,{name:string;region:string;dura
 };
 const localizedTripSummary=(locale:PassengerLocale,trip:typeof trips[number])=>{
  const published=routeLocaleContent(trip,locale);
- if(trip.catalogSource==='published')return {name:localizedRouteText(published,'title',trip.shortTitle,isRouteSourceLocale(locale)),region:localizedRouteText(published,'region',trip.region,isRouteSourceLocale(locale)),duration:localizedRouteText(published,'duration',trip.duration,isRouteSourceLocale(locale)),summary:localizedRouteText(published,'summary',trip.summary,isRouteSourceLocale(locale)),stops:Array.isArray(published.stops)&&published.stops.some(item=>typeof item==='string'&&item.trim())?published.stops.filter((item):item is string=>typeof item==='string'&&Boolean(item.trim())):isRouteSourceLocale(locale)?trip.stops:[]};
+ if(trip.catalogSource==='published'){
+   const presentation=presentRoute(trip,locale);
+   return {name:presentation.title,region:localizedRouteText(published,'region',trip.region,isRouteSourceLocale(locale)),duration:localizedRouteText(published,'duration',trip.duration,isRouteSourceLocale(locale)),summary:presentation.summary,stops:Array.isArray(published.stops)&&published.stops.some(item=>typeof item==='string'&&item.trim())?published.stops.filter((item):item is string=>typeof item==='string'&&Boolean(item.trim())):isRouteSourceLocale(locale)?trip.stops:[],available:presentation.available,availabilityMessage:presentation.availabilityMessage};
+ }
  const legacyLocalized=tripHomeCopy[locale]?.[trip.slug]??tripSupplement[locale]?.[trip.slug]??expandedRouteSummary(locale,trip.slug);
  if(legacyLocalized)return legacyLocalized;
  // Seed/legacy products without an approved locale record must be shown as a
  // content gap, never as Chinese source text on a foreign-language surface.
- return isRouteSourceLocale(locale)?{name:trip.shortTitle,region:trip.region,duration:trip.duration,stops:trip.stops}:{name:'',region:'',duration:'',stops:[]};
+ return isRouteSourceLocale(locale)?{name:trip.shortTitle,region:trip.region,duration:trip.duration,stops:trip.stops}:{name:presentRoute(trip,locale).title,region:'',duration:'',stops:[],available:false,availabilityMessage:presentRoute(trip,locale).availabilityMessage};
 };
 const localizedPublishedTimeline=(locale:PassengerLocale,trip:typeof trips[number])=>localizedRouteTimeline(trip,locale);
 const routePlaceQueries:Record<string,string[]>={
@@ -859,7 +863,7 @@ export function AppTrips() {
         {travelRepository.listTrips().map((t) => {const summary=localizedTripSummary(locale,t);return (
           <Link key={t.id} className="discover-route-card" to={'/app/trips/'+t.slug}>
             <img src={t.heroImage} alt="" loading="lazy"/>
-            <div><h3>{summary.name||discoverLabels[locale].trips}</h3>{'summary' in summary&&summary.summary&&<p>{summary.summary}</p>}{summary.stops.length>0&&<small>{summary.stops.slice(0,4).join(' → ')}</small>}</div>
+            <div><h3>{summary.name}</h3>{'summary' in summary&&summary.summary&&<p>{summary.summary}</p>}{'available' in summary&&summary.available===false&&<p className="route-content-gap">{summary.availabilityMessage}</p>}{summary.stops.length>0&&<small>{summary.stops.slice(0,4).join(' → ')}</small>}</div>
           </Link>
         )})}
       </div>
@@ -1499,7 +1503,7 @@ export function Passengers() {
         <span>{selectedDeparture?.departureTime ? new Intl.DateTimeFormat(locale,{timeZone:'Asia/Tokyo',month:'numeric',day:'numeric',weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(selectedDeparture.departureTime)) : selectedDeparture?.dateLabel}</span>
         <b>{displayTrip?.name}</b>
         <small>
-          {partySize} {passengerOrderCopy[locale].seats}
+          {passengerSeatCount(locale,partySize)}
         </small>
       </div>
       <form className="form" onSubmit={submit}>
@@ -1772,7 +1776,7 @@ export function Checkout() {
           <span>{dep.departureTime ? new Intl.DateTimeFormat(locale,{timeZone:'Asia/Tokyo',month:'numeric',day:'numeric',weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(dep.departureTime)) : dep.dateLabel}</span>
           <h2>{displayTrip?.name ?? checkout.pending}</h2>
           <p>
-            {guests} {passengerOrderCopy[locale].seats} · {displayTrip?.duration}
+            {passengerSeatCount(locale,guests)} · {displayTrip?.duration}
           </p>
         </div>
       </section>
@@ -1794,7 +1798,7 @@ export function Checkout() {
         <div>
           <span>{checkout.travellers}</span>
           <b>
-            {state.booking?.adults ?? 0} {passengerOrderCopy[locale].seats}
+            {passengerSeatCount(locale,state.booking?.adults ?? 0)}
           </b>
         </div>
         <div>
@@ -2267,7 +2271,7 @@ export function Orders() {
                     : c.draftUnpaid}
               </b>
               <span>
-                {draft.adults} {c.adults}／{draft.children} {c.children}／{draft.infants} {c.infants}
+                {passengerAdultCount(locale,draft.adults)}／{draft.children} {c.children}／{draft.infants} {c.infants}
                 · {c.vehicleCount} {draft.seat_impact}
               </span>
               <small>
@@ -2323,8 +2327,8 @@ export function Orders() {
             const trip=travelRepository.getTrip(o.departure?.trip?.slug??departure?.tripSlug??'');
             const bill=billingById[o.id];
             return <Link className="passenger-order-link" key={o.id} to={'/app/orders/'+encodeURIComponent(o.id)} state={{returnTo:'/app/orders'+(search.size?'?'+search.toString():'')}}>
-              <img src={trip?.heroImage??'/icons/icon.svg'} alt=""/>
-              <div><b>{bill?.title??trip?.title??c.ownOrder}</b><small>{(bill?.departsAt??o.departure?.departs_at)?new Date((bill?.departsAt??o.departure?.departs_at)!).toLocaleString(locale,{timeZone:'Asia/Tokyo'}):departure?.dateLabel??c.pending}</small><span>{c.seats.replace('{count}',String(o.seat_count))} · {localizedOrderStatus(locale,o.status)}</span><strong>{c.viewOrder} →</strong>{o.status==='pending_payment'&&<small>{passengerRound1Copy[locale].resumePayment.action}</small>}{o.status==='pending_manual_review'&&o.manual_payment_due_at&&<small>{c.paymentDue}: {new Date(o.manual_payment_due_at).toLocaleString(locale,{timeZone:'Asia/Tokyo'})}</small>}</div>
+            <img src={trip?.heroImage??'/icons/icon.svg'} alt=""/>
+              <div><b>{trip?presentRoute(trip,locale).title:(bill?.title??c.ownOrder)}</b><small>{(bill?.departsAt??o.departure?.departs_at)?new Date((bill?.departsAt??o.departure?.departs_at)!).toLocaleString(locale,{timeZone:'Asia/Tokyo'}):departure?.dateLabel??c.pending}</small><span>{passengerSeatCount(locale,o.seat_count)} · {localizedOrderStatus(locale,o.status)}</span><strong>{c.viewOrder} →</strong>{o.status==='pending_payment'&&<small>{passengerRound1Copy[locale].resumePayment.action}</small>}{o.status==='pending_manual_review'&&o.manual_payment_due_at&&<small>{c.paymentDue}: {new Date(o.manual_payment_due_at).toLocaleString(locale,{timeZone:'Asia/Tokyo'})}</small>}</div>
             </Link>
           })}{!remote.rows.some(o=>matchesFilter(o))&&<p role="status">{c.emptyFiltered}</p>}</>
         ) : (
@@ -2340,7 +2344,7 @@ export function Orders() {
           <Link className="order-card" key={o.id} to={`/app/orders/${o.id}`}>
             <b>{travelRepository.getTrip(o.tripSlug)?.shortTitle}</b>
             <span>
-              {o.id} · {c.seats.replace('{count}',String(o.guests))}
+              {o.id} · {passengerSeatCount(locale,o.guests)}
             </span>
             <small>{o.status}</small>
           </Link>
@@ -2479,7 +2483,7 @@ export function OrderDetail() {
       <>
         <AppTitle
           eyebrow={c.account}
-          title={trip?.shortTitle ?? c.tripOrder}
+          title={trip?presentRoute(trip,locale).title:c.tripOrder}
         />
         <div className="status">{c.status}：{orderStatusLabel}</div>
         {remoteOrder.status==='pending_payment'&&<ResumeOrderPayment key={remoteOrder.id} orderId={remoteOrder.id}/>}
@@ -2495,15 +2499,15 @@ export function OrderDetail() {
           </div>
           <div>
             <span>{c.meetingPoint}</span>
-            <b>{remoteFulfilment?.meeting_name ?? c.pending}</b>
+            <b>{remoteFulfilment?presentMeetingText(locale,remoteFulfilment.meeting_name):c.pending}</b>
           </div>
           <div>
             <span>{c.meetingAddress}</span>
-            <b>{remoteFulfilment?.meeting_address ?? c.pending}</b>
+            <b>{remoteFulfilment?presentMeetingText(locale,remoteFulfilment.meeting_address):c.pending}</b>
           </div>
           <div>
             <span>{c.seatCount}</span>
-            <b>{remoteOrder.seat_count} {c.seats}</b>
+            <b>{passengerSeatCount(locale,remoteOrder.seat_count)}</b>
           </div>
           <div>
             <span>{c.amount}</span>
