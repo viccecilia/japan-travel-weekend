@@ -95,7 +95,11 @@ const tripSupplement:Record<string,Record<string,{name:string;region:string;dura
 const localizedTripSummary=(locale:PassengerLocale,trip:typeof trips[number])=>{
  const published=routeLocaleContent(trip,locale);
  if(trip.catalogSource==='published')return {name:localizedRouteText(published,'title',trip.shortTitle,isRouteSourceLocale(locale)),region:localizedRouteText(published,'region',trip.region,isRouteSourceLocale(locale)),duration:localizedRouteText(published,'duration',trip.duration,isRouteSourceLocale(locale)),summary:localizedRouteText(published,'summary',trip.summary,isRouteSourceLocale(locale)),stops:Array.isArray(published.stops)&&published.stops.some(item=>typeof item==='string'&&item.trim())?published.stops.filter((item):item is string=>typeof item==='string'&&Boolean(item.trim())):isRouteSourceLocale(locale)?trip.stops:[]};
- return tripHomeCopy[locale]?.[trip.slug]??tripSupplement[locale]?.[trip.slug]??expandedRouteSummary(locale,trip.slug)??{name:trip.shortTitle,region:trip.region,duration:trip.duration,stops:trip.stops};
+ const legacyLocalized=tripHomeCopy[locale]?.[trip.slug]??tripSupplement[locale]?.[trip.slug]??expandedRouteSummary(locale,trip.slug);
+ if(legacyLocalized)return legacyLocalized;
+ // Seed/legacy products without an approved locale record must be shown as a
+ // content gap, never as Chinese source text on a foreign-language surface.
+ return isRouteSourceLocale(locale)?{name:trip.shortTitle,region:trip.region,duration:trip.duration,stops:trip.stops}:{name:'',region:'',duration:'',stops:[]};
 };
 const localizedPublishedTimeline=(locale:PassengerLocale,trip:typeof trips[number])=>localizedRouteTimeline(trip,locale);
 const routePlaceQueries:Record<string,string[]>={
