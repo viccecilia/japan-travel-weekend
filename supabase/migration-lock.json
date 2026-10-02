@@ -673,6 +673,10 @@
     {
       "name": "20260926091500_growth_operations_phase3_period_context.sql",
       "sha256": "897ab961e706051227ebd8e530699d46904229123efb51911864012cb0431713"
+    },
+    {
+      "name": "20261002093000_passenger_system_event_idempotency.sql",
+      "sha256": "22c18a878db1786de57b6c73cd65d8599fce87a34ba2938d50fc234972866fe5"
     }
   ]
 }

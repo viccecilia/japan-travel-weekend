@@ -666,6 +666,9 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
     setNotice("重要模板通知已发送并保留原文。");
   };
   const translatedMessage = (message: RemoteMessage) => {
+    // Passenger-visible system templates are product copy, not a user's message:
+    // always present them in the current app locale. Real chat stays opt-in.
+    if (message.template_key) return templateTranslation(message.template_key, locale);
     if (!autoTranslate) return null;
     const stored = message.trip_room_message_translations?.find(
       (item) => item.target_language === locale,

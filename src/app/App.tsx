@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 import {
   Link,
   Navigate,
@@ -679,8 +679,8 @@ export function AppNotifications() {
         <div className="notification-list">
           {items
             .filter((item:any) => filter === "all" || item.type === filter)
-            .map((item:any, index:number) => (
-              <article key={`${item.title}-${item.time}-${index}`}>
+            .map((item:any) => (
+              <article key={item.id??`${item.title}-${item.time}`}>
                 <i>
                   {n.icons[item.type]}
                 </i>
@@ -691,20 +691,17 @@ export function AppNotifications() {
                   <h2>{item.title}</h2>
                   <p>{item.text}</p>
                   {"deliveryStatus" in item && (
-                    <small>
+                    <small className="notification-status">
                       {n.delivery[item.deliveryStatus]??n.delivery.pending}
                     </small>
                   )}
-                  {item.type==='order'&&item.orderId&&<Link className="text-link" to={`/app/orders/${encodeURIComponent(item.orderId)}`}>{hub.openOrder}</Link>}
-                  {item.type==='trip'&&(item.departureId||item.vehicleGroupId)&&<Link className="text-link" to={`/app/my-trip?${new URLSearchParams({...item.departureId?{departureId:item.departureId}:{},...item.vehicleGroupId?{vehicleGroupId:item.vehicleGroupId}:{}}).toString()}`}>{hub.openTrip}</Link>}
+                  {item.type==='order'&&item.orderId&&<Link className="text-link notification-cta" to={`/app/orders/${encodeURIComponent(item.orderId)}`}>{hub.openOrder} →</Link>}
+                  {item.type==='trip'&&(item.departureId||item.vehicleGroupId)&&<Link className="text-link notification-cta" to={`/app/my-trip?${new URLSearchParams({...item.departureId?{departureId:item.departureId}:{},...item.vehicleGroupId?{vehicleGroupId:item.vehicleGroupId}:{}}).toString()}`}>{hub.openTrip} →</Link>}
                 </div>
               </article>
             ))}
         </div>
       )}
-      <p className="passenger-page-note">
-        {n.footer}
-      </p>
     </div>
   );
 }
@@ -921,27 +918,36 @@ function RouteDetailV2({trip, locale, selectedDeparture}: {trip: Trip; locale: P
   ] as const;
   return <div className="route-detail-v2">
     <RouteV2Hero trip={trip} heroTitle={heroTitle} heroSubtitle={heroSubtitle} titleParts={titleParts} highlight={highlight} start={start} mediaCopy={routeV2MediaCopy[locale]} copy={copy}/>
-    <RoutePolicyPanel state={policyState} onRetry={retryPolicy} copy={copy}/>
+    <RoutePolicyPanel state={policyState} onRetry={retryPolicy} copy={copy} locale={locale} placement="top"/>
     {(text('tagline',routeContent.tagline??'')||text('summary',trip.summary))?<section className="route-v2-section"><h2>{text('title',trip.shortTitle)||copy.missingRouteContent}</h2><p>{text('tagline',routeContent.tagline??'')||text('summary',trip.summary)}</p></section>:!sourceFallback&&<section className="route-v2-section"><p>{copy.missingRouteContent}</p></section>}
     <section className="route-v2-section"><span className="route-v2-kicker">{copy.todayKicker}</span><h2>{copy.today}</h2><div className="route-v2-chain"><div>{journey.map((item,index)=><span key={`${item}-${index}`}>{index>0&&<i>→</i>}{item}</span>)}</div>{(departureTime||returnTime)&&<small>{departureTime&&`${departureTime} ${copy.departure}`}{departureTime&&returnTime&&' · '}{returnTime&&`${copy.returning} ${returnTime}`}</small>}</div></section>
     <section className="route-v2-section route-v2-spots">{timeline.map((spot,index)=><RouteV2Spot key={spot.id??`${spot.title}-${index}`} spot={spot} index={index} copy={copy} mediaCopy={routeV2MediaCopy[locale]} locale={locale} returnTo={`/app/trips/${trip.slug}`}/>)}</section>
     <section className="route-v2-section"><span className="route-v2-kicker">{copy.scheduleKicker}</span><h2>{copy.schedule}</h2><div className="route-v2-timeline">{timeline.map((item,index)=><article key={item.id??`${item.title}-${index}`}><time>{item.time||'—'}</time><i/><div><b>{item.title||copy.unavailableAttraction}</b><p>{[item.detail,item.stayMinutes?`${item.stayMinutes} ${copy.minutes}`:'',item.type].filter(Boolean).join(' · ')}</p></div></article>)}</div></section>
     {reminders.length>0&&<section className="route-v2-section"><span className="route-v2-kicker">{copy.reminderKicker}</span><h2>{copy.reminderTitle}</h2>{reminders.map(item=><aside key={item.id} className="route-v2-reminder"><b>{item.title}</b><p>{item.body}</p></aside>)}</section>}
     {(included.length||excluded.length||preparation.length>0)&&<section className="route-v2-section"><span className="route-v2-kicker">{copy.beforeKicker}</span><h2>{copy.fees}</h2><div className="route-v2-info-grid">{included.length>0&&<RouteV2List title={copy.included} items={included}/>} {excluded.length>0&&<RouteV2List title={copy.excluded} items={excluded}/>} {preparation.length>0&&<RouteV2List title={copy.preparation} items={preparation}/>}</div></section>}
-    {policyDisplay.showLegacyFallback&&travelNotes.some(([, ,body])=>body)&&<section className="route-v2-section"><span className="route-v2-kicker">{copy.notes}</span><h2>{copy.notes}</h2><div className="route-v2-notices">{travelNotes.filter(([, ,body])=>body).map(([key,label,body])=><details key={key}><summary>{label}<span>＋</span></summary><p>{body}</p></details>)}</div></section>}
+    {policyDisplay.showLegacyFallback&&travelNotes.some(([, ,body])=>body)&&<section className="route-v2-section"><span className="route-v2-kicker">{copy.notes}</span><h2>{copy.notes}</h2><div className="route-v2-notices">{travelNotes.filter(([, ,body])=>body).map(([key,label,body])=><PolicyAccordion key={key} title={label}><p>{body}</p></PolicyAccordion>)}</div></section>}
+    <RoutePolicyPanel state={policyState} onRetry={retryPolicy} copy={copy} locale={locale} placement="full"/>
     <section className="route-v2-cta"><small>{copy.readyKicker}</small><h3>{copy.ready}</h3><Link to={`/app/booking/${trip.slug}${selectedDeparture?`?departureId=${encodeURIComponent(selectedDeparture.id)}`:''}`}>{copy.book}</Link></section>
   </div>;
 }
 function policyDisplayText(value:string|undefined){return (value??'').replace(/^>\s?/gm,'').replace(/\*\*(.+?)\*\*/g,'$1');}
-function RoutePolicyPanel({state,onRetry,copy}:{state:RoutePolicyDisplayState;onRetry:()=>void;copy:(typeof routeV2Copy)['zh-CN']}) {
+function PolicyAccordion({title,children}:{title:string;children:ReactNode}) {
+  const [open,setOpen]=useState(false); const id=useId();
+  return <article className="passenger-accordion"><button type="button" aria-expanded={open} aria-controls={id} onClick={()=>setOpen(value=>!value)}><span>{title}</span><svg className={open?'open':''} viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button><div id={id} className={open?'open':''} hidden={!open}>{children}</div></article>;
+}
+function policyRulesHeading(locale:PassengerLocale){return ({'zh-CN':['重要出行提示','完整规则'],'zh-TW':['重要出行提示','完整規則'],ja:['重要なお知らせ','規約全文'],en:['Important travel notice','Full trip rules'],ko:['중요 안내','전체 여행 규정'],es:['Aviso importante','Reglas completas'],vi:['Lưu ý quan trọng','Quy định đầy đủ'],ne:['महत्वपूर्ण सूचना','पूर्ण यात्रा नियम']} as Record<PassengerLocale,[string,string]>)[locale];}
+function RoutePolicyPanel({state,onRetry,copy,locale,placement}:{state:RoutePolicyDisplayState;onRetry:()=>void;copy:(typeof routeV2Copy)['zh-CN'];locale:PassengerLocale;placement:'top'|'full'}) {
   const display=routePolicyDisplay(state);
-  if(display.showLoading)return <section className="route-v2-section route-v2-policy" aria-busy="true"><p>{copy.loadingPolicy}</p></section>;
-  if(display.showRetry)return <section className="route-v2-section route-v2-policy" role="status"><p>{copy.policyError}</p><button type="button" onClick={onRetry}>{copy.retry}</button></section>;
+  if(placement==='full'&&state.status!=='available')return null;
+  if(placement==='top'&&display.showLoading)return <section className="route-v2-section route-v2-policy" aria-busy="true"><p>{copy.loadingPolicy}</p></section>;
+  if(placement==='top'&&display.showRetry)return <section className="route-v2-section route-v2-policy" role="status"><p>{copy.policyError}</p><button type="button" onClick={onRetry}>{copy.retry}</button></section>;
   if(state.status!=='available')return null;
   const policies=state.policies;
   const module=(name:string)=>policies[name]?.sections??null;
   const service=module('service_time'); const cancellation=module('cancellation'); const global=module('global'); const short=service?.short_product_notice; const full=service?.full;
-  return <section className="route-v2-section route-v2-policy">{short&&<aside className="route-v2-reminder"><b>{short.title}</b><p>{policyDisplayText(short.body)}</p></aside>}{full&&<details><summary>{full.title}<span>＋</span></summary><p>{policyDisplayText(full.body)}</p></details>}{cancellation&&Object.entries(cancellation).map(([key,value])=><details key={key}><summary>{value.title}<span>＋</span></summary><p>{policyDisplayText(value.body)}</p></details>)}{global&&<div className="route-v2-notices">{Object.entries(global).map(([key,value])=><details key={key}><summary>{value.title}<span>＋</span></summary><p>{policyDisplayText(value.body)}</p></details>)}</div>}</section>;
+  const [noticeHeading,rulesHeading]=policyRulesHeading(locale);
+  if(placement==='top')return short?<section className="route-v2-section route-v2-policy route-v2-policy-top"><span className="route-v2-kicker">{noticeHeading}</span><aside className="route-v2-reminder"><b>{short.title}</b><p>{policyDisplayText(short.body)}</p></aside></section>:null;
+  return <section className="route-v2-section route-v2-policy route-v2-policy-full"><span className="route-v2-kicker">{rulesHeading}</span><h2>{rulesHeading}</h2>{full&&<PolicyAccordion title={full.title??rulesHeading}><p>{policyDisplayText(full.body)}</p></PolicyAccordion>}{cancellation&&Object.entries(cancellation).map(([key,value])=><PolicyAccordion key={key} title={value.title??rulesHeading}><p>{policyDisplayText(value.body)}</p></PolicyAccordion>)}{global&&<div className="route-v2-notices">{Object.entries(global).map(([key,value])=><PolicyAccordion key={key} title={value.title??rulesHeading}><p>{policyDisplayText(value.body)}</p></PolicyAccordion>)}</div>}</section>;
 }
 function RouteV2Hero({trip,heroTitle,heroSubtitle,titleParts,highlight,start,mediaCopy,copy}:{trip:Trip;heroTitle:string;heroSubtitle:string;titleParts:string[];highlight:string;start:string;mediaCopy:(typeof routeV2MediaCopy)['zh-CN'];copy:(typeof routeV2Copy)['zh-CN']}) { const [play,setPlay]=useState(false); const [failed,setFailed]=useState(false); const video=trip.heroVideo; return <section className="route-v2-hero" style={{backgroundImage:`url(${trip.heroImage})`}}>{video?.url&&play&&!failed&&<video className="route-v2-hero-video" controls autoPlay muted playsInline poster={video.posterUrl||trip.heroImage} onError={()=>setFailed(true)}><source src={video.url} type="video/mp4"/></video>}<div className="route-v2-hero-copy"><span className="route-v2-kicker">{copy.dayTrip}{start?` · ${start}`:''}</span><h1>{titleParts.length===1?heroTitle||copy.missingRouteContent:<>{titleParts[0]}<em>{highlight}</em>{titleParts.slice(1).join(highlight)}</>}</h1>{heroSubtitle&&<p>{heroSubtitle}</p>}{video?.url&&!play&&!failed&&<button className="route-v2-play" type="button" onClick={()=>setPlay(true)}>▶ {video.durationSeconds?mediaCopy.seconds(video.durationSeconds):mediaCopy.play}</button>}<div className="route-v2-meta"><span>{start}</span>{trip.duration&&<span>{trip.duration}</span>}{trip.minimumGuests&&<span>{trip.minimumGuests}–{trip.maximumGuests??''} {copy.people}</span>}</div></div></section>; }
 function RouteV2List({title,items}:{title:string;items:string[]}) { return <article><h3>{title}</h3><ul>{items.map(item=><li key={item}>{item}</li>)}</ul></article>; }
