@@ -8,7 +8,7 @@ describe('payment UI safety gate',()=>{
   const localeCopy=readFileSync('src/shared/i18n/passengerLocale.ts','utf8');
   it('requires a saved draft and authoritative quote, while mounting Stripe only for a real card session',()=>{expect(source).toContain('services?.checkoutAvailable&&state.booking?.draftId&&selectedDeparture&&seatImpact>0&&serverQuote&&!quoteNeedsConfirmation');expect(source).toContain('cardSession&&stripeClient&&<Elements');expect(source).toContain('draftId:state.booking.draftId')});
   it('requires explicit authorization for a Stripe live publishable key',()=>{expect(stripe).toContain("mode==='live'&&liveEnabled==='true'&&isStripeLivePublishableKey(value)")});
-  it('keeps production unavailable copy',()=>{expect(source).toContain('支付功能尚未开放。本页只安全保存订单草稿')});
+  it('uses the approved Stripe dynamic methods and no longer presents a new bank-transfer entry',()=>{expect(source).toContain('继续选择付款方式');expect(source).toContain('信用卡／借记卡、Apple Pay、Google Pay、支付宝或微信支付');expect(source).not.toContain("startCheckout('bank_transfer')")});
   it('shows explicit payment review, refund and cancelled outcomes',()=>{for(const copy of ['付款需要人工确认','退款已发起','订单未完成','请勿重复付款'])expect(paymentCopy).toContain(copy);expect(source).toContain('paymentState(status,manual)')});
   it('persists and displays the bank-transfer deadline in Japan time',()=>{expect(source).toContain('manual_payment_due_at');expect(paymentCopy).toContain('转账付款期限（日本时间）');expect(source).toContain('timeZone:"Asia/Tokyo"')});
   it('links converted drafts to their authoritative order',()=>{expect(localeCopy).toContain('已进入付款流程');expect(source).toContain('draft.converted_order_id')});

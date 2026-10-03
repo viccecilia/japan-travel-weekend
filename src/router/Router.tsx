@@ -56,7 +56,6 @@ import {TripMap} from '../app/TripMap';
 import {VipCharter} from '../app/VipCharter';
 import {ReferralGrowth,TravelMoments} from '../app/GrowthPages';
 import {AmbassadorCenter} from '../app/AmbassadorCenter';
-import {PassengerPageHeader} from '../app/PassengerPageHeader';
 import {OperationsLayout} from "../app/operations/OperationsLayout";
 const OperationsDashboard=lazy(()=>import('../app/OperationsDashboard').then(module=>({default:module.OperationsDashboard})));
 const ProductCenter=lazy(()=>import('../app/operations/ProductCenter').then(module=>({default:module.ProductCenter})));
@@ -77,12 +76,8 @@ const OperationsPage=({children}:{children:ReactNode})=><RequireAccount><Require
 const OperationsNotFound=()=> <main className="operations-page"><section className="operations-error" role="alert"><h2>管理页面不存在</h2><p>该管理链接可能来自旧版本，请通过左侧导航进入现有模块。</p></section></main>;
 function ScrollToTop(){const {pathname}=useLocation();useEffect(()=>{if(!navigator.userAgent.includes('jsdom'))window.scrollTo({top:0,left:0,behavior:'auto'});},[pathname]);return null;}
 function ReferralLink(){const {code=''}=useParams();return <Navigate replace to={`/app/create-account?ref=${encodeURIComponent(code)}`}/>;}
-const PassengerSubpage=({backTo,children}:{backTo:string;children:ReactNode})=><><PassengerPageHeader backTo={backTo}/>{children}</>;
 function AttractionGuideRoute(){
-  const {search}=useLocation();
-  const requestedBackTo=new URLSearchParams(search).get('returnTo');
-  const backTo=requestedBackTo?.startsWith('/app/')?requestedBackTo:'/app/trips';
-  return <AppShell nav><PassengerSubpage backTo={backTo}><Suspense fallback={<main className="app-content"><p>Loading guide…</p></main>}><AttractionGuidePage/></Suspense></PassengerSubpage></AppShell>;
+  return <AppShell nav><Suspense fallback={<main className="app-content"><p>Loading guide…</p></main>}><AttractionGuidePage/></Suspense></AppShell>;
 }
 export function Router() {
   return (
@@ -233,11 +228,11 @@ export function Router() {
       <Route
         path="/app/referral"
         element={
-          <RequireAccount><AppShell nav><PassengerSubpage backTo="/app/profile"><ReferralGrowth /></PassengerSubpage></AppShell></RequireAccount>
+          <RequireAccount><AppShell nav><ReferralGrowth /></AppShell></RequireAccount>
         }
       />
-      <Route path="/app/travel-moments" element={<RequireAccount><AppShell nav><PassengerSubpage backTo="/app/profile"><TravelMoments /></PassengerSubpage></AppShell></RequireAccount>} />
-      <Route path="/app/ambassador" element={<RequireAccount><AppShell nav><PassengerSubpage backTo="/app/profile"><AmbassadorCenter /></PassengerSubpage></AppShell></RequireAccount>} />
+      <Route path="/app/travel-moments" element={<RequireAccount><AppShell nav><TravelMoments /></AppShell></RequireAccount>} />
+      <Route path="/app/ambassador" element={<RequireAccount><AppShell nav><AmbassadorCenter /></AppShell></RequireAccount>} />
       <Route
         path="/app/profile"
         element={

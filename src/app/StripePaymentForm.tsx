@@ -3,7 +3,7 @@ import {PaymentElement,useElements,useStripe} from '@stripe/react-stripe-js';
 import type {PassengerLocale} from '../shared/i18n/passengerLocale';
 
 const copy:Record<PassengerLocale,{form:string;connection:string;failed:string;incomplete:string;confirming:string;confirm:string;privacy:string}>={
-  'zh-CN':{form:'安全支付表单',connection:'支付服务连接失败，请稍后重试。',failed:'支付未完成，请检查付款信息后重试。',incomplete:'支付尚未完成，请勿重复付款。',confirming:'正在安全确认支付…',confirm:'确认支付',privacy:'卡片资料由 Stripe 安全处理，Japan Travel Weekend 不保存完整卡号或安全码。'},
+  'zh-CN':{form:'安全支付表单',connection:'支付服务连接失败，请稍后重试。',failed:'支付未完成，请检查付款信息后重试。',incomplete:'支付尚未完成，请勿重复付款。',confirming:'正在安全确认支付…',confirm:'确认支付',privacy:'付款资料由 Stripe 安全处理；页面只显示当前设备、地区和商户资格支持的方式。'},
   'zh-TW':{form:'安全付款表單',connection:'付款服務連線失敗，請稍後再試。',failed:'付款未完成，請檢查付款資訊後再試。',incomplete:'付款尚未完成，請勿重複付款。',confirming:'正在安全確認付款…',confirm:'確認付款',privacy:'卡片資料由 Stripe 安全處理，Japan Travel Weekend 不儲存完整卡號或安全碼。'},
   ja:{form:'安全な支払いフォーム',connection:'決済サービスに接続できません。しばらくしてからお試しください。',failed:'支払いが完了しませんでした。入力内容をご確認ください。',incomplete:'支払いは未完了です。重複して支払わないでください。',confirming:'安全に支払いを確認中…',confirm:'支払いを確定',privacy:'カード情報はStripeが安全に処理し、当社は完全なカード番号やセキュリティコードを保存しません。'},
   en:{form:'Secure payment form',connection:'Could not connect to the payment service. Try again later.',failed:'Payment was not completed. Check your payment details and try again.',incomplete:'Payment is not complete. Do not pay again.',confirming:'Securely confirming payment…',confirm:'Confirm payment',privacy:'Card details are securely handled by Stripe. Japan Travel Weekend does not store full card numbers or security codes.'},

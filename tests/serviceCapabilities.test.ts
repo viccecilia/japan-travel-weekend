@@ -34,14 +34,14 @@ describe('浏览器服务能力解耦',()=>{
     expect({auth:services.authAvailable,orders:services.ordersAvailable,checkout:services.checkoutAvailable,tripRoom:services.tripRoomAvailable,realtime:services.realtimeAvailable}).toEqual({auth:false,orders:false,checkout:false,tripRoom:false,realtime:false});
     expect(await services.signIn('nobody@example.invalid','unused')).toBeNull();
     expect(await services.loadOwnOrders()).toEqual({data:[],error:'账户服务未配置'});
-    expect(await services.createCheckout({departureId:'departure-1',seats:1,idempotencyKey:'key-2',paymentMethod:'bank_transfer'})).toBeNull();
+    expect(await services.createCheckout({departureId:'departure-1',seats:1,idempotencyKey:'key-2',paymentMethod:'card'})).toBeNull();
   });
   it('结账 API 错误保留可诊断代码而不伪装成功',async()=>{
     const {client}=publicClient();const fetcher=vi.fn(async()=>new Response(JSON.stringify({error:'inventory_unavailable'}),{status:409,headers:{'content-type':'application/json'}}));const services=new ProductionBrowserServices(client,'https://api.example.invalid',fetcher as typeof fetch);
     expect(await services.createCheckout({departureId:'departure-1',seats:3,idempotencyKey:'key-error',paymentMethod:'card'})).toEqual({status:'failed',error:'inventory_unavailable',httpStatus:409});
   });
   it('默认浏览器 fetch 保持正确的全局调用上下文',async()=>{
-    const {client}=publicClient();const browserFetch=vi.fn(function(this:unknown){if(this!==globalThis)throw new TypeError('Illegal invocation');return Promise.resolve(new Response(JSON.stringify({orderId:'order-2',holdId:'hold-2',status:'pending_manual_review'}),{status:200,headers:{'content-type':'application/json'}}))});vi.stubGlobal('fetch',browserFetch);
-    try{const services=new ProductionBrowserServices(client,'/api-test');expect((await services.createCheckout({departureId:'departure-1',seats:1,idempotencyKey:'key-bound-fetch',paymentMethod:'bank_transfer'}))?.status).toBe('pending_manual_review');expect(browserFetch).toHaveBeenCalledOnce()}finally{vi.unstubAllGlobals()}
+    const {client}=publicClient();const browserFetch=vi.fn(function(this:unknown){if(this!==globalThis)throw new TypeError('Illegal invocation');return Promise.resolve(new Response(JSON.stringify({orderId:'order-2',holdId:'hold-2',status:'requires_payment_action',clientSecret:'pi_test'}),{status:200,headers:{'content-type':'application/json'}}))});vi.stubGlobal('fetch',browserFetch);
+    try{const services=new ProductionBrowserServices(client,'/api-test');expect((await services.createCheckout({departureId:'departure-1',seats:1,idempotencyKey:'key-bound-fetch',paymentMethod:'card'}))?.status).toBe('requires_payment_action');expect(browserFetch).toHaveBeenCalledOnce()}finally{vi.unstubAllGlobals()}
   });
 });
