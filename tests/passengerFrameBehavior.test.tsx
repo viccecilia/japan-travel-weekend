@@ -65,6 +65,16 @@ describe('passenger frame closure',()=>{
   expect(await screen.findByRole('region',{name:'不可变订单账单'})).toHaveTextContent('待确认');
   expect(screen.getByRole('region',{name:'不可变订单账单'})).not.toHaveTextContent('¥0');
  });
+ it('keeps legacy transfer facts while removing passenger-facing explanatory notices',async()=>{
+  mock.services.loadOwnOrders.mockResolvedValue({data:[{id:'legacy-transfer',departure_id:'dep',seat_count:1,status:'pending_manual_review',amount:100,manual_payment_due_at:'2026-10-04T01:36:33.561Z',departure:{departs_at:'2026-10-18T00:30:00Z',status:'open',trip:{slug:'amanohashidate-ine'}}}],error:null});
+  mock.services.loadOwnOrderBilling.mockResolvedValue({lineItems:[],grossAmountJpy:100,amountPaidJpy:100,discountAmountJpy:0,refunds:[],snapshotAvailable:false});
+  mount(<Routes><Route path="/app/orders/:id" element={<OrderDetail/>}/></Routes>,'/app/orders/legacy-transfer');
+  const billing=await screen.findByRole('region',{name:'不可变订单账单'});
+  expect(billing).toHaveTextContent('银行转账');
+  expect(screen.queryByText('这是旧订单，部分历史合同字段当时尚未建立；系统不会使用当前价格补写旧账单。')).toBeNull();
+  expect(screen.queryByText('地图位置确认后，将在此提供导航入口。')).toBeNull();
+  expect(screen.queryByText('付款确认并完成车辆分配后开放登车凭证；请勿重复付款。')).toBeNull();
+ });
  it('locked room consumes server opens_at/status, even if orders hide unannounced group details',async()=>{
   mock.services.tripRoom.loadAccessibleRoom.mockResolvedValue({data:{room_id:'r',vehicle_group_id:'g',room_status:'frozen',opens_at:'2026-10-01T00:00:00Z'},error:null});
   mount(<PassengerMessages/>);
