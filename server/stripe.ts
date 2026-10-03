@@ -1,6 +1,12 @@
 import Stripe from 'stripe';
 import {createHash} from 'node:crypto';
 
+// Wallets such as Apple Pay and Google Pay are surfaced by Stripe under `card`
+// when the browser, device, and registered payment domain are eligible. Keep
+// the remaining methods explicit so dashboard-only methods cannot appear in
+// the passenger checkout before JTW has an end-to-end settlement integration.
+const passengerPaymentMethodTypes=['card','alipay','wechat_pay'];
+
 export type StripeTestConfig={secretKey:string;webhookSecret:string;mode?:'test'|'live'};
 export type PaymentEventStore={has(providerEventId:string):Promise<boolean>;findOrderIdByPaymentIntent(paymentIntentId:string):Promise<string|null>;apply(input:{providerEventId:string;orderId:string;status:'succeeded'|'failed'|'cancelled';createdAt:string;payloadDigest:string}):Promise<boolean>;applyRefund(input:{providerEventId:string;orderId:string;providerRefundId:string|null;amountRefunded:number;chargeAmount:number;createdAt:string;payloadDigest:string}):Promise<boolean>;applyRefundStatus?(input:{providerEventId:string;orderId:string;providerRefundId:string;status:'succeeded'|'failed'|'canceled'|'pending'|'requires_action';amount:number;createdAt:string;payloadDigest:string}):Promise<boolean>};
 export class StripeTestAdapter{
@@ -13,7 +19,7 @@ export class StripeTestAdapter{
     return this.stripe.paymentIntents.create({
       amount:input.amount,
       currency:'jpy',
-      automatic_payment_methods:{enabled:true},
+      payment_method_types:passengerPaymentMethodTypes,
       metadata:{order_id:input.orderId,jtw_payment_mode:this.mode}
     },{idempotencyKey:input.idempotencyKey});
   }

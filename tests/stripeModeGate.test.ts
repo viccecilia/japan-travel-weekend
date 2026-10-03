@@ -17,8 +17,11 @@ describe('Stripe live mode safety gate',()=>{
   it('rejects test keys in live mode',()=>{
     expect(new StripeTestAdapter({secretKey:'sk_test_example',webhookSecret:'whsec_example',mode:'live'}).available).toBe(false);
   });
-  it('uses dashboard-managed automatic payment methods',()=>{
+  it('limits passenger intents to the approved payment-method set',()=>{
     const source=readFileSync(resolve(process.cwd(),'server/stripe.ts'),'utf8');
-    expect(source).toContain('automatic_payment_methods:{enabled:true}');
+    expect(source).toContain("const passengerPaymentMethodTypes=['card','alipay','wechat_pay'];");
+    expect(source).toContain('payment_method_types:passengerPaymentMethodTypes');
+    expect(source).not.toContain('automatic_payment_methods:{enabled:true}');
+    expect(source).not.toContain("'paypay'");
   });
 });
