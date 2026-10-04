@@ -2,7 +2,8 @@ import {cleanup,render,screen} from '@testing-library/react';
 import {afterEach,describe,expect,it} from 'vitest';
 import {MemoryRouter} from 'react-router-dom';
 import {AppProvider} from '../src/app/store';
-import {BookingPage,Checkout,Payment} from '../src/app/App';
+import {BookingPage,Checkout,Payment,resolvePaymentDeparture} from '../src/app/App';
+import type {Departure} from '../src/shared/types';
 
 afterEach(cleanup);
 
@@ -22,5 +23,11 @@ describe('结账完整性',()=>{
     render(<MemoryRouter><AppProvider><Payment/></AppProvider></MemoryRouter>);
     expect(screen.getByRole('alert')).toHaveTextContent('不会创建付款');
     expect(screen.getByRole('button',{name:'保存订单草稿（不扣款）'})).toBeDisabled();
+  });
+  it('Stripe 已锁定最后一席后仍保留已验证的班次快照',()=>{
+    const held={id:'held-departure',price:100} as Departure;
+    expect(resolvePaymentDeparture(undefined,held)).toBe(held);
+    const refreshed={id:'refreshed-departure',price:100} as Departure;
+    expect(resolvePaymentDeparture(refreshed,held)).toBe(refreshed);
   });
 });

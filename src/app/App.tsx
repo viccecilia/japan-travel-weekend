@@ -20,7 +20,7 @@ import {
   describeChildSeat,
   emptyAssistance,
 } from "../shared/services/passengerAssistance";
-import type { ChildSeatChoice, Passenger, PassengerAssistance, RouteReminder, Trip, TripSpotVideo, TripTimelineItem } from "../shared/types";
+import type { ChildSeatChoice, Departure, Passenger, PassengerAssistance, RouteReminder, Trip, TripSpotVideo, TripTimelineItem } from "../shared/types";
 import { GoogleMapsAdapter } from "../shared/integrations/googleMaps";
 import { useApp, useOptionalApp } from "./store";
 import {routePolicyDisplay,type RoutePolicyDisplayState} from '../shared/routePolicyDisplay';
@@ -1879,6 +1879,11 @@ export function Checkout() {
   );
 }
 function CheckoutPolicySummary({tripSlug,locale,meetingName,meetingTime,reminders}:{tripSlug:string;locale:PassengerLocale;meetingName:string|null;meetingTime:string|null;reminders:RouteReminder[]}) { const {services}=useApp(); const [policies,setPolicies]=useState<import('../shared/integrations/supabaseProduction').PublicRoutePolicies|null>(null); useEffect(()=>{let live=true;if(!services)return()=>{live=false};void services.catalog.loadRoutePoliciesBySlug(tripSlug,locale==='zh-TW'?'zh-CN':locale).then(result=>{if(live)setPolicies(result.status==='available'?result.policies:null)});return()=>{live=false}},[services,tripSlug,locale]); const service=policies?.service_time?.sections;const cancellation=policies?.cancellation?.sections;const global=policies?.global?.sections;const short=service?.short_product_notice;const cancel=Object.values(cancellation??{})[0];const currentReminders=reminders.flatMap(item=>item.enabled===false?[]:[item.locales?.[locale]??item.locales?.['zh-CN']]).filter((item):item is {title?:string;body:string}=>Boolean(item?.body));return <section className="checkout-policy-summary"><h2>行程说明与规则</h2><div className="receipt"><div><span>集合地点</span><b>{meetingName??'待运营确认'}</b></div><div><span>集合/出发时间</span><b>{meetingTime?new Intl.DateTimeFormat(locale,{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit',month:'numeric',day:'numeric'}).format(new Date(meetingTime)):'待运营确认'}</b></div></div>{currentReminders.map((item,index)=><aside key={index} className="route-v2-reminder"><b>{item.title}</b><p>{item.body}</p></aside>)}{short&&<aside className="route-v2-reminder"><b>{short.title}</b><p>{policyDisplayText(short.body)}</p></aside>}{cancel&&<details><summary>{cancel.title}</summary><p>{policyDisplayText(cancel.body)}</p></details>}{global&&<details><summary>通用规则</summary>{Object.values(global).map((item,index)=><details key={index}><summary>{item.title}</summary><p>{policyDisplayText(item.body)}</p></details>)}</details>}</section> }
+export const resolvePaymentDeparture = (
+  current: Departure | undefined,
+  heldForCardPayment: Departure | undefined,
+) => current ?? heldForCardPayment ?? null;
+
 export function Payment() {
   const { state, services, departures, updateBooking } = useApp();
   const [submitting, setSubmitting] = useState(false);
@@ -1886,7 +1891,10 @@ export function Payment() {
   const [draftKey] = useState(() => crypto.randomUUID());
   const [checkoutKey,setCheckoutKey] = useState(()=>crypto.randomUUID());
   const [checkoutError,setCheckoutError]=useState("");
-  const [cardSession,setCardSession]=useState<{orderId:string;clientSecret:string}|null>(null);
+  // Reserving the last seat removes it from the public sellable feed. Keep the
+  // server-validated snapshot while its PaymentIntent is active so the form
+  // remains available to complete or abandon that exact reservation.
+  const [cardSession,setCardSession]=useState<{orderId:string;clientSecret:string;departure:Departure}|null>(null);
   const [couponSummary,setCouponSummary]=useState<Awaited<ReturnType<NonNullable<typeof services>['loadOwnReferralSummary']>>>(null);
   const [couponId,setCouponId]=useState('');
   const [serverQuote,setServerQuote]=useState<ServerQuote|null>(null);
@@ -1896,11 +1904,15 @@ export function Payment() {
   const selectedDeparture = departures.find(
     (item) => item.id === state.booking?.departureId,
   );
+  const paymentDeparture = resolvePaymentDeparture(
+    selectedDeparture,
+    cardSession?.departure,
+  );
   const seatImpact =
     (state.booking?.adults ?? 0) +
     (state.booking?.children ?? 0) +
     (state.booking?.infants ?? 0);
-  const payableTotal = seatOrderTotal(selectedDeparture?.price, seatImpact);
+  const payableTotal = seatOrderTotal(paymentDeparture?.price, seatImpact);
   const usableCoupons=couponSummary?.coupons.filter(item=>item.status==='active'&&new Date(item.expiresAt).getTime()>Date.now())??[];
   const selectedCoupon=usableCoupons.find(item=>item.id===couponId);
   const localPrice=selectedDeparture?.price!=null&&selectedCoupon?singleSeatQuote({unitPrice:selectedDeparture.price,seats:seatImpact,discountPercent:selectedCoupon.discountPercent}):null;
@@ -1909,7 +1921,7 @@ export function Payment() {
   const nav = useNavigate();
   const paymentReady = Boolean(
     state.booking?.passenger &&
-    selectedDeparture &&
+    paymentDeparture &&
     payableTotal != null &&
     state.booking?.acceptedCancellation &&
     state.booking?.acceptedTerms,
@@ -1984,7 +1996,7 @@ export function Payment() {
     }
     if(result.status==='confirmed_no_payment'){nav(`/app/payment-result?order_id=${encodeURIComponent(result.orderId)}&free=1`);return}
     if(result.status==='pending_manual_review'){nav(`/app/payment-result?order_id=${encodeURIComponent(result.orderId)}&manual=1&due_at=${encodeURIComponent(result.paymentDueAt)}`);return}
-    setCardSession({orderId:result.orderId,clientSecret:result.clientSecret});
+    setCardSession({orderId:result.orderId,clientSecret:result.clientSecret,departure:selectedDeparture});
   };
   return (
     <>
@@ -2002,7 +2014,7 @@ export function Payment() {
       <section className="receipt payment-receipt" aria-label="费用明细">
         <h2>费用明细</h2>
         <div className="payment-receipt-line">
-          <span>{travelRepository.getTrip(selectedDeparture?.tripSlug??state.booking?.tripSlug??'')?.shortTitle??'行程'}座位费</span>
+          <span>{travelRepository.getTrip(paymentDeparture?.tripSlug??state.booking?.tripSlug??'')?.shortTitle??'行程'}座位费</span>
           {serverQuote ? <b className="payment-receipt-price"><small>{serverQuote.seatCount}席 × ¥{serverQuote.unitPrice.toLocaleString('ja-JP')}</small><strong>¥{serverQuote.baseFare.toLocaleString('ja-JP')}</strong></b> : <b>等待服务器报价</b>}
         </div>
         {usableCoupons.length>0&&<div><span>选择优惠券（每单限1张）</span><select aria-label="选择优惠券" value={couponId} onChange={event=>setCouponId(event.target.value)} disabled={submitting||Boolean(cardSession)}><option value="">不使用优惠券</option>{usableCoupons.map(item=><option value={item.id} key={item.id}>{item.discountPercent}% OFF · 仅优惠1席 · {new Date(item.expiresAt).toLocaleDateString(state.ui.locale??'zh-CN')}</option>)}</select></div>}
