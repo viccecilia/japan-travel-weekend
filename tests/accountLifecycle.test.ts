@@ -37,4 +37,14 @@ describe('真实账户资料与草稿生命周期',()=>{
     expect(await repository.abandonOwnDraft('draft-test')).toEqual({ok:true,error:null});
     expect(rpc).toHaveBeenCalledWith('abandon_own_booking_draft',{p_draft:'draft-test'});
   });
+
+  it('只读取本人草稿恢复支付所需的私密字段，不向列表以外的账户暴露',async()=>{
+    const order={order:vi.fn(()=>({data:[],error:null}))};
+    const select=vi.fn(()=>order);
+    const repository=new SupabaseOrderRepository({rpc:vi.fn(async()=>({data:0,error:null})),from:vi.fn(()=>({select}))} as never);
+    await repository.loadOwnDrafts();
+    expect(select).toHaveBeenCalledWith(expect.stringContaining('passenger_private'));
+    expect(select).toHaveBeenCalledWith(expect.stringContaining('assistance_private'));
+    expect(select).toHaveBeenCalledWith(expect.stringContaining('accepted_cancellation'));
+  });
 });

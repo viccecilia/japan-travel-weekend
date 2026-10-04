@@ -20,7 +20,7 @@ import {
   describeChildSeat,
   emptyAssistance,
 } from "../shared/services/passengerAssistance";
-import type { ChildSeatChoice, RouteReminder, Trip, TripSpotVideo, TripTimelineItem } from "../shared/types";
+import type { ChildSeatChoice, Passenger, PassengerAssistance, RouteReminder, Trip, TripSpotVideo, TripTimelineItem } from "../shared/types";
 import { GoogleMapsAdapter } from "../shared/integrations/googleMaps";
 import { useApp, useOptionalApp } from "./store";
 import {routePolicyDisplay,type RoutePolicyDisplayState} from '../shared/routePolicyDisplay';
@@ -2189,7 +2189,8 @@ export function PaymentResult() {
   );
 }
 export function Orders() {
-  const { state, services, departures } = useApp();
+  const { state, services, departures, updateBooking } = useApp();
+  const nav = useNavigate();
   const [search,setSearch]=useSearchParams();
   const filter=search.get("status")??"all";
   const [billingById,setBillingById]=useState<Record<string,{title:string|null;departsAt:string|null}>>({});
@@ -2223,6 +2224,10 @@ export function Orders() {
       created_at: string;
       updated_at: string;
       expires_at: string;
+      passenger_private: Record<string, unknown> | null;
+      assistance_private: Record<string, unknown> | null;
+      accepted_cancellation: boolean;
+      accepted_terms: boolean;
     }>
   >([]);
   const [draftNotice, setDraftNotice] = useState("");
@@ -2252,6 +2257,32 @@ export function Orders() {
   const matchesFilter=(o:typeof remote.rows[number])=>{
     const completed=['paid','confirmed'].includes(o.status)&&o.departure?.status==='completed';
     return filter==='all'||(filter==='pending'?['pending_payment','pending_manual_review','payment_review'].includes(o.status):filter==='paid'?['paid','confirmed'].includes(o.status)&&!completed:filter==='cancelled'?['cancelled','refunded','expired'].includes(o.status):filter==='completed'&&completed);
+  };
+  const resumeDraft = (draft: typeof drafts[number]) => {
+    const departure = departures.find((item) => item.id === draft.departure_id);
+    if (!departure || !draft.passenger_private || !draft.assistance_private) {
+      setDraftNotice(
+        locale === "en"
+          ? "This draft can no longer be resumed. Please choose an available departure."
+          : locale === "vi"
+            ? "Không thể tiếp tục đơn nháp này. Vui lòng chọn một chuyến còn chỗ."
+            : "该草稿目前无法继续支付，请重新选择仍可预订的班次。",
+      );
+      return;
+    }
+    updateBooking({
+      tripSlug: departure.tripSlug,
+      departureId: draft.departure_id,
+      adults: draft.adults,
+      children: draft.children,
+      infants: draft.infants,
+      passenger: draft.passenger_private as Passenger,
+      assistance: draft.assistance_private as PassengerAssistance,
+      acceptedCancellation: draft.accepted_cancellation,
+      acceptedTerms: draft.accepted_terms,
+      draftId: draft.id,
+    });
+    nav("/app/payment");
   };
   return (
     <>
@@ -2289,9 +2320,13 @@ export function Orders() {
               {draft.status === "payment_not_started" ||
               draft.status === "pending_manual_review" ? (
                 <div className="inline-actions">
-                  <Link className="text-link" to="/app/checkout">
+                  <button
+                    type="button"
+                    className="text-link"
+                    onClick={() => resumeDraft(draft)}
+                  >
                     {c.continue}
-                  </Link>
+                  </button>
                   <button
                     type="button"
                     className="text-button"

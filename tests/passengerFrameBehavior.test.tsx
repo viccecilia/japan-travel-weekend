@@ -5,9 +5,9 @@ import {Orders,OrderDetail,Profile,AppTrips,AppShell} from '../src/app/App';
 import {PassengerMessages} from '../src/app/PassengerMessages';
 const mock=vi.hoisted(()=>{
  const services={loadOwnOrders:vi.fn(),loadOwnDrafts:vi.fn(),loadOwnOrderBilling:vi.fn(),loadOwnOrderFulfilment:vi.fn(),loadOwnCancellationRequest:vi.fn(),loadOwnAccountProfile:vi.fn(),loadOwnDisplayName:vi.fn(),currentRole:vi.fn(),updateOwnAccountProfile:vi.fn(),updateOwnDisplayName:vi.fn(),signOut:vi.fn(),loadOwnShareCampaign:vi.fn(),tripRoom:{loadAccessibleRoom:vi.fn()}};
- return {services,clearIdentity:vi.fn()};
+ return {services,clearIdentity:vi.fn(),updateBooking:vi.fn()};
 });
-vi.mock('../src/app/store',()=>({useApp:()=>({services:mock.services,state:{user:{email:'test@example.invalid'},ui:{locale:'zh-CN',compact:false},orders:[]},departures:[],clearIdentity:mock.clearIdentity,reset:vi.fn(),setUi:vi.fn()}),useOptionalApp:()=>({state:{ui:{locale:'zh-CN'}},setUi:vi.fn()})}));
+vi.mock('../src/app/store',()=>({useApp:()=>({services:mock.services,state:{user:{email:'test@example.invalid'},ui:{locale:'zh-CN',compact:false},orders:[]},departures:[{id:'dep',tripSlug:'amanohashidate-ine'}],updateBooking:mock.updateBooking,clearIdentity:mock.clearIdentity,reset:vi.fn(),setUi:vi.fn()}),useOptionalApp:()=>({state:{ui:{locale:'zh-CN'}},setUi:vi.fn()})}));
 afterEach(cleanup);
 beforeEach(()=>{
  vi.resetAllMocks();
@@ -27,13 +27,11 @@ beforeEach(()=>{
 const mount=(node:React.ReactNode,path='/')=>render(<MemoryRouter initialEntries={[path]}>{node}</MemoryRouter>);
 const RoomDestination=()=>{const location=useLocation();return <p>ROOM {location.search}</p>};
 describe('passenger frame closure',()=>{
- it('growth entry precedes route cards while VIP and groups remain after routes',()=>{
+ it('VIP charter precedes route cards while private groups remain after routes',()=>{
   mount(<AppTrips/>);const root=document.querySelector('.route-catalog')!;
-  expect(root.firstElementChild?.querySelector('a')).toHaveAttribute('href','/app/referral');
-  expect(root.firstElementChild).toHaveTextContent('Travel Moments');
+  expect(root.firstElementChild?.querySelector('a')).toHaveAttribute('href','/app/vip-charter');
   expect(root.lastElementChild?.querySelector('a')).toHaveAttribute('href','/app/private-groups');
   expect(screen.getByRole('heading',{name:'精选线路'})).toBeVisible();
-  expect(screen.queryByText('下一次想去哪里？')).toBeNull();
  });
  it('messages and notification bell have separate destinations',()=>{
   mount(<AppShell nav>content</AppShell>,'/app/messages');
@@ -52,6 +50,13 @@ describe('passenger frame closure',()=>{
   fireEvent.click(screen.getByRole('button',{name:'已取消'}));
   fireEvent.click(document.querySelector('.passenger-order-link')!);
   expect(screen.getByText('ORDER DETAIL')).toBeVisible();
+ });
+ it('resumes an eligible own draft into the payment state instead of returning to an empty checkout',async()=>{
+  mock.services.loadOwnDrafts.mockResolvedValue({data:[{id:'draft-1',departure_id:'dep',adults:1,children:0,infants:0,seat_impact:1,operational_review_status:'not_requested',status:'payment_not_started',converted_order_id:null,converted_at:null,created_at:'2026-10-01T00:00:00Z',updated_at:'2026-10-01T00:00:00Z',expires_at:'2026-10-02T00:00:00Z',passenger_private:{name:'Test',phone:'000',emergency:'Emergency'},assistance_private:{childSeat:{quantity:0},stroller:{quantity:0},wheelchair:{needed:false},other:{largeLuggage:0}},accepted_cancellation:true,accepted_terms:true}],error:null});
+  mount(<Routes><Route path="/" element={<Orders/>}/><Route path="/app/payment" element={<p>PAYMENT</p>}/></Routes>);
+  fireEvent.click(await screen.findByRole('button',{name:'继续填写'}));
+  expect(mock.updateBooking).toHaveBeenCalledWith(expect.objectContaining({draftId:'draft-1',departureId:'dep',tripSlug:'amanohashidate-ine',acceptedTerms:true}));
+  expect(await screen.findByText('PAYMENT')).toBeVisible();
  });
  it('detail request failure ends loading and offers retry, rather than a dead click',async()=>{
   mock.services.loadOwnOrders.mockRejectedValue(new Error('network unavailable'));
