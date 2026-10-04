@@ -25,8 +25,9 @@ function Get-Sha256 {
 
 if (Test-Path -LiteralPath $releaseRoot) { throw "release directory already exists: $releaseRoot" }
 $branch = Get-GitText @('branch', '--show-current')
-if ($branch -ne $expectedBranch) { throw "branch must be $expectedBranch; actual=$branch" }
 $sha = Get-GitText @('rev-parse', 'HEAD')
+$remoteSha = Get-GitText @('rev-parse', "origin/$expectedBranch")
+if ($sha -ne $remoteSha) { throw "HEAD must match origin/$expectedBranch; local=$sha remote=$remoteSha" }
 if ((Get-GitText @('status', '--short'))) { throw 'working tree is not clean' }
 if ($ReleaseId -notmatch [regex]::Escape($sha.Substring(0, 7))) { throw 'release ID must include the source short SHA' }
 
