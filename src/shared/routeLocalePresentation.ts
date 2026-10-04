@@ -1,4 +1,5 @@
 import type {PassengerLocale} from './i18n/passengerLocale';
+import {legacyRouteContent} from './i18n/routeLegacyContent';
 import type {Trip,TripTimelineItem} from './types';
 
 type LocaleContent=Record<string,unknown>;
@@ -7,12 +8,45 @@ type LocaleContent=Record<string,unknown>;
  * A published route must not silently borrow Chinese route copy for another
  * locale.  Shared attractions and policies are resolved separately.
  */
-export function routeLocaleContent(trip:Trip,locale:PassengerLocale):LocaleContent{
+function meaningful(value:unknown){
+  return Array.isArray(value)?value.length>0:typeof value==='string'?Boolean(value.trim()):value!==null&&value!==undefined;
+}
+
+function publishedLocaleContent(trip:Trip,locale:PassengerLocale):LocaleContent{
   if(locale==='zh-CN')return trip.localizedContent?.['zh-CN']??{};
   // Traditional Chinese is a presentation variant until dedicated route copy
   // is supplied. It may use the Chinese source, unlike every foreign locale.
   if(locale==='zh-TW')return trip.localizedContent?.['zh-TW']??trip.localizedContent?.['zh-CN']??{};
   return trip.localizedContent?.[locale]??{};
+}
+
+function legacyLocaleContent(trip:Trip,locale:PassengerLocale):LocaleContent{
+  const legacy=legacyRouteContent(locale,trip.slug);
+  if(!legacy)return {};
+  return {
+    title:legacy.title,
+    shortTitle:legacy.title,
+    heroTitle:legacy.title,
+    summary:legacy.summary,
+    heroSubtitle:legacy.summary,
+    region:legacy.region,
+    duration:legacy.duration,
+    stops:legacy.stops,
+  };
+}
+
+/**
+ * Passenger route content has one strict priority order:
+ * current-locale published content, then the pre-existing human locale pack,
+ * then the caller's localized content-gap state. Empty published fields do
+ * not erase a human-authored fallback. Foreign locales never use Chinese.
+ */
+export function routeLocaleContent(trip:Trip,locale:PassengerLocale):LocaleContent{
+  const merged={...legacyLocaleContent(trip,locale)};
+  for(const [key,value] of Object.entries(publishedLocaleContent(trip,locale))){
+    if(meaningful(value))merged[key]=value;
+  }
+  return merged;
 }
 
 export function isRouteSourceLocale(locale:PassengerLocale){return locale==='zh-CN'||locale==='zh-TW';}
@@ -34,16 +68,17 @@ function itineraryTranslations(content:LocaleContent){
  */
 export function localizedRouteTimeline(trip:Trip,locale:PassengerLocale):TripTimelineItem[]{
   const translated=itineraryTranslations(routeLocaleContent(trip,locale));
+  const legacyStops=legacyRouteContent(locale,trip.slug)?.stops??[];
   const allowSourceFallback=isRouteSourceLocale(locale);
-  return trip.timeline.map(item=>{
+  return trip.timeline.map((item,index)=>{
     const row=item.id?translated[item.id]??{}:{};
-    const translatedText=(key:string,source:string|undefined='')=>{
+    const translatedText=(key:string,source:string|undefined='',legacyFallback='')=>{
       const value=row[key];
-      return typeof value==='string'&&value.trim()?value.trim():(allowSourceFallback?source??'':'');
+      return typeof value==='string'&&value.trim()?value.trim():(legacyFallback|| (allowSourceFallback?source??'':''));
     };
     return {
       ...item,
-      title:translatedText('stop_title',item.title),
+      title:translatedText('stop_title',item.title,legacyStops[index]??''),
       subtitle:translatedText('subtitle',item.subtitle),
       detail:translatedText('shortDescription',translatedText('description',item.detail)),
       shortDescription:translatedText('shortDescription',item.shortDescription??item.detail),

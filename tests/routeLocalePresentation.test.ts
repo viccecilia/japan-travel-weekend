@@ -1,4 +1,5 @@
 import {describe,expect,it} from 'vitest';
+import {legacyRouteSlugs} from '../src/shared/i18n/routeLegacyContent';
 import {localizedRouteTimeline,routeLocaleContent} from '../src/shared/routeLocalePresentation';
 import type {Trip} from '../src/shared/types';
 
@@ -9,11 +10,37 @@ const trip={
 } as unknown as Trip;
 
 describe('route locale presentation',()=>{
-  it('never borrows Chinese route text for a foreign locale without an official translation',()=>{
-    expect(routeLocaleContent(trip,'vi')).toEqual({});
-    const timeline=localizedRouteTimeline(trip,'vi');
+  it('restores an existing human locale pack before declaring a content gap',()=>{
+    const legacy={...trip,slug:'sanzenin-kibune-arashiyama-autumn'};
+    expect(routeLocaleContent(legacy,'vi')).toMatchObject({title:'Mùa thu Kyoto: Sanzenin, Kibune & Arashiyama'});
+    const timeline=localizedRouteTimeline(legacy,'vi');
+    expect(timeline[0].title).toBe('Chùa Sanzenin, Ohara');
+    expect(timeline[0].detail).toBe('');
+  });
+
+  it('never borrows Chinese route text for a foreign locale with neither published nor human content',()=>{
+    const missing={...trip,slug:'route-with-no-human-locale'};
+    expect(routeLocaleContent(missing,'vi')).toEqual({});
+    const timeline=localizedRouteTimeline(missing,'vi');
     expect(timeline[0].title).toBe('');
     expect(timeline[0].detail).toBe('');
+  });
+
+  it('keeps the current-locale published record ahead of an existing human locale pack',()=>{
+    const published={...trip,slug:'sanzenin-kibune-arashiyama-autumn',localizedContent:{...trip.localizedContent,en:{title:'Current published English title',summary:'Current published English summary'}}};
+    expect(routeLocaleContent(published,'en')).toMatchObject({title:'Current published English title',summary:'Current published English summary'});
+  });
+
+  it('keeps all nine human route packs available in every supported foreign locale',()=>{
+    const foreignLocales=['ja','en','es','vi','ne','ko'] as const;
+    expect(legacyRouteSlugs().size).toBe(9);
+    for(const slug of legacyRouteSlugs()){
+      for(const locale of foreignLocales){
+        const content=routeLocaleContent({...trip,slug},locale);
+        expect(content.title,`${slug} ${locale}`).toEqual(expect.any(String));
+        expect((content.title as string).trim(),`${slug} ${locale}`).not.toBe('');
+      }
+    }
   });
 
   it('keeps official localized route text and leaves linked attraction loading to the attraction library',()=>{

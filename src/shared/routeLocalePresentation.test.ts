@@ -6,10 +6,10 @@ const trip={id:'route-1',slug:'sanzenin-kibune-arashiyama-autumn',title:'三千�
 
 describe('route locale presentation',()=>{
   it('uses approved locale content when present',()=>expect(presentRoute(trip,'en')).toMatchObject({title:'Sanzen-in, Kibune & Arashiyama',available:true}));
-  it('uses a stable non-marketing identity instead of Chinese source copy when absent',()=>{
+  it('uses the existing human locale pack before a content-gap identity',()=>{
     const presentation=presentRoute(trip,'vi');
-    expect(presentation.available).toBe(false);
-    expect(presentation.title).toBe('Tuyến · SANZENIN-KIBUNE-ARASHIYAMA-AUTUMN');
+    expect(presentation.available).toBe(true);
+    expect(presentation.title).toBe('Mùa thu Kyoto: Sanzenin, Kibune & Arashiyama');
     expect(presentation.title).not.toContain('三千院');
   });
   it('keeps multiple incomplete products distinguishable instead of a generic Routes placeholder',()=>{

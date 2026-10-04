@@ -20,7 +20,7 @@ function page(query=''){
     departure('past','2020-01-01T00:00:00Z',1),
     departure('nearest','2099-01-01T00:00:00Z',8800),
     departure('cheaper-later','2099-01-02T00:00:00Z',8000),
-  ],error:null}),currentUser:async()=>null,onAuthStateChange:()=>()=>{}};
+  ],error:null}),catalog:{loadRoutePoliciesBySlug:async()=>({status:'absent' as const})},currentUser:async()=>null,onAuthStateChange:()=>()=>{}};
   return render(<MemoryRouter initialEntries={['/app/trips/kyoto-nara-classic'+query]}>
     <AppProvider services={services as never}><Routes><Route path="/app/trips/:slug" element={<AppTrip/>}/></Routes></AppProvider>
   </MemoryRouter>);
