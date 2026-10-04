@@ -15,7 +15,8 @@ const departure=(id:string,time:string,price:number):Departure=>({
   meetingPhotoStatus:'待确认',mapStatus:'未连接',price,availableSeats:4,currency:'JPY',taxIncluded:true,
   inventoryStatus:'权威库存',isSeed:false,
 });
-function page(query=''){
+function page(query='',locale='zh-CN'){
+  localStorage.setItem('jtw-ui-preferences-v1',JSON.stringify({compact:false,locale}));
   const services={loadSellableDepartures:async()=>({data:[
     departure('past','2020-01-01T00:00:00Z',1),
     departure('nearest','2099-01-01T00:00:00Z',8800),
@@ -48,6 +49,27 @@ describe('连续路线详情与班次锁定',()=>{
     await waitFor(()=>expect(view.container.querySelector('.route-selected-departure')).toBeInTheDocument());
     expect(view.container.querySelector('.route-detail-grid')).not.toHaveTextContent('往返交通');
     expect(view.container.querySelector('video')).toBeNull();
+  });
+  it('按当前语言已发布内容、旧版人工内容、缺口占位的顺序解析路线详情',async()=>{
+    const original=travelRepository.getTrip('kyoto-nara-classic')!;
+    const publishedEnglish={...original,catalogSource:'published' as const,summary:'不应显示的中文摘要',localizedContent:{en:{title:'Test Supabase English title',region:'Test Supabase region',duration:'Test Supabase duration',summary:'Test Supabase English summary',stops:['Test Supabase stop']}}};
+    vi.spyOn(travelRepository,'getTrip').mockReturnValue(publishedEnglish);
+    const view=page('','en');
+    await waitFor(()=>expect(screen.getByRole('heading',{level:1})).toHaveTextContent('Test Supabase English title'));
+    expect(view.container.querySelector('.route-lead')).toHaveTextContent('Test Supabase English summary');
+    expect(view.container).not.toHaveTextContent('不应显示的中文摘要');
+    view.unmount();
+
+    vi.mocked(travelRepository.getTrip).mockReturnValue({...original,catalogSource:'published',summary:'不应显示的中文摘要',localizedContent:{}});
+    const legacyView=page('','en');
+    await waitFor(()=>expect(screen.getByRole('heading',{level:1})).toHaveTextContent('Kyoto & Nara'));
+    expect(legacyView.container).not.toHaveTextContent('不应显示的中文摘要');
+    legacyView.unmount();
+
+    vi.mocked(travelRepository.getTrip).mockReturnValue({...original,slug:'no-legacy-locale',catalogSource:'published',summary:'不应显示的中文摘要',localizedContent:{}});
+    const gapView=page('','en');
+    await waitFor(()=>expect(screen.getByRole('heading',{level:1})).toHaveTextContent('Departures pending'));
+    expect(gapView.container).not.toHaveTextContent('不应显示的中文摘要');
   });
   it('普通多人订单仅一席折扣，不叠加周末系数',()=>{
     expect(singleSeatQuote({unitPrice:8000,seats:1})).toMatchObject({amountDue:8000,discountAmount:0});

@@ -96,10 +96,30 @@ const tripSupplement:Record<string,Record<string,{name:string;region:string;dura
  'zh-TW':{'kobe-arima-rokko':{name:'神戶、有馬與六甲山',region:'兵庫',duration:'約 10–11 小時',stops:['有馬溫泉','北野異人館街','神戶港','六甲山夜景']},'wakayama-family':{name:'和歌山親子路線',region:'和歌山',duration:'約 9–10 小時',stops:['貴志站','Toretore 市場','千疊敷','三段壁']}},
  ne:{'kobe-arima-rokko':{name:'कोबे, अरिमा र रोक्को पर्वत',region:'ह्योगो',duration:'१०–११ घण्टा',stops:['अरिमा ओन्सेन','कितानो इजिनकान','कोबे बन्दरगाह','रोक्को रात्री दृश्य']},'wakayama-family':{name:'वाकायामा पारिवारिक रुट',region:'वाकायामा',duration:'९–१० घण्टा',stops:['किशी स्टेशन','तोरेतोरे बजार','सेन्जोजिकी','सान्दानबेकी']}},
 };
+const textValue=(value:unknown)=>typeof value==='string'&&value.trim()?value.trim():'';
+const stringValues=(value:unknown)=>Array.isArray(value)?value.filter((item):item is string=>typeof item==='string'&&Boolean(item.trim())).map(item=>item.trim()):[];
+const legacyRouteSummary=(locale:PassengerLocale,trip:typeof trips[number])=>{
+ const card=tripHomeCopy[locale]?.[trip.slug]??tripSupplement[locale]?.[trip.slug];
+ const expanded=expandedRouteSummary(locale,trip.slug);
+ return {name:card?.name??expanded?.name??'',region:card?.region??expanded?.region??'',duration:card?.duration??expanded?.duration??'',summary:expanded?.summary??'',stops:card?.stops??expanded?.stops??[]};
+};
+// Keep the passenger route-detail content order explicit. A current-locale
+// published record wins; the earlier human-authored locale pack is only a
+// fallback. Chinese source fields are never borrowed for another locale.
 const localizedTripSummary=(locale:PassengerLocale,trip:typeof trips[number])=>{
- const published=trip.localizedContent?.[locale]??trip.localizedContent?.['zh-CN'];
- if(trip.catalogSource==='published')return {name:typeof published?.title==='string'&&published.title.trim()?published.title:trip.shortTitle,region:typeof published?.region==='string'&&published.region.trim()?published.region:trip.region,duration:typeof published?.duration==='string'&&published.duration.trim()?published.duration:trip.duration,summary:typeof published?.summary==='string'&&published.summary.trim()?published.summary:trip.summary,stops:Array.isArray(published?.stops)&&published.stops.some(item=>typeof item==='string'&&item.trim())?published.stops.filter((item):item is string=>typeof item==='string'&&Boolean(item.trim())):trip.stops};
- return tripHomeCopy[locale]?.[trip.slug]??tripSupplement[locale]?.[trip.slug]??expandedRouteSummary(locale,trip.slug)??{name:trip.shortTitle,region:trip.region,duration:trip.duration,stops:trip.stops};
+ const legacy=legacyRouteSummary(locale,trip);
+ if(trip.catalogSource!=='published')return legacy.name?legacy:{name:trip.shortTitle,region:trip.region,duration:trip.duration,summary:trip.summary,stops:trip.stops};
+ const published=trip.localizedContent?.[locale]??(locale==='zh-CN'?{title:trip.shortTitle,region:trip.region,duration:trip.duration,summary:trip.summary,stops:trip.stops}:{});
+ return {name:textValue(published.title)||legacy.name,region:textValue(published.region)||legacy.region,duration:textValue(published.duration)||legacy.duration,summary:textValue(published.summary)||legacy.summary,stops:stringValues(published.stops).length?stringValues(published.stops):legacy.stops};
+};
+const localizedPublishedTimeline=(locale:PassengerLocale,trip:typeof trips[number])=>{
+  const itinerary=trip.localizedContent?.[locale]?.itinerary;
+  const rows=itinerary&&typeof itinerary==='object'&&!Array.isArray(itinerary)?itinerary as Record<string,Record<string,unknown>>:null;
+ if(!rows)return locale==='zh-CN'?trip.timeline:null;
+ return trip.timeline.map(item=>{
+  const row=rows[item.title]??{};
+  return {...item,title:textValue(row.stop_title)||textValue(row.title),detail:textValue(row.shortDescription)||textValue(row.description),tip:textValue(row.tip)};
+ });
 };
 const routePlaceQueries:Record<string,string[]>={
  'kyoto-nara-classic':['Kiyomizu-dera Temple Kyoto Japan','Fushimi Inari Taisha Kyoto Japan','Nara Park Japan'],
@@ -970,24 +990,25 @@ export function AppTrip() {
   const requestedDepartureId=new URLSearchParams(location.search).get('departureId');
   const requestedDeparture=sellable.find(item=>item.id===requestedDepartureId)??sellable[0]??null;
   const published=t.catalogSource==='published';
+  const publishedTimeline=localizedPublishedTimeline(locale,t);
   const richSpots=featuredRouteSpots[t.slug]?.[locale]??null;
-  const routePitch=t.catalogSource==='published'?null:featuredRoutePitch[t.slug]?.[locale]??null;
+  const routePitch=featuredRoutePitch[t.slug]?.[locale]??null;
   const displayTrip=localizedTripSummary(locale,t);
   const detail=routeDetailExtra[locale];
   const routeText=routeContentFallback[locale];
-  const expandedSummary=t.catalogSource==='published'?null:expandedRouteSummary(locale,t.slug);
+  const expandedSummary=expandedRouteSummary(locale,t.slug);
   const fallbackSpots=displayTrip.stops.map((name,index)=>({name,location:displayTrip.region,intro:routeText.spot(name),history:'',highlights:[] as string[],tip:'',time:t.timeline[index]?.time,imageUrl:t.timeline[index]?.imageUrl,stayMinutes:t.timeline[index]?.stayMinutes,video:t.timeline[index]?.video}));
-  const publishedSpots=t.timeline.map(item=>({name:item.title,location:item.location||displayTrip.region,intro:item.detail,history:'',highlights:item.highlights??[],tip:item.tip??'',time:item.time,imageUrl:item.imageUrl,stayMinutes:item.stayMinutes,video:item.video}));
-  const displayedSpots=(t.catalogSource==='published'?(publishedSpots):richSpots??fallbackSpots).map(item=>({...item,video:('video' in item?item.video:undefined) as TripSpotVideo|undefined}));
+  const publishedSpots=(publishedTimeline??[]).map(item=>({name:item.title,location:item.location||displayTrip.region,intro:item.detail,history:'',highlights:item.highlights??[],tip:item.tip??'',time:item.time,imageUrl:item.imageUrl,stayMinutes:item.stayMinutes,video:item.video}));
+  const displayedSpots=(publishedSpots.length?publishedSpots:richSpots??fallbackSpots).map(item=>({...item,video:('video' in item?item.video:undefined) as TripSpotVideo|undefined}));
   return (
     <div className="route-detail-page">
       <section className="route-detail-hero">
         <img src={t.heroImage} alt={displayTrip.name} />
         <div className="route-detail-overlay">
           <span>
-            {compactTripMeta(displayTrip.region,displayTrip.duration)}
+            {compactTripMeta(displayTrip.region||detail.pending,displayTrip.duration||detail.pending)}
           </span>
-          <h1>{displayTrip.name}</h1>
+          <h1>{displayTrip.name||detail.pending}</h1>
           <p>{displayTrip.stops.join(' · ')}</p>
         </div>
       </section>
@@ -1000,7 +1021,7 @@ export function AppTrip() {
       <div className="route-facts">
         <span>
           <small>{r.duration}</small>
-          <b>{displayTrip.duration}</b>
+          <b>{displayTrip.duration||detail.pending}</b>
         </span>
         <span>
           <small>{r.walking}</small>
@@ -1011,8 +1032,8 @@ export function AppTrip() {
           <b>{t.languages.length?t.languages.join(' · '):(published?detail.pending:detail.languages)}</b>
         </span>
       </div>
-      <p className="route-lead">{routePitch?.lead ?? expandedSummary?.summary ?? (published?t.summary:routeText.lead(displayTrip.stops.join('、')))}</p>
-      {routePitch&&<div className="route-fit-tags" aria-label="适合人群">{routePitch.fit.map(item=><span key={item}>{item}</span>)}</div>}
+      <p className="route-lead">{displayTrip.summary||(routePitch?.lead??expandedSummary?.summary??(published?detail.pending:routeText.lead(displayTrip.stops.join('、'))))}</p>
+      {!publishedTimeline&&routePitch&&<div className="route-fit-tags" aria-label="适合人群">{routePitch.fit.map(item=><span key={item}>{item}</span>)}</div>}
       <section className="route-trust-strip" aria-label={detail.trust}>
         <span>
           <b>{r.roundTrip}</b>
@@ -1056,7 +1077,7 @@ export function AppTrip() {
                     <article key={item.name}>
                       <i>{String(index + 1).padStart(2, "0")}</i>
                       <h3>{item.name}</h3>
-                      <p>{published||richSpots?item.intro:routeText.reason(item.name)}</p>
+                      <p>{publishedTimeline||richSpots?item.intro:routeText.reason(item.name)}</p>
                     </article>
                   ))}
                 </div>
@@ -1098,7 +1119,7 @@ export function AppTrip() {
                 <p>{r.scheduleNote}</p>
               </div>
               <div className="route-timeline">
-                {(published||locale==='zh-CN'?t.timeline:fallbackSpots).map((item, index) => (
+                {(publishedTimeline??(richSpots?fallbackSpots:(published?[]:locale==='zh-CN'?t.timeline:fallbackSpots))).map((item, index) => (
                   <article key={`${('title' in item?item.title:item.name)}-${index}`}>
                     <span>{item.time ?? routeText.time}</span>
                     <div>
