@@ -8,9 +8,11 @@ const migration=readFileSync(resolve(process.cwd(),'supabase/migrations/20261002
 
 describe('Passenger P1 presentation and event safety',()=>{
   it('keeps only the short policy notice near the hero and puts full rules after route-specific content',()=>{
-    expect(app).toContain('placement="top"');
+    expect(app).not.toContain('placement="top"');
     expect(app).toContain('placement="full"');
+    expect(app).toContain('<RouteShortNotice');
     expect(app.indexOf('placement="full"')).toBeGreaterThan(app.indexOf("localizedList('preparation'"));
+    expect(app.indexOf('<RouteShortNotice')).toBeGreaterThan(app.indexOf('placement="full"'));
   });
   it('uses an accessible chevron accordion instead of plus/minus controls for policy content',()=>{
     expect(app).toContain('function PolicyAccordion');

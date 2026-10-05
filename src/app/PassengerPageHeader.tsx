@@ -12,5 +12,5 @@ export function PassengerPageHeader({backTo,title}:{backTo:string;title?:string}
     if(typeof index==='number'&&index>0)navigate(-1);
     else navigate(backTo,{replace:true});
   };
-  return <header className="passenger-page-header"><button type="button" className="passenger-page-back" onClick={back} aria-label={label}><span aria-hidden="true">←</span><span>{label}</span></button>{title&&<b>{title}</b>}</header>;
+  return <header className="passenger-page-header"><button type="button" className="passenger-page-back" onClick={back} aria-label={label}><span aria-hidden="true">‹</span></button>{title&&<b>{title}</b>}</header>;
 }

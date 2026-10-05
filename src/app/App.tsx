@@ -64,6 +64,7 @@ const orderStatusLabels:Record<string,Record<string,string>>={
  ko:{pending_payment:'온라인 결제 대기',pending_manual_review:'입금 확인 대기',paid:'결제 완료',confirmed:'여행 확정',payment_review:'결제 확인 필요',refunded:'환불 완료',cancelled:'취소됨',expired:'결제 기한 만료'},
 };
 const localizedOrderStatus=(locale:string,status:string)=>orderStatusLabels[locale]?.[status]??status;
+const passengerCountHeading:Record<string,string>={'zh-CN':'报名人数','zh-TW':'報名人數',ja:'参加人数',en:'Travellers',ko:'참가 인원',es:'Viajeros',vi:'Số người đăng ký',ne:'यात्री संख्या'};
 const orderJourneyCopy=(locale:string)=>locale==='ja'?{paid:'お支払い完了',publish:'以降、車両・司導・集合場所とツアーチャットをご確認いただけます。',vehicle:'車両番号',staff:'司導',help:'取消をご希望ですか？取消条件を確認',helpText:'申請前に返金見込みを表示します。24時間以上前は100%、24時間未満は原則0%です。',consult:'まずサポートに相談',change:'日程変更を相談',continueCancel:'取消申請へ進む'}:locale==='en'?{paid:'Payment successful',publish:'Vehicle, guide, meeting details and the trip chat will be available from this time.',vehicle:'Vehicle',staff:'Driver/guide',help:'Need to cancel? View cancellation rules',helpText:'We show the estimated refund before submission: 100% at least 24 hours before departure and normally 0% within 24 hours. A request does not trigger an instant refund.',consult:'Contact support first',change:'Ask to change date',continueCancel:'Continue cancellation request'}:{paid:'付款成功',publish:'起可查看车牌、司导、集合地点并进入旅行群。',vehicle:'车牌号',staff:'司导',help:'需要取消行程？查看取消规则',helpText:'系统会先根据日本时间计算预计退款。距出发24小时以上为100%；不足24小时原则上为0%。提交申请不会立即退款。',consult:'先咨询客服',change:'申请改期',continueCancel:'继续申请取消'};
 const reviewStatusLabels:Record<string,Record<string,string>>={
  'zh-CN':{not_requested:'未提出',reviewing:'确认中',manual_contact:'需人工联系',confirmed:'已确认',unavailable:'无法提供'},
@@ -231,6 +232,7 @@ const compactTripMeta=(...parts:Array<string|undefined|null>)=>parts.map(value=>
 type PassengerNavSection='home'|'trips'|'orders'|'messages'|'profile';
 const passengerPrimaryPaths=new Set(['/app','/app/trips','/app/orders','/app/messages','/app/profile']);
 const passengerBackTarget=(pathname:string,search:string)=>{
+  if(pathname.startsWith('/app/my-trip/room'))return '/app/messages';
   const requestedBackTo=new URLSearchParams(search).get('returnTo');
   if(requestedBackTo?.startsWith('/app/'))return requestedBackTo;
   if(pathname.startsWith('/app/payment-result'))return '/app/orders';
@@ -264,7 +266,7 @@ export function AppShell({
   const c=passengerCoreCopy[locale];
   const screen = pathname.split("/").filter(Boolean).slice(1, 2)[0] ?? "home";
   const activeSection=passengerNavSection(pathname);
-  const showSubpageBack=pathname.startsWith('/app/')&&!passengerPrimaryPaths.has(pathname);
+  const showSubpageBack=pathname.startsWith('/app/')&&!passengerPrimaryPaths.has(pathname)&&!pathname.startsWith('/app/my-trip/room');
   const navCopy=passengerNavigation[locale];
   const isDiscover=pathname==='/app';
   const navigation:Array<{id:PassengerNavSection,to:string,icon:string,label:string}>=[
@@ -907,6 +909,16 @@ const routeV2MediaCopy: Record<PassengerLocale, {play:string; unavailable:string
   vi: {play:'Phát video', unavailable:'Video tạm thời không phát được. Thông tin điểm đến vẫn xem được.', seconds:value=>`${value} giây`},
   ne: {play:'भिडियो चलाउनुहोस्', unavailable:'भिडियो अहिले चलाउन सकिँदैन। यात्राको जानकारी हेर्न सकिन्छ।', seconds:value=>`${value} सेकेन्ड`},
 };
+const routeDepartureCopy:Record<PassengerLocale,{title:string;hint:string;all:string;available:string;closing:string;closed:string;paused:string;time:string;price:string;book:string;travelNote:string;audio:string;pause:string}>={
+  'zh-CN':{title:'选择出发日期',hint:'点击日期查看价格与报名状态。',all:'查看本月全部日期',available:'可报名',closing:'即将截止',closed:'报名截止',paused:'暂停报名',time:'出发时间',price:'价格',book:'立即预订',travelNote:'出行说明',audio:'语音导览',pause:'暂停'},
+  'zh-TW':{title:'選擇出發日期',hint:'點擊日期查看價格與報名狀態。',all:'查看本月全部日期',available:'可報名',closing:'即將截止',closed:'報名截止',paused:'暫停報名',time:'出發時間',price:'價格',book:'立即預訂',travelNote:'出行說明',audio:'語音導覽',pause:'暫停'},
+  ja:{title:'出発日を選ぶ',hint:'日付を選ぶと料金と受付状況を確認できます。',all:'今月の全日程を見る',available:'予約受付中',closing:'まもなく締切',closed:'受付終了',paused:'受付停止',time:'出発時刻',price:'料金',book:'今すぐ予約',travelNote:'ご旅行案内',audio:'音声ガイド',pause:'一時停止'},
+  en:{title:'Choose a departure',hint:'Select a date to see its price and booking status.',all:'View all dates this month',available:'Booking open',closing:'Closing soon',closed:'Booking closed',paused:'Booking paused',time:'Departure time',price:'Price',book:'Book now',travelNote:'Travel notes',audio:'Audio guide',pause:'Pause'},
+  ko:{title:'출발일 선택',hint:'날짜를 선택해 가격과 예약 상태를 확인하세요.',all:'이번 달 전체 날짜 보기',available:'예약 가능',closing:'마감 임박',closed:'예약 마감',paused:'예약 중지',time:'출발 시간',price:'가격',book:'지금 예약',travelNote:'여행 안내',audio:'오디오 가이드',pause:'일시정지'},
+  es:{title:'Elige una salida',hint:'Selecciona una fecha para ver el precio y el estado.',all:'Ver todas las fechas del mes',available:'Reserva abierta',closing:'Cierra pronto',closed:'Reserva cerrada',paused:'Reserva pausada',time:'Hora de salida',price:'Precio',book:'Reservar ahora',travelNote:'Notas de viaje',audio:'Guía de audio',pause:'Pausa'},
+  vi:{title:'Chọn ngày khởi hành',hint:'Chọn ngày để xem giá và trạng thái đăng ký.',all:'Xem tất cả ngày trong tháng',available:'Đang nhận đăng ký',closing:'Sắp hết hạn',closed:'Đã đóng đăng ký',paused:'Tạm dừng đăng ký',time:'Giờ khởi hành',price:'Giá',book:'Đặt ngay',travelNote:'Lưu ý hành trình',audio:'Hướng dẫn âm thanh',pause:'Tạm dừng'},
+  ne:{title:'प्रस्थान मिति छान्नुहोस्',hint:'मूल्य र बुकिङ अवस्था हेर्न मिति छान्नुहोस्।',all:'यस महिनाका सबै मिति हेर्नुहोस्',available:'बुकिङ खुला',closing:'चाँडै बन्द हुँदैछ',closed:'बुकिङ बन्द',paused:'बुकिङ रोकिएको',time:'प्रस्थान समय',price:'मूल्य',book:'अहिले बुक गर्नुहोस्',travelNote:'यात्रा सूचना',audio:'अडियो गाइड',pause:'रोक्नुहोस्'},
+};
 function v2Text(value: unknown, fallback = '') { return typeof value === 'string' && value.trim() ? value : fallback; }
 function useRoutePolicyState(tripSlug:string,locale:PassengerLocale){
   const {services}=useApp();
@@ -921,7 +933,9 @@ function useRoutePolicyState(tripSlug:string,locale:PassengerLocale){
   },[services,tripSlug,locale,request]);
   return [state,()=>setRequest(value=>value+1)] as const;
 }
-function RouteDetailV2({trip, locale, selectedDeparture}: {trip: Trip; locale: PassengerLocale; selectedDeparture: {id:string;departureTime?:string|null;expectedEndTime?:string|null}|null}) {
+function RouteDetailV2({trip, locale, departures, initialDepartureId}: {trip: Trip; locale: PassengerLocale; departures: Departure[]; initialDepartureId?:string|null}) {
+  const [selectedId,setSelectedId]=useState(initialDepartureId??departures[0]?.id??''); const [calendarOpen,setCalendarOpen]=useState(false);
+  const selectedDeparture=departures.find(item=>item.id===selectedId)??departures.find(item=>item.id===initialDepartureId)??departures[0]??null;
   const copy=routeV2Copy[locale]; const local=routeLocaleContent(trip,locale); const sourceFallback=isRouteSourceLocale(locale); const text=(key:string, fallback='')=>localizedRouteText(local,key,fallback,sourceFallback); const routeContent=trip as Trip & {tagline?:string;routeReminders?:Array<{id?:string;enabled?:boolean;locales?:Record<string,{title?:string;body?:string}>}>}; const reminders=(routeContent.routeReminders??[]).flatMap(item=>{if(item.enabled===false)return [];const localized=item.locales?.[locale]??(sourceFallback?item.locales?.['zh-CN']:undefined);return localized?.body?[{id:item.id??localized.body,title:localized.title??'',body:localized.body}]:[]});
   const localizedList=(key:'highlights'|'included'|'excluded'|'preparation'|'notices', fallback:string[])=>sourceFallback?localizedRouteList(local, trip.translationListItems?.[key]??[], key, fallback):Object.values((local[key]&&typeof local[key]==='object'&&!Array.isArray(local[key])?local[key]:{}) as Record<string,unknown>).filter((item):item is string=>typeof item==='string'&&item.trim().length>0);
   const included=localizedList('included',trip.included); const excluded=localizedList('excluded',trip.excluded); const preparation=localizedList('preparation',trip.preparation?.length?trip.preparation:trip.packingList);
@@ -938,7 +952,7 @@ function RouteDetailV2({trip, locale, selectedDeparture}: {trip: Trip; locale: P
   ] as const;
   return <div className="route-detail-v2">
     <RouteV2Hero trip={trip} heroTitle={heroTitle} heroSubtitle={heroSubtitle} titleParts={titleParts} highlight={highlight} start={start} mediaCopy={routeV2MediaCopy[locale]} copy={copy}/>
-    <RoutePolicyPanel state={policyState} onRetry={retryPolicy} copy={copy} locale={locale} placement="top"/>
+    <RouteDepartureSelector locale={locale} departures={departures} selected={selectedDeparture} onSelect={setSelectedId} calendarOpen={calendarOpen} onToggleCalendar={()=>setCalendarOpen(value=>!value)}/>
     {(text('tagline',routeContent.tagline??'')||text('summary',trip.summary))?<section className="route-v2-section"><h2>{text('title',trip.shortTitle)||copy.missingRouteContent}</h2><p>{text('tagline',routeContent.tagline??'')||text('summary',trip.summary)}</p></section>:!sourceFallback&&<section className="route-v2-section"><p>{copy.missingRouteContent}</p></section>}
     <section className="route-v2-section"><span className="route-v2-kicker">{copy.todayKicker}</span><h2>{copy.today}</h2><div className="route-v2-chain"><div>{journey.map((item,index)=><span key={`${item}-${index}`}>{index>0&&<i>→</i>}{item}</span>)}</div>{(departureTime||returnTime)&&<small>{departureTime&&`${departureTime} ${copy.departure}`}{departureTime&&returnTime&&' · '}{returnTime&&`${copy.returning} ${returnTime}`}</small>}</div></section>
     <section className="route-v2-section route-v2-spots">{timeline.map((spot,index)=><RouteV2Spot key={spot.id??`${spot.title}-${index}`} spot={spot} index={index} copy={copy} mediaCopy={routeV2MediaCopy[locale]} locale={locale} returnTo={`/app/trips/${trip.slug}`}/>)}</section>
@@ -947,8 +961,23 @@ function RouteDetailV2({trip, locale, selectedDeparture}: {trip: Trip; locale: P
     {(included.length||excluded.length||preparation.length>0)&&<section className="route-v2-section"><span className="route-v2-kicker">{copy.beforeKicker}</span><h2>{copy.fees}</h2><div className="route-v2-info-grid">{included.length>0&&<RouteV2List title={copy.included} items={included}/>} {excluded.length>0&&<RouteV2List title={copy.excluded} items={excluded}/>} {preparation.length>0&&<RouteV2List title={copy.preparation} items={preparation}/>}</div></section>}
     {policyDisplay.showLegacyFallback&&travelNotes.some(([, ,body])=>body)&&<section className="route-v2-section"><span className="route-v2-kicker">{copy.notes}</span><h2>{copy.notes}</h2><div className="route-v2-notices">{travelNotes.filter(([, ,body])=>body).map(([key,label,body])=><PolicyAccordion key={key} title={label}><p>{body}</p></PolicyAccordion>)}</div></section>}
     <RoutePolicyPanel state={policyState} onRetry={retryPolicy} copy={copy} locale={locale} placement="full"/>
+    <RouteShortNotice state={policyState} locale={locale}/>
     <section className="route-v2-cta"><small>{copy.readyKicker}</small><h3>{copy.ready}</h3><Link to={`/app/booking/${trip.slug}${selectedDeparture?`?departureId=${encodeURIComponent(selectedDeparture.id)}`:''}`}>{copy.book}</Link></section>
   </div>;
+}
+function departureStatus(departure:Departure,now:number){
+  if(departure.availableSeats===0)return 'closed';
+  if(departure.price==null||departure.inventoryStatus!=='权威库存')return 'paused';
+  const close=departure.salesCloseAt?Date.parse(departure.salesCloseAt):NaN;
+  return Number.isFinite(close)&&close-now<48*60*60*1000?'closing':'available';
+}
+function RouteDepartureSelector({locale,departures,selected,onSelect,calendarOpen,onToggleCalendar}:{locale:PassengerLocale;departures:Departure[];selected:Departure|null;onSelect:(id:string)=>void;calendarOpen:boolean;onToggleCalendar:()=>void}){
+  const c=routeDepartureCopy[locale]; const now=useCurrentTime(); const visible=calendarOpen?departures.filter(item=>Date.parse(item.departureTime!)<=now+30*86400000):departures.slice(0,7);
+  const labels={available:c.available,closing:c.closing,closed:c.closed,paused:c.paused};
+  return <section className="route-v2-section route-departure-picker"><span className="route-v2-kicker">BOOKING</span><h2>{c.title}</h2><p>{c.hint}</p>{visible.length?<><div className={calendarOpen?'route-departure-calendar':'route-departure-cards'}>{visible.map(item=>{const status=departureStatus(item,now);const date=new Date(item.departureTime!);return <button type="button" key={item.id} className={selected?.id===item.id?'selected':''} disabled={status==='closed'||status==='paused'} onClick={()=>onSelect(item.id)}><b>{new Intl.DateTimeFormat(locale,{timeZone:'Asia/Tokyo',month:'short',day:'numeric'}).format(date)}</b><small>{new Intl.DateTimeFormat(locale,{timeZone:'Asia/Tokyo',weekday:'short'}).format(date)}</small><strong>{item.price==null?'—':`¥${item.price.toLocaleString(locale)}`}</strong><span className={`departure-state ${status}`}>{labels[status]}</span></button>})}</div><button type="button" className="route-calendar-toggle" aria-expanded={calendarOpen} onClick={onToggleCalendar}>{c.all} {calendarOpen?'↑':'↓'}</button>{selected&&<div className="route-departure-summary"><div><span>{new Intl.DateTimeFormat(locale,{timeZone:'Asia/Tokyo',dateStyle:'medium'}).format(new Date(selected.departureTime!))}</span><b>{c.time} · {new Intl.DateTimeFormat(locale,{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit'}).format(new Date(selected.departureTime!))}</b><strong>{c.price} · ¥{selected.price?.toLocaleString(locale)}</strong></div><span className={`departure-state ${departureStatus(selected,now)}`}>{labels[departureStatus(selected,now)]}</span><Link to={`/app/booking/${selected.tripSlug}?departureId=${encodeURIComponent(selected.id)}`}>{c.book}</Link></div>}</>:<p className="route-departure-empty">{c.paused}</p>}</section>;
+}
+function RouteShortNotice({state,locale}:{state:RoutePolicyDisplayState;locale:PassengerLocale}){
+  if(state.status!=='available')return null;const short=state.policies.service_time?.sections?.short_product_notice;if(!short)return null;return <section className="route-v2-section route-travel-note"><h2>{routeDepartureCopy[locale].travelNote}</h2><b>{short.title}</b><p>{policyDisplayText(short.body)}</p></section>;
 }
 function policyDisplayText(value:string|undefined){return (value??'').replace(/^>\s?/gm,'').replace(/\*\*(.+?)\*\*/g,'$1');}
 function PolicyAccordion({title,children}:{title:string;children:ReactNode}) {
@@ -964,23 +993,28 @@ function RoutePolicyPanel({state,onRetry,copy,locale,placement}:{state:RoutePoli
   if(state.status!=='available')return null;
   const policies=state.policies;
   const module=(name:string)=>policies[name]?.sections??null;
-  const service=module('service_time'); const cancellation=module('cancellation'); const global=module('global'); const short=service?.short_product_notice; const full=service?.full;
-  const [noticeHeading,rulesHeading]=policyRulesHeading(locale);
-  if(placement==='top')return short?<section className="route-v2-section route-v2-policy route-v2-policy-top"><span className="route-v2-kicker">{noticeHeading}</span><aside className="route-v2-reminder"><b>{short.title}</b><p>{policyDisplayText(short.body)}</p></aside></section>:null;
+  const service=module('service_time'); const cancellation=module('cancellation'); const global=module('global'); const full=service?.full;
+  const [,rulesHeading]=policyRulesHeading(locale);
+  if(placement==='top')return null;
   return <section className="route-v2-section route-v2-policy route-v2-policy-full"><span className="route-v2-kicker">{rulesHeading}</span><h2>{rulesHeading}</h2>{full&&<PolicyAccordion title={full.title??rulesHeading}><p>{policyDisplayText(full.body)}</p></PolicyAccordion>}{cancellation&&Object.entries(cancellation).map(([key,value])=><PolicyAccordion key={key} title={value.title??rulesHeading}><p>{policyDisplayText(value.body)}</p></PolicyAccordion>)}{global&&<div className="route-v2-notices">{Object.entries(global).map(([key,value])=><PolicyAccordion key={key} title={value.title??rulesHeading}><p>{policyDisplayText(value.body)}</p></PolicyAccordion>)}</div>}</section>;
 }
-function RouteV2Hero({trip,heroTitle,heroSubtitle,titleParts,highlight,start,mediaCopy,copy}:{trip:Trip;heroTitle:string;heroSubtitle:string;titleParts:string[];highlight:string;start:string;mediaCopy:(typeof routeV2MediaCopy)['zh-CN'];copy:(typeof routeV2Copy)['zh-CN']}) { const [play,setPlay]=useState(false); const [failed,setFailed]=useState(false); const video=trip.heroVideo; return <section className="route-v2-hero" style={{backgroundImage:`url(${trip.heroImage})`}}>{video?.url&&play&&!failed&&<video className="route-v2-hero-video" controls autoPlay muted playsInline poster={video.posterUrl||trip.heroImage} onError={()=>setFailed(true)}><source src={video.url} type="video/mp4"/></video>}<div className="route-v2-hero-copy"><span className="route-v2-kicker">{copy.dayTrip}{start?` · ${start}`:''}</span><h1>{titleParts.length===1?heroTitle||copy.missingRouteContent:<>{titleParts[0]}<em>{highlight}</em>{titleParts.slice(1).join(highlight)}</>}</h1>{heroSubtitle&&<p>{heroSubtitle}</p>}{video?.url&&!play&&!failed&&<button className="route-v2-play" type="button" onClick={()=>setPlay(true)}>▶ {video.durationSeconds?mediaCopy.seconds(video.durationSeconds):mediaCopy.play}</button>}<div className="route-v2-meta"><span>{start}</span>{trip.duration&&<span>{trip.duration}</span>}{trip.minimumGuests&&<span>{trip.minimumGuests}–{trip.maximumGuests??''} {copy.people}</span>}</div></div></section>; }
+function RouteV2Hero({trip,heroTitle,heroSubtitle,titleParts,highlight,start,mediaCopy,copy}:{trip:Trip;heroTitle:string;heroSubtitle:string;titleParts:string[];highlight:string;start:string;mediaCopy:(typeof routeV2MediaCopy)['zh-CN'];copy:(typeof routeV2Copy)['zh-CN']}) { const [play,setPlay]=useState(false); const [failed,setFailed]=useState(false); const video=trip.heroVideo; return <section className="route-v2-hero" style={{backgroundImage:`url(${trip.heroImage})`}}>{video?.url&&play&&!failed&&<video className="route-v2-hero-video" controls autoPlay muted playsInline poster={video.posterUrl||trip.heroImage} onError={()=>setFailed(true)}><source src={video.url} type="video/mp4"/></video>}<div className="route-v2-hero-copy"><span className="route-v2-kicker">{copy.dayTrip}{start?` · ${start}`:''}</span><h1>{titleParts.length===1?heroTitle||copy.missingRouteContent:<>{titleParts[0]}<em>{highlight}</em>{titleParts.slice(1).join(highlight)}</>}</h1>{heroSubtitle&&<p>{heroSubtitle}</p>}{video?.url&&!play&&!failed&&<button className="route-v2-play" type="button" onClick={()=>setPlay(true)}>▶ {video.durationSeconds?mediaCopy.seconds(video.durationSeconds):mediaCopy.play}</button>}<div className="route-v2-meta"><span>{start}</span>{trip.duration&&<span>{trip.duration}</span>}</div></div></section>; }
 function RouteV2List({title,items}:{title:string;items:string[]}) { return <article><h3>{title}</h3><ul>{items.map(item=><li key={item}>{item}</li>)}</ul></article>; }
+function RouteInlineAudio({src,locale}:{src:string;locale:PassengerLocale}){
+  const audio=useRef<HTMLAudioElement>(null);const [playing,setPlaying]=useState(false);const [duration,setDuration]=useState(0);const [current,setCurrent]=useState(0);const c=routeDepartureCopy[locale];
+  const format=(value:number)=>`${Math.floor(value/60)}:${String(Math.floor(value%60)).padStart(2,'0')}`;
+  return <div className="route-inline-audio"><audio ref={audio} src={src} preload="metadata" onPlay={()=>setPlaying(true)} onPause={()=>setPlaying(false)} onEnded={()=>setPlaying(false)} onLoadedMetadata={event=>setDuration(event.currentTarget.duration||0)} onTimeUpdate={event=>setCurrent(event.currentTarget.currentTime)}/><button type="button" aria-label={playing?c.pause:c.audio} onClick={()=>{const element=audio.current;if(!element)return;if(element.paused)void element.play();else element.pause()}}>{playing?'Ⅱ':'▶'} <span>{c.audio}</span></button><input type="range" aria-label={c.audio} min="0" max={duration||0} value={Math.min(current,duration||0)} step="0.1" onChange={event=>{const value=Number(event.target.value);if(audio.current)audio.current.currentTime=value;setCurrent(value)}}/><small>{format(current)} / {format(duration)}</small></div>;
+}
 function RouteV2Spot({spot,index,copy,mediaCopy,locale,returnTo}:{spot:TripTimelineItem;index:number;copy:(typeof routeV2Copy)['zh-CN'];mediaCopy:(typeof routeV2MediaCopy)['zh-CN'];locale:PassengerLocale;returnTo:string}) {
   const {services}=useApp(); const [expanded,setExpanded]=useState(false);
-  // A passenger stop only becomes an Attraction Library stop after its route
-  // revision explicitly stores attractionId. Never infer a canonical place from
-  // a legacy stop label here: unresolved stops remain route activities.
-  const attractionId=spot.attractionId??null;
-  const [attraction,setAttraction]=useState<{loading:boolean;title:string;body:string;media:Array<{id:string;mediaType:'image'|'video';url:string}>}>({loading:Boolean(attractionId&&services),title:'',body:'',media:[]});
-  useEffect(()=>{let live=true;if(!attractionId||!services){setAttraction({loading:false,title:'',body:'',media:[]});return()=>{live=false};}setAttraction({loading:true,title:'',body:'',media:[]});void Promise.all([services.loadAttractionGuide(attractionId,locale==='zh-TW'?'zh-CN':locale),services.loadAttractionMedia(attractionId)]).then(([guide,media])=>{if(live)setAttraction({loading:false,title:guide.data?.title??'',body:guide.data?.body??'',media:media.data});}).catch(()=>{if(live)setAttraction({loading:false,title:'',body:'',media:[]});});return()=>{live=false};},[services,attractionId,locale]);
+  // Only explicit attractionId values and reviewed exact-title aliases resolve.
+  // Unresolved legacy labels remain route activities; no fuzzy matching is used.
+  const attractionId=resolveAttractionId(spot,locale);
+  const canLoadAttraction=Boolean(attractionId&&services&&typeof services.loadAttractionGuide==='function'&&typeof services.loadAttractionMedia==='function');
+  const [attraction,setAttraction]=useState<{loading:boolean;title:string;body:string;audioUrl:string|null;media:Array<{id:string;mediaType:'image'|'video';url:string}>}>({loading:canLoadAttraction,title:'',body:'',audioUrl:null,media:[]});
+  useEffect(()=>{let live=true;if(!attractionId||!services||typeof services.loadAttractionGuide!=='function'||typeof services.loadAttractionMedia!=='function'){queueMicrotask(()=>{if(live)setAttraction({loading:false,title:'',body:'',audioUrl:null,media:[]})});return()=>{live=false};}queueMicrotask(()=>{if(live)setAttraction({loading:true,title:'',body:'',audioUrl:null,media:[]})});void Promise.all([services.loadAttractionGuide(attractionId,locale==='zh-TW'?'zh-CN':locale),services.loadAttractionMedia(attractionId)]).then(([guide,media])=>{if(live)setAttraction({loading:false,title:guide.data?.title??'',body:guide.data?.body??'',audioUrl:guide.data?.audioUrl??null,media:media.data});}).catch(()=>{if(live)setAttraction({loading:false,title:'',body:'',audioUrl:null,media:[]});});return()=>{live=false};},[services,attractionId,locale]);
   const selectedImage=attraction.media.find(item=>item.mediaType==='image'&&spot.selectedImageIds?.includes(item.id))??attraction.media.find(item=>item.mediaType==='image'); const selectedVideo=attraction.media.find(item=>item.mediaType==='video'&&spot.selectedVideoIds?.includes(item.id)); const title=attractionId?(attraction.title||(attraction.loading?copy.loadingAttraction:copy.unavailableAttraction)):spot.title||copy.missingRouteContent; const short=attractionId?(attraction.body.split(/\n{2,}/)[0]??''):(spot.shortDescription||spot.detail); const long=attractionId?'':spot.longDescription; const image=attractionId?selectedImage?.url:spot.imageUrl; const video=attractionId?selectedVideo:spot.video;
-  return <article className="route-v2-spot"><header><div><span>{copy.spot} {String(index+1).padStart(2,'0')}</span><h2>{title}</h2>{spot.subtitle&&<small>{spot.subtitle}</small>}</div>{spot.stayMinutes&&<b>{spot.stayMinutes} {copy.minutes}</b>}</header>{(video?.url||image)&&<div className="route-v2-spot-media">{video?.url?<SpotVideoPlayer url={video.url} posterUrl={image||undefined} title={title} playLabel={spot.videoLabel||mediaCopy.play} unavailableLabel={mediaCopy.unavailable}/>:image&&<img src={image} alt="" loading="lazy"/>}</div>}{short&&<p>{short}</p>}{attractionId&&<Link className="route-v2-guide-link" to={attractionGuideHref(attractionId,returnTo)} state={{image}}>{copy.guide}</Link>}{long&&<><button type="button" onClick={()=>setExpanded(value=>!value)}>{expanded?copy.hide:copy.details}</button>{expanded&&<div className="route-v2-spot-extra">{long}</div>}</>}</article>;
+  return <article className="route-v2-spot"><header><div><span>{copy.spot} {String(index+1).padStart(2,'0')}</span><h2>{title}</h2>{spot.subtitle&&<small>{spot.subtitle}</small>}</div>{spot.stayMinutes&&<b>{spot.stayMinutes} {copy.minutes}</b>}</header>{(video?.url||image)&&<div className="route-v2-spot-media">{video?.url?<SpotVideoPlayer url={video.url} posterUrl={image||undefined} title={title} playLabel={spot.videoLabel||mediaCopy.play} unavailableLabel={mediaCopy.unavailable}/>:image&&<img src={image} alt="" loading="lazy"/>}</div>}{short&&<p>{short}</p>}{attraction.audioUrl&&<RouteInlineAudio src={attraction.audioUrl} locale={locale}/>} {attractionId&&<Link className="route-v2-guide-link" to={attractionGuideHref(attractionId,returnTo)} state={{image}}>{copy.guide}</Link>}{long&&<><button type="button" onClick={()=>setExpanded(value=>!value)}>{expanded?copy.hide:copy.details}</button>{expanded&&<div className="route-v2-spot-extra">{long}</div>}</>}</article>;
 }
 export function AppTrip() {
   const now=useCurrentTime();
@@ -996,7 +1030,7 @@ export function AppTrip() {
   const sellable = routeDepartures.filter(isHomeSellableDeparture).filter(item=>Date.parse(item.departureTime!)>=now).sort((a,b)=>Date.parse(a.departureTime!)-Date.parse(b.departureTime!));
   const requestedDepartureId=new URLSearchParams(location.search).get('departureId');
   const requestedDeparture=sellable.find(item=>item.id===requestedDepartureId)??sellable[0]??null;
-  return <RouteDetailV2 trip={t} locale={locale} selectedDeparture={requestedDeparture}/>;
+  return <RouteDetailV2 trip={t} locale={locale} departures={sellable} initialDepartureId={requestedDeparture?.id}/>;
   const published=t.catalogSource==='published';
   const richSpots=featuredRouteSpots[t.slug]?.[locale]??null;
   const routePitch=t.catalogSource==='published'?null:featuredRoutePitch[t.slug]?.[locale]??null;
@@ -2035,22 +2069,8 @@ export function Payment() {
         {quoteStatus&&<p className="privacy" role="status">{quoteStatus}</p>}
         {quoteNeedsConfirmation&&<button type="button" className="button secondary full" onClick={()=>{setQuoteNeedsConfirmation(false);setQuoteRefresh(value=>value+1)}}>获取新报价并重新确认</button>}
       </section>
-      <button
-        className="button full"
-        disabled={
-          !services?.ordersAvailable ||
-          !paymentReady ||
-          submitting ||
-          Boolean(state.booking?.draftId)
-        }
-        onClick={() => void saveDraft()}
-      >
-        {state.booking?.draftId
-          ? "订单草稿已保存"
-          : submitting
-            ? "正在保存…"
-            : "保存订单草稿（不扣款）"}
-      </button>
+      {!state.booking?.draftId&&<button className="button secondary full" disabled={!services?.ordersAvailable||!paymentReady||submitting} onClick={() => void saveDraft()}>{submitting?"正在保存…":"保存订单草稿（不扣款）"}</button>}
+      {state.booking?.draftId&&<div className="payment-draft-card" role="status"><span aria-hidden="true">✓</span><div><b>订单草稿已保存</b><small>可以继续确认价格并完成支付。</small></div></div>}
       {draftStatus && (
         <p className="payment-draft-status" role="status">
           {draftStatus}
@@ -2058,14 +2078,14 @@ export function Payment() {
       )}
       {state.booking?.draftId && (
         checkoutReady ? <section className="payment-methods" aria-label={stripeMode==='test'?"测试支付方式":"支付方式"}>
-          {!cardSession&&<>{discountedTotal===0?<button type="button" disabled={submitting} onClick={()=>void startCheckout()}><b>确认免费预订</b><small>优惠券抵扣，无需付款；不连接 Stripe</small></button>:<><div className="payment-methods-intro"><span>选择付款方式</span><p>Stripe 将根据您的设备、地区及商户资格显示：信用卡／借记卡、Apple Pay、Google Pay、支付宝或微信支付。</p></div><button type="button" disabled={submitting||!stripeClient} onClick={()=>void startCheckout()}><b>{`${stripeMode==='test'?'继续选择测试支付方式':'继续选择付款方式'} · ¥${discountedTotal?.toLocaleString('ja-JP')}`}</b><small>{stripeClient?'由 Stripe 安全处理；只显示当前可用的方式':'安全支付服务暂不可用'}</small></button></>}</>}
+          {!cardSession&&<>{discountedTotal===0?<button className="payment-primary" type="button" disabled={submitting} onClick={()=>void startCheckout()}><b>确认免费预订</b></button>:<button className="payment-primary" type="button" disabled={submitting||!stripeClient} onClick={()=>void startCheckout()}><b>{`确认支付 ¥${discountedTotal?.toLocaleString('ja-JP')}`}</b></button>}</>}
           {checkoutError&&<div className="danger" role="alert">{checkoutError}</div>}
           {cardSession&&stripeClient&&<Elements stripe={stripeClient} options={{clientSecret:cardSession.clientSecret}}><StripePaymentForm locale={state.ui.locale ?? 'zh-CN'} orderId={cardSession.orderId} onComplete={(orderId,status)=>nav(`/app/payment-result?order_id=${encodeURIComponent(orderId)}${status==='processing'?'&processing=1':''}`)}/></Elements>}
-        </section> : <Link className="button secondary full" to="/app/orders">查看账户中的订单草稿</Link>
+          <p className="payment-stripe-note">支付由 Stripe 安全处理</p>
+        </section> : <button className="payment-primary" type="button" disabled>等待价格确认</button>
       )}
-      <button className="text-link" onClick={() => nav(-1)}>
-        返回修改
-      </button>
+      {state.booking?.draftId&&<Link className="payment-draft-link" to="/app/orders">查看我的订单草稿 →</Link>}
+      <button className="button secondary full" onClick={() => nav(-1)}>‹ 返回修改</button>
     </>
   );
 }
@@ -2552,7 +2572,7 @@ export function OrderDetail() {
           eyebrow={c.account}
           title={trip?presentRoute(trip,locale).title:c.tripOrder}
         />
-        <div className="status order-status">{c.status}：{orderStatusLabel}</div>
+        <section className={`order-status-card ${remoteOrder.status}`}><small>{c.status}</small><b>{remoteOrder.status==='expired'?'支付已超时，可重新确认价格后继续':orderStatusLabel}</b>{remoteOrder.status==='expired'&&<p>系统会重新核对当前班次与价格；确认前不会扣款。</p>}</section>
         {['pending_payment','expired'].includes(remoteOrder.status)&&<ResumeOrderPayment key={remoteOrder.id} orderId={remoteOrder.id}/>}
         {['paid','confirmed'].includes(remoteOrder.status)&&<section className="order-publication-notice"><b>{journeyCopy.paid}</b><p>{publishLabel?`${publishLabel}${journeyCopy.publish}`:c.wait}</p></section>}
         <div className="receipt">
@@ -2573,7 +2593,7 @@ export function OrderDetail() {
             <b>{remoteFulfilment?presentMeetingText(locale,remoteFulfilment.meeting_address):c.pending}</b>
           </div>
           <div>
-            <span>{c.seatCount}</span>
+            <span>{passengerCountHeading[locale]??c.seatCount}</span>
             <b>{passengerSeatCount(locale,remoteOrder.seat_count)}</b>
           </div>
           <div>
@@ -2601,9 +2621,6 @@ export function OrderDetail() {
           </a>
         ) : null}
         {boardingEligible?<Link className="button full" to={`/app/boarding-pass/${remoteOrder.id}`}>{c.boardingPass}</Link>:null}
-        <Link className="button secondary full" to={returnTo}>
-          {c.back}
-        </Link>
       </>
     );
   }
