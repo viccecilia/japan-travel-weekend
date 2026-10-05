@@ -18,6 +18,7 @@ export function ResumeOrderPayment({orderId}:{orderId:string}){
   lock.current=true;setBusy(true);setError('');
   try{
    const result=await services.resumePayment({orderId,idempotencyKey:crypto.randomUUID()});
+   if(result&&result.status==='restart_checkout'){navigate('/app/orders?payment_restarted=1');return}
    if(!result||result.orderId!==orderId||!result.clientSecret)throw Error('unavailable');
    setSession(result);
   }catch{setError(c.failed)}

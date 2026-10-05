@@ -5,8 +5,8 @@ function setup(){
  const auth={verify:vi.fn(async()=>({accountId:'owner',accessTokenHash:'hash'}))};
  const context={orderId,amount:12300,paymentIntentId:'pi_old'};
  const intent={id:'pi_old',amount:12300,currency:'jpy',status:'requires_payment_method',livemode:false,client_secret:'test-secret',metadata:{order_id:orderId}};
- const store={context:vi.fn(async()=>context),record:vi.fn(async()=>true)};
- const stripe={mode:'test' as 'test'|'live',available:true,retrievePaymentIntent:vi.fn(async()=>intent),createPaymentIntent:vi.fn(async()=>({...intent,id:'pi_new'}))};
+ const store={context:vi.fn(async()=>context),record:vi.fn(async()=>true),expiredContext:vi.fn(async()=>null),resetExpired:vi.fn(async()=>true)};
+ const stripe={mode:'test' as 'test'|'live',available:true,retrievePaymentIntent:vi.fn(async()=>intent),createPaymentIntent:vi.fn(async()=>({...intent,id:'pi_new'})),cancelPaymentIntent:vi.fn(async()=>true)};
  const endpoint=new ResumePaymentEndpoint(auth,store,stripe);
  return {auth,context,intent,store,stripe,post:(input:unknown={orderId,idempotencyKey:'attempt'},authorization:string|undefined='Bearer token')=>endpoint.post(authorization,input)};
 }
@@ -48,6 +48,15 @@ describe('resume an existing order without checkout side effects',()=>{
  it('rejects an ineligible/foreign/paid/expired order before talking to Stripe',async()=>{
   const s=setup();s.store.context.mockResolvedValueOnce(null as never);
   expect((await s.post()).status).toBe(409);expect(s.stripe.retrievePaymentIntent).not.toHaveBeenCalled();
+ });
+ it('cancels only an expired test checkout before resetting its original draft',async()=>{
+  const s=setup();s.store.context.mockResolvedValueOnce(null as never);s.store.expiredContext.mockResolvedValueOnce({...s.context,draftId:'draft-1'} as never);
+  expect(await s.post()).toEqual({status:200,body:{orderId,status:'restart_checkout',draftId:'draft-1'}});
+  expect(s.stripe.cancelPaymentIntent).toHaveBeenCalledWith('pi_old');expect(s.store.resetExpired).toHaveBeenCalledWith('owner',expect.objectContaining({orderId,draftId:'draft-1'}));
+ });
+ it('does not reset an expired checkout when its intent is already paid or processing',async()=>{
+  const s=setup();s.store.context.mockResolvedValueOnce(null as never);s.store.expiredContext.mockResolvedValueOnce({...s.context,draftId:'draft-1'} as never);s.intent.status='succeeded';
+  expect((await s.post()).status).toBe(409);expect(s.stripe.cancelPaymentIntent).not.toHaveBeenCalled();expect(s.store.resetExpired).not.toHaveBeenCalled();
  });
  it('does not disclose a secret if expiry or concurrency changes the order',async()=>{
   const s=setup();s.store.record.mockResolvedValueOnce(false);
