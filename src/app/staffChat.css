@@ -6,7 +6,7 @@
 .staff-chat-v2 label{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:13px}
 .staff-chat-v2 .staff-chat-list{flex:1;min-height:200px;display:grid;align-content:start;gap:10px;background:#f2f4f3;padding:12px;border-radius:14px}
 .staff-chat-v2 .staff-chat-list article{max-width:90%;background:#fff;padding:12px;border-radius:12px;overflow-wrap:anywhere}
-.staff-chat-v2 .staff-chat-list article.own{justify-self:end;background:#fff1af}
+.staff-chat-v2 .staff-chat-list article.own{justify-self:end;border-color:#b9dcda;background:#e8f5f3}
 .staff-chat-v2 .staff-chat-list header{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;font-size:12px}
 .staff-chat-compose-wrap{position:sticky;bottom:calc(76px + env(safe-area-inset-bottom));background:#fff;padding:8px 0;margin-top:12px;z-index:2}
 .staff-chat-v2 .staff-composer{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:8px;padding:0;align-items:end}

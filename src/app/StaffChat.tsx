@@ -22,6 +22,7 @@ export function StaffChat({task}:{task:StaffTask}){
   const [currentUser,setCurrentUser]=useState<string|null>(null);
   const [language,setLanguage]=useState<PassengerLocale>(state.ui.locale??'zh-CN');
   const [originals,setOriginals]=useState<Set<string>>(()=>new Set());
+  const [sharing,setSharing]=useState(false);
   const requestKey=useRef(crypto.randomUUID());
   const refreshRef=useRef<()=>Promise<void>>(async()=>{});
   const open=task.room_status==='open'&&Boolean(task.room_id);
@@ -37,6 +38,7 @@ export function StaffChat({task}:{task:StaffTask}){
     };
     refreshRef.current=refresh;void refresh();
     void services.currentUser().then(user=>{if(active)setCurrentUser(user?.id??null)}).catch(()=>{if(active)setCurrentUser(null)});
+    if(typeof services.tripRoom.loadDriverLocation==='function')void services.tripRoom.loadDriverLocation(task.vehicle_group_id).then(value=>{if(active)setSharing(Boolean(value))});
     void services.realtime.subscribeTripRoom(task.room_id,()=>void refresh(),()=>void refresh(),()=>void refresh()).then(live=>{if(active)subscription=live;else live.close()}).catch(()=>{if(active)setNotice('实时连接暂不可用，正在定时刷新消息。')});
     const timer=window.setInterval(()=>void refresh(),15000);
     window.addEventListener('focus',refresh);
@@ -63,20 +65,19 @@ export function StaffChat({task}:{task:StaffTask}){
     setNotice('正在读取司机位置；定位未授权时不会共享旧位置。');
     navigator.geolocation.getCurrentPosition(position=>{
       void services.tripRoom.publishDriverLocation(task.vehicle_group_id,{latitude:position.coords.latitude,longitude:position.coords.longitude,accuracy:Number.isFinite(position.coords.accuracy)?position.coords.accuracy:null},15).then(ok=>{
-        setNotice(ok?'司机位置已更新并向本车旅客共享 15 分钟。':'司机位置未能共享；请检查房间状态、定位和本车工作人员权限。');
+        setSharing(ok);setNotice(ok?'司机位置已更新并向本车旅客共享 15 分钟。':'司机位置未能共享；请检查房间状态、定位和本车工作人员权限。');
       }).catch(()=>setNotice('司机位置未能共享；请检查网络后重试。'));
     },()=>setNotice('定位不可用，司机位置没有被共享。'),{enableHighAccuracy:true,timeout:10000,maximumAge:15000});
   };
   const stopLocation=async()=>{
     if(!services)return;
     const ok=await services.tripRoom.stopDriverLocation(task.vehicle_group_id);
+    if(ok)setSharing(false);
     setNotice(ok?'司机位置共享已停止；旅客不会再将旧位置显示为实时位置。':'没有可停止的位置共享或权限不足。');
   };
   return <section className="staff-chat-v2">
     <header><h2>{task.trip_title}</h2><small>{task.vehicle_label??'车牌待确认'} · {open?'本车群开放':'本车群只读／尚未开放'}</small>
-      <div className="staff-chat-tools"><button type="button" onClick={()=>void loadMembers()} aria-expanded={showMembers}>群成员</button><Link to={`/staff/tasks/${task.staff_assignment_id}/meeting`}>集合信息</Link>
-        <label>目标语言<select value={language} onChange={event=>setLanguage(event.target.value as PassengerLocale)}>{passengerLocales.map(item=><option key={item.code} value={item.code}>{item.label}</option>)}</select></label></div>
-      <small>已有译文按所选语言显示；缺少译文保留原文，不冒充翻译成功。</small>
+      <div className="staff-chat-tools"><button type="button" onClick={()=>void loadMembers()} aria-expanded={showMembers}>群成员</button><Link to={`/staff/tasks/${task.staff_assignment_id}/meeting`}>集合信息</Link>{sharing?<button type="button" onClick={()=>void stopLocation()}>停止共享位置</button>:<button type="button" onClick={locate}>共享实时位置</button>}<Link to={`/staff/tasks/${task.staff_assignment_id}/support`}>联系运营</Link></div>
     </header>
     {showMembers&&<section className="staff-chat-members"><h3>本车工作人员</h3><p>司机：{task.driver_name??'待确认'}</p><p>导游：{task.guide_name??'未分配'}</p><h3>本车旅客</h3>{members.map(member=><p key={member.passenger_id}>{member.passenger_label}</p>)}<small>仅展示本车授权名单；此接口未提供联系电话，不编造号码。</small></section>}
     <div className="staff-chat-list" aria-label="本车聊天记录">
@@ -90,8 +91,8 @@ export function StaffChat({task}:{task:StaffTask}){
       {notice&&<p role="status">{notice}</p>}
       {expanded&&<div className="staff-chat-tools" aria-label="更多聊天功能">
         {services&&task.room_id&&<><ChatPhotoUpload repository={services.tripRoom} roomId={task.room_id} locale={language} disabled={!open||busy} presentation="more" source="library" onSent={()=>{setExpanded(false);void refreshRef.current()}}/><ChatPhotoUpload repository={services.tripRoom} roomId={task.room_id} locale={language} disabled={!open||busy} presentation="more" source="camera" onSent={()=>{setExpanded(false);void refreshRef.current()}}/></>}
-        <button disabled={!open||busy} onClick={locate}>开始／更新位置</button>
-        <button disabled={!open||busy} onClick={()=>void stopLocation()}>停止位置共享</button>
+        <label>翻译设置<select aria-label="目标语言" value={language} onChange={event=>setLanguage(event.target.value as PassengerLocale)}>{passengerLocales.map(item=><option key={item.code} value={item.code}>{item.label}</option>)}</select></label>
+        {sharing?<button disabled={!open||busy} onClick={()=>void stopLocation()}>停止位置共享</button>:<button disabled={!open||busy} onClick={locate}>开始／更新位置</button>}
         <Link to={`/staff/tasks/${task.staff_assignment_id}/support`}>联系运营</Link>
       </div>}
       <form className="staff-composer" onSubmit={event=>void send(event)}>

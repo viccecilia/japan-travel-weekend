@@ -2,12 +2,12 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { StaffPortal, StaffTaskAction } from "../src/app/StaffPortal";
+import { driverTaskStage, StaffPortal, StaffTaskAction, type StaffTask } from "../src/app/StaffPortal";
 import { AppProvider } from "../src/app/store";
 import { ProductionBrowserServices } from "../src/shared/backend/productionServices";
 
 afterEach(cleanup);
-const task = {
+const task: StaffTask = {
   staff_assignment_id: "assignment-1",
   assignment_role: "driver",
   vehicle_group_id: "group-1",
@@ -16,6 +16,7 @@ const task = {
   departure_id: "departure-1",
   trip_title: "京都与奈良",
   departs_at: "2026-09-01T00:00:00Z",
+  chat_opens_at: null,
   meeting_name: "大阪梅田",
   meeting_address: "受控地址",
   map_lat: null,
@@ -31,6 +32,10 @@ const task = {
 };
 
 describe("工作人员端", () => {
+  it('未来任务不会因残留执行状态显示为行程中',()=>{
+    const future={...task,departs_at:new Date(Date.now()+86_400_000).toISOString(),journey_status:'in_progress',assignment_acknowledged:true};
+    expect(driverTaskStage(future,new Date())).toBe('confirmed');
+  });
   const renderTodayWithTasks=(rows:Array<typeof task>)=>{
     const client={auth:{getUser:async()=>({data:{user:{id:'staff-selection',email:'selection@example.invalid'}},error:null}),getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},rpc:async(name:string)=>name==='get_staff_portal_tasks'?{data:rows,error:null}:{data:null,error:null}} as unknown as SupabaseClient;
     render(<MemoryRouter initialEntries={['/staff']}><AppProvider services={new ProductionBrowserServices(client,undefined)}><Routes><Route path="/staff/*" element={<StaffPortal/>}/></Routes></AppProvider></MemoryRouter>);
@@ -57,8 +62,8 @@ describe("工作人员端", () => {
       {...task,staff_assignment_id:'running',trip_title:'正在运行',journey_status:'in_progress',departs_at:new Date(atTokyoHour(-1,9)).toISOString()},
     ]);
     expect(await screen.findByRole('heading',{name:'正在运行'})).toBeInTheDocument();
-    expect(screen.getByRole('heading',{name:'今日工作台'})).toBeInTheDocument();
-    expect(screen.getByRole('region',{name:'今日概况'})).toHaveTextContent('当前登车');
+    expect(screen.getByRole('heading',{name:'工作首页'})).toBeInTheDocument();
+    expect(screen.getByRole('region',{name:'待处理'})).toHaveTextContent('乘客未确认');
   });
   it('未来班次残留运行状态时单独告警且不显示正在执行',async()=>{
     renderTodayWithTasks([
@@ -66,7 +71,7 @@ describe("工作人员端", () => {
     ]);
     expect(await screen.findByRole('alert')).toHaveTextContent('未来班次已进入执行状态');
     expect(screen.getByText(/下一次出勤：/)).toHaveTextContent('明日模拟运行');
-    expect(screen.getByText(/等待排班/)).toBeInTheDocument();
+    expect(screen.getByText(/有 1 个已确认班次/)).toBeInTheDocument();
   });
   it('多个运行中任务显示冲突，不静默隐藏',async()=>{
     renderTodayWithTasks([
@@ -151,7 +156,7 @@ describe("工作人员端", () => {
       "href",
       "/staff/tasks/assignment-1/incident",
     );
-    expect(screen.getByRole("link", { name: "联系运营" })).toHaveAttribute(
+    expect(screen.getAllByRole("link", { name: "联系运营" }).find(link=>link.getAttribute('href')?.includes('/support'))).toHaveAttribute(
       "href",
       "/staff/tasks/assignment-1/support",
     );
@@ -170,32 +175,32 @@ describe("工作人员端", () => {
     expect(screen.getByRole("link", { name: "我的" })).toHaveAttribute("href","/staff/profile");
   });
   it.each([
-    ['/staff','今天暂无已安排任务','今日'],
-    ['/staff/schedule','当前筛选没有行程','行程'],
+    ['/staff','今天暂无已安排任务','首页'],
+    ['/staff/schedule','这一天没有任务。','行程'],
     ['/staff/map','暂无可显示的任务地图','地图'],
-    ['/staff/messages','暂无有权访问的行程群。','消息'],
-    ['/staff/profile','我的推广','我的'],
+    ['/staff/messages','暂无有权访问的消息线程。','消息'],
+    ['/staff/profile','我的推广码','我的'],
   ])('无任务时 %s 仍提供独立页面、空状态和正确高亮',async(path,empty,activeLabel)=>{
     const client={auth:{getUser:async()=>({data:{user:{id:'staff-empty',email:'empty@example.invalid'}},error:null}),getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},rpc:async(name:string)=>name==='get_staff_portal_tasks'?{data:[],error:null}:{data:null,error:null}} as unknown as SupabaseClient;
     render(<MemoryRouter initialEntries={[path]}><AppProvider services={new ProductionBrowserServices(client,undefined)}><Routes><Route path="/staff/*" element={<StaffPortal/>}/></Routes></AppProvider></MemoryRouter>);
     expect(await screen.findByText(empty)).toBeInTheDocument();
     expect(screen.getByRole('link',{name:activeLabel})).toHaveClass('active');
-    for(const [label,href] of [['今日','/staff'],['行程','/staff/schedule'],['地图','/staff/map'],['消息','/staff/messages'],['我的','/staff/profile']])expect(screen.getByRole('link',{name:label})).toHaveAttribute('href',href);
+    for(const [label,href] of [['首页','/staff'],['行程','/staff/schedule'],['地图','/staff/map'],['消息','/staff/messages'],['我的','/staff/profile']])expect(screen.getByRole('link',{name:label})).toHaveAttribute('href',href);
   });
   it('无任务时不显示假调度号码，有任务时进入可审计的调度请求',async()=>{
     const emptyClient={auth:{getUser:async()=>({data:{user:{id:'staff-contact'}},error:null}),getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},rpc:async(name:string)=>name==='get_staff_portal_tasks'?{data:[],error:null}:{data:null,error:null}} as unknown as SupabaseClient;
     render(<MemoryRouter initialEntries={['/staff/messages?channel=dispatch']}><AppProvider services={new ProductionBrowserServices(emptyClient,undefined)}><Routes><Route path="/staff/*" element={<StaffPortal/>}/></Routes></AppProvider></MemoryRouter>);
-    expect(await screen.findByText(/尚未配置通用调度电话或会话/)).toBeInTheDocument();
+    expect(await screen.findByText(/暂无有权访问的消息线程/)).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/0\d{1,4}-\d{2,4}-\d{3,4}/);
   });
   it.each([
-    ['pending','待执行'],
-    ['in_progress','进行中'],
+    ['pending','前往集合点'],
+    ['in_progress','行程中'],
     ['completed','已完成'],
   ])('行程页按服务端旅程状态显示 %s',async(journeyStatus,label)=>{
     const client={auth:{getUser:async()=>({data:{user:{id:'staff-state',email:'state@example.invalid'}},error:null}),getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},rpc:async(name:string)=>name==='get_staff_portal_tasks'?{data:[{...task,journey_status:journeyStatus}],error:null}:{data:null,error:null}} as unknown as SupabaseClient;
-    render(<MemoryRouter initialEntries={['/staff/schedule']}><AppProvider services={new ProductionBrowserServices(client,undefined)}><Routes><Route path="/staff/*" element={<StaffPortal/>}/></Routes></AppProvider></MemoryRouter>);
-    expect(await screen.findByText(new RegExp(`· ${label}$`))).toBeInTheDocument();
+    render(<MemoryRouter initialEntries={['/staff/schedule?date=2026-09-01']}><AppProvider services={new ProductionBrowserServices(client,undefined)}><Routes><Route path="/staff/*" element={<StaffPortal/>}/></Routes></AppProvider></MemoryRouter>);
+    expect(await screen.findByText(label)).toBeInTheDocument();
     expect(screen.getByRole('link',{name:'行程'})).toHaveAttribute('aria-current','page');
   });
   it("本车乘客点名仅显示最小必要字段并可保存状态", async () => {

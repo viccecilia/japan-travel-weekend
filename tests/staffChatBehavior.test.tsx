@@ -18,6 +18,7 @@ function setup(){
 describe('本车紧凑群聊',()=>{
   it('八语缓存翻译与原文可切换，成员先工作人员且不显示游客手机号',async()=>{
     const {services}=setup();await screen.findByText('原文');
+    fireEvent.click(screen.getByRole('button',{name:'更多聊天功能'}));
     expect(screen.getByRole('combobox',{name:'目标语言'}).querySelectorAll('option')).toHaveLength(8);
     fireEvent.change(screen.getByRole('combobox',{name:'目标语言'}),{target:{value:'es'}});
     expect(screen.getByText('Texto traducido')).toBeVisible();
