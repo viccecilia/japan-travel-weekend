@@ -2,7 +2,7 @@ import {readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {describe,expect,it} from 'vitest';
 
-const sql=readFileSync(join(process.cwd(),'supabase','migrations','20261005094515_sync_account_profile_display_name.sql'),'utf8');
+const sql=readFileSync(join(process.cwd(),'supabase','migrations','20261005171500_sync_account_profile_display_name.sql'),'utf8');
 
 describe('完整账户资料显示名同步',()=>{
   it('将显示名同步到聊天室使用的公开资料与司机资源',()=>{
