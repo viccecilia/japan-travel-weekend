@@ -8,7 +8,7 @@ afterEach(cleanup);
 
 describe('乘客端底部导航',()=>{
   it('以消息作为核心入口并移除奖励入口',()=>{
-    render(<MemoryRouter><AppShell nav><p>页面正文</p></AppShell></MemoryRouter>);
+    render(<MemoryRouter><AppProvider><AppShell nav><p>页面正文</p></AppShell></AppProvider></MemoryRouter>);
     const navigation=screen.getByRole('navigation',{name:'应用导航'});
     expect(navigation).toHaveTextContent('发现');
     expect(navigation).toHaveTextContent('精选线路');
@@ -30,7 +30,7 @@ describe('乘客端底部导航',()=>{
     ['/app/profile','我的'],
     ['/app/rewards','我的'],
   ])('路径 %s 仅选中所属栏目 %s',(path,label)=>{
-    render(<MemoryRouter initialEntries={[path]}><AppShell nav><p>页面正文</p></AppShell></MemoryRouter>);
+    render(<MemoryRouter initialEntries={[path]}><AppProvider><AppShell nav><p>页面正文</p></AppShell></AppProvider></MemoryRouter>);
     const navigation=screen.getByRole('navigation',{name:'应用导航'});
     const current=Array.from(navigation.querySelectorAll('[aria-current="page"]'));
     expect(current).toHaveLength(1);
