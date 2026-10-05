@@ -46,11 +46,16 @@ describe('Passenger UI polish contracts',()=>{
 
   it('renders a normal empty chat and a handled attachment bottom sheet',()=>{
     const chat=source('./PassengerChatRoom.tsx');
+    const css=source('../styles.css');
     expect(chat).toContain('pc-empty-state');
     expect(chat).toContain('暂无消息');
     expect(chat).toContain('pc-sheet-handle');
     expect(chat).toContain('pc-sheet-actions');
     expect(chat).not.toContain('pc-sheet-close');
+    expect(css).toContain('grid-template-columns:38px minmax(0,1fr) 64px');
+    expect(css).toContain('padding:9px 11px calc(9px + env(safe-area-inset-bottom))');
+    expect(css).toContain('padding:10px 16px 18px;border-radius:24px');
+    expect(css).toContain('width:52px;height:52px');
   });
 });
 
