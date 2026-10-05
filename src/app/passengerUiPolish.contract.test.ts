@@ -61,8 +61,9 @@ describe('Passenger UI polish contracts',()=>{
     expect(css).toContain('.app-frame:has(.passenger-chat-page)>.bottom-nav{width:min(430px,100%)}');
     expect(css).toContain('grid-template-columns:38px minmax(0,1fr) 64px');
     expect(css).toContain('padding:9px 11px calc(9px + env(safe-area-inset-bottom))');
-    expect(css).toContain('.passenger-chat-page .pc-composer{width:min(430px,100%)');
+    expect(css).toContain('.passenger-chat-page .pc-composer{display:block;width:min(430px,100%)');
     expect(css).not.toContain('.passenger-chat-page .pc-composer{width:min(430px,100vw)');
+    expect(css).toContain('.passenger-chat-page .pc-compose-row{width:100%}');
     expect(css).toContain('padding:10px 16px 18px;border-radius:24px');
     expect(css).toContain('width:52px;height:52px');
   });
