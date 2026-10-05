@@ -2395,7 +2395,7 @@ export function Orders() {
             const bill=billingById[o.id];
             return <Link className="passenger-order-link" key={o.id} to={'/app/orders/'+encodeURIComponent(o.id)} state={{returnTo:'/app/orders'+(search.size?'?'+search.toString():'')}}>
             <img src={trip?.heroImage??'/icons/icon.svg'} alt=""/>
-              <div><b>{trip?presentRoute(trip,locale).title:(bill?.title??c.ownOrder)}</b><small>{(bill?.departsAt??o.departure?.departs_at)?new Date((bill?.departsAt??o.departure?.departs_at)!).toLocaleString(locale,{timeZone:'Asia/Tokyo'}):departure?.dateLabel??c.pending}</small><span>{passengerSeatCount(locale,o.seat_count)} · {localizedOrderStatus(locale,o.status)}</span><strong>{c.viewOrder} →</strong>{o.status==='pending_payment'&&<small>{passengerRound1Copy[locale].resumePayment.action}</small>}{o.status==='pending_manual_review'&&o.manual_payment_due_at&&<small>{c.paymentDue}: {new Date(o.manual_payment_due_at).toLocaleString(locale,{timeZone:'Asia/Tokyo'})}</small>}</div>
+              <div><b>{trip?presentRoute(trip,locale).title:(bill?.title??c.ownOrder)}</b><small>{(bill?.departsAt??o.departure?.departs_at)?new Date((bill?.departsAt??o.departure?.departs_at)!).toLocaleString(locale,{timeZone:'Asia/Tokyo'}):departure?.dateLabel??c.pending}</small><span>{passengerSeatCount(locale,o.seat_count)} · {localizedOrderStatus(locale,o.status)}</span><strong>{c.viewOrder} →</strong>{['pending_payment','expired'].includes(o.status)&&<small>{passengerRound1Copy[locale].resumePayment.action}</small>}{o.status==='pending_manual_review'&&o.manual_payment_due_at&&<small>{c.paymentDue}: {new Date(o.manual_payment_due_at).toLocaleString(locale,{timeZone:'Asia/Tokyo'})}</small>}</div>
             </Link>
           })}{!remote.rows.some(o=>matchesFilter(o))&&<p role="status">{c.emptyFiltered}</p>}</>
         ) : (
@@ -2553,7 +2553,7 @@ export function OrderDetail() {
           title={trip?presentRoute(trip,locale).title:c.tripOrder}
         />
         <div className="status order-status">{c.status}：{orderStatusLabel}</div>
-        {remoteOrder.status==='pending_payment'&&<ResumeOrderPayment key={remoteOrder.id} orderId={remoteOrder.id}/>}
+        {['pending_payment','expired'].includes(remoteOrder.status)&&<ResumeOrderPayment key={remoteOrder.id} orderId={remoteOrder.id}/>}
         {['paid','confirmed'].includes(remoteOrder.status)&&<section className="order-publication-notice"><b>{journeyCopy.paid}</b><p>{publishLabel?`${publishLabel}${journeyCopy.publish}`:c.wait}</p></section>}
         <div className="receipt">
           <div>

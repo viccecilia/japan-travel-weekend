@@ -70,6 +70,12 @@ describe('passenger frame closure',()=>{
   expect(await screen.findByRole('region',{name:'不可变订单账单'})).toHaveTextContent('待确认');
   expect(screen.getByRole('region',{name:'不可变订单账单'})).not.toHaveTextContent('¥0');
  });
+ it('offers the formal recovery action after the lifecycle sweep expires checkout',async()=>{
+  mock.services.loadOwnOrders.mockResolvedValue({data:[{id:'expired-checkout',departure_id:'dep',seat_count:1,status:'expired',amount:100,departure:{departs_at:'2026-10-06T00:00:00Z',status:'open',trip:{slug:'amanohashidate-ine'}}}],error:null});
+  mount(<Routes><Route path="/app/orders/:id" element={<OrderDetail/>}/></Routes>,'/app/orders/expired-checkout');
+  expect(await screen.findByRole('region',{name:'继续支付'})).toBeVisible();
+  expect(screen.getByRole('button',{name:'继续支付'})).toBeInTheDocument();
+ });
  it('keeps legacy transfer facts while removing passenger-facing explanatory notices',async()=>{
   mock.services.loadOwnOrders.mockResolvedValue({data:[{id:'legacy-transfer',departure_id:'dep',seat_count:1,status:'pending_manual_review',amount:100,manual_payment_due_at:'2026-10-04T01:36:33.561Z',departure:{departs_at:'2026-10-18T00:30:00Z',status:'open',trip:{slug:'amanohashidate-ine'}}}],error:null});
   mock.services.loadOwnOrderBilling.mockResolvedValue({lineItems:[],grossAmountJpy:100,amountPaidJpy:100,discountAmountJpy:0,refunds:[],snapshotAvailable:false});
