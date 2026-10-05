@@ -735,7 +735,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
     const meetingAt = meeting?.meeting_at ?? room.departs_at;
     const remoteStop = {
       id: `meeting-${room.vehicle_group_id}-${meeting?.revision ?? 0}`,
-      name: "当前集合",
+      name: chatCopy.currentMeeting,
         meetingTime: meetingAt
           ? new Date(meetingAt).toLocaleTimeString(locale, {
             timeZone: "Asia/Tokyo",
@@ -822,7 +822,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
         }}
         guide={{
           name: passengerContext?.staff_name??"当班工作人员待分配",
-          role: passengerContext?.staff_role==='guide'?passengerRound1Copy[locale].chat.guide:passengerContext?.staff_role==='driver_guide'?passengerRound1Copy[locale].chat.driverGuide:passengerContext?.staff_role==='driver'?passengerRound1Copy[locale].chat.driver:passengerRound1Copy[locale].chat.operations,
+          role: passengerContext?.staff_role==='guide'?passengerRound1Copy[locale].common.guide:passengerContext?.staff_role==='driver_guide'?passengerRound1Copy[locale].common.driverGuide:passengerContext?.staff_role==='driver'?passengerRound1Copy[locale].common.driver:passengerRound1Copy[locale].common.operations,
           phone: passengerContext?.staff_phone??"",
           avatar: "导",
           vehicle: {

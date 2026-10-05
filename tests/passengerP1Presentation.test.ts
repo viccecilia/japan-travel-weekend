@@ -27,6 +27,11 @@ describe('Passenger P1 presentation and event safety',()=>{
     expect(tripRoom).toContain('if (message.template_key) return templateTranslation(message.template_key, locale);');
     expect(tripRoom).toContain('if (!autoTranslate) return null;');
   });
+  it('uses localized common role labels and a localized current-meeting title',()=>{
+    expect(tripRoom).toContain('passengerRound1Copy[locale].common.driver');
+    expect(tripRoom).toContain('name: chatCopy.currentMeeting');
+    expect(tripRoom).not.toContain('passengerRound1Copy[locale].chat.driver');
+  });
   it('deduplicates only identical system events in the write layer, never human chat',()=>{
     expect(migration).toContain('new.template_key is not null');
     expect(migration).toContain('prior.template_key=new.template_key');
