@@ -66,7 +66,7 @@ export class SupabaseRealtimeAdapter {
         if(status==='frozen'||status==='open'||status==='closed')onRoomStatus(status);
       })
       .on('postgres_changes',{event:'*',schema:'public',table:'passenger_checkins'},()=>onAttendance());
-    const subscribed=await new Promise<boolean>(resolve=>channel.subscribe(status=>{onStatus?.(status);if(status==='SUBSCRIBED'||status==='CHANNEL_ERROR'||status==='TIMED_OUT')resolve(status==='SUBSCRIBED')}));
+    const subscribed=await new Promise<boolean>(resolve=>channel.subscribe(status=>{onStatus?.(status);if(status==='SUBSCRIBED'||status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED')resolve(status==='SUBSCRIBED')}));
     return {subscribed,close:()=>{void this.client?.removeChannel(channel)}};
   }
 }

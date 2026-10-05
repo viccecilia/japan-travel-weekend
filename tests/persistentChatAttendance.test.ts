@@ -42,6 +42,12 @@ describe('持续聊天、签到与联系升级',()=>{
     expect(handlers).toEqual(expect.arrayContaining([{event:'postgres_changes',table:'trip_room_messages'},{event:'postgres_changes',table:'trip_rooms'},{event:'postgres_changes',table:'passenger_checkins'}]));
     expect(result).not.toHaveProperty('send');
   });
+  it('实时通道关闭时立即降级，不让行程房间卡在加载状态',async()=>{
+    const channel={on:vi.fn(()=>channel),subscribe:vi.fn((callback:(status:string)=>void)=>{callback('CLOSED');return channel})};
+    const client={channel:vi.fn(()=>channel),removeChannel:vi.fn()} as unknown as SupabaseClient;
+    const result=await new SupabaseRealtimeAdapter(client).subscribeTripRoom('room-1',vi.fn(),vi.fn(),vi.fn());
+    expect(result.subscribed).toBe(false);
+  });
   it('通知合同包含签到提醒与联系升级',()=>{
     expect(notificationTemplates['checkin-reminder'].title).toBe('请确认集合签到状态');
     expect(notificationTemplates['passenger-contact-escalation'].title).toBe('有乘客尚未签到，请安排联系');
