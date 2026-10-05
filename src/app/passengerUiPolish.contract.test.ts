@@ -56,6 +56,7 @@ describe('Passenger UI polish contracts',()=>{
     expect(chat.indexOf('pc-modal-backdrop pc-composer-backdrop')).toBeLessThan(chat.indexOf('<footer className="pc-composer">'));
     expect(tripRoom).toContain('senderId: message.author_id === currentUserId ? "me"');
     expect(chat).toContain("own?'own':'other'");
+    expect(css).toContain('.passenger-chat-page .pc-message.own{flex-direction:row;justify-content:flex-end}');
     expect(css).toContain('.pc-message.own .pc-bubble');
     expect(css).toContain('background:#fff0a5');
     expect(css).toContain('.app-frame:has(.passenger-chat-page)>.bottom-nav{width:min(430px,100%)}');
