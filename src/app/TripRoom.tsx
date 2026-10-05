@@ -773,7 +773,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
       const sharedPlace=sharedId?sharedPlaces.find(place=>place.id===sharedId):undefined;
       return {
       id: message.id,
-      senderId: message.author_id ?? "operations",
+      senderId: message.author_id === currentUserId ? "me" : message.author_id ?? "operations",
       name:
         message.author_id === currentUserId
           ? "我"

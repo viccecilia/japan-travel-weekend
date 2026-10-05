@@ -589,6 +589,7 @@
 
 /* Keep the live Trip Room composer and attachment sheet aligned with the approved UI demo. */
 .app-frame:has(.passenger-chat-page){width:430px}
+.app-frame:has(.passenger-chat-page)>.bottom-nav{width:min(430px,100%)}
 .passenger-chat-page .pc-composer{width:min(430px,100%);padding:9px 11px calc(9px + env(safe-area-inset-bottom))}
 .passenger-chat-page .pc-compose-row{grid-template-columns:38px minmax(0,1fr) 64px;gap:8px;align-items:center}
 .passenger-chat-page .pc-more-trigger{width:38px;min-height:38px;height:38px;border-radius:13px!important;background:#fff!important}

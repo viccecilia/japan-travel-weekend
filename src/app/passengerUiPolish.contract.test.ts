@@ -46,6 +46,7 @@ describe('Passenger UI polish contracts',()=>{
 
   it('renders a normal empty chat and a handled attachment bottom sheet',()=>{
     const chat=source('./PassengerChatRoom.tsx');
+    const tripRoom=source('./TripRoom.tsx');
     const css=source('../styles.css');
     expect(chat).toContain('pc-empty-state');
     expect(chat).toContain('暂无消息');
@@ -53,6 +54,11 @@ describe('Passenger UI polish contracts',()=>{
     expect(chat).toContain('pc-sheet-actions');
     expect(chat).not.toContain('pc-sheet-close');
     expect(chat.indexOf('pc-modal-backdrop pc-composer-backdrop')).toBeLessThan(chat.indexOf('<footer className="pc-composer">'));
+    expect(tripRoom).toContain('senderId: message.author_id === currentUserId ? "me"');
+    expect(chat).toContain("own?'own':'other'");
+    expect(css).toContain('.pc-message.own .pc-bubble');
+    expect(css).toContain('background:#fff0a5');
+    expect(css).toContain('.app-frame:has(.passenger-chat-page)>.bottom-nav{width:min(430px,100%)}');
     expect(css).toContain('grid-template-columns:38px minmax(0,1fr) 64px');
     expect(css).toContain('padding:9px 11px calc(9px + env(safe-area-inset-bottom))');
     expect(css).toContain('.passenger-chat-page .pc-composer{width:min(430px,100%)');
