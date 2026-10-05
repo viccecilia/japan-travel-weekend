@@ -1926,10 +1926,22 @@ export function Payment() {
     state.booking?.acceptedCancellation &&
     state.booking?.acceptedTerms,
   );
-  const checkoutReady=Boolean(services?.checkoutAvailable&&state.booking?.draftId&&selectedDeparture&&seatImpact>0&&serverQuote&&!quoteNeedsConfirmation);
+  // Once checkout has created a PaymentIntent, the last reserved seat may no
+  // longer be returned by the public sellable-departures query. The active
+  // card session is already server-validated, so keep that session mountable
+  // without requiring the public list entry to reappear.
+  const checkoutReady=Boolean(
+    services?.checkoutAvailable
+    && state.booking?.draftId
+    && paymentDeparture
+    && seatImpact>0
+    && (serverQuote || cardSession)
+    && !quoteNeedsConfirmation,
+  );
   useEffect(()=>{let active=true;void services?.loadOwnReferralSummary().then(value=>{if(active)setCouponSummary(value)});return()=>{active=false}},[services]);
   useEffect(()=>{
     let active=true;
+    if(cardSession)return()=>{active=false};
     setServerQuote(null);
     if(!services?.checkoutAvailable||!selectedDeparture||seatImpact<1)return()=>{active=false};
     setQuoteStatus('正在向服务器确认班次、价格和优惠…');
@@ -1943,7 +1955,7 @@ export function Payment() {
       setQuoteStatus(`价格已由服务器确认，有效至 ${new Date(result.expiresAt).toLocaleTimeString(state.ui.locale??'zh-CN',{hour:'2-digit',minute:'2-digit'})}`);
     });
     return()=>{active=false};
-  },[services,selectedDeparture?.id,seatImpact,couponId,state.ui.locale,quoteRefresh]);
+  },[services,selectedDeparture?.id,seatImpact,couponId,state.ui.locale,quoteRefresh,cardSession]);
   const saveDraft = async () => {
     if (
       !services ||
