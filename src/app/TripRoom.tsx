@@ -762,10 +762,11 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
           : Number(room.map_lng),
       status: "current" as const,
     };
-    const localizedRouteStops=sourceLocale?routeStops:routeStops.map((stop,index)=>({...stop,name:routeStopIdentity(locale,index,stop.id),meetingPointName:meetingUnavailable,meetingPointDescription:meetingUnavailable}));
-    const projected=projectItineraryStops(localizedRouteStops,remoteStop.meetingPointName);
+    const sourceMeetingName=meeting?.meeting_name??room.meeting_name??"集合地点待司导更新";
+    const projected=projectItineraryStops(routeStops,sourceMeetingName);
+    const localizedRouteStops=sourceLocale?projected.stops:projected.stops.map((stop,index)=>({...stop,name:routeStopIdentity(locale,index,stop.id),meetingPointName:meetingUnavailable,meetingPointDescription:meetingUnavailable}));
     const matchedIndex=projected.currentIndex;
-    const itineraryStops=routeStops.length?projected.stops:(passengerContext?.itinerary??[]).filter(name=>name!==remoteStop.meetingPointName).map((name,index)=>({id:`route-${index}`,name:sourceLocale?name:routeStopIdentity(locale,index),meetingTime:sourceLocale?"时间待司导更新":meetingUnavailable,meetingPointName:sourceLocale?name:meetingUnavailable,meetingPointDescription:sourceLocale?"具体停留与集合安排以司导在群内发布的信息为准。":meetingUnavailable,latitude:remoteStop.latitude,longitude:remoteStop.longitude,status:'upcoming' as const}));
+    const itineraryStops=routeStops.length?localizedRouteStops:(passengerContext?.itinerary??[]).filter(name=>name!==sourceMeetingName).map((name,index)=>({id:`route-${index}`,name:sourceLocale?name:routeStopIdentity(locale,index),meetingTime:sourceLocale?"时间待司导更新":meetingUnavailable,meetingPointName:sourceLocale?name:meetingUnavailable,meetingPointDescription:sourceLocale?"具体停留与集合安排以司导在群内发布的信息为准。":meetingUnavailable,latitude:remoteStop.latitude,longitude:remoteStop.longitude,status:'upcoming' as const}));
     if(!routeStops.length&&passengerContext?.return_at)itineraryStops.push({id:'return',name:sourceLocale?'预计返程到达':routeStopIdentity(locale,itineraryStops.length,'return'),meetingTime:new Date(passengerContext.return_at).toLocaleTimeString(locale,{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit',hour12:false}),meetingPointName:sourceLocale?'返回地点以订单与司导通知为准':meetingUnavailable,meetingPointDescription:sourceLocale?'预计到达时间会受当天交通影响。':meetingUnavailable,latitude:remoteStop.latitude,longitude:remoteStop.longitude,status:'upcoming' as const});
     const passengerMessages = messages.map((message) => {
       const sharedId=/^\[\[jtw:shared_place:([^\]]+)\]\]/.exec(message.content)?.[1];
