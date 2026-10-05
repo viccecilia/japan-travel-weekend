@@ -52,6 +52,7 @@ describe('Passenger UI polish contracts',()=>{
     expect(chat).toContain('pc-sheet-handle');
     expect(chat).toContain('pc-sheet-actions');
     expect(chat).not.toContain('pc-sheet-close');
+    expect(chat.indexOf('pc-modal-backdrop pc-composer-backdrop')).toBeLessThan(chat.indexOf('<footer className="pc-composer">'));
     expect(css).toContain('grid-template-columns:38px minmax(0,1fr) 64px');
     expect(css).toContain('padding:9px 11px calc(9px + env(safe-area-inset-bottom))');
     expect(css).toContain('.passenger-chat-page .pc-composer{width:min(430px,100%)');
