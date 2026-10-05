@@ -71,7 +71,7 @@ describe("工作人员端", () => {
     ]);
     expect(await screen.findByRole('alert')).toHaveTextContent('未来班次已进入执行状态');
     expect(screen.getByText(/下一次出勤：/)).toHaveTextContent('明日模拟运行');
-    expect(screen.getByText(/有 1 个已确认班次/)).toBeInTheDocument();
+    expect(screen.getByText(/有 1 个待确认班次/)).toBeInTheDocument();
   });
   it('多个运行中任务显示冲突，不静默隐藏',async()=>{
     renderTodayWithTasks([

@@ -345,7 +345,7 @@ export function StaffPortal() {
       <header className="staff-welcome">
         <span>{new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Tokyo',month:'long',day:'numeric',weekday:'short'}).format(new Date())}</span>
         <h1>工作首页</h1>
-        <p>{staffDisplayName||'工作人员'} · {todayTasks.length?`今日 ${todayTasks.length} 个任务`:(nextTask?`${dayLabel(nextTask.departs_at)} ${timeLabel(nextTask.departs_at)} 有 1 个已确认班次`:'今日无任务')}</p>
+        <p>{staffDisplayName||'工作人员'} · {todayTasks.length?`今日 ${todayTasks.length} 个任务`:(nextTask?`${dayLabel(nextTask.departs_at)} ${timeLabel(nextTask.departs_at)} 有 1 个${driverTaskStage(nextTask,nowDate)==='pending_confirmation'?'待确认':'已确认'}班次`:'今日无任务')}</p>
       </header>
       {error && (
         <StatusCard title="任务读取失败" alert>
