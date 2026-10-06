@@ -45,6 +45,19 @@ describe("工作人员端", () => {
     const tokyo=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).format(date);
     return new Date(`${tokyo}T${String(hour).padStart(2,'0')}:00:00+09:00`).getTime()+dayOffset*86_400_000;
   };
+  it('Trip Room 已开放不等于任务执行中',async()=>{
+    renderTodayWithTasks([{
+      ...task,
+      trip_title:'聊天室已开放但待确认',
+      room_status:'open',
+      journey_status:'pending',
+      assignment_acknowledged:false,
+      departs_at:new Date(atTokyoHour(0,8)).toISOString(),
+    }]);
+    expect(await screen.findByRole('heading',{name:'聊天室已开放但待确认'})).toBeInTheDocument();
+    expect(screen.queryByText('执行中')).not.toBeInTheDocument();
+    expect(screen.getAllByText('待确认').length).toBeGreaterThan(0);
+  });
   it.each([
     ['已完成+待执行','completed','pending'],
     ['已取消+待执行','cancelled','pending'],

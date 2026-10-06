@@ -1238,13 +1238,7 @@ function TaskSummary({ task }: { task: StaffTask }) {
           <p>团队聊天将于 {dayLabel(task.chat_opens_at)} {timeLabel(task.chat_opens_at)} 开放</p>
         )}
       </div>
-      <em>
-        {task.room_status === "open"
-          ? "执行中"
-          : task.room_status === "frozen"
-            ? "待开放"
-            : "待确认"}
-      </em>
+      <em>{driverStageLabel[driverTaskStage(task)]}</em>
     </section>
   );
 }
