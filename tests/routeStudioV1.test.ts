@@ -43,6 +43,7 @@ describe('Route Studio V1 data contract',()=>{
     const draft=draftFromProduct(product);const content=draftContent(product,draft);const en=localizedDraft(draft,'en');
     expect(content.heroVideo).toMatchObject({url:'/hero.mp4',posterUrl:'/poster.webp'});
     expect(en).toMatchObject({title:'Amanohashidate & Ine',summary:'A coast day trip'});
+    expect(en).toMatchObject({heroTitle:'Amanohashidate & Ine',heroSubtitle:'A coast day trip'});
     expect(en.itinerary[0].title).toBe('Meet at Kyoto Station');
   });
 });
