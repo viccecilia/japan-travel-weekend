@@ -4,6 +4,7 @@ import {draftContent,draftFromProduct,localizedDraft,persistedItinerary,reviewed
 import {discoverText,discoverTranslationGaps,initialDiscoverHeroes} from '../src/shared/discover';
 import {formatDepartureReadinessError,type OperationsProduct} from '../src/shared/integrations/supabaseOperations';
 import {isRouteStudioProduct,ROUTE_STUDIO_V1_SLUGS} from '../src/app/operations/routeStudioScope';
+import {policyLocalizationText} from '../src/app/operations/policyLocalization';
 
 const product:OperationsProduct={id:'route-1',slug:'amanohashidate-ine',status:'published',catalogVersion:4,publishedRevision:3,draftRevision:null,title:'天桥立与伊根',heroImageUrl:'/hero.webp',gallery:[],updatedAt:'2026-10-07T00:00:00Z',content:{summary:'路线简介',description:'足够完整的路线介绍文字，用于产品发布与班次销售验证。',included:['车辆'],excluded:[],heroVideo:{url:'/hero.mp4',storagePath:'route-1/hero.mp4',posterUrl:'/poster.webp',mimeType:'video/mp4',sizeBytes:1024},itinerary:[{id:'meet',title:'京都站集合',time:'08:00',stayMinutes:10,type:'meeting'},{id:'ama',title:'天桥立',time:'10:30',stayMinutes:90,gallery:['/a.webp','/b.webp'],video:{url:'/legacy.mp4',storagePath:'legacy.mp4',mimeType:'video/mp4',sizeBytes:10}}],locales:{en:{title:'Amanohashidate & Ine',summary:'A coast day trip',itinerary:{meet:{stop_title:'Meet at Kyoto Station'}}},ja:{title:'天橋立と伊根',summary:'海の一日旅'}}}};
 
@@ -55,8 +56,19 @@ describe('Route Studio V1 readiness and locale safety',()=>{
     expect(sql).toContain('operations_departure_readiness');expect(sql).toContain('route_catalog_complete');expect(sql).toContain('DEPARTURE_READINESS_MISSING');
     expect(sql).toContain('revoke all on function public.operations_departure_readiness');
   });
+  it('creates new route drafts with all three required standard policy references',()=>{
+    const sql=readFileSync('supabase/migrations/20261007064000_route_studio_product_policy_defaults.sql','utf8');
+    expect(sql).toContain("template_key='jtw-day-trip-standard'");
+    expect(sql).toContain("template_key='standard-10h-v1'");
+    expect(sql).toContain("template_key='standard-24h-v1'");
+    expect(sql).toContain('policy_template_id,service_time_policy_template_id,cancellation_policy_template_id');
+  });
   it('does not leak Chinese Soul copy into Spanish when formal translation is missing',()=>{
     expect(discoverText(initialDiscoverHeroes[0],'es')).toEqual({title:'',subtitle:''});
     expect(discoverTranslationGaps(initialDiscoverHeroes[0])).toContain('es');
+  });
+  it('renders legacy structured policy sections without passing objects to React',()=>{
+    expect(policyLocalizationText({title:'集合时间',body:'请提前十五分钟到达。'})).toBe('集合时间：请提前十五分钟到达。');
+    expect(policyLocalizationText(['车辆费用','工作人员服务'])).toBe('车辆费用 / 工作人员服务');
   });
 });
