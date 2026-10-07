@@ -3,6 +3,7 @@ import {Link, useLocation, useNavigate, useSearchParams} from 'react-router-dom'
 import {useApp} from '../store';
 import type {OperationsProduct} from '../../shared/integrations/supabaseOperations';
 import {isRouteContentPackage, parseJsonFile, sanitizeRouteContent, validateContentPackage} from '../../shared/contentPackages';
+import {isRouteStudioProduct, ROUTE_STUDIO_V1_SLUGS} from './routeStudioScope';
 
 type ProductStatusFilter = 'all' | 'published' | 'draft' | 'archived';
 
@@ -29,7 +30,6 @@ const STATUS_OPTIONS: Array<{label: string; value: ProductStatusFilter}> = [
   {label: '草稿', value: 'draft'},
   {label: '已下架', value: 'archived'},
 ];
-
 function normalizeStatus(item: OperationsProduct): string {
   if (
     item.status === 'published' &&
@@ -68,12 +68,14 @@ export function ProductCenter() {
   const [createOpen, setCreateOpen] = useState(false);
   const [newSlug, setNewSlug] = useState('');
   const [newTitle, setNewTitle] = useState('');
+  const [newSummary, setNewSummary] = useState('');
   const [totalCount, setTotalCount] = useState(0);
   const contentPackageInput = useRef<HTMLInputElement>(null);
   const pageSize = 10;
 
   const returnTo = encodeURIComponent(`${location.pathname}${location.search}`);
-  const filtered = products.filter((item) => {
+  const studioProducts=products.filter(isRouteStudioProduct);
+  const filtered = studioProducts.filter((item) => {
     const text = `${item.title} ${item.slug}`.toLowerCase();
     if (!text.includes(search.toLowerCase())) return false;
     if (status !== 'all' && item.status !== status) return false;
@@ -107,15 +109,17 @@ export function ProductCenter() {
     const form = new FormData(event.currentTarget);
     const slug = String(form.get('slug') ?? '').trim();
     const title = String(form.get('title') ?? '').trim();
-    if (!slug || !title) return;
+    const summary = String(form.get('summary') ?? '').trim();
+    if (!slug || !title || !summary) return;
     setBusy(true);
     try {
-    const result = await services.operations.createProduct({slug, title});
+    const result = await services.operations.createProduct({slug, title,content:{routeStudioV1:true,summary,description:'',itinerary:[],included:[],excluded:[],locales:{'zh-CN':{title,summary}}}});
     if (result.ok && result.id) {
       setNotice('新产品草稿已建立，请完善内容后发布。');
       setCreateOpen(false);
       setNewSlug('');
       setNewTitle('');
+      setNewSummary('');
       navigate(`/app/operations/products/${encodeURIComponent(result.id)}/edit?returnTo=${returnTo}`);
     } else {
       setNotice(`新建失败：${result.error ?? '请检查输入后重试'}`);
@@ -210,7 +214,7 @@ export function ProductCenter() {
         <div>
           <span>PRODUCT CENTER</span>
           <h1>产品管理</h1>
-          <p>维护路线内容与版本；发布与下架仅变更游客端可见性。</p>
+          <p>Route Studio V1：重点维护 8 条现有路线；新建草稿也会显示在这里。排除路线不会被删除。</p>
         </div>
         <div className="operations-task-actions"><button type="button" className="button secondary" onClick={() => contentPackageInput.current?.click()} disabled={busy}>导入中文内容包</button><button type="button" className="button secondary" onClick={() => { setCreateOpen((value) => !value); setNotice(''); }}>新建路线</button><input ref={contentPackageInput} hidden type="file" accept="application/json,.json" onChange={event => { const file = event.target.files?.[0]; event.currentTarget.value = ''; if (file) void importChineseContentPackage(file); }}/></div>
       </header>
@@ -223,7 +227,7 @@ export function ProductCenter() {
             <span>路线总览</span>
             <h2>路线产品</h2>
           </div>
-          <small>{loadError ? '目录读取失败' : busy ? '正在读取…' : `共 ${totalCount} 条，当前显示 ${filtered.length} 条`}</small>
+          <small>{loadError ? '目录读取失败' : busy ? '正在读取…' : `V1 路线 ${ROUTE_STUDIO_V1_SLUGS.filter(slug=>products.some(item=>item.slug===slug)).length}/8；当前显示 ${filtered.length} 条（数据库共 ${totalCount} 条）`}</small>
         </div>
         <div className="operations-toolbar" role="search">
           <label>
@@ -264,7 +268,7 @@ export function ProductCenter() {
               />
             </label>
             <label>
-              路线标题
+              中文内部识别名 / 路线标题
               <input
                 name="title"
                 required
@@ -272,6 +276,10 @@ export function ProductCenter() {
                 value={newTitle}
                 onChange={(event) => setNewTitle(event.target.value)}
               />
+            </label>
+            <label>
+              路线简介
+              <textarea name="summary" required minLength={3} value={newSummary} onChange={(event)=>setNewSummary(event.target.value)}/>
             </label>
             <div className="operations-task-actions">
               <button className="button" disabled={busy}>
@@ -285,6 +293,7 @@ export function ProductCenter() {
                   setCreateOpen(false);
                   setNewSlug('');
                   setNewTitle('');
+                  setNewSummary('');
                 }}
               >
                 关闭

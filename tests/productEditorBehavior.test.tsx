@@ -67,8 +67,8 @@ it('景点改名不重挂输入，排序作用于稳定景点且实时更新预�
   expect(preview.getByText(/2\. 清水寺新名称/)).toBeInTheDocument();
 });
 
-it('景点视频绑定稳定ID，改名排序后保存仍跟随原景点', async () => {
-  const withVideo = {...product, content: {...product.content, itinerary: [{id: 'stop-1', title: '清水寺', description: '原景点介绍', video: {url: 'https://media.example.invalid/spot.mp4', storagePath: 'trip-edit/stops/stop-1/video.mp4', posterUrl: '/poster.webp', mimeType: 'video/mp4', sizeBytes: 2048}}, {id: 'stop-2', title: '奈良公园', description: '第二站'}]}};
+it('景点照片和稳定ID在改名排序后保存，旧景点视频不会进入新草稿', async () => {
+  const withVideo = {...product, content: {...product.content, itinerary: [{id: 'stop-1', title: '清水寺', description: '原景点介绍', gallery:['/one.webp','/two.webp'],video: {url: 'https://media.example.invalid/spot.mp4', storagePath: 'trip-edit/stops/stop-1/video.mp4', posterUrl: '/poster.webp', mimeType: 'video/mp4', sizeBytes: 2048}}, {id: 'stop-2', title: '奈良公园', description: '第二站'}]}};
   const operations = open({listProducts: vi.fn(async () => ({data: [withVideo], error: null}))});
   fireEvent.click(await screen.findByRole('button', {name: '景点行程'}));
   fireEvent.change(screen.getAllByLabelText('景点名称')[0], {target: {value: '清水寺新名称'}});
@@ -76,7 +76,8 @@ it('景点视频绑定稳定ID，改名排序后保存仍跟随原景点', async
   fireEvent.click(screen.getByRole('button', {name: '保存草稿'}));
   await vi.waitFor(() => expect(operations.saveProductDraft).toHaveBeenCalled());
   const payload = operations.saveProductDraft.mock.calls[0][0] as {content: {itinerary: Array<Record<string, unknown>>}};
-  expect(payload.content.itinerary[1]).toMatchObject({id: 'stop-1', title: '清水寺新名称', video: {storagePath: 'trip-edit/stops/stop-1/video.mp4'}});
+  expect(payload.content.itinerary[1]).toMatchObject({id: 'stop-1', title: '清水寺新名称',gallery:['/one.webp','/two.webp']});
+  expect(payload.content.itinerary[1]).not.toHaveProperty('video');
 });
 
 it('Hero 视频经同一受控存储上传后只写入当前草稿', async () => {
@@ -92,13 +93,11 @@ it('Hero 视频经同一受控存储上传后只写入当前草稿', async () =>
   expect(payload.content.heroVideo?.storagePath).toContain('trip-edit/stops/stop-1/video.mp4');
 });
 
-it('不兼容景点视频明确报错且不调用存储上传', async () => {
-  const operations = open();
+it('景点不再提供视频入口，只保留 Hero 视频和照片入口', async () => {
+  open();
   fireEvent.click(await screen.findByRole('button', {name: '景点行程'}));
-  const invalid = new File(['not-a-video'], 'spot.mov', {type: 'video/quicktime'});
-  fireEvent.change(screen.getByLabelText('上传清水寺视频'), {target: {files: [invalid]}});
-  expect(await screen.findByText(/上传失败：仅支持 MP4/)).toBeInTheDocument();
-  expect(operations.uploadProductSpotVideo).not.toHaveBeenCalled();
+  expect(screen.queryByLabelText('上传清水寺视频')).not.toBeInTheDocument();
+  expect(screen.getByLabelText('上传清水寺照片')).toBeInTheDocument();
 });
 
 it('保存失败保留输入和未保存状态，按钮恢复可重试', async () => {

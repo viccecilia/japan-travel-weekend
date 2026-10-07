@@ -237,6 +237,11 @@ export type OperationsAttraction={id:string;slug:string;status:'draft'|'publishe
 export type OperationsAttractionDetail={id:string;slug:string;status:'draft'|'published'|'archived';catalogVersion:number;guides:Record<string,{title:string;body:string}>;audio:Record<string,{storagePath?:string|null;audioUrl?:string|null;voice?:string|null;status:string}>};
 export type OperationsAttractionMedia={id:string;attractionId:string;mediaType:'image'|'video';storagePath:string;originalFilename:string;mimeType:string;byteSize:number;status:'active'|'inactive';orientation:'landscape'|'portrait'|'square'|'unknown';season:'all-season'|'spring'|'summer'|'autumn'|'winter';createdAt:string;updatedAt:string;url:string};
 export type OperationsPolicyTemplate={templateId:string;templateKey:string;status:'active'|'archived';versionId:string|null;versionNumber:number|null;versionState:'draft'|'published'|'superseded'|'archived'|null;localizations:Record<string,Record<string,string>>};
+const departureReadinessLabels:Record<string,string>={product_not_found:'产品不存在',product_not_published:'产品尚未发布',itinerary:'行程至少需要一个节点',included:'费用包含不能为空',excluded:'费用不包含字段必须存在',description:'产品详细介绍至少 20 字',commerce_policy:'通用销售政策字段不完整',date_range:'日期范围无效或超过 93 天',weekdays:'至少选择一个星期',departure_time:'未设置出发时间',duration:'行程时长须为 60–1440 分钟',price:'价格必须大于 0',capacity:'销售容量必须大于 0',sales_close:'销售截止时间无效',meeting_name:'集合地点至少 2 个字符',meeting_address:'集合地址至少 5 个字符',meeting_coordinates:'集合点经纬度无效',sales_window:'开始销售时间必须早于销售截止时间'};
+export function formatDepartureReadinessError(message:string){
+  const marker='DEPARTURE_READINESS_MISSING:';const start=message.indexOf(marker);if(start<0)return message;
+  try{const raw=message.slice(start+marker.length);const end=raw.lastIndexOf(']');const codes=JSON.parse(raw.slice(0,end+1)) as string[];return `无法创建班次：\n${codes.map(code=>`✕ ${departureReadinessLabels[code]??code}`).join('\n')}`;}catch{return '无法创建班次：产品或班次资料不完整，请刷新后重试。';}
+}
 export type OperationsRunRow = {
   departureId: string;
   tripTitle: string;
@@ -963,7 +968,7 @@ export class SupabaseOperationsRepository {
     );
     return {
       data: Array.isArray(data) ? (data as Array<Record<string, unknown>>) : [],
-      error: error?.message ?? null,
+      error: error ? formatDepartureReadinessError(error.message) : null,
     };
   }
   async createDepartureBatch(input: {
@@ -1006,7 +1011,7 @@ export class SupabaseOperationsRepository {
     );
     return {
       data: data as Record<string, unknown> | null,
-      error: error?.message ?? null,
+      error: error ? formatDepartureReadinessError(error.message) : null,
     };
   }
   async listEditableDepartures(from?: string, to?: string) {

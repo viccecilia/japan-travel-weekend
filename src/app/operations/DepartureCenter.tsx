@@ -479,7 +479,7 @@ export function DepartureCenter({view='calendar'}:{view?:'calendar'|'pricing'}) 
           </button>
         </form>
       </section>}
-      {notice && <p className="operations-notice">{notice}</p>}
+      {notice && <p className="operations-notice" style={{whiteSpace:'pre-wrap'}}>{notice}</p>}
       {preview.length > 0 && (
         <section className="operations-section">
           <header>

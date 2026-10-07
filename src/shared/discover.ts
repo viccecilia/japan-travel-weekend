@@ -39,7 +39,16 @@ export function discoverProduct(hero: DiscoverHero, trips: Trip[]) {
  return trips.find(trip=>hero.product_id ? trip.id===hero.product_id : !!hero.product_slug && trip.slug===hero.product_slug);
 }
 export function discoverText(hero: DiscoverHero, locale: PassengerLocale, trip?: Trip) {
- const source=hero.translations['zh-CN'];
  const localized=hero.translations[locale];
- return {title:localized?.title || source?.title || String(trip?.localizedContent?.[locale]?.title || trip?.title || ''),subtitle:localized?.subtitle || source?.subtitle || ''};
+ const routeLocale=trip?.localizedContent?.[locale];
+ const routeTitle=routeLocale&&typeof routeLocale.title==='string'?routeLocale.title:'';
+ const routeSummary=routeLocale&&typeof routeLocale.summary==='string'?routeLocale.summary:'';
+ // Never leak the Chinese Vlog copy into another locale. A missing formal
+ // translation remains visibly empty until Content supplies reviewed text.
+ return {title:localized?.title || routeTitle || (locale==='zh-CN'?trip?.title||'':''),subtitle:localized?.subtitle || routeSummary};
+}
+
+export function discoverTranslationGaps(hero:DiscoverHero){
+ const required:PassengerLocale[]=['zh-CN','ja','en','ko','vi','ne','es'];
+ return required.filter(locale=>!hero.translations[locale]?.title?.trim()||!hero.translations[locale]?.subtitle?.trim());
 }

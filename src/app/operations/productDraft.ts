@@ -25,7 +25,6 @@ export type ProductEditorStop = Record<string, unknown> & {
   imageUrl?: string;
   gallery?: string[];
   tip?: string;
-  video?: ProductSpotVideo;
 };
 
 export type ProductDraft = {
@@ -73,7 +72,25 @@ const video = (value: unknown): ProductSpotVideo | undefined => {
 };
 // Reviewed, exact legacy labels only.  This is deliberately not a normalized or
 // fuzzy matcher: anything not listed remains an explicit mapping gap.
-const reviewedRouteStopAttractionIds:Record<string,string>={'大原三千院':'sanzen-in','三千院':'sanzen-in'};
+// Reviewed one-to-one labels only. Keep this deliberately exact: combined
+// activities, meeting points and free-time nodes remain ordinary route nodes.
+export const reviewedRouteStopAttractionIds:Record<string,string>={
+  '天桥立':'amanohashidate','天橋立':'amanohashidate',
+  '智恩寺文殊堂':'chion-ji-monju-do','智恩寺 文殊堂':'chion-ji-monju-do',
+  '伊根舟屋':'ine-funaya','伊根の舟屋':'ine-funaya',
+  '清水寺':'kiyomizu-dera','伏见稻荷大社':'fushimi-inari-taisha','伏見稲荷大社':'fushimi-inari-taisha',
+  '奈良公园':'nara-park','奈良公園':'nara-park','白须神社':'shirahige-shrine','白鬚神社':'shirahige-shrine',
+  'La Collina近江八幡':'la-collina-omihachiman','La Collina 近江八幡':'la-collina-omihachiman',
+  '贵志站与特色电车':'kishi-station-cat-theme-trains','貴志駅と特色電車':'kishi-station-cat-theme-trains',
+  'Toretore市场':'toretore-market','とれとれ市場':'toretore-market',
+  '有马温泉':'arima-onsen','有馬温泉':'arima-onsen','北野异人馆街':'kitano-ijinkan','北野異人館街':'kitano-ijinkan',
+  '神户港':'kobe-harbor-harborland','神戸港':'kobe-harbor-harborland','六甲山夜景':'mount-rokko-night-view',
+  '宇治平等院':'byodoin-phoenix-hall','平等院鳳凰堂':'byodoin-phoenix-hall',
+  '源氏物语博物馆':'tale-of-genji-uji-chapters','源氏物語ミュージアム':'tale-of-genji-uji-chapters',
+  '宇治源氏之汤':'uji-genji-no-yu','宇治源氏の湯':'uji-genji-no-yu',
+  '胜尾寺':'katsuo-ji','勝尾寺':'katsuo-ji','爱宕念佛寺':'otagi-nenbutsu-ji','愛宕念仏寺':'otagi-nenbutsu-ji',
+  '大原三千院':'sanzen-in','三千院':'sanzen-in','贵船神社':'kifune-shrine','貴船神社':'kifune-shrine',
+};
 const reviewedAttractionId=(value:Record<string,unknown>)=>{
   const title=text(value.title)||text(value.name);
   return text(value.attractionId)||reviewedRouteStopAttractionIds[title]||undefined;
@@ -124,7 +141,7 @@ export function draftFromProduct(product: OperationsProduct): ProductDraft {
 }
 
 export function persistedItinerary(items: ProductEditorStop[]) {
-  return items.map(({editorId: _editorId, ...item}) => item);
+  return items.map(({editorId: _editorId, video: _legacyVideo, selectedVideoIds: _legacyVideoIds, ...item}) => item);
 }
 
 export function draftContent(product: OperationsProduct, draft: ProductDraft) {

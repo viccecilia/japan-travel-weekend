@@ -1,5 +1,4 @@
 import {localizedDraft, type ProductDraft} from './productDraft';
-import {SpotVideoPlayer} from '../../shared/components/SpotVideoPlayer';
 
 export type PreviewMode = 'detail' | 'card';
 
@@ -40,7 +39,7 @@ export function ProductPhonePreview({draft, locale, mode, dirty}: {draft: Produc
         ) : (
           <div className="product-preview-detail">
             <div className="product-preview-appbar">‹ {copy.route} <b>Japan Travel Weekend</b></div>
-            <img className="product-preview-hero" src={hero} alt="路线封面预览" />
+            {view.heroVideo?.url?<video className="product-preview-hero" src={view.heroVideo.url} poster={view.heroVideo.posterUrl||hero} autoPlay muted loop playsInline/>:<img className="product-preview-hero" src={hero} alt="路线封面预览" />}
             <div className="product-preview-copy">
               <small>{view.region || copy.missingRegion} · {view.duration || copy.missingDuration}</small>
               <h2>{view.heroTitle || view.title || copy.missingTitle}</h2>
@@ -50,17 +49,19 @@ export function ProductPhonePreview({draft, locale, mode, dirty}: {draft: Produc
               <h3>{copy.today}</h3>
               {view.itinerary.length ? view.itinerary.map((item, index) => (
                 <article key={item.editorId} id={`preview-${item.editorId}`}>
-                  {item.imageUrl && <img src={String(item.imageUrl)} alt="" />}
-                  {item.video?.url && <SpotVideoPlayer compact url={item.video.url} posterUrl={item.video.posterUrl || String(item.imageUrl ?? '') || undefined} title={String(item.title ?? item.name ?? '景点')} />}
+                  {(item.gallery?.length?item.gallery:[String(item.imageUrl??'')].filter(Boolean)).length>0&&<div className="product-preview-stop-gallery">{(item.gallery?.length?item.gallery:[String(item.imageUrl??'')].filter(Boolean)).map((url,index)=><img key={`${url}-${index}`} src={url} alt="" />)}</div>}
                   <div><b>{index + 1}. {String(item.title ?? item.name ?? copy.missingTitle)}</b>{Number(item.stayMinutes) > 0 && <small>{Number(item.stayMinutes)} {copy.minutes}</small>}</div>
                   {item.description && <p>{String(item.description)}</p>}
                   {Boolean(item.longDescription) && <p className="product-preview-description">{String(item.longDescription)}</p>}
+                  {item.tip&&<p className="product-preview-description">{String(item.tip)}</p>}
                 </article>
               )) : <p className="product-preview-empty">{copy.noStops}</p>}
               <h3>{copy.fees}</h3>
               <p>{view.included.length ? `${copy.included}: ${view.included.join('、')}` : ''}</p>
               {view.excluded.length > 0 && <p>{copy.excluded}: {view.excluded.join('、')}</p>}
               {view.preparation.length > 0 && <p>{copy.preparation}: {view.preparation.join('、')}</p>}
+              <h3>{copy.notes}</h3>
+              {([[copy.booking,view.bookingNotice],[copy.cancellation,view.cancellationPolicy],[copy.participants,view.participantRules],[copy.weather,view.weatherNotice],[copy.baggage,view.baggageNotice],[copy.safety,view.safetyNotice]] as Array<[string,string]>).filter(([,body])=>body).map(([label,body])=><p key={label}><b>{label}:</b> {body}</p>)}
             </div>
           </div>
         )}

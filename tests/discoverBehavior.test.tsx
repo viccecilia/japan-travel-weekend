@@ -60,7 +60,7 @@ describe('Discover public interactions',()=>{
  it('uses dynamic count, sorting, language fallback and excludes unavailable bound products',()=>{
   expect(visibleDiscoverHeroes([...initialDiscoverHeroes,{...initialDiscoverHeroes[0],id:'four',sort_order:4}],trips)).toHaveLength(4);
   expect(visibleDiscoverHeroes(initialDiscoverHeroes,[])).toHaveLength(1);
-  expect(discoverText(initialDiscoverHeroes[0],'es').title).toContain('京都的秋天');
+  expect(discoverText(initialDiscoverHeroes[0],'es').title).toBe('');
  });
  it.each([['/app','发现'],['/app/trips/amanohashidate-ine','精选线路'],['/app/booking/amanohashidate-ine','精选线路'],['/app/vip-charter','精选线路'],['/app/orders/one','订单'],['/app/messages','消息'],['/app/profile','我的']])('unique navigation at %s',(path,label)=>{
   render(<MemoryRouter initialEntries={[path]}><AppShell nav>Page</AppShell></MemoryRouter>);
