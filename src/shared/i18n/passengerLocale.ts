@@ -19,6 +19,23 @@ const passengerIntlLocales:Record<PassengerLocale,string>={
  * language when formatting dates for a supported passenger locale. */
 export function passengerIntlLocale(locale:PassengerLocale){return passengerIntlLocales[locale];}
 
+export type PassengerDepartureDateStyle='card'|'weekday'|'summary';
+const nepaliDigits=(value:number)=>String(value).replace(/\d/g,digit=>'०१२३४५६७८९'[Number(digit)]);
+const nepaliMonths=['जनवरी','फेब्रुअरी','मार्च','अप्रिल','मे','जुन','जुलाई','अगस्ट','सेप्टेम्बर','अक्टोबर','नोभेम्बर','डिसेम्बर'];
+const nepaliWeekdays:Record<string,string>={Sun:'आइत','Mon':'सोम','Tue':'मंगल','Wed':'बुध','Thu':'बिही','Fri':'शुक्र','Sat':'शनि'};
+
+/** Chromium builds without Nepali ICU data otherwise fall back to the active
+ * UI locale (often Chinese), so the three departure labels have a deterministic
+ * Gregorian Nepali presentation. */
+export function formatPassengerDepartureDate(locale:PassengerLocale,date:Date,style:PassengerDepartureDateStyle){
+  const options=style==='card'?{month:'short',day:'numeric'} as const:style==='weekday'?{weekday:'short'} as const:{dateStyle:'medium'} as const;
+  if(locale!=='ne')return new Intl.DateTimeFormat(passengerIntlLocale(locale),{timeZone:'Asia/Tokyo',...options}).format(date);
+  const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'numeric',day:'numeric',weekday:'short'}).formatToParts(date).map(part=>[part.type,part.value]));
+  if(style==='weekday')return nepaliWeekdays[parts.weekday]??parts.weekday;
+  const month=nepaliMonths[Number(parts.month)-1]??parts.month;
+  return style==='card'?`${month} ${nepaliDigits(Number(parts.day))}`:`${nepaliDigits(Number(parts.day))} ${month} ${nepaliDigits(Number(parts.year))}`;
+}
+
 export function normalizePassengerLocale(value: string): PassengerLocale | null {
   const code = value.trim().toLowerCase();
   if (code.startsWith("zh-tw") || code.startsWith("zh-hk") || code.startsWith("zh-hant")) return "zh-TW";
