@@ -11,6 +11,14 @@ export const passengerLocales = [
 
 export type PassengerLocale = (typeof passengerLocales)[number]["code"];
 
+const passengerIntlLocales:Record<PassengerLocale,string>={
+  'zh-CN':'zh-CN','zh-TW':'zh-TW',ja:'ja-JP',en:'en-US',vi:'vi-VN',ne:'ne-NP',ko:'ko-KR',es:'es-ES',
+};
+
+/** Use explicit regional tags so browsers never fall back to the current UI
+ * language when formatting dates for a supported passenger locale. */
+export function passengerIntlLocale(locale:PassengerLocale){return passengerIntlLocales[locale];}
+
 export function normalizePassengerLocale(value: string): PassengerLocale | null {
   const code = value.trim().toLowerCase();
   if (code.startsWith("zh-tw") || code.startsWith("zh-hk") || code.startsWith("zh-hant")) return "zh-TW";

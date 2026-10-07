@@ -55,8 +55,8 @@ describe('route locale presentation',()=>{
 
   it('uses canonical source Hero copy instead of an internal route title and keeps foreign Hero localized',()=>{
     const heroTrip={...trip,heroTitle:'Route Studio V1 Test Route',heroSubtitle:'公开中文 Hero 副标题',localizedContent:{...trip.localizedContent,'zh-CN':{title:'ROUTE-STUDIO-V1-QA · Test Only'},en:{title:'English public route',summary:'English public summary'}}} as unknown as Trip;
-    expect(routeHeroPresentation(heroTrip,'zh-CN')).toEqual({title:'Route Studio V1 Test Route',subtitle:'公开中文 Hero 副标题'});
-    expect(routeHeroPresentation(heroTrip,'en')).toEqual({title:'English public route',subtitle:'English public summary'});
-    expect(routeHeroPresentation(heroTrip,'vi')).toEqual({title:'',subtitle:''});
+    expect(routeHeroPresentation(heroTrip,'zh-CN')).toEqual({title:'Route Studio V1 Test Route',subtitle:'公开中文 Hero 副标题',duration:heroTrip.duration});
+    expect(routeHeroPresentation(heroTrip,'en')).toEqual({title:'English public route',subtitle:'English public summary',duration:''});
+    expect(routeHeroPresentation(heroTrip,'vi')).toEqual({title:'',subtitle:'',duration:''});
   });
 });

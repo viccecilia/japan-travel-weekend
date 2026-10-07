@@ -71,6 +71,7 @@ export function routeHeroPresentation(trip:Trip,locale:PassengerLocale){
   return {
     title:heroValue('heroTitle',source?trip.heroTitle||localizedTitle:localizedTitle),
     subtitle:heroValue('heroSubtitle',source?trip.heroSubtitle||localizedSummary:localizedSummary),
+    duration:heroValue('duration',source?trip.duration:''),
   };
 }
 

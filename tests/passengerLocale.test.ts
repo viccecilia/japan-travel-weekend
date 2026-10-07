@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {normalizePassengerLocale,passengerCoreCopy,passengerHomeCopy,passengerLocales} from '../src/shared/i18n/passengerLocale';
+import {normalizePassengerLocale,passengerCoreCopy,passengerHomeCopy,passengerIntlLocale,passengerLocales} from '../src/shared/i18n/passengerLocale';
 
 describe('游客端八语界面',()=>{
   it('完整列出八种游客语言',()=>{
@@ -9,6 +9,10 @@ describe('游客端八语界面',()=>{
     expect(normalizePassengerLocale('ko-KR')).toBe('ko');
     expect(normalizePassengerLocale('zh-Hant-HK')).toBe('zh-TW');
     expect(normalizePassengerLocale('es-MX')).toBe('es');
+  });
+  it('使用明确地区标签格式化尼泊尔语日期，避免回退到当前界面语言',()=>{
+    expect(passengerIntlLocale('ne')).toBe('ne-NP');
+    expect(passengerIntlLocale('ja')).toBe('ja-JP');
   });
   it('每种语言都有核心和首页文案',()=>{
     for(const {code} of passengerLocales){
