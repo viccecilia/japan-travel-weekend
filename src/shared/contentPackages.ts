@@ -126,14 +126,16 @@ export function reconcileRouteListItems(previous: unknown, values: Partial<Recor
 export function routeListItems(content: Record<string, unknown>, key: RouteListKey): RouteListItem[] {
   return reconcileRouteListItems(content.translationListItems, {[key]: strings(content[key])})[key] ?? [];
 }
-export function localizedRouteList(localeValue: unknown, listItems: RouteListItem[], key: RouteListKey, fallback: string[]) {
+export function localizedRouteList(localeValue: unknown, listItems: RouteListItem[], key: RouteListKey, fallback: string[], options: {sourceFallback?: boolean} = {}) {
   const locale = asRecord(localeValue); const translations = asRecord(locale[key]); const fields = Object.values(asRecord(asRecord(locale._content_package).fields)).map(asRecord);
   return listItems.map((item, index) => {
     const meta = fields.find(fieldValue => string(fieldValue.item_id) === item.id && string(fieldValue.field_key) === key);
     const translated = string(translations[item.id]) || string(meta?.text);
     const currentSource = contentHash(item.source);
     const sourceMatches = string(meta?.source_hash) === currentSource && string(meta?.source_text) === item.source;
-    return translated && sourceMatches && string(meta?.status) !== 'stale' ? translated : (fallback[index] ?? item.source);
+    return translated && sourceMatches && string(meta?.status) !== 'stale'
+      ? translated
+      : options.sourceFallback === false ? '' : (fallback[index] ?? item.source);
   });
 }
 

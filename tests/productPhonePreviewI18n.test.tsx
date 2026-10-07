@@ -16,4 +16,31 @@ describe('ProductPhonePreview Route V2 locale content', () => {
     render(<ProductPhonePreview draft={draftFromProduct({...original, content: applied.content})} locale="en" mode="detail" dirty={false} />);
     for (const expected of Object.values(values)) expect(screen.getAllByText(expected, {exact: false}).length).toBeGreaterThan(0);
   });
+
+  it('shows an explicit translation gap instead of silently mixing Chinese into Japanese preview', () => {
+    render(<ProductPhonePreview draft={draftFromProduct(route())} locale="ja" mode="detail" dirty={false} />);
+    expect(screen.getByText('TRANSLATION_GAP')).toBeInTheDocument();
+    expect(screen.queryByText('中文路线')).not.toBeInTheDocument();
+    expect(screen.queryByText('中文简介')).not.toBeInTheDocument();
+    expect(screen.queryByText('中文景点')).not.toBeInTheDocument();
+  });
+
+  it('uses the selected Attraction CMS guide language for linked attraction stops', () => {
+    const original = route();
+    original.content = {
+      ...original.content,
+      locales: {ja: {title: '日本語ルート', summary: '日本語の概要'}},
+      itinerary: [{id: 'spot-one', attractionId: 'katsuo-ji', title: '中文景点'}],
+    };
+    render(<ProductPhonePreview
+      draft={draftFromProduct(original)}
+      locale="ja"
+      mode="detail"
+      dirty={false}
+      attractionGuides={{'katsuo-ji': {ja: {title: '勝尾寺', body: '勝運祈願で知られる寺院です。'}}}}
+    />);
+    expect(screen.getByText(/1\. 勝尾寺/)).toBeInTheDocument();
+    expect(screen.getByText('勝運祈願で知られる寺院です。')).toBeInTheDocument();
+    expect(screen.queryByText('中文景点')).not.toBeInTheDocument();
+  });
 });

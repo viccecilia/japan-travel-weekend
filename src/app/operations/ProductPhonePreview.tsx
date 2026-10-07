@@ -1,6 +1,7 @@
 import {localizedDraft, type ProductDraft} from './productDraft';
 
 export type PreviewMode = 'detail' | 'card';
+export type AttractionPreviewGuides = Record<string, Record<string, {title?: string; body?: string}>>;
 
 type PreviewCopy = {
   route: string; price: string; today: string; fees: string; notes: string; included: string; excluded: string; preparation: string;
@@ -19,15 +20,32 @@ const previewCopy: Record<string, PreviewCopy> = {
   ne: {route:'रुट विवरण', price:'मूल्य उपलब्ध प्रस्थानअनुसार हुन्छ', today:'आजको यात्रा', fees:'समावेश र तयारी', notes:'यात्रा सूचना', included:'समावेश', excluded:'समावेश छैन', preparation:'तयारी', booking:'बुकिङ सूचना', cancellation:'रद्द र फिर्ता', participants:'सहभागी नियम', weather:'मौसम', baggage:'सामान', safety:'सुरक्षा', minutes:'मिनेट', missingRegion:'क्षेत्र सेट गरिएको छैन', missingDuration:'अवधि सेट गरिएको छैन', missingTitle:'शीर्षक नभएको रुट', missingSummary:'रुटको परिचय अझै छैन', noStops:'स्थान थपिएको छैन', draft:'ड्राफ्ट प्रभाव · पूर्वावलोकन मात्र', saved:'सुरक्षित भयो', previewOnly:'ड्राफ्ट पूर्वावलोकन', chooseDate:'मिति छान्नुहोस्', unchanged:'परिवर्तन तुरुन्त देखिन्छ र प्रकाशित सामग्रीमा असर पर्दैन'}
 };
 
-export function ProductPhonePreview({draft, locale, mode, dirty}: {draft: ProductDraft; locale: string; mode: PreviewMode; dirty: boolean}) {
-  const view = localizedDraft(draft, locale);
+export function ProductPhonePreview({draft, locale, mode, dirty, attractionGuides = {}}: {draft: ProductDraft; locale: string; mode: PreviewMode; dirty: boolean; attractionGuides?: AttractionPreviewGuides}) {
+  const view = localizedDraft(draft, locale, {sourceFallback:false});
   const copy = previewCopy[locale] ?? previewCopy['zh-CN'];
   const hero = view.heroImageUrl || view.gallery[0] || '/placeholder-route.png';
+  const stops = view.itinerary.map((item) => {
+    const attractionId = String(item.attractionId ?? '');
+    const guide = locale !== 'zh-CN' && attractionId ? attractionGuides[attractionId]?.[locale] : undefined;
+    return guide ? {...item, title: guide.title ?? '', description: guide.body ?? '', shortDescription: guide.body ?? '', longDescription: ''} : item;
+  });
+  const translationGaps = locale === 'zh-CN' ? [] : [
+    !view.title && '路线标题',
+    !view.summary && '一句话简介',
+    ...stops.flatMap((item, index) => {
+      const attractionId = String(item.attractionId ?? '');
+      if (attractionId) {
+        const guide = attractionGuides[attractionId]?.[locale];
+        return [!guide?.title && `景点 ${index + 1} 名称`, !guide?.body && `景点 ${index + 1} 介绍`];
+      }
+      return [!item.title && `节点 ${index + 1} 标题`, !item.description && `节点 ${index + 1} 介绍`];
+    }),
+  ].filter((item): item is string => Boolean(item));
   return (
     <aside className="product-phone-preview" aria-label="游客手机草稿预览">
       <header>
         <div><b>游客手机预览</b><small>{dirty ? '未保存修改' : copy.previewOnly}</small></div>
-        <span aria-live="polite">{dirty ? '未保存' : copy.saved}</span>
+        <span className={translationGaps.length ? 'translation-gap' : ''} aria-live="polite">{translationGaps.length ? `${locale} 缺少 ${translationGaps.length} 项` : dirty ? '未保存' : copy.saved}</span>
       </header>
       <div className="product-preview-phone">
         <div className="product-preview-status"><span>9:41</span><span>▮▮ ▰</span></div>
@@ -39,15 +57,16 @@ export function ProductPhonePreview({draft, locale, mode, dirty}: {draft: Produc
         ) : (
           <div className="product-preview-detail">
             <div className="product-preview-appbar">‹ {copy.route} <b>Japan Travel Weekend</b></div>
-            {view.heroVideo?.url?<video className="product-preview-hero" src={view.heroVideo.url} poster={view.heroVideo.posterUrl||hero} autoPlay muted loop playsInline/>:<img className="product-preview-hero" src={hero} alt="路线封面预览" />}
+            <section className="product-preview-hero-shell">
+              {view.heroVideo?.url?<video className="product-preview-hero" src={view.heroVideo.url} poster={view.heroVideo.posterUrl||hero} autoPlay muted loop playsInline/>:<img className="product-preview-hero" src={hero} alt="路线封面预览" />}
+              <div><small>{view.region || copy.missingRegion} · {view.duration || copy.missingDuration}</small><h2>{view.heroTitle || view.title || copy.missingTitle}</h2><p>{view.heroSubtitle || view.summary || copy.missingSummary}</p></div>
+            </section>
             <div className="product-preview-copy">
-              <small>{view.region || copy.missingRegion} · {view.duration || copy.missingDuration}</small>
-              <h2>{view.heroTitle || view.title || copy.missingTitle}</h2>
-              <p>{view.heroSubtitle || view.summary || copy.missingSummary}</p>
+              {translationGaps.length > 0 && <aside className="product-preview-translation-gap"><b>TRANSLATION_GAP</b><span>{translationGaps.join('、')}</span></aside>}
               {view.description && <p className="product-preview-description">{view.description}</p>}
               <b className="product-preview-price">{copy.price}</b>
               <h3>{copy.today}</h3>
-              {view.itinerary.length ? view.itinerary.map((item, index) => (
+              {stops.length ? stops.map((item, index) => (
                 <article key={item.editorId} id={`preview-${item.editorId}`}>
                   {(item.gallery?.length?item.gallery:[String(item.imageUrl??'')].filter(Boolean)).length>0&&<div className="product-preview-stop-gallery">{(item.gallery?.length?item.gallery:[String(item.imageUrl??'')].filter(Boolean)).map((url,index)=><img key={`${url}-${index}`} src={url} alt="" />)}</div>}
                   <div><b>{index + 1}. {String(item.title ?? item.name ?? copy.missingTitle)}</b>{Number(item.stayMinutes) > 0 && <small>{Number(item.stayMinutes)} {copy.minutes}</small>}</div>

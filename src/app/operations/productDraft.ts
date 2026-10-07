@@ -181,40 +181,41 @@ export function draftContent(product: OperationsProduct, draft: ProductDraft) {
   };
 }
 
-export function localizedDraft(draft: ProductDraft, locale: string) {
+export function localizedDraft(draft: ProductDraft, locale: string, options: {sourceFallback?: boolean} = {}) {
   if (locale === 'zh-CN') return draft;
   const localized = draft.locales[locale] ?? {};
   const localizedStops = object(localized.itinerary);
+  const sourceFallback = options.sourceFallback !== false;
   return {
     ...draft,
-    title: text(localized.title) || draft.title,
-    tagline: text(localized.tagline) || draft.tagline,
-    summary: text(localized.summary) || draft.summary,
-    description: text(localized.description) || draft.description,
-      heroTitle: text(localized.heroTitle) || text(localized.title) || draft.heroTitle,
-      heroSubtitle: text(localized.heroSubtitle) || text(localized.summary) || draft.heroSubtitle,
-    heroHighlightPhrase: text(localized.heroHighlightPhrase) || draft.heroHighlightPhrase,
-    region: text(localized.region) || draft.region,
-    duration: text(localized.duration) || draft.duration,
-    highlights: localizedRouteList(localized, draft.translationListItems.highlights ?? [], 'highlights', draft.highlights),
-    included: localizedRouteList(localized, draft.translationListItems.included ?? [], 'included', draft.included),
-    excluded: localizedRouteList(localized, draft.translationListItems.excluded ?? [], 'excluded', draft.excluded),
-    preparation: localizedRouteList(localized, draft.translationListItems.preparation ?? [], 'preparation', draft.preparation),
-    notices: localizedRouteList(localized, draft.translationListItems.notices ?? [], 'notices', draft.notices),
-    bookingNotice: text(localized.bookingNotice) || draft.bookingNotice,
-    cancellationPolicy: text(localized.cancellationPolicy) || draft.cancellationPolicy,
-    participantRules: text(localized.participantRules) || draft.participantRules,
-    weatherNotice: text(localized.weatherNotice) || draft.weatherNotice,
-    baggageNotice: text(localized.baggageNotice) || draft.baggageNotice,
-    safetyNotice: text(localized.safetyNotice) || draft.safetyNotice,
+    title: text(localized.title) || (sourceFallback ? draft.title : ''),
+    tagline: text(localized.tagline) || (sourceFallback ? draft.tagline : ''),
+    summary: text(localized.summary) || (sourceFallback ? draft.summary : ''),
+    description: text(localized.description) || (sourceFallback ? draft.description : ''),
+    heroTitle: text(localized.heroTitle) || text(localized.title) || (sourceFallback ? draft.heroTitle : ''),
+    heroSubtitle: text(localized.heroSubtitle) || text(localized.summary) || (sourceFallback ? draft.heroSubtitle : ''),
+    heroHighlightPhrase: text(localized.heroHighlightPhrase) || (sourceFallback ? draft.heroHighlightPhrase : ''),
+    region: text(localized.region) || (sourceFallback ? draft.region : ''),
+    duration: text(localized.duration) || (sourceFallback ? draft.duration : ''),
+    highlights: localizedRouteList(localized, draft.translationListItems.highlights ?? [], 'highlights', draft.highlights, {sourceFallback}).filter(Boolean),
+    included: localizedRouteList(localized, draft.translationListItems.included ?? [], 'included', draft.included, {sourceFallback}).filter(Boolean),
+    excluded: localizedRouteList(localized, draft.translationListItems.excluded ?? [], 'excluded', draft.excluded, {sourceFallback}).filter(Boolean),
+    preparation: localizedRouteList(localized, draft.translationListItems.preparation ?? [], 'preparation', draft.preparation, {sourceFallback}).filter(Boolean),
+    notices: localizedRouteList(localized, draft.translationListItems.notices ?? [], 'notices', draft.notices, {sourceFallback}).filter(Boolean),
+    bookingNotice: text(localized.bookingNotice) || (sourceFallback ? draft.bookingNotice : ''),
+    cancellationPolicy: text(localized.cancellationPolicy) || (sourceFallback ? draft.cancellationPolicy : ''),
+    participantRules: text(localized.participantRules) || (sourceFallback ? draft.participantRules : ''),
+    weatherNotice: text(localized.weatherNotice) || (sourceFallback ? draft.weatherNotice : ''),
+    baggageNotice: text(localized.baggageNotice) || (sourceFallback ? draft.baggageNotice : ''),
+    safetyNotice: text(localized.safetyNotice) || (sourceFallback ? draft.safetyNotice : ''),
     routeReminders: draft.routeReminders.flatMap((item) => {
       if(item.enabled===false)return [];
-      const localized=object(item.locales[locale]); const value=text(localized.body)?localized:object(item.locales['zh-CN']);
+      const localizedValue=object(item.locales[locale]); const value=text(localizedValue.body)||!sourceFallback?localizedValue:object(item.locales['zh-CN']);
       return text(value.body) ? [{...item, locales:{[locale]:{title:text(value.title),body:text(value.body)}}}] : [];
     }),
     itinerary: draft.itinerary.map((item) => {
       const stopId = String(item.id ?? item.stopId ?? item.placeId ?? ''); const translation = object(localizedStops[stopId]);
-      return {...item, title: text(translation.stop_title) || text(translation.title) || item.title, subtitle: text(translation.subtitle) || item.subtitle, shortDescription: text(translation.shortDescription) || item.shortDescription, longDescription: text(translation.longDescription) || item.longDescription, description: text(translation.shortDescription) || text(translation.description) || item.description, tip: text(translation.tip) || item.tip};
+      return {...item, title: text(translation.stop_title) || text(translation.title) || (sourceFallback ? item.title : ''), subtitle: text(translation.subtitle) || (sourceFallback ? item.subtitle : ''), shortDescription: text(translation.shortDescription) || (sourceFallback ? item.shortDescription : ''), longDescription: text(translation.longDescription) || (sourceFallback ? item.longDescription : ''), description: text(translation.shortDescription) || text(translation.description) || (sourceFallback ? item.description : ''), tip: text(translation.tip) || (sourceFallback ? item.tip : '')};
     }),
   };
 }
