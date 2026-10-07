@@ -5,6 +5,7 @@ import {discoverText,discoverTranslationGaps,initialDiscoverHeroes} from '../src
 import {formatDepartureReadinessError,type OperationsProduct} from '../src/shared/integrations/supabaseOperations';
 import {isRouteStudioProduct,ROUTE_STUDIO_V1_SLUGS} from '../src/app/operations/routeStudioScope';
 import {policyLocalizationText} from '../src/app/operations/policyLocalization';
+import {publishedTripTimeline} from '../src/shared/data/repository';
 
 const product:OperationsProduct={id:'route-1',slug:'amanohashidate-ine',status:'published',catalogVersion:4,publishedRevision:3,draftRevision:null,title:'天桥立与伊根',heroImageUrl:'/hero.webp',gallery:[],updatedAt:'2026-10-07T00:00:00Z',content:{summary:'路线简介',description:'足够完整的路线介绍文字，用于产品发布与班次销售验证。',included:['车辆'],excluded:[],heroVideo:{url:'/hero.mp4',storagePath:'route-1/hero.mp4',posterUrl:'/poster.webp',mimeType:'video/mp4',sizeBytes:1024},itinerary:[{id:'meet',title:'京都站集合',time:'08:00',stayMinutes:10,type:'meeting'},{id:'ama',title:'天桥立',time:'10:30',stayMinutes:90,gallery:['/a.webp','/b.webp'],video:{url:'/legacy.mp4',storagePath:'legacy.mp4',mimeType:'video/mp4',sizeBytes:10}}],locales:{en:{title:'Amanohashidate & Ine',summary:'A coast day trip',itinerary:{meet:{stop_title:'Meet at Kyoto Station'}}},ja:{title:'天橋立と伊根',summary:'海の一日旅'}}}};
 
@@ -49,6 +50,12 @@ describe('Route Studio V1 data contract',()=>{
 });
 
 describe('Route Studio V1 readiness and locale safety',()=>{
+  it('keeps linked attraction itinerary rows even when their route-specific title is intentionally empty',()=>{
+    expect(publishedTripTimeline([{id:'ama',attractionId:'amanohashidate',time:'10:30'}],[])).toEqual([
+      expect.objectContaining({id:'ama',attractionId:'amanohashidate',title:'',time:'10:30'}),
+    ]);
+    expect(publishedTripTimeline([{id:'empty'}],[])).toEqual([]);
+  });
   it('turns the database readiness codes into concrete missing fields',()=>{
     expect(formatDepartureReadinessError('DEPARTURE_READINESS_MISSING:["product_not_published","meeting_address","price"]')).toBe('无法创建班次：\n✕ 产品尚未发布\n✕ 集合地址至少 5 个字符\n✕ 价格必须大于 0');
   });

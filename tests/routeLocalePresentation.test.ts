@@ -1,6 +1,6 @@
 import {describe,expect,it} from 'vitest';
 import {legacyRouteSlugs} from '../src/shared/i18n/routeLegacyContent';
-import {localizedRouteTimeline,routeLocaleContent} from '../src/shared/routeLocalePresentation';
+import {localizedRouteTimeline,routeHeroPresentation,routeLocaleContent} from '../src/shared/routeLocalePresentation';
 import type {Trip} from '../src/shared/types';
 
 const trip={
@@ -51,5 +51,12 @@ describe('route locale presentation',()=>{
 
   it('retains source-language compatibility for an unresolved legacy route',()=>{
     expect(localizedRouteTimeline(trip,'zh-CN')[1]).toMatchObject({title:'岚山自由活动',detail:'旧中文活动说明'});
+  });
+
+  it('uses canonical source Hero copy instead of an internal route title and keeps foreign Hero localized',()=>{
+    const heroTrip={...trip,heroTitle:'Route Studio V1 Test Route',heroSubtitle:'公开中文 Hero 副标题',localizedContent:{...trip.localizedContent,'zh-CN':{title:'ROUTE-STUDIO-V1-QA · Test Only'},en:{title:'English public route',summary:'English public summary'}}} as unknown as Trip;
+    expect(routeHeroPresentation(heroTrip,'zh-CN')).toEqual({title:'Route Studio V1 Test Route',subtitle:'公开中文 Hero 副标题'});
+    expect(routeHeroPresentation(heroTrip,'en')).toEqual({title:'English public route',subtitle:'English public summary'});
+    expect(routeHeroPresentation(heroTrip,'vi')).toEqual({title:'',subtitle:''});
   });
 });

@@ -56,6 +56,24 @@ export function localizedRouteText(content:LocaleContent,key:string,fallback:str
   return typeof value==='string'&&value.trim()?value.trim():(allowSourceFallback?fallback:'');
 }
 
+/** Root Hero copy is the canonical source-language presentation, while every
+ * foreign locale must use its own published title/summary without borrowing
+ * Chinese. */
+export function routeHeroPresentation(trip:Trip,locale:PassengerLocale){
+  const content=routeLocaleContent(trip,locale);
+  const source=isRouteSourceLocale(locale);
+  const localizedTitle=localizedRouteText(content,'title',trip.shortTitle||trip.title,source);
+  const localizedSummary=localizedRouteText(content,'summary',trip.summary,source);
+  const heroValue=(key:string,fallback:string)=>{
+    const value=content[key];
+    return typeof value==='string'&&value.trim()?value.trim():fallback;
+  };
+  return {
+    title:heroValue('heroTitle',source?trip.heroTitle||localizedTitle:localizedTitle),
+    subtitle:heroValue('heroSubtitle',source?trip.heroSubtitle||localizedSummary:localizedSummary),
+  };
+}
+
 function itineraryTranslations(content:LocaleContent){
   const value=content.itinerary;
   return value&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,Record<string,unknown>>:{};
