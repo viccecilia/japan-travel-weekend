@@ -27,18 +27,27 @@ export function ProductPhonePreview({draft, locale, mode, dirty, attractionGuide
   const stops = view.itinerary.map((item) => {
     const attractionId = String(item.attractionId ?? '');
     const guide = locale !== 'zh-CN' && attractionId ? attractionGuides[attractionId]?.[locale] : undefined;
-    return guide ? {...item, title: guide.title ?? '', description: guide.body ?? '', shortDescription: guide.body ?? '', longDescription: ''} : item;
+    if (!guide) return item;
+    const title = guide.title || item.title || '';
+    const description = guide.body || item.description || item.shortDescription || '';
+    return {
+      ...item,
+      title,
+      description,
+      shortDescription: description,
+      longDescription: guide.body ? '' : item.longDescription,
+    };
   });
   const translationGaps = locale === 'zh-CN' ? [] : [
     !view.title && '路线标题',
     !view.summary && '一句话简介',
     ...stops.flatMap((item, index) => {
       const attractionId = String(item.attractionId ?? '');
-      if (attractionId) {
-        const guide = attractionGuides[attractionId]?.[locale];
-        return [!guide?.title && `景点 ${index + 1} 名称`, !guide?.body && `景点 ${index + 1} 介绍`];
-      }
-      return [!item.title && `节点 ${index + 1} 标题`, !item.description && `节点 ${index + 1} 介绍`];
+      const label = attractionId ? '景点' : '节点';
+      return [
+        !item.title && `${label} ${index + 1} ${attractionId ? '名称' : '标题'}`,
+        !(item.description || item.shortDescription) && `${label} ${index + 1} 介绍`,
+      ];
     }),
   ].filter((item): item is string => Boolean(item));
   return (

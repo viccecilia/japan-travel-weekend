@@ -146,6 +146,35 @@ it('合法相对图片地址可以保存，扩展字段和其他语言不会被�
   expect(payload.content.itinerary[0]).not.toHaveProperty('editorId');
 });
 
+it('繁体中文和其他语言都可补齐路线及普通节点译文并写入草稿', async () => {
+  const routeWithOrdinaryNode = {
+    ...product,
+    content: {
+      ...product.content,
+      itinerary: [{id: 'legacy-stop-3', title: '岚山地区自由活动', shortDescription: '中文节点介绍'}],
+      locales: {},
+    },
+  };
+  const operations = open({listProducts: vi.fn(async () => ({data: [routeWithOrdinaryNode], error: null}))});
+  fireEvent.click(await screen.findByRole('button', {name: '多语言'}));
+  fireEvent.change(screen.getByLabelText('编辑语言'), {target: {value: 'zh-TW'}});
+  const localeEditor = screen.getByRole('heading', {name: '8语言标题 / 简介'}).closest('section') as HTMLElement;
+  fireEvent.change(within(localeEditor).getByLabelText('路线标题'), {target: {value: '繁體路線標題'}});
+  fireEvent.change(within(localeEditor).getByLabelText('一句话简介'), {target: {value: '繁體路線簡介'}});
+  fireEvent.change(within(localeEditor).getByLabelText('岚山地区自由活动 · 标题'), {target: {value: '嵐山地區自由活動'}});
+  fireEvent.change(within(localeEditor).getByLabelText('岚山地区自由活动 · 介绍'), {target: {value: '繁體節點介紹'}});
+  fireEvent.change(screen.getByLabelText('预览语言'), {target: {value: 'zh-TW'}});
+  expect(within(screen.getByLabelText('游客手机草稿预览')).queryByText('TRANSLATION_GAP')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', {name: '保存草稿'}));
+  await vi.waitFor(() => expect(operations.saveProductDraft).toHaveBeenCalled());
+  const payload = operations.saveProductDraft.mock.calls[0][0] as {content: {locales: Record<string, {title?: string; summary?: string; itinerary?: Record<string, {stop_title?: string; shortDescription?: string}>}>}};
+  expect(payload.content.locales['zh-TW']).toMatchObject({
+    title: '繁體路線標題',
+    summary: '繁體路線簡介',
+    itinerary: {'legacy-stop-3': {stop_title: '嵐山地區自由活動', shortDescription: '繁體節點介紹'}},
+  });
+});
+
 it('站内返回在未保存时需要确认，取消后留在编辑页', async () => {
   const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
   open();

@@ -1,6 +1,6 @@
 import {useMemo, useRef, useState, type ReactNode} from 'react';
 import type {OperationsProduct} from '../../shared/integrations/supabaseOperations';
-import {applyRouteTranslationPackage, buildRouteContentTemplate, buildRouteTranslationPackage, downloadPackage, isRouteContentPackage, packageStatusSummary, parseJsonFile, pendingTranslationPackage, validateContentPackage, validateTranslationPackage, type ContentPackage, type PackageIssue, type TranslationPackage} from '../../shared/contentPackages';
+import {applyRouteTranslationPackage, buildRouteContentTemplate, buildRouteTranslationPackage, downloadPackage, isRouteContentPackage, packageStatusSummary, parseJsonFile, pendingTranslationPackage, validateContentPackage, validateTranslationPackage, type ContentPackage, type PackageIssue} from '../../shared/contentPackages';
 import {draftContent, draftFromProduct, type ProductDraft} from './productDraft';
 
 const statusName: Record<string, string> = {missing: '缺失', draft: '草稿', reviewed: '已复核', published: '已发布', stale: '需重译'};
@@ -22,7 +22,7 @@ export function RouteContentWorkflow({product, draft, update, onImportChinese, o
     try { const validated = validateTranslationPackage(await parseJsonFile(file)); setIssues(validated.issues); if (!validated.package) { setNotice('译文包未导入：请先修正上述错误。'); return; } if (validated.package.entity.entity_type !== 'route' || validated.package.entity.entity_id !== product.id) { setNotice('译文包不属于当前路线，已拒绝导入。'); return; } const applied = applyRouteTranslationPackage(draftProduct, validated.package); const next = draftFromProduct({...product, title: draftProduct.title, content: applied.content}); update(next); setIssues([...validated.issues, ...applied.warnings]); setNotice(`已导入 ${applied.imported} 条译文，跳过 ${applied.skipped} 条。当前为未发布草稿，请检查预览后保存。`); }
     catch { setIssues([{severity: 'error', code: 'json', path: 'file', message: '文件不是有效 JSON 翻译包'}]); setNotice('译文包读取失败。'); }
   };
-  const locales=['zh-CN','ja','en','ko','vi','ne','es'];
+  const locales=['zh-CN','zh-TW','ja','en','ko','vi','ne','es'];
   const [contentLocale,setContentLocale]=useState('zh-CN');
   const localized=draft.locales[contentLocale]??{};
   const setLocalized=(key:'title'|'tagline'|'summary'|'description'|'highlights',value:string)=>{
@@ -63,6 +63,7 @@ export function RouteContentWorkflow({product, draft, update, onImportChinese, o
   <section className="product-editor-card" aria-label="路线内容与特别提醒">
     <header><div><h2>路线内容与特别提醒</h2><p>只填写路线独有内容；景点导览和通用规则不复制到这里。缺少语言内容将保持缺失，不会自动翻译。</p></div><select aria-label="路线内容语言" value={contentLocale} onChange={event=>setContentLocale(event.target.value)}>{locales.map(locale=><option key={locale} value={locale}>{locale}</option>)}</select></header>
     <Field label="路线标题（内容包）"><input value={value('title')} onChange={event=>setLocalized('title',event.target.value)}/></Field>
+    <Field label="一句话简介"><textarea value={value('summary')} onChange={event=>setLocalized('summary',event.target.value)}/></Field>
     <Field label="一句话卖点"><textarea value={value('tagline')} onChange={event=>setLocalized('tagline',event.target.value)}/></Field>
     <Field label="路线总体介绍"><textarea value={value('description')} onChange={event=>setLocalized('description',event.target.value)}/></Field>
     <Field label="路线亮点（每行一项）"><textarea value={value('highlights')} onChange={event=>setLocalized('highlights',event.target.value)}/></Field>

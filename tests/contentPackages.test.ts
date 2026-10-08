@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest';
 import {applyHeroTranslationPackage, applyRouteTranslationPackage, buildHeroContentTemplate, buildHeroTranslationPackage, buildRouteContentTemplate, buildRouteTranslationPackage, localizedRouteList, pendingTranslationPackage, reconcileRouteListItems, sanitizeRouteContent, validateContentPackage, validateTranslationPackage} from '../src/shared/contentPackages';
-import {draftFromProduct, localizedDraft} from '../src/app/operations/productDraft';
+import {draftContent, draftFromProduct, localizedDraft} from '../src/app/operations/productDraft';
 import type {OperationsProduct} from '../src/shared/integrations/supabaseOperations';
 import type {DiscoverHero} from '../src/shared/discover';
 
@@ -97,6 +97,36 @@ describe('JTW content and translation packages', () => {
     const draft = draftFromProduct({...original, content: applied.content});
     expect(localizedDraft(draft, 'en')).toMatchObject({included: ['Round-trip transport'], excluded: ['Lunch'], preparation: ['Comfortable shoes'], bookingNotice: 'Meet early', cancellationPolicy: 'Cancellation policy', participantRules: 'Participant rules', weatherNotice: 'Weather notice', baggageNotice: 'Baggage notice', safetyNotice: 'Safety notice'});
     expect(localizedDraft(draft, 'ja')).toMatchObject({included: ['往復車両'], excluded: ['昼食'], preparation: ['歩きやすい靴'], bookingNotice: '早めに集合', cancellationPolicy: 'キャンセル規定', participantRules: '参加規約', weatherNotice: '天候のご案内', baggageNotice: '荷物のご案内', safetyNotice: '安全に関するご案内'});
+  });
+
+  it('keeps every target locale route and ordinary-stop translation after import, save serialization, and reload', () => {
+    const original = product();
+    const exported = buildRouteTranslationPackage(original);
+    const targetLocales = ['zh-TW', 'ja', 'en', 'ko', 'es', 'vi', 'ne'] as const;
+    for (const field of exported.fields) {
+      if (!['title', 'summary', 'stop_title', 'shortDescription'].includes(field.field_key)) continue;
+      for (const locale of targetLocales) {
+        field.translations[locale] = {text: `${locale}-${field.field_key}-${field.item_id ?? 'route'}`, status: 'draft', source_hash: field.source_hash};
+      }
+    }
+    const applied = applyRouteTranslationPackage(original, exported);
+    expect(applied.skipped).toBe(0);
+    const importedDraft = draftFromProduct({...original, content: applied.content});
+    const savedContent = draftContent(original, importedDraft);
+    const reloadedDraft = draftFromProduct({...original, content: savedContent});
+    for (const locale of targetLocales) {
+      const localized = localizedDraft(reloadedDraft, locale, {sourceFallback: false});
+      expect(localized.title).toBe(`${locale}-title-route`);
+      expect(localized.summary).toBe(`${locale}-summary-route`);
+      expect(localized.itinerary[0]).toMatchObject({
+        title: `${locale}-stop_title-stop-katsuoji`,
+        shortDescription: `${locale}-shortDescription-stop-katsuoji`,
+      });
+      expect(localized.itinerary[1]).toMatchObject({
+        title: `${locale}-stop_title-stop-miyama`,
+        shortDescription: `${locale}-shortDescription-stop-miyama`,
+      });
+    }
   });
 
   it('rejects a translation package when immutable field or package metadata was changed', () => {
