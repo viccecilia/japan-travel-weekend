@@ -135,7 +135,8 @@ describe('Passenger Route Detail Final Polish',()=>{
     expect(within(card as HTMLElement).getByText('1 / 2')).toBeInTheDocument();
     expect(within(card as HTMLElement).getByRole('button',{name:'Audio guide'})).toBeInTheDocument();
     expect(card.querySelector('video')).toBeNull();
-    expect(within(card as HTMLElement).getByRole('link',{name:'Attraction guide →'})).toHaveAttribute('href',expect.stringContaining('/app/attractions/spot-one'));
+    expect(within(card as HTMLElement).getByText('SPOT 01')).toBeInTheDocument();
+    expect(within(card as HTMLElement).getByRole('link',{name:'View full attraction guide →'})).toHaveAttribute('href',expect.stringContaining('/app/attractions/spot-one'));
   });
 
   it('hides the audio module when the current locale has no published audio URL',async()=>{
