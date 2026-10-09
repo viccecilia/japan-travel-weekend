@@ -28,7 +28,7 @@ describe('Passenger UI polish contracts',()=>{
     const app=source('./App.tsx');
     expect(app).toContain('route-departure-picker');
     expect(app).toContain('立即预订');
-    expect(app).toContain('item.price.toLocaleString(locale)');
+    expect(app).toContain('item.price.toLocaleString(intlLocale)');
     const hero=app.slice(app.indexOf('function RouteV2Hero'),app.indexOf('function RouteV2List'));
     expect(hero).not.toContain('minimumGuests');
     expect(hero).not.toContain('availableSeats');

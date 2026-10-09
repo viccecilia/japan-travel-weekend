@@ -7,12 +7,14 @@ const tripRoom=readFileSync(resolve(process.cwd(),'src/app/TripRoom.tsx'),'utf8'
 const migration=readFileSync(resolve(process.cwd(),'supabase/migrations/20261002093000_passenger_system_event_idempotency.sql'),'utf8');
 
 describe('Passenger P1 presentation and event safety',()=>{
-  it('keeps only the short policy notice near the hero and puts full rules after route-specific content',()=>{
+  it('shows the five-category policy summary after route-specific content and links to full rules',()=>{
     expect(app).not.toContain('placement="top"');
-    expect(app).toContain('placement="full"');
-    expect(app).toContain('<RouteShortNotice');
-    expect(app.indexOf('placement="full"')).toBeGreaterThan(app.indexOf("localizedList('preparation'"));
-    expect(app.indexOf('<RouteShortNotice')).toBeGreaterThan(app.indexOf('placement="full"'));
+    expect(app).not.toContain('placement="full"');
+    expect(app).not.toContain('<RouteShortNotice');
+    expect(app).toContain('<RoutePolicySummary');
+    expect(app).toContain('routeFinalCopy[locale]');
+    expect(app).toContain('to="/legal/travel-conditions"');
+    expect(app.indexOf('<RoutePolicySummary')).toBeGreaterThan(app.indexOf("localizedList('preparation'"));
   });
   it('uses an accessible chevron accordion instead of plus/minus controls for policy content',()=>{
     expect(app).toContain('function PolicyAccordion');

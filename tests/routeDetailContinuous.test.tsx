@@ -26,19 +26,21 @@ function page(query=''){
   </MemoryRouter>);
 }
 describe('连续路线详情与班次锁定',()=>{
-  it('当前 Route V2 使用唯一 CTA，并传递最近可售班次 ID',async()=>{
+  it('当前 Route V2 使用日期选择器与 Sticky Booking，并传递最近可售班次 ID',async()=>{
     page();
-    await waitFor(()=>expect(screen.getByRole('link',{name:'查看班次'})).toHaveAttribute('href','/app/booking/kyoto-nara-classic?departureId=nearest'));
+    await waitFor(()=>expect(screen.getAllByRole('link',{name:'立即预订'})).toHaveLength(2));
+    for(const link of screen.getAllByRole('link',{name:'立即预订'}))expect(link).toHaveAttribute('href','/app/booking/kyoto-nara-classic?departureId=nearest');
     expect(document.querySelector('.route-detail-v2')).toBeInTheDocument();
     expect(document.querySelector('.route-v2-hero')).toBeInTheDocument();
-    expect(document.querySelectorAll('.route-v2-cta a')).toHaveLength(1);
-    expect(document.querySelector('.route-booking-bar')).toBeNull();
+    expect(document.querySelector('.route-v2-cta')).toBeNull();
+    expect(document.querySelector('.route-booking-sticky')).toBeInTheDocument();
+    expect(screen.queryByText('BOOKING')).not.toBeInTheDocument();
   });
   it('明确选中的有效班次优先；过期 ID 回退到最近可售 CTA',async()=>{
     const view=page('?departureId=cheaper-later');
-    await waitFor(()=>expect(screen.getByRole('link',{name:'查看班次'})).toHaveAttribute('href','/app/booking/kyoto-nara-classic?departureId=cheaper-later'));
+    await waitFor(()=>expect(screen.getAllByRole('link',{name:'立即预订'})[0]).toHaveAttribute('href','/app/booking/kyoto-nara-classic?departureId=cheaper-later'));
     view.unmount();page('?departureId=past');
-    await waitFor(()=>expect(screen.getByRole('link',{name:'查看班次'})).toHaveAttribute('href','/app/booking/kyoto-nara-classic?departureId=nearest'));
+    await waitFor(()=>expect(screen.getAllByRole('link',{name:'立即预订'})[0]).toHaveAttribute('href','/app/booking/kyoto-nara-classic?departureId=nearest'));
   });
   it('公开内容缺失时不渲染空费用区或伪造视频',async()=>{
     const original=travelRepository.getTrip('kyoto-nara-classic')!;
