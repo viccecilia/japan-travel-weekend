@@ -73,8 +73,8 @@ export class ProductionBrowserServices {
   signIn(email: string, password: string) {
     return this.auth.signIn(email, password);
   }
-  signUp(email: string, password: string, accountType:"passenger"|"driver"|"guide"="passenger",displayName="",referralCode="",returnTo="/app") {
-    return this.auth.signUp(email, password,accountType,displayName,referralCode,returnTo);
+  signUp(email: string, password: string, displayName="",referralCode="",returnTo="/app") {
+    return this.auth.signUp(email, password,displayName,referralCode,returnTo);
   }
   loadOwnReferralSummary(){return this.auth.loadOwnReferralSummary()}
   loadOwnCashCommissionSummary(){return this.auth.loadOwnCashCommissionSummary()}

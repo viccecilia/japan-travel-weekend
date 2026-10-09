@@ -24,13 +24,13 @@ import type { ChildSeatChoice, Departure, Passenger, PassengerAssistance, RouteR
 import { GoogleMapsAdapter } from "../shared/integrations/googleMaps";
 import { useApp, useOptionalApp } from "./store";
 import type {RoutePolicyDisplayState} from '../shared/routePolicyDisplay';
-import { accessDestinationPath, isPassengerOnlyPath, loginSurfaceForReturnTo, passengerAccountBoundaryPath, referralCodeFromSearch, safeReturnTo } from "./auth";
+import { accessDestinationPath, isPassengerOnlyPath, loginSurfaceForReturnTo, passengerAccountBoundaryPath, referralCodeFromSearch, safePassengerReturnTo, safeReturnTo } from "./auth";
 import { seatOrderTotal } from "../shared/services/pricing";
 import { Elements } from "@stripe/react-stripe-js";
 import { stripeClient,stripeMode } from "../shared/integrations/stripeClient";
 import { StripePaymentForm } from "./StripePaymentForm";
 import {passengerPaymentCopy,paymentState} from '../shared/i18n/passengerPayment';
-import { formatPassengerDepartureDate, passengerBookingCopy, passengerCheckoutCopy, passengerCoreCopy, passengerFormCopy, passengerHomeCopy, passengerIntlLocale, passengerLocales, passengerLoginCopy, passengerOrderCopy, passengerRoutesCopy } from "../shared/i18n/passengerLocale";
+import { formatPassengerDepartureDate, passengerAuthPagesCopy, passengerBookingCopy, passengerCheckoutCopy, passengerCoreCopy, passengerFormCopy, passengerHomeCopy, passengerIntlLocale, passengerLocales, passengerLoginCopy, passengerOrderCopy, passengerRoutesCopy } from "../shared/i18n/passengerLocale";
 import {passengerAdultCount,passengerSeatCount} from '../shared/i18n/passengerCounts';
 import type {PassengerLocale} from '../shared/i18n/passengerLocale';
 import { featuredRoutePitch, featuredRouteSpots } from "../shared/i18n/spotContent";
@@ -267,7 +267,8 @@ export function AppShell({
   const screen = pathname.split("/").filter(Boolean).slice(1, 2)[0] ?? "home";
   const activeSection=passengerNavSection(pathname);
   const isRouteDetail=/^\/app\/trips\/[^/]+\/?$/.test(pathname);
-  const showSubpageBack=pathname.startsWith('/app/')&&!passengerPrimaryPaths.has(pathname)&&!pathname.startsWith('/app/my-trip/room')&&!isRouteDetail;
+  const authWithoutBack=new Set(['/app/login','/app/create-account','/app/forgot-password','/app/reset-password']);
+  const showSubpageBack=pathname.startsWith('/app/')&&!passengerPrimaryPaths.has(pathname)&&!pathname.startsWith('/app/my-trip/room')&&!isRouteDetail&&!authWithoutBack.has(pathname);
   const navCopy=passengerNavigation[locale];
   const isDiscover=pathname==='/app';
   const navigation:Array<{id:PassengerNavSection,to:string,icon:string,label:string}>=[
@@ -345,13 +346,15 @@ export function Login() {
   const [busy,setBusy]=useState(false);
   const [showPassword,setShowPassword]=useState(false);
   const surface=loginSurfaceForReturnTo(returnTo);
+  const passengerReturnTo=safePassengerReturnTo(returnTo);
   const createAccountSearch=new URLSearchParams();
-  if(returnTo!=='/app')createAccountSearch.set('returnTo',returnTo);
+  if(passengerReturnTo!=='/app')createAccountSearch.set('returnTo',passengerReturnTo);
   if(referralCode)createAccountSearch.set('ref',referralCode);
   const createAccountHref=`/app/create-account${createAccountSearch.size?`?${createAccountSearch.toString()}`:''}`;
   const forgotPasswordHref=`/app/forgot-password${returnTo!=='/app'?`?returnTo=${encodeURIComponent(returnTo)}`:''}`;
   const c=passengerCoreCopy[state.ui.locale ?? "zh-CN"];
   const a=passengerLoginCopy[state.ui.locale ?? "zh-CN"];
+  const authCopy=passengerAuthPagesCopy[state.ui.locale ?? "zh-CN"];
   const connected = backend.connected || services?.authAvailable === true;
   const production = appConfig.runtimeMode === "production";
   useEffect(() => {
@@ -438,7 +441,7 @@ export function Login() {
               type={showPassword?'text':'password'}
               autoComplete={services ? "current-password" : "new-password"}
               placeholder={a.passwordRule}
-            /><button type="button" className="text-button" aria-pressed={showPassword} onClick={()=>setShowPassword(value=>!value)}>{showPassword?'隐藏密码':'显示密码'}</button></span>
+            /><button type="button" className="text-button" aria-pressed={showPassword} onClick={()=>setShowPassword(value=>!value)}>{showPassword?authCopy.hidePassword:authCopy.showPassword}</button></span>
         </label>
         {services?.authAvailable&&<div className="login-forgot"><Link to={forgotPasswordHref}>{a.forgotPassword}?</Link></div>}
         {!services && !production && (
@@ -461,7 +464,7 @@ export function Login() {
           </div>
         )}
         <button className="button full" disabled={!connected||busy}>
-          {busy?'正在登录…':services
+          {busy?`${a.submit}…`:services
             ? production
               ? a.submit
               : a.testSubmit
@@ -478,7 +481,7 @@ export function Login() {
               ? a.unavailablePrivacy
               : a.localPrivacy}
         </p>
-        {services?.authAvailable&&<p className="login-create-account"><span>{a.newToJtw}</span><Link to={createAccountHref}>{a.createAccount}</Link></p>}
+        {services?.authAvailable&&surface==='passenger'&&<p className="login-create-account"><span>{a.newToJtw}</span><Link to={createAccountHref}>{a.createAccount}</Link></p>}
       </form>
     </>
   );

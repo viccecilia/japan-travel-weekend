@@ -69,13 +69,13 @@ describe('账户页面',()=>{
     const services=new ProductionBrowserServices(client,undefined);
     render(<MemoryRouter><AppProvider services={services}><ForgotPassword/></AppProvider></MemoryRouter>);
     fireEvent.change(screen.getByLabelText('电子邮箱'),{target:{value:'missing@example.invalid'}});
-    fireEvent.click(screen.getByRole('button',{name:'发送重置说明'}));
+    fireEvent.click(screen.getByRole('button',{name:'发送重置链接'}));
     await waitFor(()=>expect(screen.getByRole('status')).toHaveTextContent('如果该邮箱关联可用账户'));
     expect(screen.getByRole('status')).not.toHaveTextContent(/不存在|未注册|已注册/);
   });
   it('未配置时不伪装发送重置邮件',()=>{
     render(<MemoryRouter><AppProvider services={null}><ForgotPassword/></AppProvider></MemoryRouter>);
-    expect(screen.getByRole('button',{name:'发送重置说明'})).toBeDisabled();
+    expect(screen.getByRole('button',{name:'发送重置链接'})).toBeDisabled();
   });
   it('退出只清除当前会话并返回登录页',async()=>{
     const signOut=vi.fn(async()=>({error:null}));

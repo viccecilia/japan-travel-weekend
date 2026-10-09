@@ -32,6 +32,15 @@ export function safeReturnTo(value:string|null|undefined){
   }catch{return '/app';}
 }
 
+const passengerAuthPaths=['/app/login','/app/create-account','/app/forgot-password','/app/reset-password','/app/auth/callback','/app/account-status'];
+export function safePassengerReturnTo(value:string|null|undefined){
+  const target=safeReturnTo(value);
+  const pathname=new URL(target,'https://app.local.invalid').pathname;
+  if(pathname==='/app')return target;
+  if(!pathname.startsWith('/app/')||isOperationsPath(pathname)||passengerAuthPaths.some(path=>pathname===path||pathname.startsWith(`${path}/`)))return '/app';
+  return target;
+}
+
 export function referralCodeFromSearch(search:string){
   const params=new URLSearchParams(search);
   const raw=(params.get('ref')??params.get('referral')??'').trim().toUpperCase();

@@ -263,13 +263,13 @@ export class SupabaseAuthRepository {
       return null;
     }
   }
-  async signUp(email: string, password: string, accountType:"passenger"|"driver"|"guide"="passenger", displayName="", referralCode="", returnTo="/app") {
+  async signUp(email: string, password: string, displayName="", referralCode="", returnTo="/app") {
     if (!this.client) return null;
     const emailRedirectTo = this.redirect(`/app/auth/callback${returnTo==='/app'?'':`?returnTo=${encodeURIComponent(returnTo)}`}`);
     if (!emailRedirectTo) return null;
     try {
       const cleanReferral=referralCode.trim().toUpperCase();
-      const options=accountType==='passenger'&&!displayName.trim()&&!cleanReferral?{emailRedirectTo}:{emailRedirectTo,data:{requested_account_type:accountType,display_name:displayName.trim(),referral_code:accountType==='passenger'?cleanReferral:''}};
+      const options=!displayName.trim()&&!cleanReferral?{emailRedirectTo}:{emailRedirectTo,data:{display_name:displayName.trim(),referral_code:cleanReferral}};
       const { data, error } = await this.client.auth.signUp({
         email,
         password,
