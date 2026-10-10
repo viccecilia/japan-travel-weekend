@@ -22,11 +22,40 @@ const local = (iso: string) =>
     .toISOString()
     .slice(0, 16);
 const displayJapanDateTime=(iso:unknown)=>typeof iso==='string'&&iso?local(iso).replace('T',' '):'—';
-const estimatedCutoff=(form:FormData)=>{
-  const start=String(form.get('start')??'');const end=String(form.get('end')??'');const time=String(form.get('departureTime')??'');const hours=Number(form.get('closeHours'));
-  if(!start||!end||!time||!Number.isFinite(hours)||hours<1)return '请先填写日期、出发时间和截止小时';
-  if(start!==end)return '按每个班次的出发时间自动计算';
-  return displayJapanDateTime(new Date(new Date(`${start}T${time}:00+09:00`).getTime()-hours*60*60*1000).toISOString());
+type CutoffValidation={estimate:string;error:string};
+const validateCutoff=(form:FormData):CutoffValidation=>{
+  const start=String(form.get('start')??'');
+  const end=String(form.get('end')??'');
+  const time=String(form.get('departureTime')??'');
+  const salesOpen=String(form.get('salesOpen')??'');
+  const hours=Number(form.get('closeHours'));
+  const weekdays=String(form.get('weekdays')??'').split(',').map(Number).filter(day=>Number.isInteger(day)&&day>=1&&day<=7);
+  if(!start||!end||!time||!Number.isFinite(hours)||hours<1||weekdays.length===0){
+    return {estimate:'请先填写日期、星期、出发时间和截止小时',error:''};
+  }
+  const first=new Date(`${start}T00:00:00Z`);
+  const last=new Date(`${end}T00:00:00Z`);
+  if(Number.isNaN(first.getTime())||Number.isNaN(last.getTime())||first>last){
+    return {estimate:'请检查开始和结束日期',error:'开始日期不能晚于结束日期'};
+  }
+  let serviceDate='';
+  for(const cursor=new Date(first);cursor<=last;cursor.setUTCDate(cursor.getUTCDate()+1)){
+    const weekday=cursor.getUTCDay()||7;
+    if(weekdays.includes(weekday)){serviceDate=cursor.toISOString().slice(0,10);break;}
+  }
+  if(!serviceDate){
+    return {estimate:'日期范围内没有符合星期设置的班次',error:'日期范围内没有符合星期设置的班次'};
+  }
+  const cutoff=new Date(new Date(`${serviceDate}T${time}:00+09:00`).getTime()-hours*60*60*1000);
+  const cutoffText=displayJapanDateTime(cutoff.toISOString());
+  const estimate=start===end?cutoffText:`最早 ${cutoffText}（各班次独立计算）`;
+  if(!salesOpen)return {estimate,error:''};
+  const salesOpenInstant=new Date(`${salesOpen}:00+09:00`);
+  if(Number.isNaN(salesOpenInstant.getTime()))return {estimate,error:'请检查开始销售时间'};
+  const error=salesOpenInstant>=cutoff
+    ? `开始销售时间 ${displayJapanDateTime(salesOpenInstant.toISOString())} 必须早于最早销售截止时间 ${cutoffText}`
+    : '';
+  return {estimate,error};
 };
 const values = (form: FormData) => ({
   tripId: String(form.get("tripId")),
@@ -60,7 +89,7 @@ export function DepartureCenter({view='calendar'}:{view?:'calendar'|'pricing'}) 
   const [products, setProducts] = useState<OperationsProduct[]>([]);
   const [meetingPoints,setMeetingPoints]=useState<OperationsMeetingPointTemplate[]>([]);
   const [selectedMeetingPointId,setSelectedMeetingPointId]=useState('');
-  const [cutoffEstimate,setCutoffEstimate]=useState('请先填写日期、出发时间和截止小时');
+  const [cutoffValidation,setCutoffValidation]=useState<CutoffValidation>({estimate:'请先填写日期、星期、出发时间和截止小时',error:''});
   const [departures, setDepartures] = useState<OperationsEditableDeparture[]>(
     [],
   );
@@ -131,9 +160,18 @@ export function DepartureCenter({view='calendar'}:{view?:'calendar'|'pricing'}) 
   const onPreview = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!services) return;
+    const form=new FormData(event.currentTarget);
+    const validation=validateCutoff(form);
+    setCutoffValidation(validation);
+    if(validation.error){
+      setPreview([]);
+      setRequest(null);
+      setNotice(`预览失败：${validation.error}`);
+      return;
+    }
     setBusy(true);
     const input = {
-      ...values(new FormData(event.currentTarget)),
+      ...values(form),
       operationId: uuid(),
     };
     const result = await services.operations.previewDepartureBatch(input);
@@ -394,7 +432,7 @@ export function DepartureCenter({view='calendar'}:{view?:'calendar'|'pricing'}) 
             const form=event.currentTarget;
             const field=event.target as unknown as HTMLInputElement;
             if(field.name==='meetingTemplateId')setSelectedMeetingPointId(field.value);
-            setCutoffEstimate(estimatedCutoff(new FormData(form)));
+            setCutoffValidation(validateCutoff(new FormData(form)));
             if (request) {
               setPreview([]);
               setRequest(null);
@@ -465,7 +503,8 @@ export function DepartureCenter({view='calendar'}:{view?:'calendar'|'pricing'}) 
               required
             />
           </label>
-          <label>预计销售截止<input value={cutoffEstimate} readOnly aria-label="预计销售截止"/></label>
+          <label>预计销售截止<input value={cutoffValidation.estimate} readOnly aria-label="预计销售截止"/></label>
+          {cutoffValidation.error&&<p className="departure-cutoff-error" role="alert">{cutoffValidation.error}</p>}
           <label>集合地点<select name="meetingTemplateId" value={selectedMeetingPointId} onChange={()=>undefined} required><option value="">请选择集合地点</option>{meetingPoints.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
           <div className="meeting-point-create-link"><Link to="/app/operations/meeting-points">＋ 新增集合地点</Link></div>
           {selectedMeetingPoint&&<div className="meeting-point-summary" data-testid="meeting-point-summary"><b>{selectedMeetingPoint.name}</b><span>{selectedMeetingPoint.address}</span><span>{selectedMeetingPoint.latitude} / {selectedMeetingPoint.longitude}</span>{selectedMeetingPoint.meetingNote&&<small>{selectedMeetingPoint.meetingNote}</small>}</div>}
@@ -474,7 +513,7 @@ export function DepartureCenter({view='calendar'}:{view?:'calendar'|'pricing'}) 
           <input type="hidden" name="mapLat" value={selectedMeetingPoint?.latitude??''}/>
           <input type="hidden" name="mapLng" value={selectedMeetingPoint?.longitude??''}/>
           <input type="hidden" name="meetingInstruction" value={selectedMeetingPoint?.meetingNote??''}/>
-          <button className="button" disabled={busy}>
+          <button className="button" disabled={busy||Boolean(cutoffValidation.error)}>
             生成预览
           </button>
         </form>

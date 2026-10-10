@@ -109,8 +109,31 @@ describe('创建班次预览 UI',()=>{
     await waitFor(()=>expect(createDepartureBatch).toHaveBeenCalledWith(expect.objectContaining({meetingTemplateId:'mp-1'})));
   });
 
-  it('批量建班明确提示按每个班次自动计算',()=>{
-    expect(page).toContain('按每个班次的出发时间自动计算');
+  it('批量建班显示最早截止时间并在预览前拦截冲突',async()=>{
+    const previewDepartureBatch=vi.fn(async()=>({data:[],error:null}));
+    const services={operations:{
+      listProducts:vi.fn(async()=>({data:[{id:'trip-1',title:'测试路线'}],error:null})),
+      listDepartureCalendar:vi.fn(async()=>({data:[],error:null})),
+      listMeetingPointTemplates:vi.fn(async()=>({data:[],error:null})),
+      previewDepartureBatch,createDepartureBatch:vi.fn(),
+    },loadSellableDepartures:async()=>({data:[],error:null}),onAuthStateChange:()=>()=>{},currentUser:async()=>null} as unknown as ProductionBrowserServices;
+    render(<MemoryRouter><AppProvider services={services}><DepartureCenter/></AppProvider></MemoryRouter>);
+    await screen.findByRole('option',{name:'测试路线'});
+    fireEvent.change(screen.getByLabelText('开始日期'),{target:{value:'2026-10-12'}});
+    fireEvent.change(screen.getByLabelText('结束日期'),{target:{value:'2026-12-31'}});
+    fireEvent.change(screen.getByLabelText('星期（1=周一，7=周日）'),{target:{value:'1,2,3,4,5'}});
+    fireEvent.change(screen.getByLabelText('开始销售'),{target:{value:'2026-10-11T11:28'}});
+    expect(screen.getByLabelText('预计销售截止')).toHaveValue('最早 2026-10-11 09:00（各班次独立计算）');
+    expect(screen.getByRole('alert')).toHaveTextContent('开始销售时间 2026-10-11 11:28 必须早于最早销售截止时间 2026-10-11 09:00');
+    expect(screen.getByRole('button',{name:'生成预览'})).toBeDisabled();
+    expect(previewDepartureBatch).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText('开始销售'),{target:{value:'2026-10-10T11:28'}});
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByRole('button',{name:'生成预览'})).toBeEnabled();
+  });
+
+  it('预览仍逐条显示每个班次的实际截止和集合信息',()=>{
+    expect(page).toContain('各班次独立计算');
     expect(page).toContain('item.salesCloseAt');
     expect(page).toContain('item.meetingName');
   });
