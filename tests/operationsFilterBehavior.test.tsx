@@ -14,6 +14,7 @@ describe("运营筛选参数行为", () => {
     const services = {
       operations: {
         listProducts: vi.fn(async () => ({ data: [], error: null })),
+        listMeetingPointTemplates: vi.fn(async () => ({ data: [], error: null })),
         listDepartureCalendar,
       },
       loadSellableDepartures: async () => ({ data: [], error: null }),

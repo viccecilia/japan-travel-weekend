@@ -64,6 +64,7 @@ const AttractionLibrary=lazy(()=>import('../app/operations/AttractionLibrary').t
 const PolicyTemplateManager=lazy(()=>import('../app/operations/PolicyTemplateManager').then(module=>({default:module.PolicyTemplateManager})));
 const ProductEditPage=lazy(()=>import('../app/operations/ProductEditPage').then(module=>({default:module.ProductEditPage})));
 const DepartureCenter=lazy(()=>import('../app/operations/DepartureCenter').then(module=>({default:module.DepartureCenter})));
+const MeetingPointLibrary=lazy(()=>import('../app/operations/MeetingPointLibrary').then(module=>({default:module.MeetingPointLibrary})));
 const RunCenter=lazy(()=>import('../app/operations/RunCenter').then(module=>({default:module.RunCenter})));
 const IncidentCenter=lazy(()=>import('../app/operations/IncidentCenter').then(module=>({default:module.IncidentCenter})));
 const MarketingCenter=lazy(()=>import('../app/operations/MarketingCenter').then(module=>({default:module.MarketingCenter})));
@@ -247,6 +248,7 @@ export function Router() {
       <Route path="/app/operations/products/:productId/edit" element={<OperationsPage><ProductEditPage/></OperationsPage>} />
       <Route path="/app/operations/departures" element={<OperationsPage><DepartureCenter/></OperationsPage>} />
       <Route path="/app/operations/pricing" element={<OperationsPage><DepartureCenter view="pricing"/></OperationsPage>} />
+      <Route path="/app/operations/meeting-points" element={<OperationsPage><MeetingPointLibrary/></OperationsPage>} />
       <Route path="/app/operations/run" element={<OperationsPage><RunCenter/></OperationsPage>} />
       <Route path="/app/operations/incidents" element={<OperationsPage><IncidentCenter/></OperationsPage>} />
       <Route path="/app/operations/marketing" element={<OperationsPage><MarketingCenter/></OperationsPage>} />

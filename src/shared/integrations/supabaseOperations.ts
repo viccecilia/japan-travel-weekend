@@ -237,7 +237,8 @@ export type OperationsAttraction={id:string;slug:string;status:'draft'|'publishe
 export type OperationsAttractionDetail={id:string;slug:string;status:'draft'|'published'|'archived';catalogVersion:number;guides:Record<string,{title:string;body:string}>;audio:Record<string,{storagePath?:string|null;audioUrl?:string|null;voice?:string|null;status:string}>};
 export type OperationsAttractionMedia={id:string;attractionId:string;mediaType:'image'|'video';storagePath:string;originalFilename:string;mimeType:string;byteSize:number;status:'active'|'inactive';orientation:'landscape'|'portrait'|'square'|'unknown';season:'all-season'|'spring'|'summer'|'autumn'|'winter';createdAt:string;updatedAt:string;url:string};
 export type OperationsPolicyTemplate={templateId:string;templateKey:string;status:'active'|'archived';versionId:string|null;versionNumber:number|null;versionState:'draft'|'published'|'superseded'|'archived'|null;localizations:Record<string,Record<string,string>>};
-const departureReadinessLabels:Record<string,string>={product_not_found:'产品不存在',product_not_published:'产品尚未发布',itinerary:'行程至少需要一个节点',included:'费用包含不能为空',excluded:'费用不包含字段必须存在',description:'产品详细介绍至少 20 字',commerce_policy:'通用销售政策字段不完整',date_range:'日期范围无效或超过 93 天',weekdays:'至少选择一个星期',departure_time:'未设置出发时间',duration:'行程时长须为 60–1440 分钟',price:'价格必须大于 0',capacity:'销售容量必须大于 0',sales_close:'销售截止时间无效',meeting_name:'集合地点至少 2 个字符',meeting_address:'集合地址至少 5 个字符',meeting_coordinates:'集合点经纬度无效',sales_window:'开始销售时间必须早于销售截止时间'};
+export type OperationsMeetingPointTemplate={id:string;name:string;address:string;latitude:number;longitude:number;meetingNote:string;active:boolean;version:number;updatedAt:string};
+const departureReadinessLabels:Record<string,string>={product_not_found:'产品不存在',product_not_published:'产品尚未发布',itinerary:'行程至少需要一个节点',included:'费用包含不能为空',excluded:'费用不包含字段必须存在',description:'产品详细介绍至少 20 字',commerce_policy:'通用销售政策字段不完整',date_range:'日期范围无效、没有匹配星期或超过 93 天',weekdays:'至少选择一个星期',departure_time:'未设置出发时间',duration:'行程时长须为 60–1440 分钟',price:'价格必须大于 0',capacity:'销售容量必须大于 0',sales_close:'销售截止时间无效',meeting_template:'集合地点已停用或不存在，请重新选择',meeting_name:'集合地点至少 2 个字符',meeting_address:'集合地址至少 5 个字符',meeting_coordinates:'集合点经纬度无效',sales_window:'开始销售时间必须早于销售截止时间'};
 export function formatDepartureReadinessError(message:string){
   const marker='DEPARTURE_READINESS_MISSING:';const start=message.indexOf(marker);if(start<0)return message;
   try{const raw=message.slice(start+marker.length);const end=raw.lastIndexOf(']');const codes=JSON.parse(raw.slice(0,end+1)) as string[];return `无法创建班次：\n${codes.map(code=>`✕ ${departureReadinessLabels[code]??code}`).join('\n')}`;}catch{return '无法创建班次：产品或班次资料不完整，请刷新后重试。';}
@@ -937,10 +938,12 @@ export class SupabaseOperationsRepository {
     capacity: number;
     salesOpen: string;
     closeHours: number;
+    meetingTemplateId?: string | null;
     meetingName: string;
     meetingAddress: string;
     mapLat: number;
     mapLng: number;
+    meetingInstruction?: string;
   }) {
     if (!this.client)
       return {
@@ -960,10 +963,12 @@ export class SupabaseOperationsRepository {
         p_capacity: input.capacity,
         p_sales_open: input.salesOpen,
         p_close_hours: input.closeHours,
+        p_meeting_template: input.meetingTemplateId ?? null,
         p_meeting_name: input.meetingName,
         p_meeting_address: input.meetingAddress,
         p_map_lat: input.mapLat,
         p_map_lng: input.mapLng,
+        p_meeting_instruction: input.meetingInstruction ?? "",
       },
     );
     return {
@@ -983,10 +988,12 @@ export class SupabaseOperationsRepository {
     capacity: number;
     salesOpen: string;
     closeHours: number;
+    meetingTemplateId?: string | null;
     meetingName: string;
     meetingAddress: string;
     mapLat: number;
     mapLng: number;
+    meetingInstruction?: string;
   }) {
     if (!this.client) return { data: null, error: "运营数据服务未配置" };
     const { data, error } = await this.client.rpc(
@@ -1003,16 +1010,41 @@ export class SupabaseOperationsRepository {
         p_capacity: input.capacity,
         p_sales_open: input.salesOpen,
         p_close_hours: input.closeHours,
+        p_meeting_template: input.meetingTemplateId ?? null,
         p_meeting_name: input.meetingName,
         p_meeting_address: input.meetingAddress,
         p_map_lat: input.mapLat,
         p_map_lng: input.mapLng,
+        p_meeting_instruction: input.meetingInstruction ?? "",
       },
     );
     return {
       data: data as Record<string, unknown> | null,
       error: error ? formatDepartureReadinessError(error.message) : null,
     };
+  }
+  async listMeetingPointTemplates(includeInactive = true) {
+    if (!this.client) return {data: [] as OperationsMeetingPointTemplate[], error: "运营数据服务未配置"};
+    const {data,error}=await this.client.rpc("operations_list_meeting_point_templates",{p_include_inactive:includeInactive});
+    return {data:((data??[]) as Array<Record<string,unknown>>).map(row=>({
+      id:String(row.id),name:String(row.name),address:String(row.address),latitude:Number(row.latitude),longitude:Number(row.longitude),
+      meetingNote:String(row.meeting_note??""),active:Boolean(row.active),version:Number(row.version),updatedAt:String(row.updated_at),
+    })),error:error?.message??null};
+  }
+  async createMeetingPointTemplate(input:{name:string;address:string;latitude:number;longitude:number;meetingNote:string;active:boolean}) {
+    if (!this.client) return {ok:false,id:null as string|null,error:"运营数据服务未配置"};
+    const {data,error}=await this.client.rpc("operations_create_meeting_point_template",{p_name:input.name,p_address:input.address,p_latitude:input.latitude,p_longitude:input.longitude,p_meeting_note:input.meetingNote,p_active:input.active});
+    return {ok:!error,id:data?String(data):null,error:error?.message??null};
+  }
+  async updateMeetingPointTemplate(input:{id:string;expectedVersion:number;name:string;address:string;latitude:number;longitude:number;meetingNote:string}) {
+    if (!this.client) return {ok:false,version:null as number|null,error:"运营数据服务未配置"};
+    const {data,error}=await this.client.rpc("operations_update_meeting_point_template",{p_id:input.id,p_expected_version:input.expectedVersion,p_name:input.name,p_address:input.address,p_latitude:input.latitude,p_longitude:input.longitude,p_meeting_note:input.meetingNote});
+    return {ok:!error,version:data==null?null:Number(data),error:error?.code==='40001'?'版本冲突，请刷新后重试':error?.message??null};
+  }
+  async setMeetingPointTemplateActive(id:string,expectedVersion:number,active:boolean) {
+    if (!this.client) return {ok:false,version:null as number|null,error:"运营数据服务未配置"};
+    const {data,error}=await this.client.rpc("operations_set_meeting_point_template_active",{p_id:id,p_expected_version:expectedVersion,p_active:active});
+    return {ok:!error,version:data==null?null:Number(data),error:error?.code==='40001'?'版本冲突，请刷新后重试':error?.message??null};
   }
   async listEditableDepartures(from?: string, to?: string) {
     if (!this.client)

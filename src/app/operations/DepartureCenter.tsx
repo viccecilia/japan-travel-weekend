@@ -8,6 +8,7 @@ import type {
   OperationsSnapshot,
   DispatchPlanDraft,
   OperationsDepartureVehicle,
+  OperationsMeetingPointTemplate,
 } from "../../shared/integrations/supabaseOperations";
 import {DepartureMonthCalendar} from './DepartureMonthCalendar';
 import {currentJapanMonth, monthRange, shiftMonth} from './departureCalendar';
@@ -20,6 +21,13 @@ const local = (iso: string) =>
   new Date(new Date(iso).getTime() + 9 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 16);
+const displayJapanDateTime=(iso:unknown)=>typeof iso==='string'&&iso?local(iso).replace('T',' '):'—';
+const estimatedCutoff=(form:FormData)=>{
+  const start=String(form.get('start')??'');const end=String(form.get('end')??'');const time=String(form.get('departureTime')??'');const hours=Number(form.get('closeHours'));
+  if(!start||!end||!time||!Number.isFinite(hours)||hours<1)return '请先填写日期、出发时间和截止小时';
+  if(start!==end)return '按每个班次的出发时间自动计算';
+  return displayJapanDateTime(new Date(new Date(`${start}T${time}:00+09:00`).getTime()-hours*60*60*1000).toISOString());
+};
 const values = (form: FormData) => ({
   tripId: String(form.get("tripId")),
   start: String(form.get("start")),
@@ -31,10 +39,12 @@ const values = (form: FormData) => ({
   capacity: Number(form.get("capacity")),
   salesOpen: japanLocalToIso(String(form.get("salesOpen"))),
   closeHours: Number(form.get("closeHours")),
+  meetingTemplateId: String(form.get("meetingTemplateId"))||null,
   meetingName: String(form.get("meetingName")),
   meetingAddress: String(form.get("meetingAddress")),
   mapLat: Number(form.get("mapLat")),
   mapLng: Number(form.get("mapLng")),
+  meetingInstruction: String(form.get("meetingInstruction")),
 });
 export function DepartureCenter({view='calendar'}:{view?:'calendar'|'pricing'}) {
   const { services } = useApp();
@@ -48,6 +58,9 @@ export function DepartureCenter({view='calendar'}:{view?:'calendar'|'pricing'}) 
   const groupChangeId=searchParams.get('groupChange')??'';
   const updateFilter=(key:string,value:string)=>{const next=new URLSearchParams(searchParams);if(value&&value!=='all')next.set(key,value);else next.delete(key);setSearchParams(next,{replace:true})};
   const [products, setProducts] = useState<OperationsProduct[]>([]);
+  const [meetingPoints,setMeetingPoints]=useState<OperationsMeetingPointTemplate[]>([]);
+  const [selectedMeetingPointId,setSelectedMeetingPointId]=useState('');
+  const [cutoffEstimate,setCutoffEstimate]=useState('请先填写日期、出发时间和截止小时');
   const [departures, setDepartures] = useState<OperationsEditableDeparture[]>(
     [],
   );
@@ -85,13 +98,15 @@ export function DepartureCenter({view='calendar'}:{view?:'calendar'|'pricing'}) 
       void Promise.all([
         services.operations.listProducts(),
         services.operations.listDepartureCalendar(calendarWindow.from,calendarWindow.to),
-      ]).then(([productResult, departureResult]) => {
+        services.operations.listMeetingPointTemplates(false),
+      ]).then(([productResult, departureResult,meetingPointResult]) => {
         if (!active) return;
         setProducts(productResult.data);
         setDepartures(departureResult.data);
         setCalendarDepartures(departureResult.data);
+        setMeetingPoints(meetingPointResult.data);
         setEditing(departureResult.data.find(item=>item.id===selectedDeparture)??null);
-        setNotice(productResult.error ?? "");
+        setNotice(productResult.error ?? meetingPointResult.error ?? "");
         setCalendarError(departureResult.error ?? "");
         setLoadedCalendarRequest({services, month, selectedDeparture});
       });
@@ -112,6 +127,7 @@ export function DepartureCenter({view='calendar'}:{view?:'calendar'|'pricing'}) 
     return () => {active = false;};
   }, [services, dispatchMode, groupChangeId, selectedDeparture, month]);
   const visibleDepartures=departures.filter(item=>statusFilter==='all'||item.status===statusFilter);
+  const selectedMeetingPoint=meetingPoints.find(item=>item.id===selectedMeetingPointId)??null;
   const onPreview = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!services) return;
@@ -346,6 +362,7 @@ export function DepartureCenter({view='calendar'}:{view?:'calendar'|'pricing'}) 
               影响预览：当前已有 {editing.paidOrders} 个已付款订单、
               {editing.committedSeats}{" "}
               个锁定席位。保存后旧订单价格、路线与取消政策快照不会改变。
+              手动修改集合信息只会更新该班次快照，不会修改集合地点模板。
             </p>
             <button className="button" disabled={busy}>
               确认更新班次
@@ -373,7 +390,11 @@ export function DepartureCenter({view='calendar'}:{view?:'calendar'|'pricing'}) 
         <form
           className="operations-controls"
           onSubmit={onPreview}
-          onChange={() => {
+          onChange={(event) => {
+            const form=event.currentTarget;
+            const field=event.target as unknown as HTMLInputElement;
+            if(field.name==='meetingTemplateId')setSelectedMeetingPointId(field.value);
+            setCutoffEstimate(estimatedCutoff(new FormData(form)));
             if (request) {
               setPreview([]);
               setRequest(null);
@@ -444,36 +465,15 @@ export function DepartureCenter({view='calendar'}:{view?:'calendar'|'pricing'}) 
               required
             />
           </label>
-          <label>
-            集合地点
-            <input name="meetingName" required />
-          </label>
-          <label>
-            集合地址
-            <input name="meetingAddress" required />
-          </label>
-          <label>
-            集合纬度
-            <input
-              name="mapLat"
-              type="number"
-              min="-90"
-              max="90"
-              step="0.000001"
-              required
-            />
-          </label>
-          <label>
-            集合经度
-            <input
-              name="mapLng"
-              type="number"
-              min="-180"
-              max="180"
-              step="0.000001"
-              required
-            />
-          </label>
+          <label>预计销售截止<input value={cutoffEstimate} readOnly aria-label="预计销售截止"/></label>
+          <label>集合地点<select name="meetingTemplateId" value={selectedMeetingPointId} onChange={()=>undefined} required><option value="">请选择集合地点</option>{meetingPoints.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+          <div className="meeting-point-create-link"><Link to="/app/operations/meeting-points">＋ 新增集合地点</Link></div>
+          {selectedMeetingPoint&&<div className="meeting-point-summary" data-testid="meeting-point-summary"><b>{selectedMeetingPoint.name}</b><span>{selectedMeetingPoint.address}</span><span>{selectedMeetingPoint.latitude} / {selectedMeetingPoint.longitude}</span>{selectedMeetingPoint.meetingNote&&<small>{selectedMeetingPoint.meetingNote}</small>}</div>}
+          <input type="hidden" name="meetingName" value={selectedMeetingPoint?.name??''}/>
+          <input type="hidden" name="meetingAddress" value={selectedMeetingPoint?.address??''}/>
+          <input type="hidden" name="mapLat" value={selectedMeetingPoint?.latitude??''}/>
+          <input type="hidden" name="mapLng" value={selectedMeetingPoint?.longitude??''}/>
+          <input type="hidden" name="meetingInstruction" value={selectedMeetingPoint?.meetingNote??''}/>
           <button className="button" disabled={busy}>
             生成预览
           </button>
@@ -498,10 +498,14 @@ export function DepartureCenter({view='calendar'}:{view?:'calendar'|'pricing'}) 
           <div className="operations-dispatch-list">
             {preview.map((item, index) => (
               <article key={index}>
-                <b>{String(item.serviceDate)}</b>
-                <span>
-                  ¥{String(item.price)} · {String(item.capacity)}席
-                </span>
+                <div><b>{String(item.serviceDate)}</b><span>{displayJapanDateTime(item.departsAt)} 出发</span></div>
+                <div className="departure-preview-details">
+                  <span><small>价格</small><b>¥{String(item.price)}</b></span>
+                  <span><small>开始销售</small><b>{displayJapanDateTime(item.salesOpenAt)}</b></span>
+                  <span><small>销售截止</small><b>{displayJapanDateTime(item.salesCloseAt)}</b></span>
+                  <span><small>集合地点</small><b>{String(item.meetingName??'—')}</b></span>
+                  <span><small>集合地址</small><b>{String(item.meetingAddress??'—')}</b></span>
+                </div>
                 <small>{item.duplicate ? "已存在，将跳过" : "可创建"}</small>
               </article>
             ))}
