@@ -20,6 +20,7 @@ export type ProductEditorStop = Record<string, unknown> & {
   time?: string;
   stayMinutes?: number;
   attractionId?: string;
+  suggestedAttractionId?: string;
   selectedImageIds?: string[];
   selectedVideoIds?: string[];
   imageUrl?: string;
@@ -79,22 +80,34 @@ export const reviewedRouteStopAttractionIds:Record<string,string>={
   '智恩寺文殊堂':'chion-ji-monju-do','智恩寺 文殊堂':'chion-ji-monju-do',
   '伊根舟屋':'ine-funaya','伊根の舟屋':'ine-funaya',
   '清水寺':'kiyomizu-dera','伏见稻荷大社':'fushimi-inari-taisha','伏見稲荷大社':'fushimi-inari-taisha',
-  '奈良公园':'nara-park','奈良公園':'nara-park','白须神社':'shirahige-shrine','白鬚神社':'shirahige-shrine',
+  '奈良公园':'nara-park','奈良公園':'nara-park','白须神社':'shirahige-shrine','白须神社水上鸟居':'shirahige-shrine','白鬚神社':'shirahige-shrine',
+  '琵琶湖观景区域':'biwako-valley-lake-biwa','琵琶湖观景台':'biwako-valley-lake-biwa',
   'La Collina近江八幡':'la-collina-omihachiman','La Collina 近江八幡':'la-collina-omihachiman',
   '贵志站与特色电车':'kishi-station-cat-theme-trains','貴志駅と特色電車':'kishi-station-cat-theme-trains',
-  'Toretore市场':'toretore-market','とれとれ市場':'toretore-market',
+  'Toretore市场':'toretore-market','白滨Toretore市场':'toretore-market','とれとれ市場':'toretore-market',
   '有马温泉':'arima-onsen','有馬温泉':'arima-onsen','北野异人馆街':'kitano-ijinkan','北野異人館街':'kitano-ijinkan',
-  '神户港':'kobe-harbor-harborland','神戸港':'kobe-harbor-harborland','六甲山夜景':'mount-rokko-night-view',
+  '神户港':'kobe-harbor-harborland','神户港与马赛克摩天轮':'kobe-harbor-harborland','神戸港':'kobe-harbor-harborland','六甲山夜景':'mount-rokko-night-view',
   '宇治平等院':'byodoin-phoenix-hall','平等院鳳凰堂':'byodoin-phoenix-hall',
   '源氏物语博物馆':'tale-of-genji-uji-chapters','源氏物語ミュージアム':'tale-of-genji-uji-chapters',
   '宇治源氏之汤':'uji-genji-no-yu','宇治源氏の湯':'uji-genji-no-yu',
   '胜尾寺':'katsuo-ji','勝尾寺':'katsuo-ji','爱宕念佛寺':'otagi-nenbutsu-ji','愛宕念仏寺':'otagi-nenbutsu-ji',
   '大原三千院':'sanzen-in','三千院':'sanzen-in','贵船神社':'kifune-shrine','貴船神社':'kifune-shrine',
 };
-const reviewedAttractionId=(value:Record<string,unknown>)=>{
+const reviewedAttractionSuggestion=(value:Record<string,unknown>)=>{
   const title=text(value.title)||text(value.name);
-  return text(value.attractionId)||reviewedRouteStopAttractionIds[title]||undefined;
+  return reviewedRouteStopAttractionIds[title]||undefined;
 };
+
+function itinerarySource(content:Record<string,unknown>) {
+  if (!Array.isArray(content.itinerary)) return [];
+  const operational = Array.isArray(content.itineraryStops) ? content.itineraryStops : [];
+  return content.itinerary.flatMap((item,index) => {
+    if (item && typeof item === 'object' && !Array.isArray(item)) return [item as Record<string,unknown>];
+    if (typeof item !== 'string') return [];
+    const operationalStop=object(operational[index]);
+    return [{...operationalStop,title:item,time:text(operationalStop.time)||text(operationalStop.arrivalTime)}];
+  });
+}
 
 export function draftFromProduct(product: OperationsProduct): ProductDraft {
   const content = product.content ?? {};
@@ -128,11 +141,11 @@ export function draftFromProduct(product: OperationsProduct): ProductDraft {
     translationListItems: reconcileRouteListItems(content.translationListItems, {highlights: strings(content.highlights), included: strings(content.included), excluded: strings(content.excluded), preparation: strings(content.preparation), notices: strings(content.notices)}),
     heroImageUrl: product.heroImageUrl ?? '',
     gallery: [...product.gallery],
-    itinerary: Array.isArray(content.itinerary)
-      ? content.itinerary.flatMap((item, index) => item && typeof item === 'object' && !Array.isArray(item)
-        ? (() => { const value = item as Record<string, unknown>; const id = productSpotStableId(value, index); return [{...value, attractionId:reviewedAttractionId(value), id, editorId: `stop-${id}`} as ProductEditorStop]; })()
-        : [])
-      : [],
+    itinerary: itinerarySource(content).map((value,index) => {
+      const id=productSpotStableId(value,index);const attractionId=text(value.attractionId)||undefined;
+      const suggestedAttractionId=attractionId?undefined:reviewedAttractionSuggestion(value);
+      return {...value,attractionId,suggestedAttractionId,id,editorId:`stop-${id}`} as ProductEditorStop;
+    }),
     routeReminders: Array.isArray(content.routeReminders) ? content.routeReminders.flatMap((item,index) => {
       const value=object(item); const id=text(value.id)||`reminder-${index + 1}`; const rawLocales=object(value.locales); const locales=Object.fromEntries(Object.entries(rawLocales).flatMap(([locale,row])=>{const localized=object(row);const body=text(localized.body);return body?[[locale,{title:text(localized.title),body}]]:[]})); return Object.keys(locales).length ? [{id,type:text(value.type)||'other',sortOrder:Number(value.sortOrder??index),enabled:value.enabled!==false,locales}] : [];
     }) : [],
@@ -141,7 +154,7 @@ export function draftFromProduct(product: OperationsProduct): ProductDraft {
 }
 
 export function persistedItinerary(items: ProductEditorStop[]) {
-  return items.map(({editorId: _editorId, video: _legacyVideo, selectedVideoIds: _legacyVideoIds, ...item}) => item);
+  return items.map(({editorId: _editorId, suggestedAttractionId: _suggestedAttractionId, video: _legacyVideo, selectedVideoIds: _legacyVideoIds, ...item}) => item);
 }
 
 export function draftContent(product: OperationsProduct, draft: ProductDraft) {

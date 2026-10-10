@@ -15,7 +15,7 @@ const copy:Record<AttractionLocale,{audio:string;description:string;media:string
   es:{audio:'Guía de audio',description:'Sobre este lugar',media:'Fotos y vídeos',pending:'',unavailable:'El audio no está disponible temporalmente'},
 };
 
-function guideLocale(locale:string):AttractionLocale{return isAttractionLocale(locale)?locale:'zh-CN';}
+function guideLocale(locale:string):AttractionLocale|null{return isAttractionLocale(locale)?locale:null;}
 function AudioGuide({src,label,unavailable}:{src:string;label:string;unavailable:string}){
   const audio=useRef<HTMLAudioElement>(null); const [playing,setPlaying]=useState(false);const [duration,setDuration]=useState(0);const [current,setCurrent]=useState(0);const [failed,setFailed]=useState(false);
   const toggle=()=>{const element=audio.current;if(!element)return;if(element.paused)void element.play();else element.pause();};
@@ -25,14 +25,14 @@ function AudioGuide({src,label,unavailable}:{src:string;label:string;unavailable
 }
 
 export function AttractionGuidePage(){
-  const {attractionId=''}=useParams(); const location=useLocation(); const {state,services}=useApp(); const [params]=useSearchParams();const locale=guideLocale(state.ui.locale??'zh-CN'); const c=copy[locale];
+  const {attractionId=''}=useParams(); const location=useLocation(); const {state,services}=useApp(); const [params]=useSearchParams();const locale=guideLocale(state.ui.locale??'zh-CN'); const c=copy[locale??'zh-CN'];
   const staticGuide=(attractionGuideCorpus as AttractionRecord[]).find(item=>item.slug===attractionId)||null;
   const [remote,setRemote]=useState<{title:string;body:string;audioUrl:string|null}|null>(null);
   const [media,setMedia]=useState<{id:string;mediaType:'image'|'video';url:string;originalFilename:string}[]>([]);
   const [loading,setLoading]=useState(Boolean(services));
-  useEffect(()=>{let live=true;setRemote(null);setMedia([]);setLoading(Boolean(services));if(!services){setLoading(false);return;}void Promise.all([services.loadAttractionGuide(attractionId,locale),services.loadAttractionMedia(attractionId)]).then(([guideResult,mediaResult])=>{if(live){setRemote(guideResult.data?{title:guideResult.data.title,body:guideResult.data.body,audioUrl:guideResult.data.audioUrl}:null);setMedia(mediaResult.data);setLoading(false);}}).catch(()=>{if(live)setLoading(false);});return()=>{live=false;};},[services,attractionId,locale]);
-  const guide=remote??staticGuide?.guides[locale]??null;
-  const audioUrl=remote?.audioUrl??staticGuide?.audio[locale]?.audioUrl??null;
+  useEffect(()=>{let live=true;setRemote(null);setMedia([]);setLoading(Boolean(services&&locale));if(!services||!locale){setLoading(false);return()=>{live=false};}void services.loadAttractionGuide(attractionId,locale).then(guideResult=>{if(live){setRemote(guideResult.data?{title:guideResult.data.title,body:guideResult.data.body,audioUrl:guideResult.data.audioUrl}:null);setLoading(false);}}).catch(()=>{if(live)setLoading(false)});void services.loadAttractionMedia(attractionId).then(mediaResult=>{if(live)setMedia(mediaResult.data)}).catch(()=>{if(live)setMedia([])});return()=>{live=false;};},[services,attractionId,locale]);
+  const guide=remote??(!services&&locale?staticGuide?.guides[locale]:null)??null;
+  const audioUrl=remote?.audioUrl??(!services&&locale?staticGuide?.audio[locale]?.audioUrl:null)??null;
   const image=(location.state as {image?:string}|null)?.image??params.get('image');
   if(loading&&!guide)return <main className="attraction-guide-page"><p>Loading guide…</p></main>;
   if(!guide)return <main className="attraction-guide-page"><h1>Guide unavailable</h1></main>;

@@ -59,17 +59,17 @@ const policies={
   cancellation:{templateKey:'cancel',versionId:'cancel-v3',version:3,sections:{cancellation:{title:'Cancel',body:'Cancellation and refund policy.'}}},
 };
 
-function services(locale:PassengerLocale,{audio=true}:{audio?:boolean}={}){
+function services(locale:PassengerLocale,{audio=true,mediaError=false}:{audio?:boolean;mediaError?:boolean}={}){
   return {
     loadSellableDepartures:async()=>({data:[],error:null}),currentUser:async()=>null,onAuthStateChange:()=>()=>{},
     catalog:{loadRoutePoliciesBySlug:vi.fn(async()=>({status:'available' as const,policies}))},
     loadAttractionGuide:vi.fn(async(_id:string,requestedLocale:string)=>({data:{title:`CMS ${requestedLocale} title`,body:`CMS ${requestedLocale} body. More guide text.`,audioUrl:audio?`/${requestedLocale}.mp3`:null},error:null})),
-    loadAttractionMedia:vi.fn(async()=>({data:[{id:'image-1',mediaType:'image' as const,url:'/one.jpg'},{id:'image-2',mediaType:'image' as const,url:'/two.jpg'},{id:'video-1',mediaType:'video' as const,url:'/spot.mp4'}],error:null})),
+    loadAttractionMedia:vi.fn(async()=>mediaError?Promise.reject(new Error('media unavailable')):({data:[{id:'image-1',mediaType:'image' as const,url:'/one.jpg'},{id:'image-2',mediaType:'image' as const,url:'/two.jpg'},{id:'video-1',mediaType:'video' as const,url:'/spot.mp4'}],error:null})),
   };
 }
 
-function view(locale:PassengerLocale='zh-CN',options:{video?:boolean;audio?:boolean;departures?:Departure[]}={}){
-  const service=services(locale,{audio:options.audio});
+function view(locale:PassengerLocale='zh-CN',options:{video?:boolean;audio?:boolean;mediaError?:boolean;departures?:Departure[]}={}){
+  const service=services(locale,{audio:options.audio,mediaError:options.mediaError});
   const route=tripFor(locale,{video:options.video,audio:options.audio});
   const departures=options.departures??[departure('first',18,9800),departure('second',21,9900)];
   return {service,...render(<MemoryRouter initialEntries={['/app/trips/route-final-test']}><AppProvider services={service as never}><RouteDetailV2 trip={route} locale={locale} departures={departures}/></AppProvider></MemoryRouter>)};
@@ -127,10 +127,10 @@ describe('Passenger Route Detail Final Polish',()=>{
 
   it('uses current-locale Attraction CMS content, 16:9 photos, a real gallery counter, audio, and no spot video',async()=>{
     const rendered=view('en');
-    await waitFor(()=>expect(screen.getByRole('heading',{name:'CMS en title'})).toBeInTheDocument());
-    expect(screen.getByText(/CMS en body/)).toBeInTheDocument();
+    await waitFor(()=>expect(screen.getAllByRole('heading',{name:'CMS en title'})).toHaveLength(2));
+    expect(screen.getAllByText(/CMS en body/)).toHaveLength(2);
     expect(rendered.service.loadAttractionGuide).toHaveBeenCalledWith('spot-one','en');
-    const card=screen.getByRole('heading',{name:'CMS en title'}).closest('.route-v2-spot')!;
+    const card=screen.getAllByRole('heading',{name:'CMS en title'}).find(element=>element.closest('.route-v2-spot'))!.closest('.route-v2-spot')!;
     expect(card.querySelector('.route-v2-spot-media')).toBeInTheDocument();
     expect(within(card as HTMLElement).getByText('1 / 2')).toBeInTheDocument();
     expect(within(card as HTMLElement).getByRole('button',{name:'Audio guide'})).toBeInTheDocument();
@@ -141,8 +141,15 @@ describe('Passenger Route Detail Final Polish',()=>{
 
   it('hides the audio module when the current locale has no published audio URL',async()=>{
     view('en',{audio:false});
-    await waitFor(()=>expect(screen.getByRole('heading',{name:'CMS en title'})).toBeInTheDocument());
+    await waitFor(()=>expect(screen.getAllByRole('heading',{name:'CMS en title'})).toHaveLength(2));
     expect(screen.queryByRole('button',{name:'Audio guide'})).not.toBeInTheDocument();
+  });
+
+  it('keeps current-locale guide text and audio when attraction media loading fails',async()=>{
+    view('en',{mediaError:true});
+    await waitFor(()=>expect(screen.getAllByRole('heading',{name:'CMS en title'})).toHaveLength(2));
+    expect(screen.getAllByText('CMS en body. More guide text.')).toHaveLength(2);
+    expect(screen.getByRole('button',{name:'Audio guide'})).toBeInTheDocument();
   });
 
   it('renders two fee cards, exactly five policy summaries, and one full-policy entry without dumping all 17 rules',async()=>{
@@ -159,8 +166,8 @@ describe('Passenger Route Detail Final Polish',()=>{
     const rendered=view(locale);
     expect(screen.getByRole('heading',{name:localeText[locale].title})).toBeInTheDocument();
     expect(screen.getByText(localeText[locale].summary)).toBeInTheDocument();
-    await waitFor(()=>expect(screen.getByRole('heading',{name:`CMS ${locale} title`})).toBeInTheDocument());
-    expect(screen.getByText(`CMS ${locale} body. More guide text.`)).toBeInTheDocument();
+    await waitFor(()=>expect(screen.getAllByRole('heading',{name:`CMS ${locale} title`})).toHaveLength(2));
+    expect(screen.getAllByText(`CMS ${locale} body. More guide text.`)).toHaveLength(2);
     expect(rendered.service.loadAttractionGuide).toHaveBeenCalledWith('spot-one',locale);
     expect(document.querySelector('.route-inline-audio')).toBeInTheDocument();
     expect(document.querySelector('.route-booking-sticky a')).toBeInTheDocument();

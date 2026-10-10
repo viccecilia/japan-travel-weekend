@@ -1,5 +1,5 @@
-import {render, screen} from '@testing-library/react';
-import {describe, expect, it} from 'vitest';
+import {fireEvent, render, screen} from '@testing-library/react';
+import {describe, expect, it, vi} from 'vitest';
 import {applyRouteTranslationPackage, buildRouteTranslationPackage} from '../src/shared/contentPackages';
 import {ProductPhonePreview} from '../src/app/operations/ProductPhonePreview';
 import {draftFromProduct} from '../src/app/operations/productDraft';
@@ -37,10 +37,29 @@ describe('ProductPhonePreview Route V2 locale content', () => {
       locale="ja"
       mode="detail"
       dirty={false}
-      attractionGuides={{'katsuo-ji': {ja: {title: '勝尾寺', body: '勝運祈願で知られる寺院です。'}}}}
+      attractionContent={{'katsuo-ji': {status: 'published', guides: {ja: {title: '勝尾寺', body: '勝運祈願で知られる寺院です。'}}, audio: {}}}}
     />);
     expect(screen.getByText(/1\. 勝尾寺/)).toBeInTheDocument();
     expect(screen.getByText('勝運祈願で知られる寺院です。')).toBeInTheDocument();
     expect(screen.queryByText('中文景点')).not.toBeInTheDocument();
+  });
+
+  it('uses zh-CN CMS guide and published audio in preview while labeling an unpublished Attraction', () => {
+    const original = route();
+    original.content = {...original.content, itinerary: [{id:'spot-one', attractionId:'katsuo-ji', title:'路线旧标题', description:'路线旧正文'}]};
+    render(<ProductPhonePreview draft={draftFromProduct(original)} locale="zh-CN" mode="detail" dirty={false} attractionContent={{'katsuo-ji':{status:'draft',guides:{'zh-CN':{title:'CMS 胜尾寺',body:'CMS 景点正文'}},audio:{'zh-CN':{audioUrl:'/zh-CN.mp3',status:'published'}}}}}/>);
+    expect(screen.getByText(/1\. CMS 胜尾寺/)).toBeInTheDocument();
+    expect(screen.getByText('CMS 景点正文')).toBeInTheDocument();
+    expect(screen.getByLabelText('CMS 胜尾寺 · zh-CN 语音导览')).toHaveAttribute('src','/zh-CN.mp3');
+    expect(screen.getByText('景点未发布，仅后台预览')).toBeInTheDocument();
+  });
+
+  it('keeps attraction load errors visible and retryable instead of reporting saved content', () => {
+    const retry=vi.fn();const original=route();
+    original.content={...original.content,itinerary:[{id:'spot-one',attractionId:'katsuo-ji',title:'中文景点'}]};
+    render(<ProductPhonePreview draft={draftFromProduct(original)} locale="ja" mode="detail" dirty={false} onRetryAttractions={retry} attractionContent={{'katsuo-ji':{status:'draft',guides:{},audio:{},error:'网络异常'}}}/>);
+    expect(screen.getByRole('alert')).toHaveTextContent('景点内容读取失败：网络异常');
+    fireEvent.click(screen.getByRole('button',{name:'重试'}));
+    expect(retry).toHaveBeenCalledOnce();
   });
 });

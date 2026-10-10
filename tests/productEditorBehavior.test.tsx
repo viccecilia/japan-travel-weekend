@@ -67,6 +67,41 @@ it('景点改名不重挂输入，排序作用于稳定景点且实时更新预�
   expect(preview.getByText(/2\. 清水寺新名称/)).toBeInTheDocument();
 });
 
+it('明确映射只作为待确认建议，应用后才写入草稿并可保存', async () => {
+  const operations = open();
+  expect(await screen.findByText('发现 2 个景点关联待确认保存。')).toBeInTheDocument();
+  expect(screen.getByRole('button', {name: '保存草稿'})).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', {name: '应用关联'}));
+  expect(await screen.findByText(/已应用 2 个明确景点关联/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', {name: '保存草稿'}));
+  await vi.waitFor(() => expect(operations.saveProductDraft).toHaveBeenCalled());
+  const payload = operations.saveProductDraft.mock.calls[0][0] as {content: {itinerary: Array<Record<string, unknown>>}};
+  expect(payload.content.itinerary).toEqual([
+    expect.objectContaining({id:'stop-1',attractionId:'kiyomizu-dera'}),
+    expect.objectContaining({id:'stop-2',attractionId:'nara-park'}),
+  ]);
+  for(const item of payload.content.itinerary)expect(item).not.toHaveProperty('suggestedAttractionId');
+});
+
+it('快速更换景点时旧请求结果不会覆盖当前选择', async () => {
+  let resolveOld:(value:unknown)=>void=()=>{};
+  const oldRequest=new Promise(resolve=>{resolveOld=resolve;});
+  const linked={...product,content:{...product.content,itinerary:[{id:'stop-1',title:'清水寺',attractionId:'kiyomizu-dera'}]}};
+  const getAttraction=vi.fn((id:string)=>id==='kiyomizu-dera'?oldRequest:Promise.resolve({data:{status:'draft',guides:{'zh-CN':{title:'奈良 CMS',body:'奈良正文'}},audio:{}},error:null}));
+  open({
+    listProducts:vi.fn(async()=>({data:[linked],error:null})),
+    listAttractions:vi.fn(async()=>({data:[{slug:'kiyomizu-dera',status:'draft',textComplete:7,audioComplete:7},{slug:'nara-park',status:'draft',textComplete:7,audioComplete:7}],error:null})),
+    getAttraction,
+  });
+  fireEvent.click(await screen.findByRole('button',{name:'景点行程'}));
+  fireEvent.change(screen.getByLabelText('景点库引用（公共导览文字 / 音频）'),{target:{value:'nara-park'}});
+  expect(await screen.findByText(/1\. 奈良 CMS/)).toBeInTheDocument();
+  resolveOld({data:{status:'draft',guides:{'zh-CN':{title:'过期清水寺 CMS',body:'旧正文'}},audio:{}},error:null});
+  await Promise.resolve();
+  expect(screen.queryByText(/过期清水寺 CMS/)).not.toBeInTheDocument();
+  expect(screen.getByText(/1\. 奈良 CMS/)).toBeInTheDocument();
+});
+
 it('景点照片和稳定ID在改名排序后保存，旧景点视频不会进入新草稿', async () => {
   const withVideo = {...product, content: {...product.content, itinerary: [{id: 'stop-1', title: '清水寺', description: '原景点介绍', gallery:['/one.webp','/two.webp'],video: {url: 'https://media.example.invalid/spot.mp4', storagePath: 'trip-edit/stops/stop-1/video.mp4', posterUrl: '/poster.webp', mimeType: 'video/mp4', sizeBytes: 2048}}, {id: 'stop-2', title: '奈良公园', description: '第二站'}]}};
   const operations = open({listProducts: vi.fn(async () => ({data: [withVideo], error: null}))});

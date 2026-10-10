@@ -37,4 +37,10 @@ describe('Attraction Guide mapping',()=>{
     expect(screen.getByRole('heading',{name:'金阁寺'})).toBeTruthy();
     expect(screen.queryByLabelText('语音导览')).toBeNull();
   });
+  it('does not expose bundled guide content when the public RPC rejects an unpublished attraction',async()=>{
+    const services={loadAttractionGuide:async()=>({data:null,error:null}),loadAttractionMedia:async()=>({data:[],error:null}),loadSellableDepartures:async()=>({data:[],error:null}),currentUser:async()=>null,onAuthStateChange:()=>()=>{}};
+    render(<MemoryRouter initialEntries={['/app/attractions/kinkaku-ji']}><AppProvider services={services as never}><Routes><Route path="/app/attractions/:attractionId" element={<AttractionGuidePage/>}/></Routes></AppProvider></MemoryRouter>);
+    expect(await screen.findByRole('heading',{name:'Guide unavailable'})).toBeInTheDocument();
+    expect(screen.queryByRole('heading',{name:'金阁寺'})).not.toBeInTheDocument();
+  });
 });

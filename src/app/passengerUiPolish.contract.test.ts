@@ -84,7 +84,7 @@ describe('reviewed Attraction mapping and inline audio',()=>{
 
   it('only mounts inline audio when a published audio URL is returned and keeps the full guide link',()=>{
     const app=source('./App.tsx');
-    expect(app).toContain('attraction.audioUrl&&<RouteInlineAudio');
+    expect(app).toContain('guide?.audioUrl&&<RouteInlineAudio');
     expect(app).toContain('attractionGuideHref(attractionId,returnTo)');
   });
 });
