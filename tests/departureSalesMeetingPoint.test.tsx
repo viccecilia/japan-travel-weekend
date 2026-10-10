@@ -8,6 +8,7 @@ import {SupabaseOperationsRepository} from '../src/shared/integrations/supabaseO
 import type {ProductionBrowserServices} from '../src/shared/backend/productionServices';
 
 const migration=readFileSync('supabase/migrations/20261010014701_departure_sales_cutoff_meeting_point_library.sql','utf8');
+const auditTargetPatch=readFileSync('supabase/migrations/20261010021805_allow_meeting_point_audit_target.sql','utf8');
 const page=readFileSync('src/app/operations/DepartureCenter.tsx','utf8');
 afterEach(cleanup);
 
@@ -54,6 +55,7 @@ describe('销售截止与集合地点快照 migration',()=>{
     }
     expect(migration).toContain('enable row level security');
     expect(migration).toContain('revoke all on public.meeting_point_templates from public,anon,authenticated');
+    expect(auditTargetPatch).toContain("'meeting_point_template'");
   });
 });
 
