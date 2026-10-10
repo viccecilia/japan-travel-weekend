@@ -145,6 +145,19 @@ describe('Passenger Route Detail Final Polish',()=>{
     expect(screen.queryByRole('button',{name:'Audio guide'})).not.toBeInTheDocument();
   });
 
+  it('drops the previous locale CMS guide immediately when switching to zh-TW route copy',async()=>{
+    const route=tripFor('zh-TW');
+    const service=services('zh-CN');
+    const renderRoute=(locale:PassengerLocale)=><MemoryRouter initialEntries={['/app/trips/route-final-test']}><AppProvider services={service as never}><RouteDetailV2 trip={route} locale={locale} departures={[]}/></AppProvider></MemoryRouter>;
+    const rendered=render(renderRoute('zh-CN'));
+    await waitFor(()=>expect(screen.getAllByRole('heading',{name:'CMS zh-CN title'})).toHaveLength(2));
+    rendered.rerender(renderRoute('zh-TW'));
+    expect(screen.queryByRole('heading',{name:'CMS zh-CN title'})).not.toBeInTheDocument();
+    expect(screen.getAllByRole('heading',{name:'繁中景點'})).toHaveLength(2);
+    expect(screen.queryByRole('link',{name:'查看完整景點導覽 →'})).not.toBeInTheDocument();
+    expect(screen.queryByRole('button',{name:'語音導覽'})).not.toBeInTheDocument();
+  });
+
   it('keeps current-locale guide text and audio when attraction media loading fails',async()=>{
     view('en',{mediaError:true});
     await waitFor(()=>expect(screen.getAllByRole('heading',{name:'CMS en title'})).toHaveLength(2));

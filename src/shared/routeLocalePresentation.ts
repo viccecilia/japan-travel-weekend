@@ -89,15 +89,19 @@ export function localizedRouteTimeline(trip:Trip,locale:PassengerLocale):TripTim
   const translated=itineraryTranslations(routeLocaleContent(trip,locale));
   const legacyStops=legacyRouteContent(locale,trip.slug)?.stops??[];
   const allowSourceFallback=isRouteSourceLocale(locale);
-  return trip.timeline.map((item,index)=>{
+  let attractionIndex=0;
+  return trip.timeline.map(item=>{
     const row=item.id?translated[item.id]??{}:{};
+    // Legacy locale packs contain attraction names only. Meeting, transfer,
+    // free-time, and return nodes must not consume an attraction position.
+    const legacyStop=item.attractionId?legacyStops[attractionIndex++]??'':'';
     const translatedText=(key:string,source:string|undefined='',legacyFallback='')=>{
       const value=row[key];
       return typeof value==='string'&&value.trim()?value.trim():(legacyFallback|| (allowSourceFallback?source??'':''));
     };
     return {
       ...item,
-      title:translatedText('stop_title',item.title,legacyStops[index]??''),
+      title:translatedText('stop_title',item.title,legacyStop),
       subtitle:translatedText('subtitle',item.subtitle),
       detail:translatedText('shortDescription',translatedText('description',item.detail)),
       shortDescription:translatedText('shortDescription',item.shortDescription??item.detail),

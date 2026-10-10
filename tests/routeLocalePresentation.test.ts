@@ -53,6 +53,21 @@ describe('route locale presentation',()=>{
     expect(localizedRouteTimeline(trip,'zh-CN')[1]).toMatchObject({title:'岚山自由活动',detail:'旧中文活动说明'});
   });
 
+  it('matches legacy attraction names by attraction order without consuming positions for ordinary nodes',()=>{
+    const route={...trip,slug:'biwako-shirahige',localizedContent:{},timeline:[
+      {id:'meeting-osaka',title:'大阪日本桥集合'},
+      {id:'meeting-kyoto',title:'京都站集合'},
+      {id:'shirahige',title:'白须神社',attractionId:'shirahige-shrine'},
+      {id:'biwako',title:'琵琶湖观景区域',attractionId:'biwako-valley-lake-biwa'},
+      {id:'collina',title:'La Collina近江八幡',attractionId:'la-collina-omihachiman'},
+      {id:'return',title:'返回大阪'},
+    ]} as unknown as Trip;
+    const timeline=localizedRouteTimeline(route,'zh-TW');
+    expect(timeline.map(item=>item.title)).toEqual([
+      '大阪日本桥集合','京都站集合','白鬚神社','琵琶湖觀景處','La Collina 近江八幡','返回大阪',
+    ]);
+  });
+
   it('uses canonical source Hero copy instead of an internal route title and keeps foreign Hero localized',()=>{
     const heroTrip={...trip,heroTitle:'Route Studio V1 Test Route',heroSubtitle:'公开中文 Hero 副标题',localizedContent:{...trip.localizedContent,'zh-CN':{title:'ROUTE-STUDIO-V1-QA · Test Only'},en:{title:'English public route',summary:'English public summary'}}} as unknown as Trip;
     expect(routeHeroPresentation(heroTrip,'zh-CN')).toEqual({title:'Route Studio V1 Test Route',subtitle:'公开中文 Hero 副标题',duration:heroTrip.duration});

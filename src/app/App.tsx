@@ -950,9 +950,10 @@ function useRoutePolicyState(tripSlug:string,locale:PassengerLocale){
 type RouteAttractionGuide={title:string;body:string;audioUrl:string|null};
 function useRouteAttractionGuides(timeline:TripTimelineItem[],locale:PassengerLocale){
   const {services}=useApp();const ids=[...new Set(timeline.map(item=>item.attractionId?.trim()).filter((value):value is string=>Boolean(value)))];const key=ids.sort().join('|');
-  const [guides,setGuides]=useState<Record<string,RouteAttractionGuide>>({});
-  useEffect(()=>{let live=true;setGuides({});if(!services||locale==='zh-TW'||!ids.length)return()=>{live=false};void Promise.all(ids.map(async id=>{try{const result=await services.loadAttractionGuide(id,locale);return [id,result.data] as const;}catch{return [id,null] as const;}})).then(rows=>{if(!live)return;const next:Record<string,RouteAttractionGuide>={};for(const [id,guide] of rows)if(guide)next[id]={title:guide.title,body:guide.body,audioUrl:guide.audioUrl};setGuides(next);});return()=>{live=false};},[services,locale,key]);
-  return guides;
+  const requestKey=`${locale}|${key}`;
+  const [state,setState]=useState<{requestKey:string;guides:Record<string,RouteAttractionGuide>}>({requestKey:'',guides:{}});
+  useEffect(()=>{let live=true;setState({requestKey,guides:{}});if(!services||locale==='zh-TW'||!ids.length)return()=>{live=false};void Promise.all(ids.map(async id=>{try{const result=await services.loadAttractionGuide(id,locale);return [id,result.data] as const;}catch{return [id,null] as const;}})).then(rows=>{if(!live)return;const next:Record<string,RouteAttractionGuide>={};for(const [id,guide] of rows)if(guide)next[id]={title:guide.title,body:guide.body,audioUrl:guide.audioUrl};setState({requestKey,guides:next});});return()=>{live=false};},[services,locale,key,requestKey]);
+  return state.requestKey===requestKey?state.guides:{};
 }
 export function RouteDetailV2({trip, locale, departures, initialDepartureId}: {trip: Trip; locale: PassengerLocale; departures: Departure[]; initialDepartureId?:string|null}) {
   const selectableDepartures=departures.filter(item=>{const status=departureStatus(item,Date.now());return status==='available'||status==='closing'});
