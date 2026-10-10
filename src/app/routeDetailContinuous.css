@@ -27,10 +27,12 @@
 .route-departure-empty{display:grid;gap:4px;margin:12px 0 0!important;padding:16px;border:1px dashed #d9dfdc;border-radius:14px;color:#5e6b71;background:#fff}
 .route-departure-empty b{color:#26343b;font-size:.76rem}.route-departure-empty span{font-size:.66rem}
 .route-itinerary-timeline{display:grid;gap:0}
-.route-itinerary-timeline article{position:relative;display:grid;grid-template-columns:54px minmax(0,1fr) auto;align-items:start;gap:11px;padding:2px 0 20px}
-.route-itinerary-time-slot{position:relative;z-index:1;display:flex;width:54px;min-width:54px;align-self:start;justify-content:center}
-.route-itinerary-timeline article:not(:last-child)::before{position:absolute;left:27px;top:26px;bottom:0;width:1px;content:"";background:#d7dedb;transform:translateX(-.5px)}
-.route-itinerary-timeline time{display:flex;width:54px;height:26px;min-width:54px;min-height:26px;box-sizing:border-box;align-items:center;align-self:start;justify-content:center;padding:0;border-radius:999px;color:#725900;background:#fff2a8;text-align:center;font-size:12px;font-variant-numeric:tabular-nums;font-weight:900;line-height:1;white-space:nowrap}
+.route-itinerary-timeline article{position:relative;display:grid;grid-template-columns:56px minmax(0,1fr) auto;align-items:start;gap:11px;padding:2px 0 20px}
+.route-itinerary-time-slot{position:relative;z-index:1;display:flex;width:56px;min-width:56px;align-self:start;justify-content:center}
+.route-itinerary-timeline article:not(:last-child)::before{position:absolute;left:28px;top:56px;bottom:0;width:1px;content:"";background:#d7dedb;transform:translateX(-.5px)}
+.route-itinerary-timeline time{display:flex;width:56px;height:56px;min-width:56px;min-height:56px;box-sizing:border-box;flex:none;align-items:center;align-self:start;justify-content:center;padding:0;border-radius:50%;color:#725900;background:#fff2a8;text-align:center;font-size:12px;font-variant-numeric:tabular-nums;font-weight:900;line-height:1;white-space:nowrap}
+.route-itinerary-timeline article.no-time:not(:last-child)::before{top:16px}
+.route-itinerary-timeline article.no-time .route-itinerary-time-slot::before{width:8px;height:8px;margin-top:8px;border:2px solid #d0b236;border-radius:50%;content:"";background:#fffdf3;box-sizing:border-box}
 .route-itinerary-timeline h3{margin:4px 0 3px;color:#17232a;font-size:.84rem;line-height:1.35}
 .route-itinerary-timeline p{display:-webkit-box;margin:0;overflow:hidden;color:#68777d;font-size:.67rem;line-height:1.5;-webkit-box-orient:vertical;-webkit-line-clamp:2}
 .route-itinerary-timeline article>b{max-width:86px;padding-top:6px;color:#778489;font-size:.58rem;line-height:1.35;text-align:right;overflow-wrap:anywhere}
@@ -65,4 +67,4 @@
 .route-booking-sticky>div{display:grid;min-width:0;gap:3px}.route-booking-sticky small{color:#b9c3c7;font-size:.55rem}.route-booking-sticky b{overflow:hidden;font-size:.77rem;white-space:nowrap;text-overflow:ellipsis}
 .route-booking-sticky>a{display:grid;min-width:104px;min-height:44px;place-items:center;padding:0 14px;border-radius:13px;color:#17232a;background:#ffe433;font-size:.7rem;font-weight:900;text-decoration:none}
 @media(max-width:600px){.app-frame:has(.route-detail-v2)>.bottom-nav{width:100%}.passenger-v2 .route-v2-hero{margin-left:-18px;margin-right:-18px;border-radius:0 0 22px 22px}}
-@media(max-width:390px){.route-detail-v2{margin-inline:0}.route-detail-v2 .route-v2-section{padding-right:0;padding-left:0}.route-itinerary-timeline article{grid-template-columns:54px minmax(0,1fr) auto;gap:8px}.route-fees-section .route-v2-info-grid{gap:8px}.route-fees-section .route-v2-info-grid article{padding:12px}.route-booking-sticky{width:calc(100vw - 18px);bottom:calc(80px + env(safe-area-inset-bottom))}.route-booking-sticky>a{min-width:96px;padding-inline:10px}}
+@media(max-width:390px){.route-detail-v2{margin-inline:0}.route-detail-v2 .route-v2-section{padding-right:0;padding-left:0}.route-itinerary-timeline article{grid-template-columns:56px minmax(0,1fr) auto;gap:8px}.route-fees-section .route-v2-info-grid{gap:8px}.route-fees-section .route-v2-info-grid article{padding:12px}.route-booking-sticky{width:calc(100vw - 18px);bottom:calc(80px + env(safe-area-inset-bottom))}.route-booking-sticky>a{min-width:96px;padding-inline:10px}}

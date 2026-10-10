@@ -29,7 +29,7 @@ const localeText:Record<PassengerLocale,{title:string;summary:string;stop:string
   ne:{title:'नेपाली मार्ग',summary:'नेपाली परिचय',stop:'नेपाली स्थान',intro:'नेपाली स्थान परिचय',ordinary:'स्वतन्त्र समय'},
 };
 const expandLabel:Record<PassengerLocale,string>={
-  'zh-CN':'展开完整介绍','zh-TW':'展開完整介紹',ja:'詳しい紹介を開く',en:'Expand full introduction',ko:'전체 소개 펼치기',es:'Ver descripción completa',vi:'Mở phần giới thiệu đầy đủ',ne:'पूरा परिचय खोल्नुहोस्',
+  'zh-CN':'展开完整导览','zh-TW':'展開完整導覽',ja:'詳しいガイドを開く',en:'Expand full guide',ko:'전체 가이드 펼치기',es:'Ver guía completa',vi:'Mở hướng dẫn đầy đủ',ne:'पूरा गाइड खोल्नुहोस्',
 };
 
 function tripFor(locale:PassengerLocale,{video=true,audio=true}:{video?:boolean;audio?:boolean}={}):Trip{
@@ -142,7 +142,7 @@ describe('Passenger Route Detail Final Polish',()=>{
     expect(within(card as HTMLElement).getByRole('button',{name:'Audio guide'})).toBeInTheDocument();
     expect(card.querySelector('video')).toBeNull();
     expect(within(card as HTMLElement).getByText('SPOT 01')).toBeInTheDocument();
-    const toggle=within(card as HTMLElement).getByRole('button',{name:'Expand full introduction'});
+    const toggle=within(card as HTMLElement).getByRole('button',{name:'Expand full guide'});
     expect(toggle).toHaveAttribute('type','button');
     expect(toggle).toHaveAttribute('aria-expanded','false');
     expect(within(card as HTMLElement).queryByText('Final paragraph for en.')).not.toBeInTheDocument();
@@ -153,7 +153,7 @@ describe('Passenger Route Detail Final Polish',()=>{
     expect(within(card as HTMLElement).getByText(/Final paragraph for en\./)).toBeInTheDocument();
     expect(card.querySelector('audio')).toBe(audio);
     expect((card.querySelector('audio') as HTMLAudioElement).currentTime).toBe(21);
-    expect(toggle).toHaveTextContent('Collapse introduction');
+    expect(toggle).toHaveTextContent('Collapse full guide');
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded','false');
     expect(within(card as HTMLElement).queryByText('Final paragraph for en.')).not.toBeInTheDocument();
@@ -165,7 +165,7 @@ describe('Passenger Route Detail Final Polish',()=>{
     route.timeline=[route.timeline[0],second,route.timeline[1]];
     const service=services('en');
     render(<MemoryRouter initialEntries={['/app/trips/route-final-test?departureId=first']}><AppProvider services={service as never}><RouteDetailV2 trip={route} locale="en" departures={[departure('first',18,9800)]}/><LocationProbe/></AppProvider></MemoryRouter>);
-    const toggles=await screen.findAllByRole('button',{name:'Expand full introduction'});
+    const toggles=await screen.findAllByRole('button',{name:'Expand full guide'});
     expect(toggles).toHaveLength(2);
     fireEvent.click(toggles[0]);
     expect(toggles[0]).toHaveAttribute('aria-expanded','true');
@@ -179,7 +179,7 @@ describe('Passenger Route Detail Final Polish',()=>{
   it('does not render an expand control when the current-locale guide body is empty',async()=>{
     view('en',{body:''});
     await waitFor(()=>expect(screen.getAllByRole('heading',{name:'CMS en title'})).toHaveLength(2));
-    expect(screen.queryByRole('button',{name:'Expand full introduction'})).not.toBeInTheDocument();
+    expect(screen.queryByRole('button',{name:'Expand full guide'})).not.toBeInTheDocument();
   });
 
   it('hides the audio module when the current locale has no published audio URL',async()=>{

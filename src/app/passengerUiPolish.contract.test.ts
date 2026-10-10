@@ -88,14 +88,16 @@ describe('reviewed Attraction mapping and inline audio',()=>{
     expect(app).toContain('aria-expanded={expanded}');
     expect(app).toContain('aria-controls={panelId}');
     expect(app).not.toContain('attractionGuideHref(attractionId,returnTo)');
-    for(const label of ['展开完整介绍','展開完整介紹','詳しい紹介を開く','Expand full introduction','전체 소개 펼치기','Mở phần giới thiệu đầy đủ','पूरा परिचय खोल्नुहोस्','Ver descripción completa'])expect(app).toContain(label);
+    for(const label of ['展开完整导览','展開完整導覽','詳しいガイドを開く','Expand full guide','전체 가이드 펼치기','Mở hướng dẫn đầy đủ','पूरा गाइड खोल्नुहोस्','Ver guía completa'])expect(app).toContain(label);
   });
 
   it('keeps itinerary time pills at one exact size across narrow breakpoints',()=>{
     const css=source('./routeDetailContinuous.css');
-    expect(css).toContain('grid-template-columns:54px minmax(0,1fr) auto');
+    expect(css).toContain('grid-template-columns:56px minmax(0,1fr) auto');
     expect(css).toContain('.route-itinerary-time-slot');
-    expect(css).toContain('width:54px;height:26px');
+    expect(css).toContain('width:56px;height:56px');
+    expect(css).toContain('border-radius:50%');
+    expect(css).toContain('article.no-time .route-itinerary-time-slot::before');
     expect(css).toContain('font-variant-numeric:tabular-nums');
     expect(css).not.toContain('grid-template-columns:50px minmax(0,1fr) auto');
     expect(css).toContain('.route-v2-spot>p.is-expanded{display:block;overflow:visible;-webkit-line-clamp:unset}');
