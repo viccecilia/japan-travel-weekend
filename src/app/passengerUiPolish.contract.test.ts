@@ -82,9 +82,22 @@ describe('reviewed Attraction mapping and inline audio',()=>{
     expect(resolveAttractionId({title:' 天桥立 '},'zh-CN')).toBeNull();
   });
 
-  it('only mounts inline audio when a published audio URL is returned and keeps the full guide link',()=>{
+  it('only mounts inline audio when a published audio URL is returned and expands the full guide in place',()=>{
     const app=source('./App.tsx');
     expect(app).toContain('guide?.audioUrl&&<RouteInlineAudio');
-    expect(app).toContain('attractionGuideHref(attractionId,returnTo)');
+    expect(app).toContain('aria-expanded={expanded}');
+    expect(app).toContain('aria-controls={panelId}');
+    expect(app).not.toContain('attractionGuideHref(attractionId,returnTo)');
+    for(const label of ['展开完整介绍','展開完整介紹','詳しい紹介を開く','Expand full introduction','전체 소개 펼치기','Mở phần giới thiệu đầy đủ','पूरा परिचय खोल्नुहोस्','Ver descripción completa'])expect(app).toContain(label);
+  });
+
+  it('keeps itinerary time pills at one exact size across narrow breakpoints',()=>{
+    const css=source('./routeDetailContinuous.css');
+    expect(css).toContain('grid-template-columns:54px minmax(0,1fr) auto');
+    expect(css).toContain('.route-itinerary-time-slot');
+    expect(css).toContain('width:54px;height:26px');
+    expect(css).toContain('font-variant-numeric:tabular-nums');
+    expect(css).not.toContain('grid-template-columns:50px minmax(0,1fr) auto');
+    expect(css).toContain('.route-v2-spot>p.is-expanded{display:block;overflow:visible;-webkit-line-clamp:unset}');
   });
 });

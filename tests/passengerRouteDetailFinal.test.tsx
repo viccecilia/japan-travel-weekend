@@ -1,12 +1,14 @@
 import {cleanup,fireEvent,render,screen,waitFor,within} from '@testing-library/react';
 import {afterEach,describe,expect,it,vi} from 'vitest';
-import {MemoryRouter} from 'react-router-dom';
+import {MemoryRouter,useLocation} from 'react-router-dom';
 import {AppShell,RouteDetailV2} from '../src/app/App';
 import {AppProvider} from '../src/app/store';
 import type {Departure,Trip} from '../src/shared/types';
 import type {PassengerLocale} from '../src/shared/i18n/passengerLocale';
 
 afterEach(()=>{cleanup();localStorage.clear();vi.restoreAllMocks()});
+
+function LocationProbe(){const location=useLocation();return <output data-testid="route-location">{location.pathname}{location.search}</output>}
 
 const departure=(id:string,day:number,price:number):Departure=>({
   id,tripSlug:'route-final-test',dateLabel:'正式班次',weekend:'本周末',status:'可预订',
@@ -25,6 +27,9 @@ const localeText:Record<PassengerLocale,{title:string;summary:string;stop:string
   es:{title:'Ruta española',summary:'Resumen en español',stop:'Lugar español',intro:'Descripción española',ordinary:'Tiempo libre'},
   vi:{title:'Tuyến tiếng Việt',summary:'Giới thiệu tiếng Việt',stop:'Điểm tiếng Việt',intro:'Mô tả tiếng Việt',ordinary:'Thời gian tự do'},
   ne:{title:'नेपाली मार्ग',summary:'नेपाली परिचय',stop:'नेपाली स्थान',intro:'नेपाली स्थान परिचय',ordinary:'स्वतन्त्र समय'},
+};
+const expandLabel:Record<PassengerLocale,string>={
+  'zh-CN':'展开完整介绍','zh-TW':'展開完整介紹',ja:'詳しい紹介を開く',en:'Expand full introduction',ko:'전체 소개 펼치기',es:'Ver descripción completa',vi:'Mở phần giới thiệu đầy đủ',ne:'पूरा परिचय खोल्नुहोस्',
 };
 
 function tripFor(locale:PassengerLocale,{video=true,audio=true}:{video?:boolean;audio?:boolean}={}):Trip{
@@ -59,17 +64,17 @@ const policies={
   cancellation:{templateKey:'cancel',versionId:'cancel-v3',version:3,sections:{cancellation:{title:'Cancel',body:'Cancellation and refund policy.'}}},
 };
 
-function services(locale:PassengerLocale,{audio=true,mediaError=false}:{audio?:boolean;mediaError?:boolean}={}){
+function services(locale:PassengerLocale,{audio=true,mediaError=false,body}:{audio?:boolean;mediaError?:boolean;body?:string}={}){
   return {
     loadSellableDepartures:async()=>({data:[],error:null}),currentUser:async()=>null,onAuthStateChange:()=>()=>{},
     catalog:{loadRoutePoliciesBySlug:vi.fn(async()=>({status:'available' as const,policies}))},
-    loadAttractionGuide:vi.fn(async(_id:string,requestedLocale:string)=>({data:{title:`CMS ${requestedLocale} title`,body:`CMS ${requestedLocale} body. More guide text.`,audioUrl:audio?`/${requestedLocale}.mp3`:null},error:null})),
+    loadAttractionGuide:vi.fn(async(_id:string,requestedLocale:string)=>({data:{title:`CMS ${requestedLocale} title`,body:body??`CMS ${requestedLocale} body. More guide text.\n\nFinal paragraph for ${requestedLocale}.`,audioUrl:audio?`/${requestedLocale}.mp3`:null},error:null})),
     loadAttractionMedia:vi.fn(async()=>mediaError?Promise.reject(new Error('media unavailable')):({data:[{id:'image-1',mediaType:'image' as const,url:'/one.jpg'},{id:'image-2',mediaType:'image' as const,url:'/two.jpg'},{id:'video-1',mediaType:'video' as const,url:'/spot.mp4'}],error:null})),
   };
 }
 
-function view(locale:PassengerLocale='zh-CN',options:{video?:boolean;audio?:boolean;mediaError?:boolean;departures?:Departure[]}={}){
-  const service=services(locale,{audio:options.audio,mediaError:options.mediaError});
+function view(locale:PassengerLocale='zh-CN',options:{video?:boolean;audio?:boolean;mediaError?:boolean;body?:string;departures?:Departure[]}={}){
+  const service=services(locale,{audio:options.audio,mediaError:options.mediaError,body:options.body});
   const route=tripFor(locale,{video:options.video,audio:options.audio});
   const departures=options.departures??[departure('first',18,9800),departure('second',21,9900)];
   return {service,...render(<MemoryRouter initialEntries={['/app/trips/route-final-test']}><AppProvider services={service as never}><RouteDetailV2 trip={route} locale={locale} departures={departures}/></AppProvider></MemoryRouter>)};
@@ -113,6 +118,7 @@ describe('Passenger Route Detail Final Polish',()=>{
     expect(screen.getAllByRole('heading',{name:'行程安排'})).toHaveLength(1);
     expect(screen.getByRole('heading',{name:'自由活动'})).toBeInTheDocument();
     expect(screen.getByRole('heading',{name:'自由活动'}).closest('article')?.querySelector('time')).toBeNull();
+    expect(screen.getByRole('heading',{name:'自由活动'}).closest('article')?.querySelector('.route-itinerary-time-slot')).toBeInTheDocument();
     for(const old of ['今日路线','今日行程','详细行程'])expect(screen.queryByText(old)).not.toBeInTheDocument();
     expect(document.querySelectorAll('.route-v2-spot')).toHaveLength(1);
   });
@@ -136,7 +142,44 @@ describe('Passenger Route Detail Final Polish',()=>{
     expect(within(card as HTMLElement).getByRole('button',{name:'Audio guide'})).toBeInTheDocument();
     expect(card.querySelector('video')).toBeNull();
     expect(within(card as HTMLElement).getByText('SPOT 01')).toBeInTheDocument();
-    expect(within(card as HTMLElement).getByRole('link',{name:'View full attraction guide →'})).toHaveAttribute('href',expect.stringContaining('/app/attractions/spot-one'));
+    const toggle=within(card as HTMLElement).getByRole('button',{name:'Expand full introduction'});
+    expect(toggle).toHaveAttribute('type','button');
+    expect(toggle).toHaveAttribute('aria-expanded','false');
+    expect(within(card as HTMLElement).queryByText('Final paragraph for en.')).not.toBeInTheDocument();
+    const audio=card.querySelector('audio') as HTMLAudioElement;
+    audio.currentTime=21;
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded','true');
+    expect(within(card as HTMLElement).getByText(/Final paragraph for en\./)).toBeInTheDocument();
+    expect(card.querySelector('audio')).toBe(audio);
+    expect((card.querySelector('audio') as HTMLAudioElement).currentTime).toBe(21);
+    expect(toggle).toHaveTextContent('Collapse introduction');
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded','false');
+    expect(within(card as HTMLElement).queryByText('Final paragraph for en.')).not.toBeInTheDocument();
+  });
+
+  it('keeps multiple attraction cards independently expandable without changing the route URL',async()=>{
+    const route=tripFor('en');
+    const second={...route.timeline[0],id:'spot-2',attractionId:'spot-two',title:'Second stop',time:'11:00'};
+    route.timeline=[route.timeline[0],second,route.timeline[1]];
+    const service=services('en');
+    render(<MemoryRouter initialEntries={['/app/trips/route-final-test?departureId=first']}><AppProvider services={service as never}><RouteDetailV2 trip={route} locale="en" departures={[departure('first',18,9800)]}/><LocationProbe/></AppProvider></MemoryRouter>);
+    const toggles=await screen.findAllByRole('button',{name:'Expand full introduction'});
+    expect(toggles).toHaveLength(2);
+    fireEvent.click(toggles[0]);
+    expect(toggles[0]).toHaveAttribute('aria-expanded','true');
+    expect(toggles[1]).toHaveAttribute('aria-expanded','false');
+    fireEvent.click(toggles[1]);
+    expect(toggles[0]).toHaveAttribute('aria-expanded','true');
+    expect(toggles[1]).toHaveAttribute('aria-expanded','true');
+    expect(screen.getByTestId('route-location')).toHaveTextContent('/app/trips/route-final-test?departureId=first');
+  });
+
+  it('does not render an expand control when the current-locale guide body is empty',async()=>{
+    view('en',{body:''});
+    await waitFor(()=>expect(screen.getAllByRole('heading',{name:'CMS en title'})).toHaveLength(2));
+    expect(screen.queryByRole('button',{name:'Expand full introduction'})).not.toBeInTheDocument();
   });
 
   it('hides the audio module when the current locale has no published audio URL',async()=>{
@@ -161,7 +204,7 @@ describe('Passenger Route Detail Final Polish',()=>{
   it('keeps current-locale guide text and audio when attraction media loading fails',async()=>{
     view('en',{mediaError:true});
     await waitFor(()=>expect(screen.getAllByRole('heading',{name:'CMS en title'})).toHaveLength(2));
-    expect(screen.getAllByText('CMS en body. More guide text.')).toHaveLength(2);
+    expect(screen.getAllByText(/CMS en body\. More guide text\./)).toHaveLength(2);
     expect(screen.getByRole('button',{name:'Audio guide'})).toBeInTheDocument();
   });
 
@@ -175,13 +218,14 @@ describe('Passenger Route Detail Final Polish',()=>{
     expect(document.querySelectorAll('.route-policy-summary .passenger-accordion')).not.toHaveLength(17);
   });
 
-  for(const locale of ['zh-CN','ja','en','es'] as const)it(`localizes route, attraction, audio, booking, and policy labels for ${locale}`,async()=>{
+  for(const locale of ['zh-CN','ja','en','ko','vi','ne','es'] as const)it(`localizes route, attraction, audio, booking, policy, and expansion labels for ${locale}`,async()=>{
     const rendered=view(locale);
     expect(screen.getByRole('heading',{name:localeText[locale].title})).toBeInTheDocument();
     expect(screen.getByText(localeText[locale].summary)).toBeInTheDocument();
     await waitFor(()=>expect(screen.getAllByRole('heading',{name:`CMS ${locale} title`})).toHaveLength(2));
-    expect(screen.getAllByText(`CMS ${locale} body. More guide text.`)).toHaveLength(2);
+    expect(screen.getAllByText(new RegExp(`CMS ${locale} body\\. More guide text\\.`))).toHaveLength(2);
     expect(rendered.service.loadAttractionGuide).toHaveBeenCalledWith('spot-one',locale);
+    expect(screen.getByRole('button',{name:expandLabel[locale]})).toBeInTheDocument();
     expect(document.querySelector('.route-inline-audio')).toBeInTheDocument();
     expect(document.querySelector('.route-booking-sticky a')).toBeInTheDocument();
     expect(document.querySelectorAll('.route-policy-summary .passenger-accordion')).toHaveLength(5);
