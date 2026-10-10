@@ -282,7 +282,7 @@ export function buildHeroTranslationPackage(hero: DiscoverHero): TranslationPack
     for (const locale of TARGET_LOCALES) {
       const translation = hero.translations[locale] as (DiscoverHeroTranslation & {_content_package?: {source_hash?: string; status?: TranslationStatus}}) | undefined;
       const value = key === 'highlight_phrase' ? translation?.highlight_phrase ?? '' : translation?.[key] ?? '';
-      const metadata = translation?._content_package;
+      const metadata = translation?._content_package?.fields?.[key] ?? translation?._content_package;
       row.translations[locale] = {text: value, status: value ? (metadata?.source_hash && metadata.source_hash !== row.source_hash ? 'stale' : metadata?.status ?? 'draft') : 'missing', source_hash: metadata?.source_hash ?? row.source_hash};
     }
     fields.push(row);
@@ -377,8 +377,10 @@ export function applyHeroTranslationPackage(hero: DiscoverHero, imported: Transl
     for (const locale of TARGET_LOCALES) {
       const translated = row.translations[locale]; if (!translated?.text.trim()) continue;
       const current = next.translations[locale] ?? {title: '', subtitle: ''};
-      if (row.field_key === 'highlight_phrase') next.translations[locale] = {...current, highlight_phrase: translated.text.trim(), _content_package: {source_hash: expectedField.source_hash, status: 'draft'}};
-      else next.translations[locale] = {...current, [row.field_key]: translated.text.trim(), _content_package: {source_hash: expectedField.source_hash, status: 'draft'}};
+      const currentMeta = current._content_package ?? {};
+      const fields = {...currentMeta.fields, [row.field_key]: {source_hash: expectedField.source_hash, status: 'draft' as const}};
+      if (row.field_key === 'highlight_phrase') next.translations[locale] = {...current, highlight_phrase: translated.text.trim(), _content_package: {...currentMeta, source_hash: expectedField.source_hash, status: 'draft', fields}};
+      else next.translations[locale] = {...current, [row.field_key]: translated.text.trim(), _content_package: {...currentMeta, source_hash: expectedField.source_hash, status: 'draft', fields}};
       importedCount += 1;
     }
   }

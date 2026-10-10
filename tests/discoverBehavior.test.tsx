@@ -4,7 +4,8 @@ import {MemoryRouter,Routes,Route} from 'react-router-dom';
 import {Discover} from '../src/app/Discover';
 import {AppShell,AppTrips} from '../src/app/App';
 import {DiscoverManager} from '../src/app/operations/DiscoverManager';
-import {initialDiscoverHeroes,visibleDiscoverHeroes,discoverText} from '../src/shared/discover';
+import {discoverTranslationGaps,initialDiscoverHeroes,visibleDiscoverHeroes,discoverText,type DiscoverHero} from '../src/shared/discover';
+import {buildDiscoverTranslationBatch} from '../src/shared/discoverTranslationBatch';
 import {trips} from '../src/shared/data/trips';
 const mock=vi.hoisted(()=>{
  const list=vi.fn(),save=vi.fn(),remove=vi.fn();
@@ -62,6 +63,14 @@ describe('Discover public interactions',()=>{
   expect(visibleDiscoverHeroes(initialDiscoverHeroes,[])).toHaveLength(1);
   expect(discoverText(initialDiscoverHeroes[0],'es').title).toBe('');
  });
+ it('reads all eight saved locales and treats an intentionally empty Chinese subtitle as optional',()=>{
+  const locales=['zh-CN','zh-TW','ja','en','ko','vi','ne','es'] as const;
+  const translations=Object.fromEntries(locales.map(locale=>[locale,{title:`${locale} title`,subtitle:`${locale} subtitle`}])) as DiscoverHero['translations'];
+  const localized={...initialDiscoverHeroes[0],translations};
+  for(const locale of locales)expect(discoverText(localized,locale)).toEqual({title:`${locale} title`,subtitle:`${locale} subtitle`});
+  const titleOnly={...localized,translations:{...translations,'zh-CN':{title:'中文标题',subtitle:''},en:{title:'English title',subtitle:''}}};
+  expect(discoverTranslationGaps(titleOnly)).not.toContain('en');expect(discoverTranslationGaps(titleOnly)).not.toContain('zh-CN');
+ });
  it.each([['/app','发现'],['/app/trips/amanohashidate-ine','精选线路'],['/app/booking/amanohashidate-ine','精选线路'],['/app/vip-charter','精选线路'],['/app/orders/one','订单'],['/app/messages','消息'],['/app/profile','我的']])('unique navigation at %s',(path,label)=>{
   render(<MemoryRouter initialEntries={[path]}><AppShell nav>Page</AppShell></MemoryRouter>);
   expect(document.querySelectorAll('.bottom-nav [aria-current=page]')).toHaveLength(1);
@@ -77,6 +86,29 @@ describe('Discover public interactions',()=>{
  });
 });
 describe('Discover maintenance',()=>{
+ it('supports multi-select independently of the edited video and blocks export when nothing is selected',async()=>{
+  render(<MemoryRouter><DiscoverManager/></MemoryRouter>);
+  const exportButton=await screen.findByRole('button',{name:'导出翻译包'});expect(exportButton).toBeDisabled();
+  fireEvent.click(screen.getByRole('checkbox',{name:/选择 这一生/}));
+  expect(screen.getByText('已选择 1 条')).toBeInTheDocument();expect(exportButton).toBeEnabled();
+  fireEvent.click(screen.getByRole('checkbox',{name:'全选'}));expect(screen.getByText('已选择 3 条')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('checkbox',{name:'取消全选'}));expect(screen.getByText('已选择 0 条')).toBeInTheDocument();expect(exportButton).toBeDisabled();
+ });
+ it('imports into a preview, cancels without writing, then reports partial saves and keeps failed videos for retry',async()=>{
+  const source=initialDiscoverHeroes.map(item=>({...item,translations:{...item.translations,'zh-CN':{title:`标题 ${item.id}`,subtitle:`副标题 ${item.id}`}},version:3}));
+  mock.list.mockResolvedValue({data:source,error:null});
+  const batch=buildDiscoverTranslationBatch(source).batch!;
+  for(const video of batch.videos)for(const field of video.translation_package.fields)field.translations.en={text:`EN ${video.video_id} ${field.field_key}`,status:'draft',source_hash:field.source_hash};
+  const file=()=>new File([JSON.stringify(batch)],'discover.json',{type:'application/json'});
+  render(<MemoryRouter><DiscoverManager/></MemoryRouter>);await screen.findByText(`标题 ${source[0].id}`);
+  fireEvent.change(screen.getByLabelText('选择翻译包 JSON'),{target:{files:[file()]}});
+  await screen.findByRole('dialog',{name:'翻译包导入预览'});expect(screen.getByText('只预览，尚未写入数据库')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'取消'}));expect(mock.save).not.toHaveBeenCalled();expect(screen.queryByRole('dialog',{name:'翻译包导入预览'})).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('选择翻译包 JSON'),{target:{files:[file()]}});await screen.findByRole('dialog',{name:'翻译包导入预览'});
+  mock.save.mockImplementationOnce(async(value)=>({data:{...value,version:value.version+1},error:null})).mockResolvedValueOnce({data:null,error:'simulated failure'}).mockResolvedValueOnce({data:null,error:'simulated failure'});
+  fireEvent.click(screen.getByRole('button',{name:'确认保存'}));
+  await screen.findByText(/已保存 1 条，失败 2 条/);expect(mock.save).toHaveBeenCalledTimes(3);expect(screen.getByRole('dialog',{name:'翻译包导入预览'})).toBeInTheDocument();
+ });
  it('confirmed deletion removes only the selected saved Hero and clears the editor',async()=>{
   mock.list.mockResolvedValue({data:initialDiscoverHeroes.map(h=>({...h,version:3})),error:null});
   mock.remove.mockResolvedValue({error:null});
@@ -89,7 +121,7 @@ describe('Discover maintenance',()=>{
   expect(mock.remove).toHaveBeenCalledExactlyOnceWith(initialDiscoverHeroes[0].id,3);
   expect(screen.queryByRole('button',{name:/这一生/})).not.toBeInTheDocument();
   expect(screen.queryByLabelText('标题')).not.toBeInTheDocument();
-  expect(document.querySelectorAll('.discover-manager-list>button')).toHaveLength(2);
+  expect(document.querySelectorAll('.discover-manager-list>article')).toHaveLength(2);
  });
  it('cancel does not delete; failed request retains the list and unsaved input and permits retry',async()=>{
   mock.list.mockResolvedValue({data:[{...initialDiscoverHeroes[0],version:2}],error:null});

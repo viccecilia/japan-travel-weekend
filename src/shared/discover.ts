@@ -1,7 +1,17 @@
 import type {PassengerLocale} from './i18n/passengerLocale';
 import type {Trip} from './types';
 
-export type DiscoverHeroTranslation={title:string;subtitle:string;highlight_phrase?:string;_content_package?:{source_hash?:string;status?:'missing'|'draft'|'reviewed'|'published'|'stale'}};
+export type DiscoverTranslationStatus='missing'|'draft'|'reviewed'|'published'|'stale';
+export type DiscoverHeroTranslation={
+ title:string;
+ subtitle:string;
+ highlight_phrase?:string;
+ _content_package?:{
+  source_hash?:string;
+  status?:DiscoverTranslationStatus;
+  fields?:Partial<Record<'title'|'subtitle'|'highlight_phrase',{source_hash:string;status:DiscoverTranslationStatus}>>;
+ };
+};
 
 export type DiscoverHero = {
   id: string;
@@ -49,6 +59,7 @@ export function discoverText(hero: DiscoverHero, locale: PassengerLocale, trip?:
 }
 
 export function discoverTranslationGaps(hero:DiscoverHero){
- const required:PassengerLocale[]=['zh-CN','ja','en','ko','vi','ne','es'];
- return required.filter(locale=>!hero.translations[locale]?.title?.trim()||!hero.translations[locale]?.subtitle?.trim());
+ const required:PassengerLocale[]=['zh-CN','zh-TW','ja','en','ko','vi','ne','es'];
+ const subtitleRequired=Boolean(hero.translations['zh-CN']?.subtitle?.trim());
+ return required.filter(locale=>!hero.translations[locale]?.title?.trim()||(subtitleRequired&&!hero.translations[locale]?.subtitle?.trim()));
 }
