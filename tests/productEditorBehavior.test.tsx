@@ -83,6 +83,25 @@ it('明确映射只作为待确认建议，应用后才写入草稿并可保存'
   for(const item of payload.content.itinerary)expect(item).not.toHaveProperty('suggestedAttractionId');
 });
 
+it('旧路线缺少一句话简介时仍可只保存明确景点关联', async () => {
+  const legacy={...product,content:{...product.content,summary:''}};
+  const operations=open({listProducts:vi.fn(async()=>({data:[legacy],error:null}))});
+  expect(await screen.findByText('发现 2 个景点关联待确认保存。')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'应用关联'}));
+  fireEvent.click(screen.getByRole('button',{name:'保存草稿'}));
+  await vi.waitFor(()=>expect(operations.saveProductDraft).toHaveBeenCalled());
+  expect(operations.saveProductDraft.mock.calls[0][0]).toMatchObject({title:'原路线标题',content:{summary:''}});
+});
+
+it('旧路线缺少一句话简介时普通内容修改仍被完整度校验拦截', async () => {
+  const legacy={...product,content:{...product.content,summary:''}};
+  const operations=open({listProducts:vi.fn(async()=>({data:[legacy],error:null}))});
+  fireEvent.change(await screen.findByLabelText('路线标题'),{target:{value:'修改后的标题'}});
+  fireEvent.click(screen.getByRole('button',{name:'保存草稿'}));
+  expect(await screen.findByText('保存失败：标题和一句话简介不能为空')).toBeInTheDocument();
+  expect(operations.saveProductDraft).not.toHaveBeenCalled();
+});
+
 it('快速更换景点时旧请求结果不会覆盖当前选择', async () => {
   let resolveOld:(value:unknown)=>void=()=>{};
   const oldRequest=new Promise(resolve=>{resolveOld=resolve;});
