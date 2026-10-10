@@ -261,7 +261,7 @@ export function ProductCenter() {
         <div>
           <span>PRODUCT CENTER</span>
           <h1>产品管理</h1>
-          <p>Route Studio V1：重点维护 8 条现有路线；新建草稿也会显示在这里。排除路线不会被删除。</p>
+          <p>Route Studio V1：统一维护权限内路线；新建草稿也会显示在这里。排除路线不会被删除。</p>
         </div>
         <div className="operations-task-actions"><button type="button" className="button secondary" onClick={() => contentPackageInput.current?.click()} disabled={busy}>导入中文内容包</button><button type="button" className="button secondary" onClick={() => { setCreateOpen((value) => !value); setNotice(''); }}>新建路线</button><input ref={contentPackageInput} hidden type="file" accept="application/json,.json" onChange={event => { const file = event.target.files?.[0]; event.currentTarget.value = ''; if (file) void importChineseContentPackage(file); }}/></div>
       </header>
