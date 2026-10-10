@@ -6,11 +6,13 @@ import {AppProvider} from '../src/app/store';
 import {DepartureCenter} from '../src/app/operations/DepartureCenter';
 import {SupabaseOperationsRepository} from '../src/shared/integrations/supabaseOperations';
 import type {ProductionBrowserServices} from '../src/shared/backend/productionServices';
+import type {OperationsProduct} from '../src/shared/integrations/supabaseOperations';
 
 const migration=readFileSync('supabase/migrations/20261010014701_departure_sales_cutoff_meeting_point_library.sql','utf8');
 const auditTargetPatch=readFileSync('supabase/migrations/20261010021805_allow_meeting_point_audit_target.sql','utf8');
 const page=readFileSync('src/app/operations/DepartureCenter.tsx','utf8');
 afterEach(cleanup);
+const selectableProduct=(id='trip-1',status:OperationsProduct['status']='published'):OperationsProduct=>({id,slug:id,status,catalogVersion:2,publishedRevision:status==='published'?1:null,draftRevision:null,title:'测试路线',content:{routeStudioV1:true},heroImageUrl:null,gallery:[],updatedAt:'2026-10-10T00:00:00Z'});
 
 describe('销售截止与集合地点快照 migration',()=>{
   it('按 JST 从每个班次时间减去截止小时并在预览逐条返回',()=>{
@@ -84,13 +86,14 @@ describe('创建班次预览 UI',()=>{
     const previewDepartureBatch=vi.fn(async()=>({data:[{serviceDate:'2026-10-12',departsAt:'2026-10-12T00:00:00Z',salesOpenAt:'2026-10-10T01:28:00Z',salesCloseAt:'2026-10-11T00:00:00Z',price:8900,capacity:8,meetingName:'日本桥2号口',meetingAddress:'大阪市中央区日本桥',duplicate:false}],error:null}));
     const createDepartureBatch=vi.fn(async()=>({data:{created:1,skippedDuplicates:0},error:null}));
     const services={operations:{
-      listProducts:vi.fn(async()=>({data:[{id:'trip-1',title:'测试路线'}],error:null})),
+      listProducts:vi.fn(async()=>({data:[selectableProduct()],error:null})),
       listDepartureCalendar:vi.fn(async()=>({data:[],error:null})),
       listMeetingPointTemplates:vi.fn(async()=>({data:[{id:'mp-1',name:'日本桥2号口',address:'大阪市中央区日本桥',latitude:34.66,longitude:135.5,meetingNote:'2号出口附近集合',active:true,version:1,updatedAt:'2026-10-10T00:00:00Z'}],error:null})),
       previewDepartureBatch,createDepartureBatch,
     },loadSellableDepartures:async()=>({data:[],error:null}),onAuthStateChange:()=>()=>{},currentUser:async()=>null} as unknown as ProductionBrowserServices;
     render(<MemoryRouter><AppProvider services={services}><DepartureCenter/></AppProvider></MemoryRouter>);
     const option=await screen.findByRole('option',{name:'日本桥2号口'});
+    fireEvent.change(screen.getByLabelText('产品'),{target:{value:'trip-1'}});
     fireEvent.change(option.parentElement!,{target:{name:'meetingTemplateId',value:'mp-1'}});
     expect(await screen.findByTestId('meeting-point-summary')).toHaveTextContent('2号出口附近集合');
     fireEvent.change(screen.getByLabelText('开始日期'),{target:{value:'2026-10-12'}});
@@ -112,13 +115,14 @@ describe('创建班次预览 UI',()=>{
   it('批量建班显示最早截止时间并在预览前拦截冲突',async()=>{
     const previewDepartureBatch=vi.fn(async()=>({data:[],error:null}));
     const services={operations:{
-      listProducts:vi.fn(async()=>({data:[{id:'trip-1',title:'测试路线'}],error:null})),
+      listProducts:vi.fn(async()=>({data:[selectableProduct()],error:null})),
       listDepartureCalendar:vi.fn(async()=>({data:[],error:null})),
       listMeetingPointTemplates:vi.fn(async()=>({data:[],error:null})),
       previewDepartureBatch,createDepartureBatch:vi.fn(),
     },loadSellableDepartures:async()=>({data:[],error:null}),onAuthStateChange:()=>()=>{},currentUser:async()=>null} as unknown as ProductionBrowserServices;
     render(<MemoryRouter><AppProvider services={services}><DepartureCenter/></AppProvider></MemoryRouter>);
     await screen.findByRole('option',{name:'测试路线'});
+    fireEvent.change(screen.getByLabelText('产品'),{target:{value:'trip-1'}});
     fireEvent.change(screen.getByLabelText('开始日期'),{target:{value:'2026-10-12'}});
     fireEvent.change(screen.getByLabelText('结束日期'),{target:{value:'2026-12-31'}});
     fireEvent.change(screen.getByLabelText('星期（1=周一，7=周日）'),{target:{value:'1,2,3,4,5'}});

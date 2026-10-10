@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useApp } from "../store";
 import type {
@@ -87,6 +87,7 @@ export function DepartureCenter({view='calendar'}:{view?:'calendar'|'pricing'}) 
   const groupChangeId=searchParams.get('groupChange')??'';
   const updateFilter=(key:string,value:string)=>{const next=new URLSearchParams(searchParams);if(value&&value!=='all')next.set(key,value);else next.delete(key);setSearchParams(next,{replace:true})};
   const [products, setProducts] = useState<OperationsProduct[]>([]);
+  const [selectedProductId,setSelectedProductId]=useState('');
   const [meetingPoints,setMeetingPoints]=useState<OperationsMeetingPointTemplate[]>([]);
   const [selectedMeetingPointId,setSelectedMeetingPointId]=useState('');
   const [cutoffValidation,setCutoffValidation]=useState<CutoffValidation>({estimate:'请先填写日期、星期、出发时间和截止小时',error:''});
@@ -109,6 +110,33 @@ export function DepartureCenter({view='calendar'}:{view?:'calendar'|'pricing'}) 
   const [request, setRequest] = useState<Record<string, unknown> | null>(null);
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const publishedProducts=useMemo(
+    ()=>products.filter(item=>item.status==='published'&&item.publishedRevision!=null),
+    [products],
+  );
+  const invalidateProductSelection=useCallback(()=>{
+    setSelectedProductId('');
+    setPreview([]);
+    setRequest(null);
+    setNotice('该产品已下架，请重新选择产品');
+  },[]);
+  const verifyPublishedProduct=useCallback(async(productId:string)=>{
+    if(!services||!productId)return false;
+    const result=await services.operations.listProducts();
+    if(result.error){setNotice(`无法确认产品状态：${result.error}`);return false;}
+    setProducts(result.data);
+    if(!result.data.some(item=>item.id===productId&&item.status==='published'&&item.publishedRevision!=null)){
+      invalidateProductSelection();
+      return false;
+    }
+    return true;
+  },[services,invalidateProductSelection]);
+  const selectProduct=(productId:string)=>{
+    setSelectedProductId(productId);
+    setPreview([]);
+    setRequest(null);
+    setNotice('');
+  };
   const reloadDepartures = async () => {
     if (!services) return;
     const calendarWindow=monthRange(month);
@@ -143,6 +171,15 @@ export function DepartureCenter({view='calendar'}:{view?:'calendar'|'pricing'}) 
       active = false;
     };
   }, [services,month,selectedDeparture]);
+  useEffect(()=>{
+    if(!services)return;
+    const refresh=()=>{void services.operations.listProducts().then(result=>{if(!result.error)setProducts(result.data);});};
+    window.addEventListener('focus',refresh);
+    return()=>window.removeEventListener('focus',refresh);
+  },[services]);
+  useEffect(()=>{
+    if(selectedProductId&&!publishedProducts.some(item=>item.id===selectedProductId))invalidateProductSelection();
+  },[products,publishedProducts,selectedProductId,invalidateProductSelection]);
   const loadingCalendar = Boolean(services) && (
     loadedCalendarRequest?.services !== services
     || loadedCalendarRequest?.month !== month
@@ -169,11 +206,14 @@ export function DepartureCenter({view='calendar'}:{view?:'calendar'|'pricing'}) 
       setNotice(`预览失败：${validation.error}`);
       return;
     }
-    setBusy(true);
+    const productId=String(form.get('tripId')??'');
+    if(!productId){setNotice('请选择已上架产品');return;}
     const input = {
-      ...values(form),
+      ...values(new FormData(event.currentTarget)),
       operationId: uuid(),
     };
+    setBusy(true);
+    if(!await verifyPublishedProduct(productId)){setBusy(false);return;}
     const result = await services.operations.previewDepartureBatch(input);
     setBusy(false);
     setPreview(result.data);
@@ -187,15 +227,14 @@ export function DepartureCenter({view='calendar'}:{view?:'calendar'|'pricing'}) 
   const confirm = async () => {
     if (!services || !request) return;
     setBusy(true);
+    const productId=String(request.tripId??'');
+    if(!await verifyPublishedProduct(productId)){setBusy(false);return;}
     const result = await services.operations.createDepartureBatch(
       request as Parameters<typeof services.operations.createDepartureBatch>[0],
     );
     setBusy(false);
-    setNotice(
-      result.error
-        ? `创建失败：${result.error}`
-        : `创建完成：${JSON.stringify(result.data)}`,
-    );
+    if(result.error?.includes('产品尚未发布'))invalidateProductSelection();
+    else setNotice(result.error?`创建失败：${result.error}`:`创建完成：${JSON.stringify(result.data)}`);
     if (!result.error) await reloadDepartures();
   };
   const update = async (event: FormEvent<HTMLFormElement>) => {
@@ -442,14 +481,16 @@ export function DepartureCenter({view='calendar'}:{view?:'calendar'|'pricing'}) 
         >
           <label>
             产品
-            <select name="tripId" required>
-              {products.map((item) => (
+            <select name="tripId" required value={selectedProductId} onChange={event=>selectProduct(event.target.value)}>
+              <option value="" disabled>请选择已上架产品</option>
+              {publishedProducts.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.title}
                 </option>
               ))}
             </select>
           </label>
+          {publishedProducts.length===0&&<p className="operations-control-wide operations-empty">暂无已上架产品，请先到产品管理完成发布。 <Link to="/app/operations/products">前往产品管理</Link></p>}
           <label>
             开始日期
             <input name="start" type="date" required />
@@ -513,7 +554,7 @@ export function DepartureCenter({view='calendar'}:{view?:'calendar'|'pricing'}) 
           <input type="hidden" name="mapLat" value={selectedMeetingPoint?.latitude??''}/>
           <input type="hidden" name="mapLng" value={selectedMeetingPoint?.longitude??''}/>
           <input type="hidden" name="meetingInstruction" value={selectedMeetingPoint?.meetingNote??''}/>
-          <button className="button" disabled={busy||Boolean(cutoffValidation.error)}>
+          <button className="button" disabled={busy||Boolean(cutoffValidation.error)||!selectedProductId||publishedProducts.length===0}>
             生成预览
           </button>
         </form>

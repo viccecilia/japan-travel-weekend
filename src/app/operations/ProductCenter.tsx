@@ -1,9 +1,9 @@
-import {FormEvent, useEffect, useRef, useState, type ReactNode} from 'react';
+import {FormEvent, useCallback, useEffect, useRef, useState, type ReactNode} from 'react';
 import {Link, useLocation, useNavigate, useSearchParams} from 'react-router-dom';
 import {useApp} from '../store';
 import type {OperationsProduct} from '../../shared/integrations/supabaseOperations';
 import {isRouteContentPackage, parseJsonFile, sanitizeRouteContent, validateContentPackage} from '../../shared/contentPackages';
-import {isRouteStudioProduct, ROUTE_STUDIO_V1_SLUGS} from './routeStudioScope';
+import {isRouteStudioProduct} from './routeStudioScope';
 
 type ProductStatusFilter = 'all' | 'published' | 'draft' | 'archived';
 
@@ -44,6 +44,43 @@ function normalizeStatus(item: OperationsProduct): string {
   return '草稿';
 }
 
+function ProductRowsTable({items, returnTo, onCopy, label}: {items: OperationsProduct[]; returnTo: string; onCopy: (item: OperationsProduct) => void; label: string}) {
+  return <div className="operations-table-scroll" role="region" aria-label={label}>
+    <table className="operations-table">
+      <thead><tr><th>封面</th><th>路线名称 / 标识</th><th>状态</th><th>地区</th><th>内容状态</th><th>操作</th></tr></thead>
+      <tbody>{items.map((item) => {
+        const region = String(item.content?.region ?? '未设置');
+        const hero = item.heroImageUrl ?? '/placeholder-route.png';
+        const statusLabel = item.status === 'published' ? '已发布' : item.status === 'archived' ? '已下架' : '草稿';
+        return <tr key={item.id}>
+          <td><img src={hero} alt={item.title} width={96} height={64} loading="lazy" style={{width:96,height:64,objectFit:'cover',borderRadius:8}}/></td>
+          <td><b>{item.title}</b><small>{item.slug}</small></td>
+          <td>{statusLabel}</td><td>{region}</td><td>{normalizeStatus(item)}</td>
+          <td className="operations-task-actions">
+            <Link className="button" to={`/app/operations/products/${encodeURIComponent(item.id)}/edit?returnTo=${returnTo}`}>编辑</Link>
+            {item.status === 'published' && item.publishedRevision != null && <a href={`/app/trips/${item.slug}`} target="_blank" rel="noreferrer" className="button secondary">预览</a>}
+            <button className="button secondary" type="button" onClick={() => onCopy(item)} aria-label={`${item.title} 复制`}>复制</button>
+          </td>
+        </tr>;
+      })}</tbody>
+    </table>
+  </div>;
+}
+
+function ProductPagination({page, totalPages, onPage}: {page: number; totalPages: number; onPage: (page: number) => void}) {
+  if (totalPages <= 1) return null;
+  return <div className="operations-pagination">
+    <button type="button" disabled={page <= 1} onClick={() => onPage(page - 1)}>上一页</button>
+    <small>{page} / {totalPages}</small>
+    <button type="button" disabled={page >= totalPages} onClick={() => onPage(page + 1)}>下一页</button>
+  </div>;
+}
+
+const pageNumber=(raw:string|null,totalPages:number)=>{
+  const requested=Number(raw??1);
+  return Math.min(totalPages,Number.isSafeInteger(requested)&&requested>0?requested:1);
+};
+
 export function ProductCenter() {
   const {services} = useApp();
   const location = useLocation();
@@ -54,14 +91,17 @@ export function ProductCenter() {
   const [busy, setBusy] = useState(false);
   const search = params.get('q') ?? '';
   const status = STATUS_OPTIONS.some((option) => option.value === params.get('status')) ? params.get('status') as ProductStatusFilter : 'all';
-  const requestedPage = Number(params.get('page') ?? 1);
+  const [unpublishedExpanded,setUnpublishedExpanded]=useState(false);
   const [loadError, setLoadError] = useState('');
   const updateFilter = (key: string, value: string) => {
     const next = new URLSearchParams(params);
-    next.set(key, value);
-    if (key !== 'page') next.delete('page');
+    if(value&&value!=='all')next.set(key,value);else next.delete(key);
+    next.delete('page');
+    next.delete('publishedPage');
+    next.delete('unpublishedPage');
     setParams(next);
   };
+  const updateGroupPage=(key:'publishedPage'|'unpublishedPage',value:number)=>{const next=new URLSearchParams(params);if(value>1)next.set(key,String(value));else next.delete(key);setParams(next)};
   const [copyForm, setCopyForm] = useState<CopyFormState | null>(null);
   const [copySlug, setCopySlug] = useState('');
   const [copyTitle, setCopyTitle] = useState('');
@@ -82,12 +122,18 @@ export function ProductCenter() {
     return true;
   });
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const page = Math.min(totalPages, Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1);
-  const pageStart = (page - 1) * pageSize;
-  const pageRows = filtered.slice(pageStart, pageStart + pageSize);
+  const publishedProducts=filtered.filter(item=>item.status==='published');
+  const unpublishedProducts=filtered.filter(item=>item.status==='draft'||item.status==='archived');
+  const publishedTotalPages=Math.max(1,Math.ceil(publishedProducts.length/pageSize));
+  const unpublishedTotalPages=Math.max(1,Math.ceil(unpublishedProducts.length/pageSize));
+  const publishedPage=pageNumber(params.get('publishedPage'),publishedTotalPages);
+  const unpublishedPage=pageNumber(params.get('unpublishedPage'),unpublishedTotalPages);
+  const publishedRows=publishedProducts.slice((publishedPage-1)*pageSize,publishedPage*pageSize);
+  const unpublishedRows=unpublishedProducts.slice((unpublishedPage-1)*pageSize,unpublishedPage*pageSize);
+  const forceUnpublishedOpen=unpublishedProducts.length>0&&(search.trim().length>0||status==='draft'||status==='archived');
+  const showUnpublished=unpublishedExpanded||forceUnpublishedOpen;
 
-  const reload = async () => {
+  const reload = useCallback(async () => {
     if (!services) return;
     setBusy(true);
     setLoadError('');
@@ -101,7 +147,7 @@ export function ProductCenter() {
     } finally {
       setBusy(false);
     }
-  };
+  },[services]);
 
   const createProduct = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -203,10 +249,11 @@ export function ProductCenter() {
 
   useEffect(() => {
     void reload();
-  }, [services]);
+  }, [reload]);
+  useEffect(()=>{const onFocus=()=>{void reload();};window.addEventListener('focus',onFocus);return()=>window.removeEventListener('focus',onFocus);},[reload]);
 
   const hasData = filtered.length > 0;
-  const activeItemsCount = products.filter((item) => item.status !== 'archived').length;
+  const activeItemsCount = studioProducts.filter((item) => item.status === 'published').length;
 
   return (
     <main className="operations-page">
@@ -227,7 +274,7 @@ export function ProductCenter() {
             <span>路线总览</span>
             <h2>路线产品</h2>
           </div>
-          <small>{loadError ? '目录读取失败' : busy ? '正在读取…' : `V1 路线 ${ROUTE_STUDIO_V1_SLUGS.filter(slug=>products.some(item=>item.slug===slug)).length}/8；当前显示 ${filtered.length} 条（数据库共 ${totalCount} 条）`}</small>
+          <small>{loadError ? '目录读取失败' : busy ? '正在读取…' : `当前显示 ${filtered.length} 条（权限内路线 ${studioProducts.length} 条；数据库共 ${totalCount} 条）`}</small>
         </div>
         <div className="operations-toolbar" role="search">
           <label>
@@ -244,9 +291,7 @@ export function ProductCenter() {
             状态
             <select value={status} onChange={(event) => updateFilter('status', event.target.value)} aria-label="状态筛选">
               {STATUS_OPTIONS.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
+                <option key={item.value} value={item.value}>{item.value==='published'?'已上架':item.label}</option>
               ))}
             </select>
           </label>
@@ -341,91 +386,21 @@ export function ProductCenter() {
 
         {busy && products.length === 0 && <p className="operations-hint">正在读取产品目录…</p>}
         {loadError && <div role="alert">读取失败：{loadError}<button type="button" disabled={busy} onClick={() => void reload()}>重试</button></div>}
-        {!busy && !loadError && !hasData && (
-          <p className="operations-empty">
-            当前筛选下无匹配路线。可清空筛选条件后重试，或确认是否已存在权限内测试路线。
-          </p>
-        )}
-        <div className="operations-table-scroll" role="region" aria-label="产品表格">
-          <table className="operations-table">
-            <thead>
-              <tr>
-                <th>封面</th>
-                <th>路线名称 / 标识</th>
-                <th>状态</th>
-                <th>地区</th>
-                <th>内容状态</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageRows.map((item) => {
-                const region = String(item.content?.region ?? '未设置');
-                const hero = item.heroImageUrl ?? '/placeholder-route.png';
-                const label = normalizeStatus(item);
-                return (
-                  <tr key={item.id}>
-                    <td>
-                      <img
-                        src={hero}
-                        alt={item.title}
-                        width={96}
-                        height={64}
-                        loading="lazy"
-                        style={{width: 96, height: 64, objectFit: 'cover', borderRadius: 8}}
-                      />
-                    </td>
-                    <td>
-                      <b>{item.title}</b>
-                      <small>{item.slug}</small>
-                    </td>
-                    <td>
-                      {item.status === 'published' ? '已发布' : item.status === 'archived' ? '已下架' : '草稿'}
-                    </td>
-                    <td>{region}</td>
-                    <td>{label}</td>
-                    <td className="operations-task-actions">
-                      <Link
-                        className="button"
-                        to={`/app/operations/products/${encodeURIComponent(item.id)}/edit?returnTo=${returnTo}`}
-                      >
-                        编辑
-                      </Link>
-                      {item.status === 'published' && item.publishedRevision != null && <a href={`/app/trips/${item.slug}`} target="_blank" rel="noreferrer" className="button secondary">
-                        预览
-                      </a>}
-                      <button
-                        className="button secondary"
-                        type="button"
-                        onClick={() => openCopy(item)}
-                        aria-label={`${item.title} 复制`}
-                      >
-                        复制
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        {totalPages > 1 && (
-          <div className="operations-pagination">
-            <button
-              type="button"
-              disabled={page <= 1}
-              onClick={() => updateFilter('page', String(page - 1))}
-            >
-              上一页
+        {!busy&&!loadError&&search.trim()&&!hasData&&<p className="operations-empty">未找到匹配产品</p>}
+        {!busy&&!loadError&&(!search.trim()||hasData)&&<div className="product-status-groups">
+          <section className="product-status-group" aria-labelledby="published-products-title">
+            <header><h3 id="published-products-title">已上架产品（{publishedProducts.length}）</h3></header>
+            {publishedProducts.length===0?<p className="operations-empty">暂无已上架产品</p>:<><ProductRowsTable items={publishedRows} returnTo={returnTo} onCopy={openCopy} label="已上架产品表格"/><ProductPagination page={publishedPage} totalPages={publishedTotalPages} onPage={value=>updateGroupPage('publishedPage',value)}/></>}
+          </section>
+          <section className="product-status-group unpublished" aria-labelledby="unpublished-products-title">
+            <button type="button" className="product-group-toggle" aria-expanded={showUnpublished} aria-controls="unpublished-products-panel" onClick={()=>setUnpublishedExpanded(value=>!value)}>
+              <span aria-hidden="true">{showUnpublished?'▾':'▸'}</span><b id="unpublished-products-title">未上架产品（{unpublishedProducts.length}）</b>
             </button>
-            <small>
-              {page} / {totalPages}
-            </small>
-            <button type="button" disabled={page >= totalPages} onClick={() => updateFilter('page', String(page + 1))}>
-              下一页
-            </button>
-          </div>
-        )}
+            {showUnpublished&&<div id="unpublished-products-panel">
+              {unpublishedProducts.length===0?<p className="operations-empty">暂无未上架产品</p>:<><ProductRowsTable items={unpublishedRows} returnTo={returnTo} onCopy={openCopy} label="未上架产品表格"/><ProductPagination page={unpublishedPage} totalPages={unpublishedTotalPages} onPage={value=>updateGroupPage('unpublishedPage',value)}/></>}
+            </div>}
+          </section>
+        </div>}
       </section>
       <section className="operations-section">
         <header>
@@ -438,7 +413,7 @@ export function ProductCenter() {
         <div className="operations-attention-list">
           <article>
             <b>当前可派产品</b>
-            <p>在用产品：{activeItemsCount} 条</p>
+            <p>已上架产品：{activeItemsCount} 条</p>
           </article>
           <article>
             <b>测试过滤</b>

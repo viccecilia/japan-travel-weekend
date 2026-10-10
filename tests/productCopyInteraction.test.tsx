@@ -8,7 +8,7 @@ import type {ProductionBrowserServices} from '../src/shared/backend/productionSe
 
 afterEach(()=>cleanup());
 beforeEach(()=>{HTMLDialogElement.prototype.showModal=function(){this.setAttribute('open','');};});
-const product=(id:string,title:string,version:number):OperationsProduct=>({id,slug:id,status:'draft',catalogVersion:version,publishedRevision:null,draftRevision:1,title,content:{itinerary:[]},heroImageUrl:null,gallery:[],updatedAt:'2026-09-11T00:00:00Z'});
+const product=(id:string,title:string,version:number):OperationsProduct=>({id,slug:id,status:'draft',catalogVersion:version,publishedRevision:null,draftRevision:1,title,content:{routeStudioV1:true,itinerary:[]},heroImageUrl:null,gallery:[],updatedAt:'2026-09-11T00:00:00Z'});
 function CurrentLocation(){const location=useLocation();return <output aria-label="当前地址">{location.pathname}{location.search}</output>}
 const renderCenter=(copyProduct:ReturnType<typeof vi.fn>, initial='/app/operations/products', listProducts?:ReturnType<typeof vi.fn>)=>{
   const products=[product('route-a','路线 A',7),product('route-b','路线 B',12)];
@@ -19,6 +19,7 @@ const renderCenter=(copyProduct:ReturnType<typeof vi.fn>, initial='/app/operatio
 describe('产品复制组件行为',()=>{
   it('打开 A 的复制表单后筛选 B，仍复制 A 的固定版本并跳转新草稿',async()=>{
   const copyProduct=vi.fn(async()=>({ok:true,id:'route-a-copy',error:null}));renderCenter(copyProduct);
+    fireEvent.click(await screen.findByRole('button',{name:/未上架产品/}));
     const rows=await screen.findAllByRole('button',{name:/复制$/});
     fireEvent.click(rows[0]);
     fireEvent.change(screen.getByRole('textbox',{name:'搜索路线'}),{target:{value:'路线 B'}});
@@ -42,12 +43,14 @@ describe('产品复制组件行为',()=>{
     expect(await screen.findByRole('alert')).toHaveTextContent('连接中断');
     expect(screen.queryByText(/当前筛选下无匹配路线/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button',{name:'重试'}));
+    fireEvent.click(await screen.findByRole('button',{name:/未上架产品/}));
     expect(await screen.findByRole('link',{name:'编辑'})).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('网络异常时保留复制表单并显示可理解的失败提示',async()=>{
     const copyProduct=vi.fn(async()=>{throw new Error('网络连接中断')});renderCenter(copyProduct);
+    fireEvent.click(await screen.findByRole('button',{name:/未上架产品/}));
     await screen.findByRole('button',{name:/路线 A 复制/});
     const rows=await screen.findAllByRole('button',{name:/复制$/});
     fireEvent.click(rows[0]);
