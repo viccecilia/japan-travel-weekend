@@ -92,6 +92,7 @@ export const reviewedRouteStopAttractionIds:Record<string,string>={
   '宇治源氏之汤':'uji-genji-no-yu','宇治源氏の湯':'uji-genji-no-yu',
   '胜尾寺':'katsuo-ji','勝尾寺':'katsuo-ji','爱宕念佛寺':'otagi-nenbutsu-ji','愛宕念仏寺':'otagi-nenbutsu-ji',
   '大原三千院':'sanzen-in','三千院':'sanzen-in','贵船神社':'kifune-shrine','貴船神社':'kifune-shrine',
+  '岚山自由活动':'arashiyama-togetsukyo','岚山竹林与渡月桥':'arashiyama-togetsukyo','岚山地区自由活动':'arashiyama-bamboo-tenryu-ji',
 };
 const reviewedAttractionSuggestion=(value:Record<string,unknown>)=>{
   const title=text(value.title)||text(value.name);

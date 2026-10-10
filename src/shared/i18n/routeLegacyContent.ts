@@ -9,6 +9,59 @@ export type LegacyRouteContent={
   stops:string[];
 };
 
+const standardRouteListTranslations:Record<string,Partial<Record<PassengerLocale,string>>>={
+  '往返车辆与司机服务':{
+    'zh-CN':'往返车辆与司机服务','zh-TW':'往返車輛與司機服務',ja:'往復車両・ドライバーサービス',en:'Round-trip vehicle and driver service',ko:'왕복 차량 및 운전기사 서비스',vi:'Xe khứ hồi và tài xế',ne:'आउने-जाने सवारी र चालक सेवा',es:'Vehículo de ida y vuelta con conductor',
+  },
+  '行程履约支持与本车 Trip Room':{
+    'zh-CN':'行程履约支持与本车 Trip Room','zh-TW':'行程履約支援與本車 Trip Room',ja:'行程運営サポートと本車両の Trip Room',en:'Trip operations support and this vehicle’s Trip Room',ko:'여행 운영 지원 및 해당 차량 Trip Room',vi:'Hỗ trợ vận hành hành trình và Trip Room của xe',ne:'यात्रा सञ्चालन सहयोग र यस सवारीको Trip Room',es:'Asistencia operativa del viaje y Trip Room del vehículo',
+  },
+  '往返车辆与司导服务':{
+    'zh-CN':'往返车辆与司导服务','zh-TW':'往返車輛與司導服務',ja:'往復車両・ドライバーガイドサービス',en:'Round-trip vehicle and driver-guide service',ko:'왕복 차량 및 드라이버 가이드 서비스',vi:'Xe khứ hồi và dịch vụ tài xế kiêm hướng dẫn',ne:'आउने-जाने सवारी र चालक-गाइड सेवा',es:'Vehículo de ida y vuelta con conductor-guía',
+  },
+  '行程内运营通知与集合支持':{
+    'zh-CN':'行程内运营通知与集合支持','zh-TW':'行程內營運通知與集合支援',ja:'行程中の運営連絡と集合サポート',en:'Trip notifications and meeting support',ko:'여행 중 운영 알림 및 집합 지원',vi:'Thông báo vận hành và hỗ trợ tập trung trong hành trình',ne:'यात्राका सञ्चालन सूचना र भेट्ने सहयोग',es:'Avisos operativos y asistencia en el punto de encuentro',
+  },
+  '未在班次确认页明确列出的景点门票':{
+    'zh-CN':'未在班次确认页明确列出的景点门票','zh-TW':'班次確認頁未明確列出的景點門票',ja:'便の確認画面に明記されていない施設入場料',en:'Attraction admission not explicitly listed on the departure confirmation page',ko:'출발편 확인 페이지에 명시되지 않은 관광지 입장료',vi:'Vé tham quan không được ghi rõ trên trang xác nhận chuyến',ne:'प्रस्थान पुष्टि पृष्ठमा स्पष्ट रूपमा नलेखिएका आकर्षण प्रवेश शुल्क',es:'Entradas no indicadas expresamente en la confirmación de la salida',
+  },
+  '餐食、饮品及个人消费':{
+    'zh-CN':'餐食、饮品及个人消费','zh-TW':'餐食、飲品及個人消費',ja:'食事・飲み物・個人的な費用',en:'Meals, drinks and personal expenses',ko:'식사, 음료 및 개인 경비',vi:'Bữa ăn, đồ uống và chi phí cá nhân',ne:'खाना, पेय पदार्थ र व्यक्तिगत खर्च',es:'Comidas, bebidas y gastos personales',
+  },
+  '餐饮及个人消费':{
+    'zh-CN':'餐饮及个人消费','zh-TW':'餐飲及個人消費',ja:'飲食代と個人的な費用',en:'Food, drinks and personal expenses',ko:'식음료 및 개인 경비',vi:'Ăn uống và chi phí cá nhân',ne:'खानपान र व्यक्तिगत खर्च',es:'Comidas, bebidas y gastos personales',
+  },
+  '景点临时收费或自选项目':{
+    'zh-CN':'景点临时收费或自选项目','zh-TW':'景點臨時收費或自選項目',ja:'現地での臨時料金または任意参加の項目',en:'Temporary attraction charges or optional activities',ko:'현장 임시 요금 또는 선택 활동',vi:'Phí phát sinh tại điểm tham quan hoặc hoạt động tự chọn',ne:'आकर्षणस्थलका अस्थायी शुल्क वा वैकल्पिक गतिविधि',es:'Cargos temporales en atracciones o actividades opcionales',
+  },
+};
+
+const standardOperationalStopTranslations:Record<string,Partial<Record<PassengerLocale,string>>>={
+  '大阪日本桥集合':{'zh-CN':'大阪日本桥集合','zh-TW':'大阪日本橋集合',ja:'大阪・日本橋集合',en:'Meet at Osaka Nipponbashi',ko:'오사카 닛폰바시 집합',vi:'Tập trung tại Nipponbashi, Osaka',ne:'ओसाका निप्पोनबाशीमा भेट',es:'Encuentro en Nipponbashi, Osaka'},
+  '京都站集合':{'zh-CN':'京都站集合','zh-TW':'京都站集合',ja:'京都駅集合',en:'Meet at Kyoto Station',ko:'교토역 집합',vi:'Tập trung tại ga Kyoto',ne:'क्योटो स्टेशनमा भेट',es:'Encuentro en la estación de Kioto'},
+  '返回大阪':{'zh-CN':'返回大阪','zh-TW':'返回大阪',ja:'大阪へ戻る',en:'Return to Osaka',ko:'오사카로 귀환',vi:'Trở về Osaka',ne:'ओसाका फर्कने',es:'Regreso a Osaka'},
+  '千叠敷与三段壁':{'zh-CN':'千叠敷与三段壁','zh-TW':'千疊敷與三段壁',ja:'千畳敷と三段壁',en:'Senjojiki and Sandanbeki',ko:'센조지키와 산단베키',vi:'Senjojiki và Sandanbeki',ne:'सेन्जोजिकी र सानदानबेकी',es:'Senjojiki y Sandanbeki'},
+};
+
+export function legacyStandardRouteLists(locale:PassengerLocale,included:string[]|undefined,excluded:string[]|undefined){
+  const translate=(values:string[],prefix:string)=>Object.fromEntries(values.flatMap((source,index)=>{
+    const value=standardRouteListTranslations[source]?.[locale];
+    return value?[[`${prefix}-${index+1}`,value]]:[];
+  }));
+  const sourceIncluded=included??[];
+  const sourceExcluded=excluded??[];
+  const localizedIncluded=translate(sourceIncluded,'included');
+  const localizedExcluded=translate(sourceExcluded,'excluded');
+  return {
+    ...(Object.keys(localizedIncluded).length===sourceIncluded.length&&sourceIncluded.length?{included:localizedIncluded}:{}),
+    ...(Object.keys(localizedExcluded).length===sourceExcluded.length&&sourceExcluded.length?{excluded:localizedExcluded}:{}),
+  };
+}
+
+export function legacyOperationalStopTitle(locale:PassengerLocale,source:string){
+  return standardOperationalStopTranslations[source]?.[locale]??'';
+}
+
 type CoreLegacyRouteContent=Record<string,LegacyRouteContent>;
 
 /**

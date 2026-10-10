@@ -21,10 +21,12 @@ describe('Route Studio V1 data contract',()=>{
     expect(draft.heroVideo?.url).toBe('/hero.mp4');
     expect(draft.itinerary[1]).toMatchObject({attractionId:undefined,suggestedAttractionId:'amanohashidate',time:'10:30',stayMinutes:90,gallery:['/a.webp','/b.webp']});
   });
-  it('uses reviewed exact attraction mappings and never maps combined ordinary nodes',()=>{
+  it('uses reviewed exact attraction mappings and keeps ambiguous combined nodes ordinary',()=>{
     const expected={'天桥立':'amanohashidate','智恩寺文殊堂':'chion-ji-monju-do','伊根舟屋':'ine-funaya','清水寺':'kiyomizu-dera','伏见稻荷大社':'fushimi-inari-taisha','奈良公园':'nara-park','白须神社':'shirahige-shrine','琵琶湖观景区域':'biwako-valley-lake-biwa','La Collina近江八幡':'la-collina-omihachiman','贵志站与特色电车':'kishi-station-cat-theme-trains','Toretore市场':'toretore-market','有马温泉':'arima-onsen','北野异人馆街':'kitano-ijinkan','神户港':'kobe-harbor-harborland','六甲山夜景':'mount-rokko-night-view','宇治平等院':'byodoin-phoenix-hall','源氏物语博物馆':'tale-of-genji-uji-chapters','宇治源氏之汤':'uji-genji-no-yu','胜尾寺':'katsuo-ji','爱宕念佛寺':'otagi-nenbutsu-ji','大原三千院':'sanzen-in','贵船神社':'kifune-shrine'};
     for(const [label,slug] of Object.entries(expected))expect(reviewedRouteStopAttractionIds[label]).toBe(slug);
     expect(reviewedRouteStopAttractionIds['千叠敷与三段壁']).toBeUndefined();
+    expect(reviewedRouteStopAttractionIds['岚山自由活动']).toBe('arashiyama-togetsukyo');
+    expect(reviewedRouteStopAttractionIds['岚山地区自由活动']).toBe('arashiyama-bamboo-tenryu-ji');
   });
   it('retains normal nodes while add, replace, remove and reorder remain plain array operations',()=>{
     const draft=draftFromProduct(product);const normal=draft.itinerary[0];const attraction=draft.itinerary[1];

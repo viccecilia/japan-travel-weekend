@@ -1,5 +1,6 @@
 import type {PassengerLocale} from './i18n/passengerLocale';
-import {legacyRouteContent} from './i18n/routeLegacyContent';
+import {legacyOperationalStopTitle,legacyRouteContent,legacyStandardRouteLists} from './i18n/routeLegacyContent';
+import {resolveAttractionId} from './attractions';
 import type {Trip,TripTimelineItem} from './types';
 
 type LocaleContent=Record<string,unknown>;
@@ -14,9 +15,6 @@ function meaningful(value:unknown){
 
 function publishedLocaleContent(trip:Trip,locale:PassengerLocale):LocaleContent{
   if(locale==='zh-CN')return trip.localizedContent?.['zh-CN']??{};
-  // Traditional Chinese is a presentation variant until dedicated route copy
-  // is supplied. It may use the Chinese source, unlike every foreign locale.
-  if(locale==='zh-TW')return trip.localizedContent?.['zh-TW']??trip.localizedContent?.['zh-CN']??{};
   return trip.localizedContent?.[locale]??{};
 }
 
@@ -29,9 +27,11 @@ function legacyLocaleContent(trip:Trip,locale:PassengerLocale):LocaleContent{
     heroTitle:legacy.title,
     summary:legacy.summary,
     heroSubtitle:legacy.summary,
+    departureCity:legacy.region,
     region:legacy.region,
     duration:legacy.duration,
     stops:legacy.stops,
+    ...legacyStandardRouteLists(locale,trip.included,trip.excluded),
   };
 }
 
@@ -49,7 +49,7 @@ export function routeLocaleContent(trip:Trip,locale:PassengerLocale):LocaleConte
   return merged;
 }
 
-export function isRouteSourceLocale(locale:PassengerLocale){return locale==='zh-CN'||locale==='zh-TW';}
+export function isRouteSourceLocale(locale:PassengerLocale){return locale==='zh-CN';}
 
 export function localizedRouteText(content:LocaleContent,key:string,fallback:string,allowSourceFallback:boolean){
   const value=content[key];
@@ -88,20 +88,30 @@ function itineraryTranslations(content:LocaleContent){
 export function localizedRouteTimeline(trip:Trip,locale:PassengerLocale):TripTimelineItem[]{
   const translated=itineraryTranslations(routeLocaleContent(trip,locale));
   const legacyStops=legacyRouteContent(locale,trip.slug)?.stops??[];
+  const sourceLegacyStops=legacyRouteContent('zh-CN',trip.slug)?.stops??[];
+  const legacyStopsByAttractionId=new Map<string,string>();
+  sourceLegacyStops.forEach((title,index)=>{
+    const attractionId=resolveAttractionId({title},'zh-CN');
+    if(attractionId&&!legacyStopsByAttractionId.has(attractionId))legacyStopsByAttractionId.set(attractionId,legacyStops[index]??'');
+  });
   const allowSourceFallback=isRouteSourceLocale(locale);
   let attractionIndex=0;
   return trip.timeline.map(item=>{
     const row=item.id?translated[item.id]??{}:{};
-    // Legacy locale packs contain attraction names only. Meeting, transfer,
-    // free-time, and return nodes must not consume an attraction position.
-    const legacyStop=item.attractionId?legacyStops[attractionIndex++]??'':'';
+    // Exact reviewed aliases may enrich old published revisions without
+    // mutating them. Generic meeting/transfer/free-time nodes never fuzzy-map.
+    const attractionId=item.attractionId??resolveAttractionId(item,'zh-CN')??undefined;
+    const legacyStop=attractionId?(legacyStopsByAttractionId.get(attractionId)||legacyStops[attractionIndex]||''):'';
+    if(attractionId)attractionIndex++;
+    const operationalStop=legacyOperationalStopTitle(locale,item.title);
     const translatedText=(key:string,source:string|undefined='',legacyFallback='')=>{
       const value=row[key];
       return typeof value==='string'&&value.trim()?value.trim():(legacyFallback|| (allowSourceFallback?source??'':''));
     };
     return {
       ...item,
-      title:translatedText('stop_title',item.title,legacyStop),
+      attractionId,
+      title:translatedText('stop_title',item.title,legacyStop||operationalStop),
       subtitle:translatedText('subtitle',item.subtitle),
       detail:translatedText('shortDescription',translatedText('description',item.detail)),
       shortDescription:translatedText('shortDescription',item.shortDescription??item.detail),
@@ -109,6 +119,40 @@ export function localizedRouteTimeline(trip:Trip,locale:PassengerLocale):TripTim
       videoLabel:translatedText('videoLabel',item.videoLabel),
       tip:translatedText('tip',item.tip),
     };
+  });
+}
+
+const reviewedMultiAttractionStops:Record<string,Array<{id:string;titles:Record<PassengerLocale,string>}>>={
+  '千叠敷与三段壁':[
+    {id:'senjojiki',titles:{'zh-CN':'千叠敷','zh-TW':'千疊敷',ja:'千畳敷',en:'Senjojiki',ko:'센조지키',vi:'Senjojiki',ne:'सेन्जोजिकी',es:'Senjojiki'}},
+    {id:'sandanbeki',titles:{'zh-CN':'三段壁','zh-TW':'三段壁',ja:'三段壁',en:'Sandanbeki',ko:'산단베키',vi:'Sandanbeki',ne:'सानदानबेकी',es:'Sandanbeki'}},
+  ],
+};
+
+/**
+ * A route may deliberately keep two nearby attractions in one operational
+ * itinerary row. Passenger cards can expand only explicitly reviewed rows;
+ * timing and the published itinerary itself remain untouched.
+ */
+export function routeAttractionCardTimeline(trip:Trip,localizedTimeline:TripTimelineItem[],locale:PassengerLocale):TripTimelineItem[]{
+  return localizedTimeline.flatMap((item,index)=>{
+    if(item.attractionId)return [item];
+    const reviewed=reviewedMultiAttractionStops[trip.timeline[index]?.title??''];
+    if(!reviewed)return [];
+    return reviewed.map(({id,titles})=>({
+      ...item,
+      id:`${item.id??`route-stop-${index}`}:${id}`,
+      attractionId:id,
+      title:titles[locale],
+      subtitle:'',
+      detail:'',
+      shortDescription:'',
+      longDescription:'',
+      stayMinutes:null,
+      imageUrl:undefined,
+      gallery:[],
+      selectedImageIds:[],
+    }));
   });
 }
 

@@ -77,8 +77,8 @@ describe('reviewed Attraction mapping and inline audio',()=>{
     expect(resolveAttractionId({title:'大原三千院'},'zh-CN')).toBe('sanzen-in');
   });
 
-  it('does not fuzzy-map route-specific activities',()=>{
-    expect(resolveAttractionId({title:'岚山自由活动'},'zh-CN')).toBeNull();
+  it('maps reviewed route-specific activities exactly without fuzzy matching',()=>{
+    expect(resolveAttractionId({title:'岚山自由活动'},'zh-CN')).toBe('arashiyama-togetsukyo');
     expect(resolveAttractionId({title:' 天桥立 '},'zh-CN')).toBeNull();
   });
 
