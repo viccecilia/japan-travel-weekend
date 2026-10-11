@@ -26,9 +26,19 @@ describe('Passenger UI polish contracts',()=>{
 
   it('keeps departure selection customer-facing and omits remaining-seat copy from Route Detail V2',()=>{
     const app=source('./App.tsx');
+    const css=source('../styles.css');
+    const routeCss=source('./routeDetailContinuous.css');
     expect(app).toContain('route-departure-picker');
     expect(app).toContain('立即预订');
     expect(app).toContain('item.price.toLocaleString(intlLocale)');
+    expect(app).toContain('route-departure-calendar-scroll');
+    expect(app).toContain('Array.from({length:42}');
+    expect(app).not.toContain('function RouteStickyBooking');
+    const selector=app.slice(app.indexOf('function RouteDepartureSelector'),app.indexOf('function RouteItineraryTimeline'));
+    expect(selector).not.toContain('30*24*60*60*1000');
+    expect(routeCss).not.toContain('.route-booking-sticky');
+    expect(css).toContain('grid-template-columns:repeat(7,minmax(0,1fr))');
+    expect(css).toContain('height:min(356px,calc(100dvh - 250px))');
     const hero=app.slice(app.indexOf('function RouteV2Hero'),app.indexOf('function RouteV2List'));
     expect(hero).not.toContain('minimumGuests');
     expect(hero).not.toContain('availableSeats');

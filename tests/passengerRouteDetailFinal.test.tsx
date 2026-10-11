@@ -18,6 +18,11 @@ const departure=(id:string,day:number,price:number):Departure=>({
   currency:'JPY',taxIncluded:true,inventoryStatus:'权威库存',isSeed:false,
 });
 
+const departureAt=(id:string,departureTime:string,price:number):Departure=>({
+  ...departure(id,18,price),departureTime,expectedEndTime:new Date(Date.parse(departureTime)+9*60*60*1000).toISOString(),
+  salesCloseAt:'2100-12-31T00:00:00Z',
+});
+
 const localeText:Record<PassengerLocale,{title:string;summary:string;stop:string;intro:string;ordinary:string}>={
   'zh-CN':{title:'中文路线',summary:'中文路线简介',stop:'中文景点',intro:'中文景点简介',ordinary:'自由活动'},
   'zh-TW':{title:'繁中路線',summary:'繁中路線簡介',stop:'繁中景點',intro:'繁中景點簡介',ordinary:'自由活動'},
@@ -104,8 +109,9 @@ describe('Passenger Route Detail Final Polish',()=>{
     const first=view('zh-CN');
     expect(screen.queryByText('BOOKING')).not.toBeInTheDocument();
     fireEvent.click(screen.getByText('¥9,900').closest('button')!);
-    expect(screen.getByText(/¥9,900/,{selector:'.route-booking-sticky b'})).toBeInTheDocument();
-    for(const link of screen.getAllByRole('link',{name:'立即预订'}))expect(link).toHaveAttribute('href','/app/booking/route-final-test?departureId=second');
+    expect(screen.getByText(/¥9,900/,{selector:'.route-departure-summary strong'})).toBeInTheDocument();
+    expect(screen.getByRole('link',{name:'立即预订'})).toHaveAttribute('href','/app/booking/route-final-test?departureId=second');
+    expect(document.querySelector('.route-booking-sticky')).toBeNull();
     first.unmount();
     view('zh-CN',{departures:[]});
     expect(screen.getByText('目前暂无可报名班次')).toBeInTheDocument();
@@ -128,7 +134,36 @@ describe('Passenger Route Detail Final Polish',()=>{
     view('zh-CN',{departures:[paused]});
     expect(screen.getByText('目前暂无可报名班次')).toBeInTheDocument();
     expect(screen.queryByRole('link',{name:'立即预订'})).not.toBeInTheDocument();
-    expect(document.querySelector('.route-booking-sticky')).toHaveTextContent('请选择出发日期');
+    expect(document.querySelector('.route-booking-sticky')).toBeNull();
+  });
+
+  it('uses a stable six-week, vertically scrolling multi-month calendar without truncating later departures',()=>{
+    const departures=[
+      departureAt('oct','2099-10-08T00:00:00Z',8800),
+      departureAt('dec-early','2099-12-06T00:00:00Z',9200),
+      departureAt('dec-late','2099-12-06T02:30:00Z',9600),
+      departureAt('jan','2100-01-12T00:00:00Z',9900),
+    ];
+    view('zh-CN',{departures});
+    fireEvent.click(screen.getByRole('button',{name:/查看全部日期/}));
+    const months=document.querySelectorAll('.route-departure-month');
+    expect(months).toHaveLength(4);
+    expect(screen.getByRole('heading',{name:/2099年10月/})).toBeInTheDocument();
+    expect(screen.getByRole('heading',{name:/2099年11月/})).toBeInTheDocument();
+    expect(screen.getByRole('heading',{name:/2099年12月/})).toBeInTheDocument();
+    expect(screen.getByRole('heading',{name:/2100年1月/})).toBeInTheDocument();
+    expect(screen.getByText('本月暂无可报名班次')).toBeInTheDocument();
+    for(const grid of document.querySelectorAll('.route-calendar-grid'))expect(grid.children).toHaveLength(42);
+    fireEvent.click(screen.getByRole('button',{name:/12月6日.*可报名/}));
+    expect(screen.getByText(/¥9,200/,{selector:'.route-departure-summary strong'})).toBeInTheDocument();
+    const timeChoices=within(document.querySelector('.route-same-day-departures') as HTMLElement).getAllByRole('button');
+    expect(timeChoices).toHaveLength(2);
+    fireEvent.click(timeChoices[1]);
+    expect(screen.getByRole('link',{name:'立即预订'})).toHaveAttribute('href','/app/booking/route-final-test?departureId=dec-late');
+    expect(screen.getByText(/¥9,600/,{selector:'.route-departure-summary strong'})).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button',{name:/收起日历/}));
+    fireEvent.click(screen.getByRole('button',{name:/查看全部日期/}));
+    expect(screen.getByRole('button',{name:/12月6日.*可报名/})).toHaveAttribute('aria-pressed','true');
   });
 
   it('uses current-locale Attraction CMS content, 16:9 photos, a real gallery counter, audio, and no spot video',async()=>{
@@ -227,7 +262,8 @@ describe('Passenger Route Detail Final Polish',()=>{
     expect(rendered.service.loadAttractionGuide).toHaveBeenCalledWith('spot-one',locale);
     expect(screen.getByRole('button',{name:expandLabel[locale]})).toBeInTheDocument();
     expect(document.querySelector('.route-inline-audio')).toBeInTheDocument();
-    expect(document.querySelector('.route-booking-sticky a')).toBeInTheDocument();
+    expect(document.querySelector('.route-departure-summary a')).toBeInTheDocument();
+    expect(document.querySelector('.route-booking-sticky')).toBeNull();
     expect(document.querySelectorAll('.route-policy-summary .passenger-accordion')).toHaveLength(5);
   });
 });

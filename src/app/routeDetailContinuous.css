@@ -9,7 +9,7 @@
 .route-v2-reminder{padding:13px 14px;border-radius:14px;background:#fff5ce;border:1px solid #ead28b;margin:9px 0}.route-v2-reminder p{margin:5px 0 0;line-height:1.55}
 
 /* Passenger Route Detail final presentation: one data-driven renderer for every published route. */
-.app-frame.passenger-v2.screen-trips:has(.route-detail-v2)>.app-content{padding-top:0;padding-bottom:calc(190px + env(safe-area-inset-bottom));overflow-x:hidden}
+.app-frame.passenger-v2.screen-trips:has(.route-detail-v2)>.app-content{padding-top:0;padding-bottom:calc(104px + env(safe-area-inset-bottom));overflow-x:hidden}
 .app-frame:has(.route-detail-v2)>.app-content>.passenger-page-header{display:none}
 .app-frame:has(.route-detail-v2)>.bottom-nav{position:fixed;left:50%;right:auto;bottom:0;width:min(438px,100vw);transform:translateX(-50%);z-index:30}
 .app-frame:has(.route-detail-v2) .app-brand span{display:inline!important}
@@ -63,8 +63,5 @@
 .route-v2-preparation{margin-top:10px;padding:12px 14px;border-radius:14px;background:#f4f7f5}.route-v2-preparation>b{font-size:.7rem}.route-v2-preparation ul{display:flex;flex-wrap:wrap;gap:5px 18px;margin:7px 0 0;padding-left:18px}.route-v2-preparation li{color:#637178;font-size:.64rem;line-height:1.5}
 .route-policy-summary .passenger-accordion{margin:7px 0}
 .route-full-policy-link{display:inline-flex;min-height:44px;align-items:center;margin-top:9px;color:#725900;font-size:.7rem;font-weight:900;text-decoration:none}
-.route-booking-sticky{position:fixed;z-index:31;left:50%;bottom:calc(82px + env(safe-area-inset-bottom));display:flex;width:min(414px,calc(100vw - 24px));min-height:64px;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid #29343a;border-radius:17px;color:#fff;background:#17232af2;box-shadow:0 14px 34px rgba(9,18,24,.3);transform:translateX(-50%);backdrop-filter:blur(14px)}
-.route-booking-sticky>div{display:grid;min-width:0;gap:3px}.route-booking-sticky small{color:#b9c3c7;font-size:.55rem}.route-booking-sticky b{overflow:hidden;font-size:.77rem;white-space:nowrap;text-overflow:ellipsis}
-.route-booking-sticky>a{display:grid;min-width:104px;min-height:44px;place-items:center;padding:0 14px;border-radius:13px;color:#17232a;background:#ffe433;font-size:.7rem;font-weight:900;text-decoration:none}
 @media(max-width:600px){.app-frame:has(.route-detail-v2)>.bottom-nav{width:100%}.passenger-v2 .route-v2-hero{margin-left:-18px;margin-right:-18px;border-radius:0 0 22px 22px}}
-@media(max-width:390px){.route-detail-v2{margin-inline:0}.route-detail-v2 .route-v2-section{padding-right:0;padding-left:0}.route-itinerary-timeline article{grid-template-columns:56px minmax(0,1fr) auto;gap:8px}.route-fees-section .route-v2-info-grid{gap:8px}.route-fees-section .route-v2-info-grid article{padding:12px}.route-booking-sticky{width:calc(100vw - 18px);bottom:calc(80px + env(safe-area-inset-bottom))}.route-booking-sticky>a{min-width:96px;padding-inline:10px}}
+@media(max-width:390px){.route-detail-v2{margin-inline:0}.route-detail-v2 .route-v2-section{padding-right:0;padding-left:0}.route-itinerary-timeline article{grid-template-columns:56px minmax(0,1fr) auto;gap:8px}.route-fees-section .route-v2-info-grid{gap:8px}.route-fees-section .route-v2-info-grid article{padding:12px}}

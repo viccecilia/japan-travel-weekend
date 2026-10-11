@@ -36,6 +36,16 @@ export function formatPassengerDepartureDate(locale:PassengerLocale,date:Date,st
   return style==='card'?`${month} ${nepaliDigits(Number(parts.day))}`:`${nepaliDigits(Number(parts.day))} ${month} ${nepaliDigits(Number(parts.year))}`;
 }
 
+export function formatPassengerCalendarMonth(locale:PassengerLocale,date:Date){
+  if(locale!=='ne')return new Intl.DateTimeFormat(passengerIntlLocale(locale),{timeZone:'Asia/Tokyo',year:'numeric',month:'long'}).format(date);
+  const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'numeric'}).formatToParts(date).map(part=>[part.type,part.value]));
+  return `${nepaliMonths[Number(parts.month)-1]??parts.month} ${nepaliDigits(Number(parts.year))}`;
+}
+
+export function formatPassengerCalendarDay(locale:PassengerLocale,day:number){
+  return locale==='ne'?nepaliDigits(day):new Intl.NumberFormat(passengerIntlLocale(locale),{useGrouping:false}).format(day);
+}
+
 export function normalizePassengerLocale(value: string): PassengerLocale | null {
   const code = value.trim().toLowerCase();
   if (code.startsWith("zh-tw") || code.startsWith("zh-hk") || code.startsWith("zh-hant")) return "zh-TW";

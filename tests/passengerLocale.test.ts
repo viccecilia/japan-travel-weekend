@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {formatPassengerDepartureDate,normalizePassengerLocale,passengerCoreCopy,passengerHomeCopy,passengerIntlLocale,passengerLocales} from '../src/shared/i18n/passengerLocale';
+import {formatPassengerCalendarDay,formatPassengerCalendarMonth,formatPassengerDepartureDate,normalizePassengerLocale,passengerCoreCopy,passengerHomeCopy,passengerIntlLocale,passengerLocales} from '../src/shared/i18n/passengerLocale';
 
 describe('游客端八语界面',()=>{
   it('完整列出八种游客语言',()=>{
@@ -17,6 +17,8 @@ describe('游客端八语界面',()=>{
     expect(formatPassengerDepartureDate('ne',departure,'card')).toBe('अक्टोबर २०');
     expect(formatPassengerDepartureDate('ne',departure,'weekday')).toBe('मंगल');
     expect(formatPassengerDepartureDate('ne',departure,'summary')).toBe('२० अक्टोबर २०२६');
+    expect(formatPassengerCalendarMonth('ne',departure)).toBe('अक्टोबर २०२६');
+    expect(formatPassengerCalendarDay('ne',20)).toBe('२०');
   });
   it('每种语言都有核心和首页文案',()=>{
     for(const {code} of passengerLocales){
