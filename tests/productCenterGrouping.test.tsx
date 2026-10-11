@@ -19,6 +19,14 @@ const renderCenter=(listProducts:ReturnType<typeof vi.fn>,initial='/app/operatio
 };
 
 describe('产品列表分区',()=>{
+  it('在后台显示已公开的京都经典路线，不再只存在于游客端',async()=>{
+    const kyotoClassic={...product('arashiyama-train-hozugawa','published',{title:'京都经典一日游'}),content:{region:'京都'}};
+    renderCenter(vi.fn(async()=>({data:[kyotoClassic],error:null})));
+    expect(await screen.findByRole('heading',{name:'已上架产品（1）'})).toBeInTheDocument();
+    expect(screen.getByRole('region',{name:'已上架产品表格'})).toHaveTextContent('京都经典一日游');
+    expect(screen.getByRole('link',{name:'预览'})).toHaveAttribute('href','/app/trips/arashiyama-train-hozugawa');
+  });
+
   it('已上架在上方，草稿和已下架默认折叠，但保留各自状态',async()=>{
     renderCenter(vi.fn(async()=>({data:[
       product('published-with-draft','published',{published:2,draft:3,title:'已上架有更新'}),

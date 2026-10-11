@@ -10,11 +10,11 @@ import {publishedTripTimeline} from '../src/shared/data/repository';
 const product:OperationsProduct={id:'route-1',slug:'amanohashidate-ine',status:'published',catalogVersion:4,publishedRevision:3,draftRevision:null,title:'天桥立与伊根',heroImageUrl:'/hero.webp',gallery:[],updatedAt:'2026-10-07T00:00:00Z',content:{summary:'路线简介',description:'足够完整的路线介绍文字，用于产品发布与班次销售验证。',included:['车辆'],excluded:[],heroVideo:{url:'/hero.mp4',storagePath:'route-1/hero.mp4',posterUrl:'/poster.webp',mimeType:'video/mp4',sizeBytes:1024},itinerary:[{id:'meet',title:'京都站集合',time:'08:00',stayMinutes:10,type:'meeting'},{id:'ama',title:'天桥立',time:'10:30',stayMinutes:90,gallery:['/a.webp','/b.webp'],video:{url:'/legacy.mp4',storagePath:'legacy.mp4',mimeType:'video/mp4',sizeBytes:10}}],locales:{en:{title:'Amanohashidate & Ine',summary:'A coast day trip',itinerary:{meet:{stop_title:'Meet at Kyoto Station'}}},ja:{title:'天橋立と伊根',summary:'海の一日旅'}}}};
 
 describe('Route Studio V1 data contract',()=>{
-  it('keeps the exact eight maintained routes and marks new routes for the studio after publish',()=>{
-    expect(ROUTE_STUDIO_V1_SLUGS).toHaveLength(8);
-    expect(ROUTE_STUDIO_V1_SLUGS).not.toContain('arashiyama-train-hozugawa');
+  it('keeps all nine published routes manageable and marks new routes for the studio after publish',()=>{
+    expect(ROUTE_STUDIO_V1_SLUGS).toHaveLength(9);
+    expect(ROUTE_STUDIO_V1_SLUGS).toContain('arashiyama-train-hozugawa');
     expect(isRouteStudioProduct({...product,id:'new-route',slug:'new-route',status:'published',content:{routeStudioV1:true}})).toBe(true);
-    expect(isRouteStudioProduct({...product,id:'excluded',slug:'arashiyama-train-hozugawa',content:{routeStudioV1:true}})).toBe(false);
+    expect(isRouteStudioProduct({...product,id:'kyoto-classic',slug:'arashiyama-train-hozugawa',content:{}})).toBe(true);
   });
   it('loads an existing route, Hero video, timing, duration and photo gallery',()=>{
     const draft=draftFromProduct(product);
