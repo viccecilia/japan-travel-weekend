@@ -136,7 +136,7 @@
     },
     {
       "name": "202609030034_publish_reference_seat_products.sql",
-      "sha256": "0e645eb0935a634cda14de2486fee1302803fb55c2a3f8be2955e3c05e194170"
+      "sha256": "ad2672b52c9f906a0dea45b20a78a076c1c0d8c70379b5c044d6c4ac73fa8af0"
     },
     {
       "name": "202609030035_weekend_seat_pricing.sql",

@@ -49,7 +49,7 @@ insert into public.departures(id,trip_id,departs_at,ends_at,capacity,status,meet
 select (substr(md5(slug||service_date::text),1,8)||'-'||substr(md5(slug||service_date::text),9,4)||'-4'||substr(md5(slug||service_date::text),14,3)||'-a'||substr(md5(slug||service_date::text),18,3)||'-'||substr(md5(slug||service_date::text),21,12))::uuid,
   trip_id,departs_at,ends_at,100,'open','大阪Metro日本桥站2号出口','大阪府大阪市中央区日本桥1丁目 日本桥交差点北西侧（2号出口）',34.666944,135.506111,
   '搭乘大阪Metro千日前线或堺筋线至日本桥站，从2号出口出站。','请提前10分钟到达2号出口附近并寻找 Japan Travel Weekend 工作人员。',null,
-  price_jpy,now()-interval '1 minute',departs_at-interval '10 hours',1,'JPY',true
+  price_jpy,departs_at-interval '30 days',departs_at-interval '10 hours',1,'JPY',true
 from products
 on conflict(id) do update set trip_id=excluded.trip_id,departs_at=excluded.departs_at,ends_at=excluded.ends_at,capacity=excluded.capacity,status=excluded.status,meeting_name=excluded.meeting_name,meeting_address=excluded.meeting_address,map_lat=excluded.map_lat,map_lng=excluded.map_lng,arrival_transit=excluded.arrival_transit,arrival_walking=excluded.arrival_walking,seat_price_jpy=excluded.seat_price_jpy,sales_open_at=excluded.sales_open_at,sales_close_at=excluded.sales_close_at,minimum_guests=excluded.minimum_guests,currency=excluded.currency,tax_included=excluded.tax_included,updated_at=now();
 
