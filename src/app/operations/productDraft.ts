@@ -18,6 +18,12 @@ export type ProductEditorStop = Record<string, unknown> & {
   name?: string;
   description?: string;
   location?: string;
+  meetingPointTemplateId?: string;
+  meetingPointName?: string;
+  meetingPointAddress?: string;
+  meetingPointDescription?: string;
+  latitude?: number;
+  longitude?: number;
   time?: string;
   stayMinutes?: number;
   attractionId?: string;

@@ -21,6 +21,7 @@ function open(overrides: Record<string, unknown> = {}) {
     publishProduct: vi.fn(async () => ({ok: true, error: null})),
     uploadProductImage: vi.fn(async () => ({url: 'https://media.example.invalid/new.webp', error: null})),
     uploadProductSpotVideo: vi.fn(async (_productId: string, _stopId: string, _file: File, onProgress?: (value: number) => void) => { onProgress?.(100); return {url: 'https://media.example.invalid/spot.mp4', storagePath: 'trip-edit/stops/stop-1/video.mp4', error: null}; }),
+    listMeetingPointTemplates: vi.fn(async () => ({data: [], error: null})),
     setProductStatus: vi.fn(async () => ({ok: true, error: null})),
     ...overrides,
   };
@@ -130,6 +131,33 @@ it('关联景点与普通节点都可保存时间、地点和选填介绍', asyn
   await vi.waitFor(()=>expect(operations.saveProductDraft).toHaveBeenCalled());
   const payload=operations.saveProductDraft.mock.calls[0][0] as {content:{itinerary:Array<Record<string,unknown>>}};
   expect(payload.content.itinerary[0]).toMatchObject({id:'stop-1',attractionId:'kiyomizu-dera',time:'09:20',location:'京都市东山区',shortDescription:'从清水舞台眺望京都。'});
+});
+
+it('普通节点可选择预设集合地点并保存独立快照，景点节点不显示集合地选择', async () => {
+  const editable={...product,content:{...product.content,itinerary:[
+    {id:'stop-1',title:'清水寺',attractionId:'kiyomizu-dera',time:'09:00',location:'京都'},
+    {id:'stop-2',title:'大阪日本桥集合',time:'08:30',location:''},
+  ]}};
+  const operations=open({
+    listProducts:vi.fn(async()=>({data:[editable],error:null})),
+    listAttractions:vi.fn(async()=>({data:[{slug:'kiyomizu-dera',status:'published',textComplete:7,audioComplete:7}],error:null})),
+    getAttraction:vi.fn(async()=>({data:{status:'published',guides:{},audio:{}},error:null})),
+    listMeetingPointTemplates:vi.fn(async()=>({data:[{id:'meeting-1',name:'大阪日本桥2号出口',address:'大阪市中央区日本桥1-1',latitude:34.667,longitude:135.506,meetingNote:'2号出口附近集合',active:true,version:1,updatedAt:'2026-10-12T00:00:00Z'}],error:null})),
+  });
+  fireEvent.click(await screen.findByRole('button',{name:'景点行程'}));
+  const attractionDetails=screen.getByText('清水寺').closest('details') as HTMLDetailsElement;
+  const meetingDetails=screen.getByText('大阪日本桥集合').closest('details') as HTMLDetailsElement;
+  expect(attractionDetails.querySelector('input[list]')).toBeNull();
+  const location=meetingDetails.querySelector('input[list]') as HTMLInputElement;
+  expect(location).toBeInTheDocument();
+  fireEvent.change(location,{target:{value:'大阪日本桥2号出口'}});
+  expect(location).toHaveValue('大阪日本桥2号出口');
+  expect(screen.getAllByText('大阪市中央区日本桥1-1')).toHaveLength(2);
+  expect(screen.getByText('2号出口附近集合')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'保存草稿'}));
+  await vi.waitFor(()=>expect(operations.saveProductDraft).toHaveBeenCalled());
+  const payload=operations.saveProductDraft.mock.calls[0][0] as {content:{itinerary:Array<Record<string,unknown>>}};
+  expect(payload.content.itinerary[1]).toMatchObject({meetingPointTemplateId:'meeting-1',meetingPointName:'大阪日本桥2号出口',meetingPointAddress:'大阪市中央区日本桥1-1',meetingPointDescription:'2号出口附近集合',latitude:34.667,longitude:135.506,location:'大阪日本桥2号出口'});
 });
 
 it('路线标题为空时在固定保存栏直接提示且不调用保存接口', async () => {
