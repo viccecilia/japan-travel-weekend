@@ -2,6 +2,7 @@ import {describe,expect,it} from 'vitest';
 import {trips} from '../src/shared/data/trips';
 import {legacyRouteSlugs} from '../src/shared/i18n/routeLegacyContent';
 import {localizedRouteTimeline,routeAttractionCardTimeline,routeHeroPresentation,routeLocaleContent} from '../src/shared/routeLocalePresentation';
+import {legacyOperationalStopTitle} from '../src/shared/i18n/routeLegacyContent';
 import type {Trip} from '../src/shared/types';
 
 const trip={
@@ -11,6 +12,12 @@ const trip={
 } as unknown as Trip;
 
 describe('route locale presentation',()=>{
+  it('localizes the complete legacy meeting and return labels restored to passenger timelines',()=>{
+    expect(legacyOperationalStopTitle('ja','大阪日本桥集合出发')).toBe('大阪・日本橋集合・出発');
+    expect(legacyOperationalStopTitle('en','京都站集合出发')).toBe('Meet and depart at Kyoto Station');
+    expect(legacyOperationalStopTitle('zh-TW','预计抵达京都站')).toBe('預計抵達京都站');
+    expect(legacyOperationalStopTitle('es','预计返回大阪')).toBe('Regreso previsto a Osaka');
+  });
   it('keeps a reviewed combined operational stop once while expanding two passenger attraction cards',()=>{
     const route={...trips.find(item=>item.slug==='wakayama-family')!};
     const timeline=localizedRouteTimeline(route,'en');

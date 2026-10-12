@@ -38,8 +38,12 @@ const standardRouteListTranslations:Record<string,Partial<Record<PassengerLocale
 
 const standardOperationalStopTranslations:Record<string,Partial<Record<PassengerLocale,string>>>={
   '大阪日本桥集合':{'zh-CN':'大阪日本桥集合','zh-TW':'大阪日本橋集合',ja:'大阪・日本橋集合',en:'Meet at Osaka Nipponbashi',ko:'오사카 닛폰바시 집합',vi:'Tập trung tại Nipponbashi, Osaka',ne:'ओसाका निप्पोनबाशीमा भेट',es:'Encuentro en Nipponbashi, Osaka'},
+  '大阪日本桥集合出发':{'zh-CN':'大阪日本桥集合出发','zh-TW':'大阪日本橋集合出發',ja:'大阪・日本橋集合・出発',en:'Meet and depart at Osaka Nipponbashi',ko:'오사카 닛폰바시 집합·출발',vi:'Tập trung và khởi hành tại Nipponbashi, Osaka',ne:'ओसाका निप्पोनबाशीमा भेट र प्रस्थान',es:'Encuentro y salida en Nipponbashi, Osaka'},
   '京都站集合':{'zh-CN':'京都站集合','zh-TW':'京都站集合',ja:'京都駅集合',en:'Meet at Kyoto Station',ko:'교토역 집합',vi:'Tập trung tại ga Kyoto',ne:'क्योटो स्टेशनमा भेट',es:'Encuentro en la estación de Kioto'},
+  '京都站集合出发':{'zh-CN':'京都站集合出发','zh-TW':'京都站集合出發',ja:'京都駅集合・出発',en:'Meet and depart at Kyoto Station',ko:'교토역 집합·출발',vi:'Tập trung và khởi hành tại ga Kyoto',ne:'क्योटो स्टेशनमा भेट र प्रस्थान',es:'Encuentro y salida en la estación de Kioto'},
   '返回大阪':{'zh-CN':'返回大阪','zh-TW':'返回大阪',ja:'大阪へ戻る',en:'Return to Osaka',ko:'오사카로 귀환',vi:'Trở về Osaka',ne:'ओसाका फर्कने',es:'Regreso a Osaka'},
+  '预计抵达京都站':{'zh-CN':'预计抵达京都站','zh-TW':'預計抵達京都站',ja:'京都駅到着予定',en:'Estimated arrival at Kyoto Station',ko:'교토역 도착 예정',vi:'Dự kiến đến ga Kyoto',ne:'क्योटो स्टेशनमा पुग्ने अनुमानित समय',es:'Llegada prevista a la estación de Kioto'},
+  '预计返回大阪':{'zh-CN':'预计返回大阪','zh-TW':'預計返回大阪',ja:'大阪帰着予定',en:'Estimated return to Osaka',ko:'오사카 귀환 예정',vi:'Dự kiến trở về Osaka',ne:'ओसाका फर्कने अनुमानित समय',es:'Regreso previsto a Osaka'},
   '千叠敷与三段壁':{'zh-CN':'千叠敷与三段壁','zh-TW':'千疊敷與三段壁',ja:'千畳敷と三段壁',en:'Senjojiki and Sandanbeki',ko:'센조지키와 산단베키',vi:'Senjojiki và Sandanbeki',ne:'सेन्जोजिकी र सानदानबेकी',es:'Senjojiki y Sandanbeki'},
 };
 

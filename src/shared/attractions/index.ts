@@ -12,6 +12,7 @@ const reviewedRouteStopAliases:Record<string,string>={
   '岚山竹林与渡月桥':'arashiyama-togetsukyo',
   '岚山竹林':'arashiyama-bamboo-tenryu-ji',
   '岚山地区自由活动':'arashiyama-bamboo-tenryu-ji',
+  '清水寺与东山历史街区':'kiyomizu-dera',
   '琵琶湖观景台':'biwako-valley-lake-biwa',
   '宇治平等院':'byodoin-phoenix-hall',
   '神户港与马赛克摩天轮':'kobe-harbor-harborland',
