@@ -37,7 +37,9 @@ begin
   invitee:=gen_random_uuid();
   insert into auth.users(id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
   values(invitee,'00000000-0000-0000-0000-000000000000','authenticated','authenticated','v7-invitee-'||idx||'-'||invitee||'@example.invalid',crypt('not-a-real-password',gen_salt('bf')),now(),'{}','{}',now(),now());
-  insert into public.referral_relationships(inviter_account_id,invitee_account_id,referral_code,discount_percent) values(inviter,invitee,referral_code,10) returning id into relation_id;
+  if not public.apply_referral_registration(invitee,referral_code) then raise exception 'FAIL referral registration was not applied';end if;
+  select id into relation_id from public.referral_relationships where invitee_account_id=invitee;
+  if relation_id is null then raise exception 'FAIL referral relationship was not created';end if;
   insert into public.orders(account_id,departure_id,idempotency_key,seat_count,status,amount,gross_amount,discount_amount) values(invitee,departure_id,'v7-order-'||idx||'-'||txid_current(),1,'pending_payment',9000,10000,1000) returning id into v_order_id;
   update public.orders set status='paid' where id=v_order_id;
   select id into entry_id from public.cash_commission_entries where source_order_id=v_order_id;

@@ -23,6 +23,7 @@ describe("V7 financial convergence migration contract", () => {
     expect(financial).toContain("'recovery_due'");
     expect(financial).toContain("recompute_order_refund_total_trigger");
     expect(financial).toContain("suppress_duplicate_refund_notification_trigger");
+    expect(financial).toContain('public.apply_referral_registration(invitee,referral_code)');
   });
 
   it("keeps the newcomer coupon but removes the new inviter coupon", () => {
