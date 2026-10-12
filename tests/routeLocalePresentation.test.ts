@@ -19,13 +19,19 @@ describe('route locale presentation',()=>{
     expect(legacyOperationalStopTitle('es','预计返回大阪')).toBe('Regreso previsto a Osaka');
   });
   it('keeps a reviewed combined operational stop once while expanding two passenger attraction cards',()=>{
-    const route={...trips.find(item=>item.slug==='wakayama-family')!};
+    const source=trips.find(item=>item.slug==='wakayama-family')!;
+    const route={...source,timeline:source.timeline.map(item=>item.title==='千叠敷与三段壁'?{
+      ...item,
+      imageUrl:'https://example.test/wakayama-coast-cover.webp',
+      gallery:['https://example.test/senjojiki.webp','https://example.test/sandanbeki.webp'],
+      selectedImageIds:['senjojiki-route-photo','sandanbeki-route-photo'],
+    }:item)};
     const timeline=localizedRouteTimeline(route,'en');
     const cards=routeAttractionCardTimeline(route,timeline,'en');
     expect(timeline.filter(item=>item.title==='Senjojiki and Sandanbeki')).toHaveLength(1);
     expect(cards.filter(item=>['senjojiki','sandanbeki'].includes(item.attractionId??''))).toEqual([
-      expect.objectContaining({attractionId:'senjojiki',title:'Senjojiki',stayMinutes:null}),
-      expect.objectContaining({attractionId:'sandanbeki',title:'Sandanbeki',stayMinutes:null}),
+      expect.objectContaining({attractionId:'senjojiki',title:'Senjojiki',stayMinutes:null,imageUrl:'https://example.test/wakayama-coast-cover.webp',gallery:['https://example.test/senjojiki.webp','https://example.test/sandanbeki.webp'],selectedImageIds:['senjojiki-route-photo','sandanbeki-route-photo']}),
+      expect.objectContaining({attractionId:'sandanbeki',title:'Sandanbeki',stayMinutes:null,imageUrl:'https://example.test/wakayama-coast-cover.webp',gallery:['https://example.test/senjojiki.webp','https://example.test/sandanbeki.webp'],selectedImageIds:['senjojiki-route-photo','sandanbeki-route-photo']}),
     ]);
   });
   it('restores an existing human locale pack before declaring a content gap',()=>{

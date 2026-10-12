@@ -150,9 +150,6 @@ export function routeAttractionCardTimeline(trip:Trip,localizedTimeline:TripTime
       shortDescription:'',
       longDescription:'',
       stayMinutes:null,
-      imageUrl:undefined,
-      gallery:[],
-      selectedImageIds:[],
     }));
   });
 }
