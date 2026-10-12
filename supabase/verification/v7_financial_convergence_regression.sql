@@ -1,7 +1,7 @@
 -- Disposable local/CI database only. Fictional rows are rolled back.
 begin;
 do $$
-declare inviter uuid:=gen_random_uuid();invitee uuid;trip_id uuid;departure_id uuid;v_order_id uuid;relation_id uuid;entry_id uuid;state text;idx integer;referral_code text;global_policy_id uuid;service_policy_id uuid;cancellation_policy_id uuid;
+declare inviter uuid:=gen_random_uuid();invitee uuid;trip_id uuid;departure_id uuid;v_order_id uuid;relation_id uuid;entry_id uuid;assignment_id uuid;group_id uuid;passenger_id uuid;state text;idx integer;referral_code text;global_policy_id uuid;service_policy_id uuid;cancellation_policy_id uuid;
 begin
  insert into auth.users(id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
  values(inviter,'00000000-0000-0000-0000-000000000000','authenticated','authenticated','v7-inviter-'||inviter||'@example.invalid',crypt('not-a-real-password',gen_salt('bf')),now(),'{}','{}',now(),now());
@@ -42,13 +42,20 @@ begin
   if relation_id is null then raise exception 'FAIL referral relationship was not created';end if;
   insert into public.orders(account_id,departure_id,idempotency_key,seat_count,status,amount,gross_amount,discount_amount) values(invitee,departure_id,'v7-order-'||idx||'-'||txid_current(),1,'pending_payment',9000,10000,1000) returning id into v_order_id;
   update public.orders set status='paid' where id=v_order_id;
+  insert into public.vehicle_assignments(departure_id,sequence,vehicle_type,capacity) values(departure_id,idx,'regression-vehicle',10) returning id into assignment_id;
+  insert into public.vehicle_groups(departure_id,vehicle_assignment_id) values(departure_id,assignment_id) returning id into group_id;
+  insert into public.vehicle_group_orders(vehicle_group_id,order_id) values(group_id,v_order_id);
+  insert into public.passengers(order_id,display_name,passenger_type) values(v_order_id,'Fictional passenger','adult') returning id into passenger_id;
+  insert into public.passenger_checkins(passenger_id,order_id,vehicle_group_id,status,updated_by) values(passenger_id,v_order_id,group_id,'boarded',invitee);
+  insert into public.vehicle_group_journey_state(vehicle_group_id,status,updated_by,completed_at) values(group_id,'completed',invitee,now());
+  if public.refresh_referral_lifecycle_for_order(v_order_id)<>'valid_referral' then raise exception 'FAIL completed real-trip referral was not validated';end if;
   select id into entry_id from public.cash_commission_entries where source_order_id=v_order_id;
-  if entry_id is null or (select status from public.cash_commission_entries where id=entry_id)<>'pending' then raise exception 'FAIL pending commission was not created';end if;
-  update public.cash_commission_entries set status=case idx when 1 then 'available' when 2 then 'locked' else 'paid' end where id=entry_id;
+  if entry_id is null or (select status from public.cash_commission_entries where id=entry_id)<>'available' then raise exception 'FAIL available commission was not created after a completed real trip';end if;
+  update public.cash_commission_entries set status=case idx when 1 then 'available' when 2 then 'withdrawal_pending' else 'paid' end where id=entry_id;
   update public.orders set refunded_amount_jpy=9000,status='refunded' where id=v_order_id;
   select status into state from public.cash_commission_entries where id=entry_id;
-  if idx=1 and state<>'reversed' then raise exception 'FAIL available commission not reversed';end if;
-  if idx in(2,3) and state<>'recovery_due' then raise exception 'FAIL locked/paid commission did not create recovery state';end if;
+  if idx=1 and state<>'invalid' then raise exception 'FAIL available commission was not invalidated';end if;
+  if idx in(2,3) and state<>'recovery_due' then raise exception 'FAIL withdrawal-pending/paid commission did not create recovery state';end if;
   if (select status from public.orders where id=v_order_id)<>'refunded' then raise exception 'FAIL refund was blocked by commission state';end if;
  end loop;
  if (select count(*) from public.notification_outbox where event_type='refund-completed' and order_id=v_order_id)>1 then raise exception 'FAIL duplicate refund notification';end if;

@@ -825,6 +825,10 @@
     {
       "name": "20261012133709_staff_task_end_time_for_leave_conflicts.sql",
       "sha256": "c294744822fd8a18268bfce1d77b28ffd98ed681cb2b041dfa92de9ab81b3edc"
+    },
+    {
+      "name": "20261012145500_refund_commission_recovery_convergence.sql",
+      "sha256": "5b4a8157ab5705ab24978e37a27193ee32d7167216b11ec391a1a5047bb8bf01"
     }
   ]
 }
