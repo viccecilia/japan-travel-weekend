@@ -42,7 +42,7 @@ begin
   if relation_id is null then raise exception 'FAIL referral relationship was not created';end if;
   insert into public.orders(account_id,departure_id,idempotency_key,seat_count,status,amount,gross_amount,discount_amount) values(invitee,departure_id,'v7-order-'||idx||'-'||txid_current(),1,'pending_payment',9000,10000,1000) returning id into v_order_id;
   update public.orders set status='paid' where id=v_order_id;
-  insert into public.vehicle_assignments(departure_id,sequence,vehicle_type,capacity) values(departure_id,idx,'regression-vehicle',10) returning id into assignment_id;
+  insert into public.vehicle_assignments(departure_id,sequence,vehicle_type,capacity,planned_passengers) values(departure_id,idx,'regression-vehicle',10,1) returning id into assignment_id;
   insert into public.vehicle_groups(departure_id,vehicle_assignment_id) values(departure_id,assignment_id) returning id into group_id;
   insert into public.vehicle_group_orders(vehicle_group_id,order_id) values(group_id,v_order_id);
   insert into public.passengers(order_id,display_name,passenger_type) values(v_order_id,'Fictional passenger','adult') returning id into passenger_id;
