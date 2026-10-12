@@ -27,10 +27,10 @@ export function installServiceWorkerUpdateChecks(
 
 /** Activate one waiting worker per currently loaded build. The marker prevents
  * a failed or duplicate update notification from causing a reload loop. */
-export function activateServiceWorkerUpdate(update:UpdateServiceWorker,buildSha:string){
+export function activateServiceWorkerUpdate(update:UpdateServiceWorker,buildSha:string,onFailure?:()=>void){
   const key=`jtw-pwa-update-requested:${buildSha}`;
   if(sessionStorage.getItem(key)==='1')return false;
   sessionStorage.setItem(key,'1');
-  void update(true).catch(()=>sessionStorage.removeItem(key));
+  void update(true).catch(()=>{sessionStorage.removeItem(key);onFailure?.()});
   return true;
 }

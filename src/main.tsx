@@ -6,16 +6,15 @@ document.documentElement.lang='zh-CN';
 document.documentElement.dataset.buildSha=__JTW_BUILD_SHA__.slice(0,12);
 if('serviceWorker' in navigator){
  const updateSW=registerSW({immediate:true,onRegisteredSW(_swUrl,registration){
-  if(registration)installServiceWorkerUpdateChecks(registration);
+ if(registration)installServiceWorkerUpdateChecks(registration);
  },onNeedRefresh(){
-  if(activateServiceWorkerUpdate(updateSW,__JTW_BUILD_SHA__))return;
   const showNotice=()=>{
    document.getElementById('jtw-update-entry')?.remove();
    if(document.getElementById('jtw-update-ready'))return;
    const notice=document.createElement('aside');notice.id='jtw-update-ready';notice.className='jtw-update-ready';notice.setAttribute('role','status');
    notice.innerHTML='<b>新版已准备好</b><span>请先完成并保存当前操作，再更新页面。</span>';
    const version=document.createElement('small');version.textContent=`当前页面版本 ${__JTW_BUILD_SHA__.slice(0,12)}；待更新版本将在更新后核对`;notice.append(version);
-   const button=document.createElement('button');button.type='button';button.textContent='现在更新';button.onclick=()=>void updateSW(true);notice.append(button);
+   const button=document.createElement('button');button.type='button';button.textContent='现在更新';button.onclick=()=>{button.disabled=true;button.textContent='正在更新…';const reset=()=>{button.disabled=false;button.textContent='重试更新'};if(!activateServiceWorkerUpdate(updateSW,__JTW_BUILD_SHA__,reset))reset()};notice.append(button);
    const later=document.createElement('button');later.type='button';later.textContent='稍后';later.className='secondary';later.onclick=()=>{notice.remove();const entry=document.createElement('button');entry.id='jtw-update-entry';entry.className='jtw-update-entry';entry.type='button';entry.textContent='有可用更新';entry.onclick=showNotice;document.body.append(entry)};notice.append(later);document.body.append(notice);
   };
   showNotice();

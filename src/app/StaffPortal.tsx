@@ -12,6 +12,9 @@ import {StaffChat} from './StaffChat';
 import { isSeedEnabled } from "../shared/config/businessRules";
 import { useApp } from "./store";
 import {isExecutableStaffTask,isFutureActiveStaffTask,selectCurrentStaffTask,selectNextStaffTask,selectPrimaryStaffTask,taskPhase,taskSortTime,tokyoDay} from './staffTaskSelection';
+import {MapSurface} from './MapSurface';
+import type {MapMarker} from '../shared/services/mapSession';
+import {leaveCoverageForDay,taskLeaveConflict} from './staffLeave';
 
 export type StaffTask = {
   staff_assignment_id: string;
@@ -22,6 +25,7 @@ export type StaffTask = {
   departure_id: string;
   trip_title: string;
   departs_at: string | null;
+  ends_at?: string | null;
   chat_opens_at: string | null;
   meeting_at?: string | null;
   meeting_name: string | null;
@@ -237,14 +241,18 @@ function StaffLiveMap({task}:{task:StaffTask}){
   const {services}=useApp();
   const [locations,setLocations]=useState<SharedPassengerLocation[]>([]);
   const [attendance,setAttendance]=useState<AttendanceRow[]>([]);
-  const [driver,setDriver]=useState<{latitude:number;longitude:number}|null>(null);
+  const [driver,setDriver]=useState<{latitude:number;longitude:number;updated_at?:string}|null>(null);
   const [gap,setGap]=useState('');
-  useEffect(()=>{let mounted=true;if(!services)return()=>{mounted=false};void Promise.all([services.tripRoom.loadPassengerLocations(task.vehicle_group_id),services.tripRoom.loadAttendance(task.vehicle_group_id),services.tripRoom.loadDriverLocation(task.vehicle_group_id)]).then(([shared,rows,ownValue])=>{if(!mounted)return;const own=ownValue as {latitude?:unknown;longitude?:unknown}|null;setLocations(shared);setAttendance(rows as AttendanceRow[]);setDriver(own&&typeof own.latitude==='number'&&typeof own.longitude==='number'?{latitude:own.latitude,longitude:own.longitude}:null);setGap('')}).catch(()=>{if(mounted){setLocations([]);setAttendance([]);setDriver(null);setGap('DRIVER_LIVE_LOCATION_GAP：实时位置暂不可用。')}});return()=>{mounted=false}},[services,task.vehicle_group_id]);
-  const points=[...(driver?[{id:'driver',label:'你',latitude:driver.latitude,longitude:driver.longitude,driver:true}]:[]),...locations.map((row,index)=>({id:row.id,label:row.display_name??`P${index+1}`,latitude:Number(row.latitude),longitude:Number(row.longitude),driver:false}))];
-  const latitudes=points.map(point=>point.latitude),longitudes=points.map(point=>point.longitude);const minLat=Math.min(...latitudes),maxLat=Math.max(...latitudes),minLng=Math.min(...longitudes),maxLng=Math.max(...longitudes);
-  const style=(latitude:number,longitude:number)=>({left:`${points.length<2?50:15+70*(longitude-minLng)/Math.max(.000001,maxLng-minLng)}%`,top:`${points.length<2?50:15+70*(maxLat-latitude)/Math.max(.000001,maxLat-minLat)}%`});
-  const total=Math.max(task.passenger_count,attendance.length);const shared=locations.length;const hidden=Math.max(0,total-shared);
-  return <><section className="driver-live-map"><header><b>{timeLabel(task.departs_at)} · {task.trip_title}</b><span>{driverStageLabel[driverTaskStage(task)]}</span></header><div className="driver-map-canvas" aria-label="当前班次实时共享位置">{points.map((point,index)=><div className={`driver-map-person ${point.driver?'driver':'passenger'}`} key={point.id} style={style(point.latitude,point.longitude)}><b>{point.driver?'司':`P${index+(driver?0:1)}`}</b><small>{point.label}</small></div>)}{!points.length&&<p>当前没有有效的实时共享位置。</p>}</div><div className="driver-location-summary"><span>乘客<b>{total}人</b></span><span>正在共享<b>{shared}人</b></span><span>未共享<b>{hidden}人</b></span></div><p>仅显示本班次成员主动授权且未过期的位置；未共享乘客不会生成位置点。</p>{gap&&<p role="status">{gap}</p>}</section><section className="driver-map-actions"><div><small>集合地点</small><b>{task.meeting_name??'待确认'}</b></div>{task.map_lat!=null&&task.map_lng!=null&&<a href={`https://www.google.com/maps/dir/?api=1&destination=${task.map_lat},${task.map_lng}`} target="_blank" rel="noreferrer">导航至集合点</a>}<Link to={taskPath(task,'passengers')}>联系未确认乘客</Link></section></>;
+  const [lastUpdated,setLastUpdated]=useState<string|null>(null);
+  const [loading,setLoading]=useState(true);
+  useEffect(()=>{let mounted=true;let generation=0;setLocations([]);setAttendance([]);setDriver(null);setLastUpdated(null);setLoading(true);const load=async()=>{const current=++generation;try{if(!services)return;const [shared,rows,ownValue]=await Promise.all([services.tripRoom.loadPassengerLocations(task.vehicle_group_id),services.tripRoom.loadAttendance(task.vehicle_group_id),services.tripRoom.loadDriverLocation(task.vehicle_group_id)]);if(!mounted||current!==generation)return;const now=Date.now();const activeLocations=shared.filter(row=>new Date(row.expires_at).getTime()>now);const own=ownValue as {latitude?:unknown;longitude?:unknown;updated_at?:unknown}|null;setLocations(activeLocations);setAttendance(rows as AttendanceRow[]);setDriver(own&&typeof own.latitude==='number'&&typeof own.longitude==='number'?{latitude:own.latitude,longitude:own.longitude,updated_at:typeof own.updated_at==='string'?own.updated_at:undefined}:null);setLastUpdated(new Date().toISOString());setGap('');setLoading(false)}catch{if(mounted&&current===generation){setGap('实时位置连接中断，正在等待重新同步。');setLoading(false)}}};void load();const timer=window.setInterval(()=>void load(),10_000);const resume=()=>{if(document.visibilityState==='visible')void load()};window.addEventListener('online',resume);window.addEventListener('focus',resume);document.addEventListener('visibilitychange',resume);return()=>{mounted=false;generation+=1;window.clearInterval(timer);window.removeEventListener('online',resume);window.removeEventListener('focus',resume);document.removeEventListener('visibilitychange',resume)}},[services,task.vehicle_group_id]);
+  const markers:MapMarker[]=[
+    ...(task.map_lat!=null&&task.map_lng!=null?[{id:'meeting',type:'meeting_point' as const,lat:task.map_lat,lng:task.map_lng,label:task.meeting_name??'集合地点',subtitle:task.meeting_address??undefined,source:'meeting' as const}]:[]),
+    ...(driver?[{id:'driver',type:'driver_vehicle' as const,lat:driver.latitude,lng:driver.longitude,label:'司机 / 车辆',source:'driver' as const,updatedAt:driver.updated_at}]:[]),
+    ...locations.map((row,index)=>({id:`passenger:${row.id}`,type:'user_location' as const,lat:Number(row.latitude),lng:Number(row.longitude),label:row.display_name??`共享账号 ${index+1}`,source:'device' as const,updatedAt:row.sampled_at})),
+  ];
+  const total=Math.max(task.passenger_count,attendance.length);const shared=locations.length;
+  return <><section className="driver-live-map"><header><b>{timeLabel(task.departs_at)} · {task.trip_title}</b><span>{driverStageLabel[driverTaskStage(task)]}</span></header><MapSurface markers={markers} activeMarkerId={driver?'driver':'meeting'} interactive={Boolean(import.meta.env.VITE_GOOGLE_MAPS_BROWSER_KEY)} emptyLabel={loading?'正在同步实时位置…':'当前没有有效的共享位置。'} unavailableLabel="地图服务配置缺失或暂不可用，不能显示实时地图。"/><div className="driver-location-summary"><span>本车游客<b>{total}人</b></span><span>共享位置账号<b>{shared}个</b></span><span>地图点位<b>{markers.length}个</b></span></div><p>位置每10秒及恢复前台/网络时重新同步；仅显示本班次主动授权且未过期的账号位置，不按订单人数复制假点。</p>{lastUpdated&&<p>最后同步：{japanDateTime(lastUpdated)}</p>}{gap&&<p role="status">{gap}</p>}</section><section className="driver-map-actions"><div><small>集合地点</small><b>{task.meeting_name??'待确认'}</b></div>{task.map_lat!=null&&task.map_lng!=null&&<a href={`https://www.google.com/maps/dir/?api=1&destination=${task.map_lat},${task.map_lng}`} target="_blank" rel="noreferrer">导航至集合点</a>}<Link to={taskPath(task,'passengers')}>联系未确认乘客</Link></section></>;
 }
 
 export function StaffPortal() {
@@ -325,8 +333,8 @@ export function StaffPortal() {
   const filteredTasks=tasks.filter(task=>task.departs_at&&tokyoDay(task.departs_at)===scheduleDate).sort((a,b)=>taskSortTime(a)-taskSortTime(b));
   if(portalView==='schedule'){
     const days=futureDays(nowDate);
-    const leave=leaves.some(item=>item.status==='approved'&&tokyoDay(item.starts_at)<=scheduleDate&&tokyoDay(item.ends_at)>=scheduleDate);
-    return <StaffFrame task={active}><header className="staff-welcome"><span>7-DAY SCHEDULE</span><h1>行程</h1><p>{new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Tokyo',month:'long',day:'numeric'}).format(new Date(`${scheduleDate}T00:00:00+09:00`))}</p></header><section className="staff-week-calendar" aria-label="未来7天工作日历">{days.map((day,index)=>{const key=tokyoDay(day);const count=tasks.filter(task=>task.departs_at&&tokyoDay(task.departs_at)===key&&taskPhase(task)!=='cancelled').length;const dayLeave=leaves.some(item=>item.status==='approved'&&tokyoDay(item.starts_at)<=key&&tokyoDay(item.ends_at)>=key);return <button type="button" key={key} className={key===scheduleDate?'active':''} aria-pressed={key===scheduleDate} onClick={()=>updateSchedule(key)}><small>{index===0?'今天':new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Tokyo',weekday:'short'}).format(day)}</small><b>{new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Tokyo',day:'numeric'}).format(day)}</b><em>{dayLeave?'请假':count?`${count}单`:'—'}</em></button>})}</section>{leave?<StatusCard title="这一天已请假，没有派单。">已批准请假期间不会显示为可执行任务。</StatusCard>:filteredTasks.length?<section className="staff-day-tasks">{filteredTasks.map(task=><article key={task.staff_assignment_id} data-status={driverTaskStage(task,nowDate)}><div><b>{timeLabel(task.departs_at)}</b><span>{driverStageLabel[driverTaskStage(task,nowDate)]}</span></div><h2>{task.trip_title}</h2><p>集合：{task.meeting_name??'待确认'}</p><p>车辆：{task.vehicle_label??task.vehicle_type} · 乘客：{task.passenger_count}人</p><div><Link to={taskPath(task,'meeting')}>集合点</Link>{taskPhase(task)!=='cancelled'&&<Link to={taskPath(task,'journey')}>打开任务</Link>}</div></article>)}</section>:<StatusCard title="这一天没有任务。">可选择其他日期查看已分配行程。</StatusCard>}</StaffFrame>;
+    const coverage=leaveCoverageForDay(scheduleDate,leaves);
+    return <StaffFrame task={active}><header className="staff-welcome"><span>7-DAY SCHEDULE</span><h1>行程</h1><p>{new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Tokyo',month:'long',day:'numeric'}).format(new Date(`${scheduleDate}T00:00:00+09:00`))}</p></header><section className="staff-week-calendar" aria-label="未来7天工作日历">{days.map((day,index)=>{const key=tokyoDay(day);const count=tasks.filter(task=>task.departs_at&&tokyoDay(task.departs_at)===key&&taskPhase(task)!=='cancelled').length;const dayCoverage=leaveCoverageForDay(key,leaves);return <button type="button" key={key} className={key===scheduleDate?'active':''} aria-pressed={key===scheduleDate} onClick={()=>updateSchedule(key)}><small>{index===0?'今天':new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Tokyo',weekday:'short'}).format(day)}</small><b>{new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Tokyo',day:'numeric'}).format(day)}</b><em>{dayCoverage==='full'?'全天请假':dayCoverage==='partial'?'部分请假':count?`${count}单`:'—'}</em></button>})}</section>{coverage!=='none'&&<p className="staff-result" role="status">{coverage==='full'?'这一天已批准全天请假；已有任务仍保留显示，必须由运营确认调整。':'这一天有已批准的部分时段请假；请逐项核对任务冲突。'}</p>}{filteredTasks.length?<section className="staff-day-tasks">{filteredTasks.map(task=>{const conflict=taskLeaveConflict(task.departs_at,task.ends_at,leaves);return <article key={task.staff_assignment_id} data-status={driverTaskStage(task,nowDate)}><div><b>{timeLabel(task.departs_at)}</b><span>{driverStageLabel[driverTaskStage(task,nowDate)]}</span></div><h2>{task.trip_title}</h2>{conflict==='conflict'&&<p className="staff-late-alert" role="alert">与已批准请假时段冲突，请联系运营处理。</p>}{conflict==='unknown'&&<p className="staff-late-alert" role="status">任务结束时间待核对，无法自动判断请假冲突。</p>}<p>集合：{task.meeting_name??'待确认'}</p><p>车辆：{task.vehicle_label??task.vehicle_type} · 乘客：{task.passenger_count}人</p><div><Link to={taskPath(task,'meeting')}>集合点</Link>{taskPhase(task)!=='cancelled'&&<Link to={taskPath(task,'journey')}>打开任务</Link>}</div></article>})}</section>:<StatusCard title={coverage==='full'?"这一天已批准全天请假。":"这一天没有任务。"}>{coverage==='full'?'当前没有已分配任务。请假不会自动取消或隐藏已有派单。':'可选择其他日期查看已分配行程。'}</StatusCard>}</StaffFrame>;
   }
   if(portalView==='map')return <StaffFrame task={active}><header className="staff-welcome"><span>LIVE PASSENGER MAP</span><h1>地图</h1><p>仅显示当前正式负责班次中主动共享且仍有效的位置。</p></header>{active?<><label className="staff-task-select">当前任务<select aria-label="地图任务" value={active.staff_assignment_id} onChange={event=>setSelected(event.target.value)}>{tasks.filter(task=>taskPhase(task)!=='cancelled').map(task=><option value={task.staff_assignment_id} key={task.staff_assignment_id}>{dayLabel(task.departs_at)} {timeLabel(task.departs_at)} · {task.trip_title}</option>)}</select></label><StaffLiveMap task={active}/></>:<StatusCard title="暂无可显示的任务地图">获得任务后，这里会显示本人任务的集合点与已授权位置。</StatusCard>}</StaffFrame>;
   if(portalView==='messages')return <StaffFrame task={active}><header className="staff-welcome"><span>COMMUNICATION</span><h1>消息</h1><p>{workNotifications.length} 条工作通知</p></header><section className="staff-thread-list" aria-label="消息线程">{tasks.filter(task=>task.room_id).sort((a,b)=>a.staff_assignment_id===active?.staff_assignment_id?-1:b.staff_assignment_id===active?.staff_assignment_id?1:taskSortTime(a)-taskSortTime(b)).map(task=><Link className="staff-thread" key={task.staff_assignment_id} to={taskPath(task,'chat')}><span className="staff-thread-avatar">旅</span><span><b>{task.trip_title}</b><small>{task.room_status==='open'?'本车群已开放，点击进入聊天':'本车群尚未开放或只读'}</small><em>{dayLabel(task.departs_at)} · {task.vehicle_label??task.vehicle_type}</em></span></Link>)}{active&&<Link className="staff-thread" to={taskPath(active,'support')}><span className="staff-thread-avatar operations">运</span><span><b>运营消息</b><small>提交与当前任务关联的调度请求</small><em>记录任务与提交人</em></span></Link>}{!tasks.some(task=>task.room_id)&&!active&&<p className="operations-empty">暂无有权访问的消息线程。</p>}</section>{notificationError&&<p role="alert">{notificationError}</p>}</StaffFrame>;
@@ -618,6 +626,11 @@ function PassengerAction({
   const [contacts, setContacts] = useState<
     Record<string, { contact_name: string; phone: string }>
   >({});
+  const orderGroups=useMemo(()=>{
+    const grouped=new Map<string,AttendanceRow[]>();
+    for(const row of rows)grouped.set(row.order_id,[...(grouped.get(row.order_id)??[]),row]);
+    return [...grouped.entries()].map(([orderId,passengers])=>({orderId,passengers}));
+  },[rows]);
   const refresh = async () => {
     if (services) {
       setRows(
@@ -698,7 +711,7 @@ function PassengerAction({
     if (!services) {
       setContacts((value) => ({
         ...value,
-        [row.passenger_id]: {
+        [row.order_id]: {
           contact_name: "TEST-订单联系人",
           phone: "000-0000-0000",
         },
@@ -715,8 +728,8 @@ function PassengerAction({
       setNotice("尚未到直接联系时间，或订单没有可用联系电话。");
       return;
     }
-    setContacts((value) => ({ ...value, [row.passenger_id]: contact }));
-    setNotice("联系电话已按履约需要显示，本次查看已记录。");
+    setContacts((value) => ({ ...value, [row.order_id]: contact }));
+    setNotice("订单联系人已按履约需要显示，本次查看已记录。");
   };
   return (
     <section className="staff-detail">
@@ -754,25 +767,13 @@ function PassengerAction({
           订单分车后，乘客会按车辆群组显示。
         </StatusCard>
       ) : (
-        <div className="staff-passenger-list">
-          {rows.map((row) => (
-            <article key={row.passenger_id}>
-              <header>
-                <div>
-                  <b>{row.passenger_label}</b>
-                  <small>订单尾号 {row.order_id.slice(-6)}</small>
-                </div>
-                <em>{statusLabel[row.status] ?? row.status}</em>
-              </header>
+        <div className="staff-order-groups">
+          {orderGroups.map(({orderId,passengers})=>{const arrived=passengers.filter(row=>row.status==='at_meeting_point'||row.status==='boarded').length;const boarded=passengers.filter(row=>row.status==='boarded').length;const assistance=passengers.filter(row=>row.status==='needs_assistance').length;const contact=contacts[orderId];return <details className="staff-order-group" key={orderId} open>
+            <summary><span><b>订单尾号 {orderId.slice(-6)}</b><small>本车 {passengers.length} 人 · 已到 {arrived} · 已登车 {boarded}{assistance?` · 协助 ${assistance}`:''}</small></span><em>{boarded===passengers.length?'本车成员已登车':'逐人确认'}</em></summary>
+            <div className="staff-order-contact"><span>主要联系人：{contact?contact.contact_name:'按需读取正式订单联系人'}</span>{contact?.phone?<a href={`tel:${contact.phone}`}>{contact.phone}</a>:contact?<small>订单未提供联系电话</small>:<button type="button" disabled={busy!==''} aria-label="拨打乘客电话" onClick={()=>void reveal(passengers[0])}>查看订单联系人</button>}</div>
+            <div className="staff-passenger-list">{passengers.map((row)=><article key={row.passenger_id}>
+              <header><div><b>{row.passenger_label}</b><small>本订单乘客</small></div><em>{statusLabel[row.status] ?? row.status}</em></header>
               {row.late_minutes ? <p className="staff-late-alert" role="status">预计迟到 {row.late_minutes}{row.late_minutes===15?' 分钟以上':' 分钟'}</p> : null}
-              {contacts[row.passenger_id] && (
-                <p>
-                  <b>{contacts[row.passenger_id].contact_name}</b> ·{" "}
-                  <a href={`tel:${contacts[row.passenger_id].phone}`}>
-                    {contacts[row.passenger_id].phone}
-                  </a>
-                </p>
-              )}
               <div>
                 <button
                   disabled={busy !== ""}
@@ -792,9 +793,6 @@ function PassengerAction({
                 >
                   需要协助
                 </button>
-                <button disabled={busy !== ""} onClick={() => void reveal(row)}>
-                  拨打乘客电话
-                </button>
                 <button
                   disabled={busy !== ""}
                   onClick={() => void escalate(row)}
@@ -802,8 +800,8 @@ function PassengerAction({
                   联系运营
                 </button>
               </div>
-            </article>
-          ))}
+            </article>)}</div>
+          </details>})}
         </div>
       )}
       {notice && (

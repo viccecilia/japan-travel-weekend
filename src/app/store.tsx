@@ -56,6 +56,7 @@ type Ctx = {
   departures: Departure[];
   departuresResolved: boolean;
   departuresError: string | null;
+  refreshDepartures: () => Promise<void>;
   catalogRevision: number;
   refreshCatalog: () => Promise<string | null>;
   updateBooking: (b: Partial<Booking>) => void;
@@ -79,12 +80,25 @@ export function AppProvider({
   const [departuresError,setDeparturesError]=useState<string|null>(null);
   const [catalogRevision,setCatalogRevision]=useState(0);
   const authGeneration=useRef(0);
+  const departureGeneration=useRef(0);
   useEffect(()=>{
     document.documentElement.lang=state.ui.locale??'zh-CN';
   },[state.ui.locale]);
   const refreshCatalog=useCallback(async()=>{if(!services||typeof services.loadPublishedCatalog!=='function')return null;const result=await services.loadPublishedCatalog();if(!result.error){replacePublishedTripCatalog(result.data);setCatalogRevision(value=>value+1)}return result.error},[services]);
   useEffect(()=>{let active=true;if(!services||typeof services.loadPublishedCatalog!=='function')return()=>{active=false};const load=async()=>{const result=await services.loadPublishedCatalog();if(active&&!result.error){replacePublishedTripCatalog(result.data);setCatalogRevision(value=>value+1)}};void load();const onFocus=()=>void load();const timer=window.setInterval(()=>void load(),30_000);window.addEventListener('focus',onFocus);window.addEventListener('online',onFocus);return()=>{active=false;window.clearInterval(timer);window.removeEventListener('focus',onFocus);window.removeEventListener('online',onFocus)}},[services]);
-  useEffect(()=>{let active=true;if(!services)return()=>{active=false};const load=()=>void services.loadSellableDepartures().then(result=>{if(!active)return;setDepartures(result.data);setDeparturesError(result.error);setDeparturesResolved(true)});load();const timer=window.setInterval(load,30_000);window.addEventListener('focus',load);window.addEventListener('online',load);return()=>{active=false;window.clearInterval(timer);window.removeEventListener('focus',load);window.removeEventListener('online',load)}},[services]);
+  const refreshDepartures=useCallback(async()=>{
+    if(!services)return;
+    const generation=++departureGeneration.current;
+    try{
+      const result=await services.loadSellableDepartures();
+      if(generation!==departureGeneration.current)return;
+      if(result.error){setDeparturesError(result.error);setDeparturesResolved(true);return;}
+      setDepartures(result.data);setDeparturesError(null);setDeparturesResolved(true);
+    }catch{
+      if(generation===departureGeneration.current){setDeparturesError('departure_load_failed');setDeparturesResolved(true);}
+    }
+  },[services]);
+  useEffect(()=>{if(!services)return;void refreshDepartures();const load=()=>void refreshDepartures();const timer=window.setInterval(load,30_000);window.addEventListener('focus',load);window.addEventListener('online',load);return()=>{departureGeneration.current+=1;window.clearInterval(timer);window.removeEventListener('focus',load);window.removeEventListener('online',load)}},[services,refreshDepartures]);
   useEffect(() => {
     let active = true;
     if (!services) return () => { active = false; };
@@ -120,6 +134,7 @@ export function AppProvider({
       departures,
       departuresResolved,
       departuresError,
+      refreshDepartures,
       catalogRevision,
       refreshCatalog,
       updateBooking: (b: Partial<Booking>) =>
@@ -150,7 +165,7 @@ export function AppProvider({
         window.dispatchEvent(new CustomEvent('jtw:identity-cleared'));
       },
     }),
-    [state, services, authResolved, departures, departuresResolved, departuresError, catalogRevision, refreshCatalog],
+    [state, services, authResolved, departures, departuresResolved, departuresError, refreshDepartures, catalogRevision, refreshCatalog],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

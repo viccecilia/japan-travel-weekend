@@ -35,7 +35,7 @@ describe("测试 API 就绪探针", () => {
   it('正式密钥必须同时具备明确生产付款授权',async()=>{
     const base={STRIPE_SECRET_KEY:'sk_live_example',STRIPE_WEBHOOK_SECRET:'whsec_example',NOTIFICATION_WEBHOOK_SECRET:'notification-secret-at-least-32-characters',JTW_STRIPE_MODE:'live'};
     expect((await checkTestApiReadiness(client(),base)).checks.stripeModeSafe).toBe(false);
-    expect((await checkTestApiReadiness(client(),{...base,JTW_PRODUCTION_PAYMENT_AUTHORIZED:'true'})).checks.stripeModeSafe).toBe(true);
+    expect((await checkTestApiReadiness(client(),{...base,NODE_ENV:'production',JTW_PRODUCTION_PAYMENT_AUTHORIZED:'true'})).checks.stripeModeSafe).toBe(true);
   });
 
   it("Supabase 客户端未创建时明确不就绪", async () => {

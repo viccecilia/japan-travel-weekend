@@ -1,14 +1,18 @@
 -- Disposable local/CI database only. Fictional rows are rolled back.
 begin;
 do $$
-declare inviter uuid:=gen_random_uuid();invitee uuid;trip_id uuid;departure_id uuid;v_order_id uuid;relation_id uuid;entry_id uuid;state text;idx integer;referral_code text;
+declare inviter uuid:=gen_random_uuid();invitee uuid;trip_id uuid;departure_id uuid;v_order_id uuid;relation_id uuid;entry_id uuid;state text;idx integer;referral_code text;global_policy_id uuid;service_policy_id uuid;cancellation_policy_id uuid;
 begin
  insert into auth.users(id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
  values(inviter,'00000000-0000-0000-0000-000000000000','authenticated','authenticated','v7-inviter-'||inviter||'@example.invalid',crypt('not-a-real-password',gen_salt('bf')),now(),'{}','{}',now(),now());
  insert into public.ambassador_qualifications(account_id,status,source,approved_at) values(inviter,'approved','operations',now());
  select code into referral_code from public.referral_codes where account_id=inviter;
  if referral_code is null then raise exception 'FAIL referral code was not provisioned';end if;
- insert into public.trips(slug,title,status,content)
+ select id into global_policy_id from public.policy_templates where template_key='jtw-day-trip-standard' and status='active';
+ select id into service_policy_id from public.policy_templates where template_key='standard-10h-v1' and status='active';
+ select id into cancellation_policy_id from public.policy_templates where template_key='standard-24h-v1' and status='active';
+ if global_policy_id is null or service_policy_id is null or cancellation_policy_id is null then raise exception 'FAIL standard policy templates are unavailable';end if;
+ insert into public.trips(slug,title,status,content,policy_template_id,service_time_policy_template_id,cancellation_policy_template_id)
  values(
   'v7-financial-'||txid_current(),'V7 fictional financial route','published',
   jsonb_build_object(
@@ -18,7 +22,7 @@ begin
    'luggagePolicy','Fictional luggage policy for regression.','accessibilityInfo','Fictional accessibility information.',
    'mealInfo','Fictional meal information.','weatherPolicy','Fictional weather policy.',
    'cancellationPolicyVersion','v7-test'
-  )
+  ),global_policy_id,service_policy_id,cancellation_policy_id
  ) returning id into trip_id;
  insert into public.departures(
   trip_id,capacity,status,departs_at,ends_at,sales_open_at,sales_close_at,

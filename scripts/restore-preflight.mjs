@@ -12,32 +12,14 @@ export const PROTECTED_PROJECT_REFS = new Set([
 const PROJECT_REF_PATTERN = /^[a-z]{20}$/;
 const MIGRATION_PATTERN = /^(\d{8})(\d{4})_.+\.sql$/;
 export const LEGACY_MIGRATION_COUNT = 147;
-// CLI-generated additions follow the frozen 0001-0147 legacy chain.
-// Raw 0920/0970/0980 drafts are archived, never replayed as migrations.
-export const ADDITIONAL_MIGRATIONS = [
-  '20260919100111_operations_read_authorization_closure.sql',
-  '20260919100132_travelers_boost_explicit_consent.sql',
-  '20260919100755_staff_assignment_capability_boundary.sql',
-  '20260919101135_restore_korean_translation_context.sql',
-  '20260920054451_discover_video_heroes.sql',
-  '20260920070417_delete_discover_hero.sql',
-  '20260921011836_account_profile_consent_once.sql',
-  '20260921011919_chat_spanish_language.sql',
-  '20260921013345_resume_existing_order_payment.sql',
-  '20260921014034_round1_contact_window.sql',
-  '20260921014412_passenger_location_coordinates.sql',
-  '20260921014907_private_trip_chat_photos.sql',
-  '20260926043656_growth_operations_phase1.sql',
-  '20260926054340_growth_operations_phase2_ambassador_center.sql',
-  '20260926082708_growth_operations_phase3_referral_tree.sql',
-  '20260926083645_growth_operations_phase3_tree_details.sql',
-  '20260926084520_growth_operations_phase3_anomaly_scope.sql',
-  '20260926084628_growth_operations_phase3_root_counts.sql',
-  '20260926085302_growth_operations_phase3_tree_focus.sql',
-  '20260926090500_growth_operations_phase3_root_financials.sql',
-  '20260926091500_growth_operations_phase3_period_context.sql',
-];
-export const EXPECTED_MIGRATION_COUNT = LEGACY_MIGRATION_COUNT + ADDITIONAL_MIGRATIONS.length;
+// CLI-generated additions follow the frozen 0001-0147 legacy chain. The
+// reviewed hash lock is the single source of truth, so adding a migration
+// requires an explicit lock-file update instead of a second hand-maintained
+// filename registry that can silently drift.
+export const ADDITIONAL_MIGRATIONS = migrationLock.files
+  .slice(LEGACY_MIGRATION_COUNT)
+  .map((file) => file.name);
+export const EXPECTED_MIGRATION_COUNT = migrationLock.files.length;
 
 export function validateRestoreTarget({ projectRef, projectUrl, disposableConfirmation }) {
   if (!PROJECT_REF_PATTERN.test(projectRef ?? "")) {

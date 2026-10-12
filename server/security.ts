@@ -31,8 +31,22 @@ export class FixedWindowRateLimiter{
     return {allowed:current.count<=this.limit,retryAfterSeconds:Math.max(1,Math.ceil((current.resetAt-now)/1000))};
   }
   private prune(now:number){for(const [key,value] of this.entries)if(value.resetAt<=now)this.entries.delete(key);while(this.entries.size>=this.maxKeys){const oldest=this.entries.keys().next().value as string|undefined;if(!oldest)break;this.entries.delete(oldest)}}
+  get size(){return this.entries.size}
 }
 
-export function requestRateKey(req:IncomingMessage){const authorization=req.headers.authorization?.trim();const material=authorization||req.socket.remoteAddress||'unknown';return createHash('sha256').update(material).digest('hex')}
+const normalizeAddress=(value:string)=>value.trim().replace(/^::ffff:/,'');
+export function parseTrustedProxyAddresses(value:string|undefined){return new Set((value??'').split(',').map(normalizeAddress).filter(Boolean))}
+export function requestSourceAddress(req:IncomingMessage,trustedProxies:ReadonlySet<string>){
+  const remote=normalizeAddress(req.socket.remoteAddress||'unknown');
+  if(!trustedProxies.has(remote))return remote;
+  const header=Array.isArray(req.headers['x-forwarded-for'])?req.headers['x-forwarded-for'].join(','):req.headers['x-forwarded-for'];
+  const chain=(header??'').split(',').map(normalizeAddress).filter(Boolean);
+  for(let index=chain.length-1;index>=0;index-=1)if(!trustedProxies.has(chain[index]))return chain[index];
+  return remote;
+}
+export function requestRateKey(req:IncomingMessage,accountId:string|null,trustedProxies:ReadonlySet<string>){
+  const material=accountId?`account:${accountId}`:`source:${requestSourceAddress(req,trustedProxies)}`;
+  return createHash('sha256').update(material).digest('hex');
+}
 
 export function sendRateLimit(res:ServerResponse,retryAfterSeconds:number,corsOrigin:string|null,send:(res:ServerResponse,status:number,body:unknown,corsOrigin?:string|null,headers?:Record<string,string>)=>void){send(res,429,{error:'rate_limited'},corsOrigin,{'retry-after':String(retryAfterSeconds)})}

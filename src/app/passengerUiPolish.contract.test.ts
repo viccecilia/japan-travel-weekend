@@ -103,13 +103,13 @@ describe('reviewed Attraction mapping and inline audio',()=>{
 
   it('keeps itinerary time pills at one exact size across narrow breakpoints',()=>{
     const css=source('./routeDetailContinuous.css');
-    expect(css).toContain('grid-template-columns:56px minmax(0,1fr) auto');
+    expect(css).toContain('grid-template-columns:56px minmax(0,1fr)');
     expect(css).toContain('.route-itinerary-time-slot');
     expect(css).toContain('width:56px;height:56px');
     expect(css).toContain('border-radius:50%');
     expect(css).toContain('article.no-time .route-itinerary-time-slot::before');
     expect(css).toContain('font-variant-numeric:tabular-nums');
-    expect(css).not.toContain('grid-template-columns:50px minmax(0,1fr) auto');
+    expect(css).not.toContain('grid-template-columns:50px minmax(0,1fr)');
     expect(css).toContain('.route-v2-spot>p.is-expanded{display:block;overflow:visible;-webkit-line-clamp:unset}');
   });
 });

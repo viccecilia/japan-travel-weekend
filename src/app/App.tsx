@@ -1291,8 +1291,14 @@ export function AppTrip() {
   );
 }
 export function BookingPage() {
-  const t = travelRepository.getTrip(useParams().slug || "") ?? trips[0];
-  const { state, updateBooking, departures, departuresResolved } = useApp();
+  const slug=useParams().slug||'';
+  const {state}=useApp();
+  const t=travelRepository.getTrip(slug);
+  const copy=passengerBookingCopy[state.ui.locale??'zh-CN'];
+  return t?<BookingPageResolved t={t}/>:<Empty title={copy.invalidRoute} text=""/>;
+}
+function BookingPageResolved({t}:{t:Trip}) {
+  const { state, updateBooking, departures, departuresResolved, departuresError, refreshDepartures } = useApp();
   const locale=state.ui.locale ?? 'zh-CN';
   const b=passengerBookingCopy[locale];
   const sales=bookingSalesCopy[locale];
@@ -1311,9 +1317,7 @@ export function BookingPage() {
         new Date(a.departureTime!).getTime() -
         new Date(b.departureTime!).getTime(),
     );
-  const firstDepartureTime=sortedDatedDepartures[0]?.departureTime?new Date(sortedDatedDepartures[0].departureTime!).getTime():null;
-  const datedDepartures=firstDepartureTime==null?sortedDatedDepartures:sortedDatedDepartures.filter(item=>new Date(item.departureTime!).getTime()<firstDepartureTime+30*24*60*60*1000);
-  const displayedDepartures = datedDepartures.length ? datedDepartures : deps;
+  const displayedDepartures = sortedDatedDepartures.length ? sortedDatedDepartures : deps;
   const firstDisplayedSellable = displayedDepartures.find(
     (item) => item.price != null && item.availableSeats !== 0,
   );
@@ -1343,6 +1347,7 @@ export function BookingPage() {
   );
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if(departuresError)return;
     const f = new FormData(e.currentTarget);
     const departureId = String(f.get("departure"));
     if (!sellable.some((departure) => departure.id === departureId)) return;
@@ -1368,9 +1373,10 @@ export function BookingPage() {
           <p>{displayTrip.stops.join(" → ")}</p>
         </div>
       </section>
-      {deps.length ? (
+      {!departuresResolved&&!deps.length?<p role="status" className="notice">{b.loading}</p>:departuresError&&!deps.length?<div role="alert" className="notice"><p>{b.loadError}</p><button type="button" className="button secondary" onClick={()=>void refreshDepartures()}>{b.retry}</button></div>:deps.length ? (
         <form className="form" onSubmit={submit}>
-          {invalidRequestedDeparture&&<p className="booking-note" role="alert">该班次已失效、已停售或不属于当前路线，请重新选择日期；系统不会自动替换为其他班次。</p>}
+          {invalidRequestedDeparture&&<p className="booking-note" role="alert">{b.invalidDeparture}</p>}
+          {departuresError&&<div className="booking-note" role="alert"><p>{b.refreshError}</p><button type="button" className="button secondary" onClick={()=>void refreshDepartures()}>{b.retry}</button></div>}
           <fieldset className="booking-departure-calendar">
             <legend>
               {b.selectDate} <small>{b.next30}</small>
@@ -1517,7 +1523,7 @@ export function BookingPage() {
             </span>
             <button
               className="button"
-              disabled={!chosen || adults < 1}
+              disabled={!chosen || adults < 1 || Boolean(departuresError)}
             >
               {b.continue}
             </button>
@@ -2086,7 +2092,11 @@ export function Payment() {
       <AppTitle
         eyebrow="第 4 步，共 4 步"
         title="支付前确认"
-        text={checkoutReady?(stripeMode==='test'?"测试模式会先锁定库存，再由 Stripe 测试支付确认；不会产生真实扣款。":"系统会先锁定库存，再由 Stripe 安全确认付款。增值税和最终金额以本页为准。") : "本阶段停在支付前：先保存可恢复的订单草稿，不会发起扣款。"}
+        text={!services?.checkoutAvailable
+          ? "支付功能尚未开放：当前只能核对资料，系统不会创建付款或扣款。"
+          : checkoutReady
+            ? (stripeMode==='test'?"测试模式会先锁定库存，再由 Stripe 测试支付确认；不会产生真实扣款。":"系统会先锁定库存，再由 Stripe 安全确认付款。增值税和最终金额以本页为准。")
+            : "本阶段停在支付前：先保存可恢复的订单草稿，不会发起扣款。"}
       />
       {!paymentReady && (
         <div className="notice" role="alert">

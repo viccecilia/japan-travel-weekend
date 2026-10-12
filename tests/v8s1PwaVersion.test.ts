@@ -8,16 +8,17 @@ describe('V8-S.1 build observability and safe PWA update',()=>{
   it('keeps API routes outside navigation fallback',()=>{
     const config=read('vite.config.ts');
     expect(config).toContain("registerType:'prompt'");
-    expect(config).toContain('skipWaiting:true');
-    expect(config).toContain('clientsClaim:true');
+    expect(config).toContain('skipWaiting:false');
+    expect(config).toContain('clientsClaim:false');
     expect(config).toContain("/^\\/api(?:\\/|$)/");
     expect(config).toContain("/^\\/api-test(?:\\/|$)/");
   });
-  it('activates a detected worker update once without an hour-long wait',()=>{
+  it('offers a detected worker update but activates only after the user chooses it',()=>{
     const main=read('src/main.tsx');
     expect(main).toContain('onNeedRefresh');
-    expect(main).toContain('activateServiceWorkerUpdate(updateSW,__JTW_BUILD_SHA__)');
-    expect(main).toContain('if(activateServiceWorkerUpdate(updateSW,__JTW_BUILD_SHA__))return;');
+    expect(main).toContain('activateServiceWorkerUpdate(updateSW,__JTW_BUILD_SHA__');
+    expect(main).toContain("if(!activateServiceWorkerUpdate(updateSW,__JTW_BUILD_SHA__,reset))reset()");
+    expect(main.indexOf('activateServiceWorkerUpdate(updateSW,__JTW_BUILD_SHA__')).toBeGreaterThan(main.indexOf("button.onclick"));
     expect(main).toContain('当前页面版本 ${__JTW_BUILD_SHA__');
     expect(read('src/shared/pwaUpdate.ts')).toContain('jtw-pwa-update-requested:');
   });

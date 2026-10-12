@@ -11,7 +11,7 @@ const edit=readFileSync('src/app/operations/ProductEditPage.tsx','utf8');
 describe('V3-B published product flow',()=>{
   it('makes database content authoritative over built-in route marketing copy',()=>{
     expect(app).toMatch(/trip\.catalogSource==='published'/);
-    expect(app).toMatch(/trip\.localizedContent\?\.\[locale\]/);
+    expect(app).toMatch(/routeLocaleContent\(trip,locale\)/);
     expect(app).toMatch(/t\.catalogSource==='published'\?null:featuredRoutePitch/);
   });
   it('exposes catalog refresh through context and refreshes after publish',()=>{

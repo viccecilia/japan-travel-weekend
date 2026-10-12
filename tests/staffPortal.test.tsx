@@ -425,4 +425,24 @@ describe("工作人员端", () => {
     );
     expect(calls).toContain("update_vehicle_group_meeting");
   });
+  it("按订单分组展示本车人数且每位乘客仍需逐一确认",async()=>{
+    const attendance=Array.from({length:9},(_,index)=>({
+      passenger_id:`passenger-${index+1}`,
+      passenger_label:`乘客 ${index+1}`,
+      order_id:index<4?'shared-account-order-a':'shared-account-order-b',
+      status:index===0?'boarded':'pending',status_at:null,contact_status:null,
+    }));
+    const client={auth:{getUser:async()=>({data:{user:{id:'staff-groups'}},error:null}),getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},rpc:async(name:string)=>{
+      if(name==='get_staff_portal_tasks')return {data:[task],error:null};
+      if(name==='get_vehicle_group_attendance')return {data:attendance,error:null};
+      if(name==='get_vehicle_group_boarding_status')return {data:[],error:null};
+      return {data:null,error:null};
+    }} as unknown as SupabaseClient;
+    render(<MemoryRouter initialEntries={["/staff/tasks/assignment-1/passengers"]}><AppProvider services={new ProductionBrowserServices(client,undefined)}><Routes><Route path="/staff/tasks/:assignmentId/:action" element={<StaffTaskAction/>}/></Routes></AppProvider></MemoryRouter>);
+    expect(await screen.findByText(/本车 4 人/)).toBeInTheDocument();
+    expect(screen.getByText(/本车 5 人/)).toBeInTheDocument();
+    expect(screen.getAllByText('逐人确认')).toHaveLength(2);
+    expect(screen.getAllByRole('button',{name:'已登车'})).toHaveLength(9);
+    expect(screen.getAllByRole('button',{name:'拨打乘客电话'})).toHaveLength(2);
+  });
 });

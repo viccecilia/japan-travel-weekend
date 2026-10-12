@@ -4,6 +4,7 @@ import {expandedRouteSlugs,expandedRouteSummary} from '../src/shared/i18n/routeE
 import {trips} from '../src/shared/data/trips';
 import {routePhotoAt} from '../src/shared/data/routePhotoCatalog';
 import {localizedTrip} from '../src/shared/components/TripCard';
+import {legacyRouteContent} from '../src/shared/i18n/routeLegacyContent';
 
 describe('featured tourist route content',()=>{
   it.each([
@@ -39,10 +40,10 @@ describe('featured tourist route content',()=>{
     expect(new Set(trips.map(trip=>trip.slug)).size).toBe(9);
   });
 
-  it('never renders an empty Chinese route introduction when published content is incomplete',()=>{
+  it('keeps a reviewed human-authored Chinese fallback when published source fields are incomplete',()=>{
     for(const trip of trips){
-      const incomplete={...trip,summary:'',description:'',catalogSource:'published' as const};
-      expect(localizedTrip('zh-CN',incomplete).summary.length).toBeGreaterThan(20);
+      const incomplete={...trip,summary:'',description:'',localizedContent:undefined,catalogSource:'published' as const};
+      expect(localizedTrip('zh-CN',incomplete).summary).toBe(legacyRouteContent('zh-CN',trip.slug)?.summary??'');
     }
   });
 

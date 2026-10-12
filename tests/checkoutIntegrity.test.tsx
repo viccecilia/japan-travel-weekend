@@ -1,14 +1,16 @@
 import {cleanup,render,screen} from '@testing-library/react';
-import {afterEach,describe,expect,it} from 'vitest';
+import {afterEach,describe,expect,it,vi} from 'vitest';
 import {MemoryRouter} from 'react-router-dom';
 import {AppProvider} from '../src/app/store';
 import {BookingPage,Checkout,Payment,resolvePaymentDeparture} from '../src/app/App';
 import type {Departure} from '../src/shared/types';
+import {travelRepository} from '../src/shared/data/repository';
 
-afterEach(cleanup);
+afterEach(()=>{cleanup();vi.restoreAllMocks()});
 
 describe('结账完整性',()=>{
   it('没有可售价格的班次不显示空价格且不能继续',()=>{
+    vi.spyOn(travelRepository,'getTrip').mockReturnValue({slug:'kyoto-nara-classic',title:'京都奈良',shortTitle:'京都奈良',summary:'路线简介',description:'路线简介',region:'京都与奈良',duration:'一日',stops:['京都','奈良'],heroImage:'/images/kyoto-nara.jpg'} as never);
     render(<MemoryRouter initialEntries={['/app/booking/kyoto-nara-classic']}><AppProvider><BookingPage/></AppProvider></MemoryRouter>);
     expect(document.body.textContent).not.toContain('¥null');
     expect(screen.getByText('该路线暂无开放班次')).toBeInTheDocument();

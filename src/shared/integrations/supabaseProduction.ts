@@ -46,6 +46,7 @@ export type StaffTaskRow = {
   departure_id: string;
   trip_title: string;
   departs_at: string | null;
+  ends_at?: string | null;
   chat_opens_at: string | null;
   meeting_at?: string | null;
   meeting_name: string | null;

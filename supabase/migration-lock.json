@@ -639,6 +639,14 @@
       "sha256": "2a40430ee67341fd08d3d8c7021c23ac6af651ffb6486c38288619045d491761"
     },
     {
+      "name": "20260924111319_trip_room_shared_places.sql",
+      "sha256": "b41f4e4f9c17645e818de41c47a3e3260ba2aeedaa033628b7d091620b181c68"
+    },
+    {
+      "name": "20260925090000_travel_moments_eligible_orders.sql",
+      "sha256": "10a5fcf66d1d4faba0d2c4616c6ba870ecbefad2039525c96203d3c8d4d23efa"
+    },
+    {
       "name": "20260926043656_growth_operations_phase1.sql",
       "sha256": "f82e37c1e0a14d2b3154179218c15ed1963dd942bb60cbaf1409afd7f3fee0eb"
     },
@@ -675,8 +683,148 @@
       "sha256": "897ab961e706051227ebd8e530699d46904229123efb51911864012cb0431713"
     },
     {
+      "name": "20260926103118_attraction_guide_module.sql",
+      "sha256": "2578d1e3bf5855570fc969340f34f3730719b1edea1ea83722819d8ee13012e8"
+    },
+    {
+      "name": "20260927020723_route_content_policy_order_snapshot.sql",
+      "sha256": "81cdffbe7875f85d2d0919a98c5f9ee7d6291b6aacca7f0017e9ec03fc3152c8"
+    },
+    {
+      "name": "20260927031500_lock_route_policy_agreement_at_quote.sql",
+      "sha256": "c7e1f472fe996c6426e6b58be85ad0d4b74055e8a466ca98eebed3082a4af0c0"
+    },
+    {
+      "name": "20260928034602_phase36_policy_modules_and_agreement_versions.sql",
+      "sha256": "7c9adfeabf937ce84483f492beee4af87282312ffefac3108d3e94759df6d2f0"
+    },
+    {
+      "name": "20260928035238_phase36_lock_policy_modules_at_quote.sql",
+      "sha256": "ac1128e966b2b84164ffb77eaf593ea4410f7d073c61df73e92860507b717e72"
+    },
+    {
+      "name": "20260928035913_phase36_public_route_policy_by_slug.sql",
+      "sha256": "30c65ae9e9e2d2dff7755012e14f15a96e742953c26dad9ca8b811e1daa3671d"
+    },
+    {
+      "name": "20260928082633_phase41_travel_moment_submission_eligibility.sql",
+      "sha256": "c3dd35e503d236de95fe912663b3e5418735589aa22f8768deb7496afe36ef81"
+    },
+    {
+      "name": "20260928094447_phase41_manual_eligibility_closure.sql",
+      "sha256": "1ce96a91d2ed3166b027b8b9d7b6383a5ecb12324590c952e5f1aaa75d9d6d1e"
+    },
+    {
+      "name": "20260928170000_phase36_stripe_billing_status.sql",
+      "sha256": "84ee3cc0c874ceb204f6bac02c8f27398f430d8b48394f74f2681606a959fddc"
+    },
+    {
+      "name": "20260929012705_phase41_submission_repair_actions.sql",
+      "sha256": "0b865132adb529b8cbe97151957fd6700a140f99873c77d99def583a3f1b28f8"
+    },
+    {
+      "name": "20260929021500_phase41_internal_reason_not_found_guard.sql",
+      "sha256": "e55a18f3a27a404c8adb4df3ccd4cc0a13cec78fb21ac410554a756f8c64501f"
+    },
+    {
+      "name": "20260929023000_phase41_repair_url_patterns.sql",
+      "sha256": "dd9a57330042abaaac332b14b9f861cb027a1e2f930962fe95b60ace7b4da2ec"
+    },
+    {
+      "name": "20260929024500_phase41_content_id_patterns.sql",
+      "sha256": "65b936387f46036f2d75faedcf420fa6a3c323e7fab9913818b53a47b4968972"
+    },
+    {
+      "name": "20260929030000_phase41_ops_review_read_policies.sql",
+      "sha256": "677f6d1c44a9064dcc7f4ca71ff1e5c6ae91168742b4dfd8719602d1b9578b83"
+    },
+    {
+      "name": "20260929040000_phase41_external_verification_generations.sql",
+      "sha256": "73bc4624244b901fc288488369403f32514e925835fb64c91bdee532d340f134"
+    },
+    {
+      "name": "20260929050000_phase41_duplicate_content_identity.sql",
+      "sha256": "29e228e508ea69b70092f72097b1e453e3a4057086e0aedf5aea9565666ba94b"
+    },
+    {
+      "name": "20260929060000_phase42_monthly_candidates.sql",
+      "sha256": "714162e4a83180783bc3a76dab23c47d9fbde07181e0bbe16db8c3892e13fa67"
+    },
+    {
+      "name": "20260929064156_phase51_attraction_media_foundation.sql",
+      "sha256": "b25b32ae97c9e2a98e8c665b4f468294a9277adf556d16156e1830642f28d8ce"
+    },
+    {
+      "name": "20260930090000_qa01c_policy_authority.sql",
+      "sha256": "4171ec70a29abc845fb21db330a26806f5670092308a41399195d9db4c663f2d"
+    },
+    {
       "name": "20261002093000_passenger_system_event_idempotency.sql",
       "sha256": "22c18a878db1786de57b6c73cd65d8599fce87a34ba2938d50fc234972866fe5"
+    },
+    {
+      "name": "20261002094621_passenger_business_entity_presentation.sql",
+      "sha256": "4af9b2f5bf62b43587318d5172ebae9b814aa5a4386b1380cdf9af28e56e781d"
+    },
+    {
+      "name": "20261003074028_expire_stale_resumable_payment.sql",
+      "sha256": "064f4792ff90babe646699fe75df8a4eccf63696707a1eafbacef42068d54483"
+    },
+    {
+      "name": "20261004090000_paid_fulfilment_reconcile.sql",
+      "sha256": "5721fd22b251065b9b94342f4ab46e1def8e3df3926c816577817c8e45f78261"
+    },
+    {
+      "name": "20261005093000_expired_payment_checkout_recovery.sql",
+      "sha256": "cebdff1cc806cdc96fa5da1ac90e89fecba6de0bfbb210749def6d843039c74a"
+    },
+    {
+      "name": "20261005094500_expired_payment_recovery_after_sweep.sql",
+      "sha256": "41018991c8bdc7684466e5784ba4e45cef3fade3f0ffdb46325632545b5c2e9d"
+    },
+    {
+      "name": "20261005170000_late_paid_confirmed_group_capacity.sql",
+      "sha256": "9eb49964d5c3fdac81eb34e1b4025699467d26f5e0bea149bb787c8489f3b969"
+    },
+    {
+      "name": "20261005171500_sync_account_profile_display_name.sql",
+      "sha256": "d503f0c684f3a63d2cea7b782af754076b28aa763522b52c18d364d269233bbb"
+    },
+    {
+      "name": "20261005172000_allow_operations_resource_audit_targets.sql",
+      "sha256": "7e56bea1a3898cf04a1449b836d179454656bb8965d189d7817999fbcd0bb2e4"
+    },
+    {
+      "name": "20261007060521_route_studio_v1_departure_readiness.sql",
+      "sha256": "aaf9dce92ef7b2456214a7f7a87e213af1977bdfdd320d75cc0f576739b58712"
+    },
+    {
+      "name": "20261007064000_route_studio_product_policy_defaults.sql",
+      "sha256": "1e3d7ecc5c6ce1afa84183097c32683a74a93bf641f02132c286719887d32710"
+    },
+    {
+      "name": "20261009043507_passenger_public_signup_role_boundary.sql",
+      "sha256": "32dd40b765a84e0e10736ef00509ea76f467f84963803b5943235f2b04493975"
+    },
+    {
+      "name": "20261010005707_fix_product_archive_restore_audit_action.sql",
+      "sha256": "324fd4fa9df365d7c5a65f7b422223353d1d1648f364fd9d485148bc7654f2b1"
+    },
+    {
+      "name": "20261010014701_departure_sales_cutoff_meeting_point_library.sql",
+      "sha256": "2c72c8b506c5fb4f1769d9c57df979ad51c27a14f351f237dfc38731b7a103c7"
+    },
+    {
+      "name": "20261010021805_allow_meeting_point_audit_target.sql",
+      "sha256": "552535f09c885daa884f17c82288355d065ccdc4ea4987d73e414b7e24ae405e"
+    },
+    {
+      "name": "20261010065716_discover_hero_translation_metadata.sql",
+      "sha256": "ee725eaa0b0eeacf7651b3a8de2b3090826f59d64dbdcf3ce0cf94352f386150"
+    },
+    {
+      "name": "20261012133709_staff_task_end_time_for_leave_conflicts.sql",
+      "sha256": "c294744822fd8a18268bfce1d77b28ffd98ed681cb2b041dfa92de9ab81b3edc"
     }
   ]
 }

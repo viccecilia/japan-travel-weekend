@@ -37,4 +37,12 @@ describe('PWA update checks',()=>{
     expect(activate).toHaveBeenCalledWith(true);
     stop();
   });
+
+  it('clears the activation marker and exposes retry after an update failure',async()=>{
+    const failed=vi.fn();
+    const activate=vi.fn(async()=>{throw new Error('offline')});
+    expect(activateServiceWorkerUpdate(activate,'build-failed',failed)).toBe(true);
+    await vi.waitFor(()=>expect(failed).toHaveBeenCalledOnce());
+    expect(activateServiceWorkerUpdate(vi.fn(async()=>undefined),'build-failed')).toBe(true);
+  });
 });
