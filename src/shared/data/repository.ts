@@ -27,7 +27,16 @@ export function reconciledPublishedTripTimeline(itinerary:unknown,itineraryStops
     const primaryIndex=matchedIndexes.indexOf(index);
     if(primaryIndex<0)return {rank:index,item};
     const current=primary[primaryIndex];
-    return {rank:index,item:{...item,...current,time:current.time??item.time}};
+    return {rank:index,item:{
+      ...item,
+      ...current,
+      time:current.time??item.time,
+      imageUrl:current.imageUrl||item.imageUrl,
+      gallery:current.gallery?.length?current.gallery:item.gallery,
+      selectedImageIds:current.selectedImageIds?.length?current.selectedImageIds:item.selectedImageIds,
+      selectedVideoIds:current.selectedVideoIds?.length?current.selectedVideoIds:item.selectedVideoIds,
+      video:current.video??item.video,
+    }};
   });
   primary.forEach((item,index)=>{
     if(matchedIndexes[index]>=0)return;

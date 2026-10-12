@@ -36,4 +36,22 @@ describe('published operational timeline compatibility',()=>{
     ],[]);
     expect(timeline[1]).toMatchObject({id:'legacy-stop-1',attractionId:'kiyomizu-dera',title:'清水寺',detail:'正式景点简介',time:'10:00'});
   });
+
+  it('retains uploaded route photos when the linked attraction row has empty media fields',()=>{
+    const timeline=reconciledPublishedTripTimeline([
+      {id:'shirarahama',attractionId:'shirarahama',title:'白良滨',gallery:[],selectedImageIds:[]},
+      {id:'senjojiki-sandanbeki',attractionId:'senjojiki-sandanbeki',title:'千叠敷与三段壁',gallery:[],selectedImageIds:[]},
+    ],[
+      {id:'osaka-departure',name:'大阪日本桥集合出发',arrivalTime:'08:30'},
+      {id:'shirarahama',name:'白良滨',arrivalTime:'12:00'},
+      {id:'senjojiki-sandanbeki',name:'千叠敷与三段壁',arrivalTime:'14:00',imageUrl:'/route/senjojiki.webp',gallery:['/route/senjojiki.webp','/route/sandanbeki.webp'],selectedImageIds:['senjojiki','sandanbeki']},
+    ],[]);
+    expect(timeline[2]).toMatchObject({
+      id:'senjojiki-sandanbeki',
+      attractionId:'senjojiki-sandanbeki',
+      imageUrl:'/route/senjojiki.webp',
+      gallery:['/route/senjojiki.webp','/route/sandanbeki.webp'],
+      selectedImageIds:['senjojiki','sandanbeki'],
+    });
+  });
 });
