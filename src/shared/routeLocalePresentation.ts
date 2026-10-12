@@ -112,6 +112,7 @@ export function localizedRouteTimeline(trip:Trip,locale:PassengerLocale):TripTim
       ...item,
       attractionId,
       title:translatedText('stop_title',item.title,legacyStop||operationalStop),
+      location:translatedText('location',item.location),
       subtitle:translatedText('subtitle',item.subtitle),
       detail:translatedText('shortDescription',translatedText('description',item.detail)),
       shortDescription:translatedText('shortDescription',item.shortDescription??item.detail),

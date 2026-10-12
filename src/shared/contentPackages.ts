@@ -263,13 +263,18 @@ export function buildRouteTranslationPackage(product: OperationsProduct): Transl
     const stop = asRecord(value); const stopId = stableStopId(stop);
     if (!stopId) return;
     add('stop_title', string(stop.title) || string(stop.name), `content.itinerary[id=${stopId}].title`, 'spot_name', stopId, '游客路线详情中的景点名称');
+    add('location', string(stop.location), `content.itinerary[id=${stopId}].location`, 'itinerary_step', stopId, '游客路线时间轴中的地点；不得改变实际地点');
     add('subtitle', string(stop.subtitle), `content.itinerary[id=${stopId}].subtitle`, 'theme_chip', stopId, '游客路线详情中的景点短标签');
     add('shortDescription', string(stop.shortDescription) || string(stop.description), `content.itinerary[id=${stopId}].shortDescription`, 'spot_short_description', stopId, '游客路线详情中的景点短介绍');
     add('longDescription', string(stop.longDescription), `content.itinerary[id=${stopId}].longDescription`, 'spot_long_description', stopId, '游客路线详情中的景点详细介绍');
     add('videoLabel', string(stop.videoLabel), `content.itinerary[id=${stopId}].videoLabel`, 'cta', stopId, '游客路线详情中的视频播放标签');
     add('tip', string(stop.tip), `content.itinerary[id=${stopId}].tip`, 'policy', stopId, '游客路线详情中的景点提示');
   });
-  return {schema_version: TRANSLATION_PACKAGE_SCHEMA, package_id: `route-${product.slug}-${product.catalogVersion}-${contentHash(product.id)}`, source_locale: SOURCE_LOCALE, target_locales: [...TARGET_LOCALES], entity: {entity_type: 'route', entity_id: entityId, entity_slug: product.slug, source_version: product.catalogVersion}, task_instructions: translationInstructions, translator_instructions: translationInstructions, translation_profiles: translationProfiles, glossary: defaultGlossary, locked: {slug: product.slug, catalog_version: product.catalogVersion, hero_image_url: product.heroImageUrl, gallery: product.gallery, translation_list_items: listIdentities}, fields};
+  const itinerarySchedule = itinerary.flatMap((value) => {
+    const stop = asRecord(value); const stopId = stableStopId(stop);
+    return stopId ? [{id: stopId, time: string(stop.time)}] : [];
+  }).sort((left, right) => left.id.localeCompare(right.id));
+  return {schema_version: TRANSLATION_PACKAGE_SCHEMA, package_id: `route-${product.slug}-${product.catalogVersion}-${contentHash(product.id)}`, source_locale: SOURCE_LOCALE, target_locales: [...TARGET_LOCALES], entity: {entity_type: 'route', entity_id: entityId, entity_slug: product.slug, source_version: product.catalogVersion}, task_instructions: translationInstructions, translator_instructions: translationInstructions, translation_profiles: translationProfiles, glossary: defaultGlossary, locked: {slug: product.slug, catalog_version: product.catalogVersion, hero_image_url: product.heroImageUrl, gallery: product.gallery, itinerary_schedule: itinerarySchedule, translation_list_items: listIdentities}, fields};
 }
 
 export function buildHeroTranslationPackage(hero: DiscoverHero): TranslationPackage {

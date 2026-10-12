@@ -70,6 +70,11 @@ describe('route locale presentation',()=>{
     expect(timeline[1]).toMatchObject({title:'',detail:''});
   });
 
+  it('localizes the itinerary place and optional intro while preserving the shared time',()=>{
+    const route={...trip,timeline:[{...trip.timeline[0],time:'09:30',location:'京都市左京区',shortDescription:'中文短介绍'}],localizedContent:{...trip.localizedContent,en:{title:'Kyoto route',itinerary:{'sanzen-in':{stop_title:'Sanzen-in',location:'Sakyo, Kyoto',shortDescription:'A quiet temple in Ohara.'}}}}} as unknown as Trip;
+    expect(localizedRouteTimeline(route,'en')[0]).toMatchObject({time:'09:30',title:'Sanzen-in',location:'Sakyo, Kyoto',shortDescription:'A quiet temple in Ohara.'});
+  });
+
   it('retains source-language compatibility for an unresolved legacy route',()=>{
     expect(localizedRouteTimeline(trip,'zh-CN')[1]).toMatchObject({title:'岚山自由活动',detail:'旧中文活动说明'});
   });

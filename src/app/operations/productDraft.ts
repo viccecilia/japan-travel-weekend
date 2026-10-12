@@ -7,6 +7,7 @@ export type ProductEditorLocale = Record<string, unknown> & {
   tagline?: string;
   summary?: string;
   description?: string;
+  shortDescription?: string;
   region?: string;
   duration?: string;
 };
@@ -229,7 +230,7 @@ export function localizedDraft(draft: ProductDraft, locale: string, options: {so
     }),
     itinerary: draft.itinerary.map((item) => {
       const stopId = String(item.id ?? item.stopId ?? item.placeId ?? ''); const translation = object(localizedStops[stopId]);
-      return {...item, title: text(translation.stop_title) || text(translation.title) || (sourceFallback ? item.title : ''), subtitle: text(translation.subtitle) || (sourceFallback ? item.subtitle : ''), shortDescription: text(translation.shortDescription) || (sourceFallback ? item.shortDescription : ''), longDescription: text(translation.longDescription) || (sourceFallback ? item.longDescription : ''), description: text(translation.shortDescription) || text(translation.description) || (sourceFallback ? item.description : ''), tip: text(translation.tip) || (sourceFallback ? item.tip : '')};
+      return {...item, title: text(translation.stop_title) || text(translation.title) || (sourceFallback ? item.title : ''), location: text(translation.location) || (sourceFallback ? item.location : ''), subtitle: text(translation.subtitle) || (sourceFallback ? item.subtitle : ''), shortDescription: text(translation.shortDescription) || (sourceFallback ? item.shortDescription : ''), longDescription: text(translation.longDescription) || (sourceFallback ? item.longDescription : ''), description: text(translation.shortDescription) || text(translation.description) || (sourceFallback ? item.description : ''), tip: text(translation.tip) || (sourceFallback ? item.tip : '')};
     }),
   };
 }

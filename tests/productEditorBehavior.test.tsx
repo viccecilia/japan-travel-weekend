@@ -112,6 +112,26 @@ it('旧路线缺少一句话简介时仍可保存普通草稿修改', async () =
   expect(operations.saveProductDraft.mock.calls[0][0]).toMatchObject({title:'修改后的标题',content:{summary:''}});
 });
 
+it('关联景点与普通节点都可保存时间、地点和选填介绍', async () => {
+  const editable={...product,content:{...product.content,itinerary:[
+    {id:'stop-1',title:'清水寺',attractionId:'kiyomizu-dera',time:'09:00',location:'京都',shortDescription:'旧介绍'},
+    {id:'stop-2',title:'返回大阪',time:'',location:'大阪'},
+  ]}};
+  const operations=open({
+    listProducts:vi.fn(async()=>({data:[editable],error:null})),
+    listAttractions:vi.fn(async()=>({data:[{slug:'kiyomizu-dera',status:'published',textComplete:7,audioComplete:7}],error:null})),
+    getAttraction:vi.fn(async()=>({data:{status:'published',guides:{},audio:{}},error:null})),
+  });
+  fireEvent.click(await screen.findByRole('button',{name:'景点行程'}));
+  fireEvent.change(screen.getAllByLabelText('预计时间')[0],{target:{value:'09:20'}});
+  fireEvent.change(screen.getAllByLabelText('地点')[0],{target:{value:'京都市东山区'}});
+  fireEvent.change(screen.getAllByLabelText('介绍（选填）')[0],{target:{value:'从清水舞台眺望京都。'}});
+  fireEvent.click(screen.getByRole('button',{name:'保存草稿'}));
+  await vi.waitFor(()=>expect(operations.saveProductDraft).toHaveBeenCalled());
+  const payload=operations.saveProductDraft.mock.calls[0][0] as {content:{itinerary:Array<Record<string,unknown>>}};
+  expect(payload.content.itinerary[0]).toMatchObject({id:'stop-1',attractionId:'kiyomizu-dera',time:'09:20',location:'京都市东山区',shortDescription:'从清水舞台眺望京都。'});
+});
+
 it('路线标题为空时在固定保存栏直接提示且不调用保存接口', async () => {
   const operations=open();
   fireEvent.change(await screen.findByLabelText('路线标题'),{target:{value:''}});

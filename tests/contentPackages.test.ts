@@ -4,7 +4,7 @@ import {draftFromProduct, localizedDraft} from '../src/app/operations/productDra
 import type {OperationsProduct} from '../src/shared/integrations/supabaseOperations';
 import type {DiscoverHero} from '../src/shared/discover';
 
-const product = (): OperationsProduct => ({id: 'route-osaka-katsuoji', slug: 'osaka-katsuoji-miyama-arashiyama', status: 'draft', catalogVersion: 7, publishedRevision: null, draftRevision: 7, title: '大阪到胜尾寺、美山与岚山一日游', content: {summary: '从大阪出发的秋日路线。', description: '中文详细介绍。', itinerary: [{id: 'stop-katsuoji', title: '胜尾寺', description: '达摩寺院。'}, {id: 'stop-miyama', title: '美山', description: '茅草屋村落。'}], included: ['往返车辆'], locales: {}}, heroImageUrl: '/media/hero.jpg', gallery: ['/media/hero.jpg'], updatedAt: '2026-09-23T00:00:00Z'});
+const product = (): OperationsProduct => ({id: 'route-osaka-katsuoji', slug: 'osaka-katsuoji-miyama-arashiyama', status: 'draft', catalogVersion: 7, publishedRevision: null, draftRevision: 7, title: '大阪到胜尾寺、美山与岚山一日游', content: {summary: '从大阪出发的秋日路线。', description: '中文详细介绍。', itinerary: [{id: 'stop-katsuoji', time: '09:30', title: '胜尾寺', location: '大阪府箕面市', description: '达摩寺院。'}, {id: 'stop-miyama', time: '', title: '美山', location: '京都府南丹市', description: '茅草屋村落。'}], included: ['往返车辆'], locales: {}}, heroImageUrl: '/media/hero.jpg', gallery: ['/media/hero.jpg'], updatedAt: '2026-09-23T00:00:00Z'});
 
 describe('JTW content and translation packages', () => {
   it('accepts a Chinese route package only when every itinerary stop has a stable ID', () => {
@@ -35,6 +35,18 @@ describe('JTW content and translation packages', () => {
     const applied = applyRouteTranslationPackage(reordered, exported);
     const locales = applied.content.locales as Record<string, {itinerary?: Record<string, {stop_title?: string}>}>;
     expect(locales.en?.itinerary?.['stop-katsuoji']?.stop_title).toBe('Katsuoji Temple');
+  });
+
+  it('exports itinerary time as locked schedule metadata and imports translated place and optional intro by stable stop ID', () => {
+    const original = product(); const exported = buildRouteTranslationPackage(original);
+    expect(exported.locked.itinerary_schedule).toEqual([{id:'stop-katsuoji',time:'09:30'},{id:'stop-miyama',time:''}]);
+    const location = exported.fields.find(field => field.item_id === 'stop-katsuoji' && field.field_key === 'location')!;
+    const intro = exported.fields.find(field => field.item_id === 'stop-katsuoji' && field.field_key === 'shortDescription')!;
+    location.translations.en = {text:'Minoh, Osaka',status:'draft',source_hash:location.source_hash};
+    intro.translations.en = {text:'A temple known for its daruma dolls.',status:'draft',source_hash:intro.source_hash};
+    const applied = applyRouteTranslationPackage(original, exported);
+    const draft = draftFromProduct({...original,content:applied.content});
+    expect(localizedDraft(draft,'en',{sourceFallback:false}).itinerary[0]).toMatchObject({time:'09:30',location:'Minoh, Osaka',shortDescription:'A temple known for its daruma dolls.'});
   });
 
   it('marks prior translations stale when the Chinese source changed and only applies known source hashes', () => {
