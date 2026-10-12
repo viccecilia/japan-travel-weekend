@@ -45,6 +45,13 @@ it('四个编辑 Tab 共用草稿，切换后输入与实时预览不丢失', as
   expect(screen.getByText('有未保存修改')).toBeInTheDocument();
 });
 
+it('多语言路线内容隐藏重复的一句话卖点并保留路线总体介绍', async () => {
+  open();
+  fireEvent.click(await screen.findByRole('button', {name: '多语言'}));
+  expect(screen.queryByLabelText('一句话卖点')).not.toBeInTheDocument();
+  expect(screen.getByLabelText('路线总体介绍')).toHaveValue('原介绍');
+});
+
 it('有未保存修改时禁止发布旧草稿', async () => {
   const operations = open();
   fireEvent.change(await screen.findByLabelText('路线标题'), {target: {value: '尚未保存的新标题'}});

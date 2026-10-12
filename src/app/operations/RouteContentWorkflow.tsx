@@ -25,10 +25,9 @@ export function RouteContentWorkflow({product, draft, update, onImportChinese, o
   const locales=['zh-CN','ja','en','ko','vi','ne','es'];
   const [contentLocale,setContentLocale]=useState('zh-CN');
   const localized=draft.locales[contentLocale]??{};
-  const setLocalized=(key:'title'|'tagline'|'summary'|'description'|'highlights',value:string)=>{
+  const setLocalized=(key:'title'|'summary'|'description'|'highlights',value:string)=>{
     if(contentLocale==='zh-CN'){
       if(key==='title') update({title:value});
-      else if(key==='tagline') update({tagline:value});
       else if(key==='summary') update({summary:value});
       else if(key==='description') update({description:value});
       else update({highlights:value.split('\n').map(item=>item.trim()).filter(Boolean)});
@@ -37,8 +36,8 @@ export function RouteContentWorkflow({product, draft, update, onImportChinese, o
     const next={...draft.locales,[contentLocale]:{...localized,[key]:key==='highlights'?value.split('\n').map(item=>item.trim()).filter(Boolean):value}};
     update({locales:next});
   };
-  const value=(key:'title'|'tagline'|'summary'|'description'|'highlights')=>{
-    if(contentLocale==='zh-CN') return key==='title'?draft.title:key==='tagline'?draft.tagline:key==='summary'?draft.summary:key==='description'?draft.description:draft.highlights.join('\n');
+  const value=(key:'title'|'summary'|'description'|'highlights')=>{
+    if(contentLocale==='zh-CN') return key==='title'?draft.title:key==='summary'?draft.summary:key==='description'?draft.description:draft.highlights.join('\n');
     const current=localized[key]; return Array.isArray(current)?current.join('\n'):String(current??'');
   };
   const addReminder=()=>update({routeReminders:[...draft.routeReminders,{id:crypto.randomUUID(),type:'other',sortOrder:draft.routeReminders.length,enabled:true,locales:{}}]});
@@ -63,7 +62,6 @@ export function RouteContentWorkflow({product, draft, update, onImportChinese, o
   <section className="product-editor-card" aria-label="路线内容与特别提醒">
     <header><div><h2>路线内容与特别提醒</h2><p>只填写路线独有内容；景点导览和通用规则不复制到这里。缺少语言内容将保持缺失，不会自动翻译。</p></div><select aria-label="路线内容语言" value={contentLocale} onChange={event=>setContentLocale(event.target.value)}>{locales.map(locale=><option key={locale} value={locale}>{locale}</option>)}</select></header>
     <Field label="路线标题（内容包）"><input value={value('title')} onChange={event=>setLocalized('title',event.target.value)}/></Field>
-    <Field label="一句话卖点"><textarea value={value('tagline')} onChange={event=>setLocalized('tagline',event.target.value)}/></Field>
     <Field label="路线总体介绍"><textarea value={value('description')} onChange={event=>setLocalized('description',event.target.value)}/></Field>
     <Field label="路线亮点（每行一项）"><textarea value={value('highlights')} onChange={event=>setLocalized('highlights',event.target.value)}/></Field>
     <div className="product-editor-stack"><header><div><h3>本路线特别提醒</h3><p>可选；每项独立排序、启用或删除。只用于这条路线。</p></div><button className="button secondary" type="button" onClick={addReminder}>添加提醒</button></header>{draft.routeReminders.map((item,index)=>{const localizedReminder=item.locales[contentLocale]??{};return <article key={item.id} className="product-editor-card"><div className="operations-task-actions"><b>提醒 {index+1}</b><label>类型<select value={item.type} onChange={event=>updateReminder(item.id,{type:event.target.value})}><option value="other">其他</option><option value="weather">天气／海况</option><option value="walking">步行</option><option value="seasonal">季节</option></select></label><label><input type="checkbox" checked={item.enabled} onChange={event=>updateReminder(item.id,{enabled:event.target.checked})}/> 启用</label><button type="button" onClick={()=>moveReminder(index,-1)} disabled={index===0}>上移</button><button type="button" onClick={()=>moveReminder(index,1)} disabled={index===draft.routeReminders.length-1}>下移</button><button type="button" onClick={()=>update({routeReminders:draft.routeReminders.filter(entry=>entry.id!==item.id)})}>删除</button></div><Field label={`${contentLocale} 标题（可选）`}><input value={localizedReminder.title??''} onChange={event=>updateReminder(item.id,{locales:{...item.locales,[contentLocale]:{...localizedReminder,title:event.target.value}}})}/></Field><Field label={`${contentLocale} 内容`}><textarea value={localizedReminder.body??''} onChange={event=>updateReminder(item.id,{locales:{...item.locales,[contentLocale]:{...localizedReminder,body:event.target.value}}})}/></Field></article>})}</div>

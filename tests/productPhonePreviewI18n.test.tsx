@@ -1,11 +1,13 @@
-import {fireEvent, render, screen} from '@testing-library/react';
-import {describe, expect, it, vi} from 'vitest';
+import {cleanup, fireEvent, render, screen} from '@testing-library/react';
+import {afterEach, describe, expect, it, vi} from 'vitest';
 import {applyRouteTranslationPackage, buildRouteTranslationPackage} from '../src/shared/contentPackages';
 import {ProductPhonePreview} from '../src/app/operations/ProductPhonePreview';
 import {draftFromProduct} from '../src/app/operations/productDraft';
 import type {OperationsProduct} from '../src/shared/integrations/supabaseOperations';
 
 const route = (): OperationsProduct => ({id: 'route-preview-i18n', slug: 'route-preview-i18n', status: 'draft', catalogVersion: 1, publishedRevision: null, draftRevision: 1, title: '中文路线', heroImageUrl: '/route.jpg', gallery: ['/route.jpg'], updatedAt: '2026-09-24T00:00:00Z', content: {summary: '中文简介', included: ['往返车辆'], excluded: ['午餐'], preparation: ['舒适鞋'], bookingNotice: '提前集合', cancellationPolicy: '取消规则', participantRules: '参加规则', weatherNotice: '天气提醒', baggageNotice: '行李说明', safetyNotice: '安全提示', itinerary: [{id: 'spot-one', title: '中文景点', shortDescription: '中文短介绍', longDescription: '中文长介绍'}], locales: {}}});
+
+afterEach(cleanup);
 
 describe('ProductPhonePreview Route V2 locale content', () => {
   it.each([
@@ -74,6 +76,16 @@ describe('ProductPhonePreview Route V2 locale content', () => {
     expect(screen.getByText('CMS 景点正文')).toBeInTheDocument();
     expect(screen.getByLabelText('CMS 胜尾寺 · zh-CN 语音导览')).toHaveAttribute('src','/zh-CN.mp3');
     expect(screen.getByText('景点未发布，仅后台预览')).toBeInTheDocument();
+  });
+
+  it('keeps zh-TW guide text and reuses published zh-CN audio in preview', () => {
+    const original = route();
+    original.content = {...original.content, locales:{'zh-TW':{title:'繁中路線',summary:'繁中簡介',itinerary:{'spot-one':{stop_title:'繁中景點',shortDescription:'繁中景點正文'}}}}, itinerary: [{id:'spot-one', attractionId:'katsuo-ji', title:'路线旧标题'}]};
+    render(<ProductPhonePreview draft={draftFromProduct(original)} locale="zh-TW" mode="detail" dirty={false} attractionContent={{'katsuo-ji':{status:'published',guides:{'zh-TW':{title:'繁中勝尾寺',body:'繁中正式導覽'}},audio:{'zh-CN':{audioUrl:'/zh-CN.mp3',status:'published'}}}}}/>);
+    expect(screen.getByText(/1\. 繁中勝尾寺/)).toBeInTheDocument();
+    expect(screen.getByText('繁中正式導覽')).toBeInTheDocument();
+    expect(screen.getByLabelText('繁中勝尾寺 · zh-TW 语音导览')).toHaveAttribute('src','/zh-CN.mp3');
+    expect(screen.queryByText('CMS 景点正文')).not.toBeInTheDocument();
   });
 
   it('keeps attraction load errors visible and retryable instead of reporting saved content', () => {

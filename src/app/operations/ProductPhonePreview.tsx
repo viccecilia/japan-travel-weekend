@@ -83,7 +83,7 @@ export function ProductPhonePreview({draft, locale, mode, dirty, attractionConte
               <b className="product-preview-price">{copy.price}</b>
               <h3>{copy.today}</h3>
               {stops.length ? stops.map((item, index) => {
-                const attractionId=String(item.attractionId??'');const content=attractionId?attractionContent[attractionId]:undefined;const audio=content?.audio[locale];
+                const attractionId=String(item.attractionId??'');const content=attractionId?attractionContent[attractionId]:undefined;const audio=content?.audio[locale]??(locale==='zh-TW'?content?.audio['zh-CN']:undefined);
                 const itemTitle=String(item.title??item.name??'').trim();
                 return (
                 <article key={item.editorId} id={`preview-${item.editorId}`}>
