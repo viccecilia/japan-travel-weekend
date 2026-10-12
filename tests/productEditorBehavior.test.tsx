@@ -209,9 +209,25 @@ it('图片上传失败保留本地草稿并阻止 blob 地址写入保存', asyn
   const operations = open({uploadProductImage: vi.fn(async () => ({url: null, error: '存储暂不可用'}))});
   const file = new File(['image'], 'route.webp', {type: 'image/webp'});
   fireEvent.change(await screen.findByLabelText('上传路线图片'), {target: {files: [file]}});
-  expect(await screen.findByText(/上传失败：存储暂不可用/)).toBeInTheDocument();
+  expect(await screen.findByText(/上传失败：路线相册第 1 张「route\.webp」.*存储暂不可用/)).toBeInTheDocument();
+  expect(screen.getByText('未上传 · route.webp').closest('article')).toHaveClass('product-media-error-card');
   fireEvent.click(screen.getByRole('button', {name: '保存草稿'}));
-  expect(await screen.findByText(/仍有图片或视频只存在于本地预览/)).toBeInTheDocument();
+  expect(await screen.findByText(/路线相册第 1 张「route\.webp」尚未上传.*已定位并标红/)).toBeInTheDocument();
+  expect(operations.saveProductDraft).not.toHaveBeenCalled();
+});
+
+it('景点图片失败时提示景点、序号和文件名并自动展开定位', async () => {
+  vi.stubGlobal('URL', {...URL, createObjectURL: vi.fn(() => 'blob:pending-stop-photo'), revokeObjectURL: vi.fn()});
+  const operations = open({uploadProductImage: vi.fn(async () => ({url: null, error: '文件格式不合法'}))});
+  fireEvent.click(await screen.findByRole('button', {name: '景点行程'}));
+  const file = new File(['image'], '港口夜景.webp', {type: 'image/webp'});
+  fireEvent.change(screen.getByLabelText('上传清水寺照片'), {target: {files: [file]}});
+  expect(await screen.findByText(/上传失败：景点 1「清水寺」第 1 张照片「港口夜景\.webp」.*文件格式不合法/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', {name: '保存草稿'}));
+  expect(await screen.findByText(/景点 1「清水寺」第 1 张照片「港口夜景\.webp」尚未上传/)).toBeInTheDocument();
+  const failedCard = screen.getByText('未上传 · 港口夜景.webp').closest('article');
+  expect(failedCard).toHaveClass('product-media-error-card');
+  expect((failedCard?.closest('details') as HTMLDetailsElement).open).toBe(true);
   expect(operations.saveProductDraft).not.toHaveBeenCalled();
 });
 
