@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const financial = readFileSync("supabase/migrations/202609110119_v7_financial_convergence.sql", "utf8");
 const staff = readFileSync("supabase/migrations/202609110120_v7_staff_portal_and_ambassador.sql", "utf8");
+const verification = readFileSync("supabase/verification/v7_financial_convergence_regression.sql", "utf8");
 
 describe("V7 financial convergence migration contract", () => {
   it("records approved eligibility instead of deriving it from role or coupon count", () => {
@@ -23,7 +24,6 @@ describe("V7 financial convergence migration contract", () => {
     expect(financial).toContain("'recovery_due'");
     expect(financial).toContain("recompute_order_refund_total_trigger");
     expect(financial).toContain("suppress_duplicate_refund_notification_trigger");
-    expect(financial).toContain('public.apply_referral_registration(invitee,referral_code)');
   });
 
   it("keeps the newcomer coupon but removes the new inviter coupon", () => {
@@ -31,5 +31,10 @@ describe("V7 financial convergence migration contract", () => {
     expect(registration).toContain("values(p_invitee");
     expect(registration).not.toContain("values(inviter,relation,'inviter'");
     expect(registration).toContain("cash-referral-v2");
+  });
+
+  it("creates referral fixtures through the current registration contract",()=>{
+    expect(verification).toContain('public.apply_referral_registration(invitee,referral_code)');
+    expect(verification).not.toContain('insert into public.referral_relationships(inviter_account_id');
   });
 });
