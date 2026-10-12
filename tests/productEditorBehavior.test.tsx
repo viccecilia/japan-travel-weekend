@@ -93,12 +93,22 @@ it('旧路线缺少一句话简介时仍可只保存明确景点关联', async (
   expect(operations.saveProductDraft.mock.calls[0][0]).toMatchObject({title:'原路线标题',content:{summary:''}});
 });
 
-it('旧路线缺少一句话简介时普通内容修改仍被完整度校验拦截', async () => {
+it('旧路线缺少一句话简介时仍可保存普通草稿修改', async () => {
   const legacy={...product,content:{...product.content,summary:''}};
   const operations=open({listProducts:vi.fn(async()=>({data:[legacy],error:null}))});
   fireEvent.change(await screen.findByLabelText('路线标题'),{target:{value:'修改后的标题'}});
   fireEvent.click(screen.getByRole('button',{name:'保存草稿'}));
-  expect(await screen.findByText('保存失败：标题和一句话简介不能为空')).toBeInTheDocument();
+  await vi.waitFor(()=>expect(operations.saveProductDraft).toHaveBeenCalled());
+  expect(operations.saveProductDraft.mock.calls[0][0]).toMatchObject({title:'修改后的标题',content:{summary:''}});
+});
+
+it('路线标题为空时在固定保存栏直接提示且不调用保存接口', async () => {
+  const operations=open();
+  fireEvent.change(await screen.findByLabelText('路线标题'),{target:{value:''}});
+  fireEvent.click(screen.getByRole('button',{name:'保存草稿'}));
+  const notice=await screen.findByText('保存失败：路线标题不能为空');
+  expect(notice).toHaveTextContent('保存失败：路线标题不能为空');
+  expect(notice).toHaveClass('product-editor-save-notice','error');
   expect(operations.saveProductDraft).not.toHaveBeenCalled();
 });
 
