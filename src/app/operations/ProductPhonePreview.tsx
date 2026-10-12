@@ -36,6 +36,11 @@ export function ProductPhonePreview({draft, locale, mode, dirty, attractionConte
   const view = localizedDraft(draft, locale, {sourceFallback:false});
   const copy = previewCopy[locale] ?? previewCopy['zh-CN'];
   const hero = view.heroImageUrl || view.gallery[0] || '/placeholder-route.png';
+  const routeMeta = [view.region, view.duration].map((value) => value.trim()).filter(Boolean).join(' · ');
+  const cardTitle = view.title.trim();
+  const cardSummary = view.summary.trim();
+  const detailTitle = (view.heroTitle || view.title).trim();
+  const detailSummary = (view.heroSubtitle || view.summary).trim();
   const stops = view.itinerary.map((item) => {
     const attractionId = String(item.attractionId ?? '');
     const guide = attractionId ? attractionContent[attractionId]?.guides[locale] : undefined;
@@ -63,14 +68,14 @@ export function ProductPhonePreview({draft, locale, mode, dirty, attractionConte
         {mode === 'card' ? (
           <article className="product-preview-card">
             <img src={hero} alt="路线封面预览" />
-            <div><small>{view.region || copy.missingRegion} · {view.duration || copy.missingDuration}</small><h2>{view.title || copy.missingTitle}</h2><p>{view.summary || copy.missingSummary}</p><b>{copy.price}</b></div>
+            <div>{routeMeta && <small>{routeMeta}</small>}{cardTitle && <h2>{cardTitle}</h2>}{cardSummary && <p>{cardSummary}</p>}<b>{copy.price}</b></div>
           </article>
         ) : (
           <div className="product-preview-detail">
             <div className="product-preview-appbar">‹ {copy.route} <b>Japan Travel Weekend</b></div>
             <section className="product-preview-hero-shell">
               {view.heroVideo?.url?<video className="product-preview-hero" src={view.heroVideo.url} poster={view.heroVideo.posterUrl||hero} autoPlay muted loop playsInline/>:<img className="product-preview-hero" src={hero} alt="路线封面预览" />}
-              <div><small>{view.region || copy.missingRegion} · {view.duration || copy.missingDuration}</small><h2>{view.heroTitle || view.title || copy.missingTitle}</h2><p>{view.heroSubtitle || view.summary || copy.missingSummary}</p></div>
+              <div>{routeMeta && <small>{routeMeta}</small>}{detailTitle && <h2>{detailTitle}</h2>}{detailSummary && <p>{detailSummary}</p>}</div>
             </section>
             <div className="product-preview-copy">
               {translationGaps.length > 0 && <aside className="product-preview-translation-gap"><b>TRANSLATION_GAP</b><span>{translationGaps.join('、')}</span></aside>}
@@ -79,10 +84,11 @@ export function ProductPhonePreview({draft, locale, mode, dirty, attractionConte
               <h3>{copy.today}</h3>
               {stops.length ? stops.map((item, index) => {
                 const attractionId=String(item.attractionId??'');const content=attractionId?attractionContent[attractionId]:undefined;const audio=content?.audio[locale];
+                const itemTitle=String(item.title??item.name??'').trim();
                 return (
                 <article key={item.editorId} id={`preview-${item.editorId}`}>
                   {(item.gallery?.length?item.gallery:[String(item.imageUrl??'')].filter(Boolean)).length>0&&<div className="product-preview-stop-gallery">{(item.gallery?.length?item.gallery:[String(item.imageUrl??'')].filter(Boolean)).map((url,index)=><img key={`${url}-${index}`} src={url} alt="" />)}</div>}
-                  <div><b>{index + 1}. {String(item.title ?? item.name ?? copy.missingTitle)}</b>{Number(item.stayMinutes) > 0 && <small>{Number(item.stayMinutes)} {copy.minutes}</small>}</div>
+                  <div><b>{index + 1}.{itemTitle ? ` ${itemTitle}` : ''}</b>{Number(item.stayMinutes) > 0 && <small>{Number(item.stayMinutes)} {copy.minutes}</small>}</div>
                   {item.description && <p>{String(item.description)}</p>}
                   {Boolean(item.longDescription) && <p className="product-preview-description">{String(item.longDescription)}</p>}
                   {item.tip&&<p className="product-preview-description">{String(item.tip)}</p>}
@@ -90,7 +96,7 @@ export function ProductPhonePreview({draft, locale, mode, dirty, attractionConte
                   {audio?.status==='published'&&audio.audioUrl&&<PreviewAudio src={audio.audioUrl} label={`${String(item.title??'景点')} · ${locale} 语音导览`}/>}
                   {content?.error&&<p className="product-preview-attraction-error" role="alert">景点内容读取失败：{content.error} {onRetryAttractions&&<button type="button" onClick={onRetryAttractions}>重试</button>}</p>}
                 </article>
-              );}) : <p className="product-preview-empty">{copy.noStops}</p>}
+              );}) : null}
               <h3>{copy.fees}</h3>
               <p>{view.included.length ? `${copy.included}: ${view.included.join('、')}` : ''}</p>
               {view.excluded.length > 0 && <p>{copy.excluded}: {view.excluded.join('、')}</p>}

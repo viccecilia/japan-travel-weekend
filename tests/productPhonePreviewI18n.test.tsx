@@ -8,6 +8,28 @@ import type {OperationsProduct} from '../src/shared/integrations/supabaseOperati
 const route = (): OperationsProduct => ({id: 'route-preview-i18n', slug: 'route-preview-i18n', status: 'draft', catalogVersion: 1, publishedRevision: null, draftRevision: 1, title: '中文路线', heroImageUrl: '/route.jpg', gallery: ['/route.jpg'], updatedAt: '2026-09-24T00:00:00Z', content: {summary: '中文简介', included: ['往返车辆'], excluded: ['午餐'], preparation: ['舒适鞋'], bookingNotice: '提前集合', cancellationPolicy: '取消规则', participantRules: '参加规则', weatherNotice: '天气提醒', baggageNotice: '行李说明', safetyNotice: '安全提示', itinerary: [{id: 'spot-one', title: '中文景点', shortDescription: '中文短介绍', longDescription: '中文长介绍'}], locales: {}}});
 
 describe('ProductPhonePreview Route V2 locale content', () => {
+  it.each([
+    ['zh-CN', ['地区未设置', '时长未设置', '未命名路线', '尚未填写路线简介', '尚未添加景点']],
+    ['zh-TW', ['未設定地區', '未設定時長', '未命名路線', '尚未填寫路線簡介', '尚未新增景點']],
+    ['ja', ['地域未設定', '所要時間未設定', '無題のルート', 'ルート紹介は未入力です', 'スポットは未追加です']],
+    ['en', ['Region not set', 'Duration not set', 'Untitled route', 'Route summary not yet written', 'No stops added yet']],
+    ['ko', ['지역 미설정', '소요 시간 미설정', '제목 없는 노선', '노선 소개가 아직 없습니다', '추가된 장소가 없습니다']],
+    ['es', ['Región sin configurar', 'Duración sin configurar', 'Ruta sin título', 'Aún no hay resumen de la ruta', 'Aún no se añadieron paradas']],
+    ['vi', ['Chưa đặt khu vực', 'Chưa đặt thời lượng', 'Tuyến chưa có tên', 'Chưa có giới thiệu tuyến', 'Chưa thêm điểm đến']],
+    ['ne', ['क्षेत्र सेट गरिएको छैन', 'अवधि सेट गरिएको छैन', 'शीर्षक नभएको रुट', 'रुटको परिचय अझै छैन', 'स्थान थपिएको छैन']],
+  ])('leaves empty %s fields blank instead of rendering placeholder copy', (locale, placeholders) => {
+    const original = route();
+    original.title = '';
+    original.content = {summary:'', region:'', duration:'', itinerary:[], locales:{}};
+    const {container, unmount} = render(<ProductPhonePreview draft={draftFromProduct(original)} locale={locale} mode="detail" dirty={false} />);
+    for (const placeholder of placeholders) expect(screen.queryByText(placeholder, {exact:false})).not.toBeInTheDocument();
+    expect(container.querySelector('.product-preview-hero-shell small')).toBeNull();
+    expect(container.querySelector('.product-preview-hero-shell h2')).toBeNull();
+    expect(container.querySelector('.product-preview-hero-shell p')).toBeNull();
+    expect(container.querySelector('.product-preview-empty')).toBeNull();
+    unmount();
+  });
+
   it('renders imported English lists, travel notes, and stable-ID spot text instead of Chinese fallback', () => {
     const original = route(); const pkg = buildRouteTranslationPackage(original);
     const values: Record<string, string> = {title: 'English route', summary: 'English summary', included: 'Round-trip transport', excluded: 'Lunch', preparation: 'Comfortable shoes', bookingNotice: 'Meet early', cancellationPolicy: 'Cancellation policy', participantRules: 'Participant rules', weatherNotice: 'Weather notice', baggageNotice: 'Baggage notice', safetyNotice: 'Safety notice', stop_title: 'English spot', shortDescription: 'English short description', longDescription: 'English long description'};
