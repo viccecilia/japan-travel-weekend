@@ -48,7 +48,6 @@ export function ProductPhonePreview({draft, locale, mode, dirty, attractionConte
   });
   const translationGaps = locale === 'zh-CN' ? [] : [
     !view.title && '路线标题',
-    !view.summary && '一句话简介',
     ...stops.flatMap((item, index) => {
       const attractionId = String(item.attractionId ?? '');
       if (attractionId) {

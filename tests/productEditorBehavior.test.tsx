@@ -47,8 +47,11 @@ it('四个编辑 Tab 共用草稿，切换后输入与实时预览不丢失', as
 
 it('多语言路线内容隐藏重复的一句话卖点并保留路线总体介绍', async () => {
   open();
+  expect(await screen.findByLabelText('详细介绍')).toHaveValue('原介绍');
+  expect(screen.queryByLabelText('一句话简介（草稿可留空）')).not.toBeInTheDocument();
   fireEvent.click(await screen.findByRole('button', {name: '多语言'}));
   expect(screen.queryByLabelText('一句话卖点')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('一句话简介')).not.toBeInTheDocument();
   expect(screen.getByLabelText('路线总体介绍')).toHaveValue('原介绍');
 });
 

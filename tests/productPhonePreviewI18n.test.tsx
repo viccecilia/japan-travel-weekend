@@ -43,7 +43,9 @@ describe('ProductPhonePreview Route V2 locale content', () => {
 
   it('shows an explicit translation gap instead of silently mixing Chinese into Japanese preview', () => {
     render(<ProductPhonePreview draft={draftFromProduct(route())} locale="ja" mode="detail" dirty={false} />);
-    expect(screen.getByText('TRANSLATION_GAP')).toBeInTheDocument();
+    const gap=screen.getByText('TRANSLATION_GAP').closest('aside');
+    expect(gap).toBeInTheDocument();
+    expect(gap).not.toHaveTextContent('一句话简介');
     expect(screen.queryByText('中文路线')).not.toBeInTheDocument();
     expect(screen.queryByText('中文简介')).not.toBeInTheDocument();
     expect(screen.queryByText('中文景点')).not.toBeInTheDocument();
