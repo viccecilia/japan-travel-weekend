@@ -1,0 +1,108 @@
+{
+  "task": "JTW 路线邀请分享、推荐人次与90天优惠券规则收口",
+  "dateJst": "2026-10-13",
+  "history": {
+    "round1": {
+      "testedApplicationSha": "76d111dbf996c993a3166472f19e68124ef4554a",
+      "releaseId": "jtw-referral-growth-20261013-76d111d",
+      "final": "NOT_READY",
+      "note": "保留第一轮历史；第二轮对象是当前有效验证结果。"
+    }
+  },
+  "round2": {
+    "testedApplicationSha": "196b4d8ee9cdd192723023b5c9fdb8f047cf545e",
+    "deployedApplicationSha": "196b4d8ee9cdd192723023b5c9fdb8f047cf545e",
+    "environment": {
+      "name": "test",
+      "supabaseProject": "hzxoofvodpqpdomtmzlf",
+      "stripeMode": "test",
+      "productionAccessed": false,
+      "productionDeployed": false,
+      "productionWritten": false,
+      "liveStripeUsed": false
+    },
+    "release": {
+      "id": "jtw-referral-growth-round2-20261013-196b4d8",
+      "artifact": "jtw-referral-growth-round2-20261013-196b4d8.tar.gz",
+      "artifactSha256": "d1d256cb32f4611cb2d798b33f0e6124a87f4b355d32b96b1a1c676e2d3c7c13",
+      "frontendSha": "196b4d8ee9cdd192723023b5c9fdb8f047cf545e",
+      "apiSha": "196b4d8ee9cdd192723023b5c9fdb8f047cf545e",
+      "mode": "test",
+      "migration": "20261013071140_route_referral_growth_convergence"
+    },
+    "automation": {
+      "npmAudit": {"status": "PASS", "vulnerabilities": 0},
+      "focusedVitest": {"status": "PASS", "files": 5, "tests": 18},
+      "fullVitest": {"status": "PASS", "files": 264, "tests": 1189, "note": "首次并行运行有3个timeout；隔离复跑和最终单worker全量复跑通过。"},
+      "typecheck": "PASS",
+      "build": "PASS",
+      "buildServer": "PASS",
+      "contentCheck": "PASS",
+      "launchCheck": "PASS",
+      "eslint": "PASS",
+      "diffCheck": "PASS",
+      "ciRun": {
+        "id": 38369894188,
+        "url": "https://github.com/viccecilia/japan-travel-weekend/actions/runs/38369894188",
+        "application": "PASS",
+        "database": "PASS"
+      }
+    },
+    "shareHtml": {
+      "locales": ["zh-CN", "zh-TW", "ja", "en", "ko", "es", "vi", "ne"],
+      "initialRouteSpecificMetadata": "PASS",
+      "publishedDetailField": "PASS",
+      "cacheIsolation": "PASS",
+      "unknownRoute404": "PASS",
+      "noStore": true,
+      "foreignLocaleChineseFallback": false
+    },
+    "browser": {
+      "mobileWidth": 390,
+      "desktopWidth": 1280,
+      "horizontalOverflow": false,
+      "consoleErrors": 0,
+      "consoleWarnings": 0,
+      "documentLanguageFollowsCard": true,
+      "screenshots": [
+        "artifacts/referral-growth/referral-round2-390-en.png",
+        "artifacts/referral-growth/referral-round2-desktop-ja.png"
+      ]
+    },
+    "ready": {
+      "httpStatus": 503,
+      "database": true,
+      "stripeModeSafe": true,
+      "webhookSecret": true,
+      "notificationReceiptSecret": false,
+      "classification": "KNOWN_EXISTING_GAP"
+    },
+    "matrix": {
+      "T01": "PASS",
+      "T02": "BLOCKED",
+      "T03": "NOT_RUN",
+      "T04": "NOT_RUN",
+      "T05": "BLOCKED",
+      "T06": "BLOCKED",
+      "T07": "BLOCKED",
+      "T08": "PASS",
+      "T09": "PASS",
+      "T10": "PASS",
+      "T11": "PASS",
+      "T12": "NOT_RUN",
+      "T13": "PASS",
+      "T14": "PASS",
+      "T15": "CONTENT_PENDING",
+      "T16": "PASS",
+      "T17": "BLOCKED",
+      "T18": "BLOCKED"
+    },
+    "formalE2EBlockers": [
+      "缺少两个新游客邮箱及验证凭证",
+      "缺少Stripe Test支付凭证和正式Webhook闭环条件",
+      "缺少批准的测试收件箱、退款或核券对象与第三方真实接收设备",
+      "没有获批可安全变更的专用Test产品执行草稿保存到发布"
+    ],
+    "final": "NOT_READY"
+  }
+}
