@@ -187,7 +187,7 @@ const unavailableCopy:Record<PassengerLocale,{route:string;content:string;stop:s
   ko:{route:'노선',content:'현재 언어의 노선 정보가 없습니다',stop:'경유지',meeting:'현재 언어의 집합 정보가 없습니다'},
 };
 
-export type RoutePresentation={title:string;tagline:string;summary:string;available:boolean;identity:string;availabilityMessage:string};
+export type RoutePresentation={title:string;tagline:string;summary:string;description:string;available:boolean;identity:string;availabilityMessage:string};
 
 /** Single presentation contract used by route cards, orders and Trip Room. */
 export function presentRoute(trip:Trip,locale:PassengerLocale):RoutePresentation{
@@ -196,9 +196,10 @@ export function presentRoute(trip:Trip,locale:PassengerLocale):RoutePresentation
   const title=localizedRouteText(content,'title',trip.shortTitle||trip.title,source);
   const tagline=localizedRouteText(content,'tagline',trip.tagline??trip.subtitle,source);
   const summary=localizedRouteText(content,'summary',trip.summary,source);
+  const description=localizedRouteText(content,'description',trip.description,source);
   const copy=unavailableCopy[locale];
   const identity=`${copy.route} · ${routeIdentityCode(trip.slug)}`;
-  return {title:title||identity,tagline,summary,available:Boolean(title),identity,availabilityMessage:copy.content};
+  return {title:title||identity,tagline,summary,description,available:Boolean(title),identity,availabilityMessage:copy.content};
 }
 
 export function unavailableMeetingPresentation(locale:PassengerLocale){return unavailableCopy[locale].meeting;}

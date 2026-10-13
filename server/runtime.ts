@@ -12,6 +12,7 @@ import {SignedNotificationReceiptHandler,SupabaseNotificationReceiptStore} from 
 import {RefundEndpoint,SupabaseRefundGateway} from './refunds.js';
 import {DeterministicSocialMetricsProvider,TravelMomentCheckEndpoint,TravelMomentMetricsRefreshJob} from './travelMoments.js';
 import {resolvePaymentConfig} from './paymentConfig.js';
+import {createPublicSharePage,SupabasePublicShareCatalog} from './sharePage.js';
 
 const port=Number(process.env.PORT||8787);const allowedOrigins=parseAllowedOrigins(process.env.ALLOWED_ORIGIN||'');
 const supabase=createSupabaseServerClient({url:process.env.SUPABASE_URL||'',serviceRoleKey:process.env.SUPABASE_SERVICE_ROLE_KEY||''});
@@ -30,6 +31,8 @@ const travelMoments=new TravelMomentCheckEndpoint(socialMetricsProvider,supabase
 const travelMomentMetrics=new TravelMomentMetricsRefreshJob(socialMetricsProvider,supabase);
 const sourceRate=new FixedWindowRateLimiter(300,60_000);const checkoutRate=new FixedWindowRateLimiter(30,60_000);const actionRate=new FixedWindowRateLimiter(60,60_000);
 const trustedProxies=parseTrustedProxyAddresses(process.env.JTW_TRUSTED_PROXY_ADDRESSES||'127.0.0.1,::1');
+const publicSharePage=createPublicSharePage({catalog:new SupabasePublicShareCatalog(supabase),origin:process.env.JTW_PUBLIC_ORIGIN||'https://weekend.japan-travel.info',shellPath:process.env.JTW_PUBLIC_DIST_DIR?`${process.env.JTW_PUBLIC_DIST_DIR}/index.html`:undefined});
+const {'content-security-policy':_apiOnlyCsp,...htmlSecurityHeaders}=apiSecurityHeaders;void _apiOnlyCsp;
 async function takeRequestRate(req:Parameters<typeof requestRateKey>[0],limiter:FixedWindowRateLimiter){
   const source=sourceRate.take(requestRateKey(req,null,trustedProxies));
   if(!source.allowed)return {rate:source,session:null};
@@ -40,6 +43,7 @@ async function takeRequestRate(req:Parameters<typeof requestRateKey>[0],limiter:
 
 function send(res:ServerResponse,status:number,body:unknown,corsOrigin:string|null=null,headers:Record<string,string>={}){res.writeHead(status,{...apiSecurityHeaders,'content-type':'application/json; charset=utf-8','cache-control':'no-store',...(corsOrigin?{'access-control-allow-origin':corsOrigin,'vary':'Origin'}:{}),...headers});res.end(JSON.stringify(body))}
 const server=createServer(async(req,res)=>{const corsOrigin=allowedCorsOrigin(req.headers.origin,allowedOrigins);try{
+  if(req.method==='GET'&&req.url?.startsWith('/r/')){const page=await publicSharePage(req.url);if(page){res.writeHead(page.status,{...htmlSecurityHeaders,...page.headers});res.end(page.body);return}}
   if(req.method==='GET'&&req.url==='/health')return send(res,200,{ok:true,mode:paymentMode,version:process.env.JTW_RELEASE_SHA??'development'},corsOrigin);
   if(req.method==='GET'&&req.url==='/ready'){const readiness=await checkApiReadiness(supabase,{NODE_ENV:process.env.NODE_ENV,STRIPE_SECRET_KEY:process.env.STRIPE_SECRET_KEY,STRIPE_WEBHOOK_SECRET:process.env.STRIPE_WEBHOOK_SECRET,NOTIFICATION_WEBHOOK_SECRET:process.env.NOTIFICATION_WEBHOOK_SECRET,JTW_STRIPE_MODE:process.env.JTW_STRIPE_MODE,JTW_PRODUCTION_PAYMENT_AUTHORIZED:process.env.JTW_PRODUCTION_PAYMENT_AUTHORIZED});return send(res,readiness.ok?200:503,{...readiness,version:process.env.JTW_RELEASE_SHA??'development'},corsOrigin)}
   if(req.method==='OPTIONS'){if(req.headers.origin&&!corsOrigin)return send(res,403,{error:'origin_not_allowed'});res.writeHead(204,{...apiSecurityHeaders,...(corsOrigin?{'access-control-allow-origin':corsOrigin}:{ }),'access-control-allow-methods':'POST,OPTIONS','access-control-allow-headers':'authorization,content-type,stripe-signature,x-jtw-notification-signature','vary':'Origin'});return res.end()}

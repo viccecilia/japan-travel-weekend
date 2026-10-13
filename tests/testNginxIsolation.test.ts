@@ -7,5 +7,6 @@ describe('Test Nginx isolation',()=>{
     expect(config).toContain('location /api/');
     expect(config).toContain('proxy_pass http://127.0.0.1:18773/;');
     expect(config).not.toContain('proxy_pass http://127.0.0.1:18774/;');
+    expect(config).toMatch(/location \^~ \/r\/[\s\S]*proxy_pass http:\/\/127\.0\.0\.1:18773;/);
   });
 });

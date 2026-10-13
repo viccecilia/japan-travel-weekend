@@ -2,10 +2,11 @@ import {describe,expect,it} from 'vitest';
 import {presentMeetingText,presentRoute,routeIdentityCode,routeStopIdentity} from './routeLocalePresentation';
 import type {Trip} from './types';
 
-const trip={id:'route-1',slug:'sanzenin-kibune-arashiyama-autumn',title:'三千院・贵船・岚山',shortTitle:'三千院・贵船・岚山',subtitle:'',summary:'中文简介',description:'',tagline:'',localizedContent:{'zh-CN':{title:'三千院・贵船・岚山',summary:'中文简介'},en:{title:'Sanzen-in, Kibune & Arashiyama',summary:'Approved English summary'}},timeline:[],stops:[],categories:[],heroImage:'',gallery:[],highlights:[],region:'',duration:'',walkingLevel:'',meetingPoint:null,departureTime:null,returnTime:null,price:null,priceStatus:'待公布',minimumGuests:null,maximumGuests:null,availableSeats:null,seatStatus:'未开放',included:[],excluded:[],languages:[],mealOptions:'',childPolicy:'',luggagePolicy:'',suitableFor:[],notices:[],packingList:[],clothingAdvice:'',friendlyReminders:[],assistanceStatus:'',cancellationPolicy:'',weatherPolicy:'',sourceUrl:'',imageCredits:[],status:'标准路线'} as Trip;
+const trip={id:'route-1',slug:'sanzenin-kibune-arashiyama-autumn',title:'三千院・贵船・岚山',shortTitle:'三千院・贵船・岚山',subtitle:'',summary:'中文简介',description:'中文详细介绍',tagline:'',localizedContent:{'zh-CN':{title:'三千院・贵船・岚山',summary:'中文简介',description:'发布中文详细介绍'},en:{title:'Sanzen-in, Kibune & Arashiyama',summary:'Approved English summary',description:'Approved English detailed introduction'}},timeline:[],stops:[],categories:[],heroImage:'',gallery:[],highlights:[],region:'',duration:'',walkingLevel:'',meetingPoint:null,departureTime:null,returnTime:null,price:null,priceStatus:'待公布',minimumGuests:null,maximumGuests:null,availableSeats:null,seatStatus:'未开放',included:[],excluded:[],languages:[],mealOptions:'',childPolicy:'',luggagePolicy:'',suitableFor:[],notices:[],packingList:[],clothingAdvice:'',friendlyReminders:[],assistanceStatus:'',cancellationPolicy:'',weatherPolicy:'',sourceUrl:'',imageCredits:[],status:'标准路线'} as Trip;
 
 describe('route locale presentation',()=>{
-  it('uses approved locale content when present',()=>expect(presentRoute(trip,'en')).toMatchObject({title:'Sanzen-in, Kibune & Arashiyama',available:true}));
+  it('uses approved locale content when present',()=>expect(presentRoute(trip,'en')).toMatchObject({title:'Sanzen-in, Kibune & Arashiyama',description:'Approved English detailed introduction',available:true}));
+  it('reads the source description from the published source-locale path',()=>expect(presentRoute(trip,'zh-CN').description).toBe('发布中文详细介绍'));
   it('uses the existing human locale pack before a content-gap identity',()=>{
     const presentation=presentRoute(trip,'vi');
     expect(presentation.available).toBe(true);
