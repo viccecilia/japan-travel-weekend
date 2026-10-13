@@ -104,5 +104,110 @@
       "没有获批可安全变更的专用Test产品执行草稿保存到发布"
     ],
     "final": "NOT_READY"
+  },
+  "invitationV2Closure": {
+    "dateJst": "2026-10-14",
+    "testedApplicationSha": "9eb91849bc533a11763e50f1e017b01a4a6a743c",
+    "deployedApplicationSha": "9eb91849bc533a11763e50f1e017b01a4a6a743c",
+    "environment": {
+      "name": "test",
+      "supabaseProject": "hzxoofvodpqpdomtmzlf",
+      "stripeMode": "test",
+      "productionAccessed": false,
+      "productionDeployed": false,
+      "productionWritten": false,
+      "liveStripeUsed": false
+    },
+    "release": {
+      "id": "jtw-referral-invitation-v2-final-20261014-9eb9184",
+      "artifact": "jtw-referral-invitation-v2-final-20261014-9eb9184.tar.gz",
+      "artifactSha256": "26ab72d19151218fec013d084f396c0fbf3e2ff11842978d668b08c53d66adac",
+      "frontendSha": "9eb91849bc533a11763e50f1e017b01a4a6a743c",
+      "apiSha": "9eb91849bc533a11763e50f1e017b01a4a6a743c",
+      "mode": "test",
+      "migrationAdded": false,
+      "nginxApiUpstream": "127.0.0.1:18773"
+    },
+    "automation": {
+      "focusedVitest": {"status": "PASS", "files": 2, "tests": 12},
+      "fullVitest": {"status": "PASS", "files": 264, "tests": 1193},
+      "typecheck": "PASS",
+      "build": "PASS",
+      "buildServer": "PASS",
+      "contentCheck": "PASS",
+      "launchCheck": "PASS",
+      "diffCheck": "PASS",
+      "ciRun": {
+        "id": 38486828996,
+        "url": "https://github.com/viccecilia/japan-travel-weekend/actions/runs/38486828996",
+        "application": "PASS",
+        "database": "PASS"
+      }
+    },
+    "visual": {
+      "reference": "JTW_Route_Invitation_Demo_v2.html",
+      "mobileWidth": 390,
+      "desktopWidth": 1440,
+      "cardWidthCssPx": 390,
+      "contentWidthCssPx": 388,
+      "horizontalOverflow": false,
+      "videoPlayback": "PASS",
+      "languageKeepsReferralCode": "PASS",
+      "actualAttractionsOnly": "PASS",
+      "priceAndMeetingSameDeparture": "PASS",
+      "invalidCodeNoCouponPromise": "PASS",
+      "consoleErrors": 0,
+      "consoleWarnings": 0,
+      "screenshots": [
+        "artifacts/referral-growth/invitation-v2-final-390-zh.png",
+        "artifacts/referral-growth/invitation-v2-final-390-en.png",
+        "artifacts/referral-growth/invitation-v2-final-desktop-ja.png",
+        "artifacts/referral-growth/invitation-v2-final-390-invalid-zh.png"
+      ]
+    },
+    "shareHtml": {
+      "locales": ["zh-CN", "zh-TW", "ja", "en", "ko", "es", "vi", "ne"],
+      "initialRouteSpecificMetadata": "PASS",
+      "publishedDetailField": "PASS",
+      "cacheIsolation": "PASS",
+      "unknownRoute404": "PASS",
+      "noStore": true
+    },
+    "ready": {
+      "httpStatus": 503,
+      "database": true,
+      "stripeModeSafe": true,
+      "webhookSecret": true,
+      "notificationReceiptSecret": false,
+      "classification": "KNOWN_EXISTING_GAP"
+    },
+    "matrix": {
+      "T01": "PASS",
+      "T02": "BLOCKED",
+      "T03": "NOT_RUN",
+      "T04": "NOT_RUN",
+      "T05": "BLOCKED",
+      "T06": "BLOCKED",
+      "T07": "BLOCKED",
+      "T08": "PASS",
+      "T09": "PASS",
+      "T10": "PASS",
+      "T11": "PASS",
+      "T12": "NOT_RUN",
+      "T13": "PASS",
+      "T14": "PASS",
+      "T15": "CONTENT_PENDING",
+      "T16": "PASS",
+      "T17": "BLOCKED",
+      "T18": "BLOCKED"
+    },
+    "formalE2EBlockers": [
+      "缺少可实际收信验证的A/B/C独立Test账号会话",
+      "缺少获准创建和退款的5人Stripe Test正式订单",
+      "缺少可执行登车、完成、核券的Test运营登录会话",
+      "缺少批准的私密分享接收人、渠道和回执"
+    ],
+    "contentStatus": "CONTENT_PENDING",
+    "final": "NOT_READY"
   }
 }

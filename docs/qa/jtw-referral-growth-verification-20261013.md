@@ -97,7 +97,69 @@ Production：**未访问 / 未部署 / 未写入 / 未使用 Live Stripe**。
 
 ---
 
-## 第二轮验证（当前有效；上方保留第一轮历史）
+## 邀请卡 V2 视觉与发布收口（2026-10-14，当前有效）
+
+被测/已部署应用 SHA：`9eb91849bc533a11763e50f1e017b01a4a6a743c`
+
+Test Release：`jtw-referral-invitation-v2-final-20261014-9eb9184`
+
+Artifact SHA256：`26ab72d19151218fec013d084f396c0fbf3e2ff11842978d668b08c53d66adac`
+
+CI：[38486828996](https://github.com/viccecilia/japan-travel-weekend/actions/runs/38486828996)（application/database PASS；264 files / 1193 tests PASS）
+
+### 视觉、内容与状态验证
+
+- `/r/:code` 保留 8 条路线目录；`/r/:code/:slug` 只展示单张邀请卡，不在底部重复路线目录。
+- 语言选择位于媒体右上角；卡片顶部旧占位已清除。390px 实测卡片宽 390px、媒体/正文宽 388px，`scrollWidth=viewport=390`。
+- 桌面实测卡片宽 390px、媒体/正文宽 388px；修复了全局 `main > section` 桌面 padding 把卡片内容压窄的问题。
+- 视频实测 `readyState=4`、原生 controls 开启并持续播放；长标题、详细介绍和播放控件不再互相覆盖。
+- 主文案只读取当前已发布的对应语言详细介绍并只显示一次；天桥立样板只汇总实际景点：天桥立、智恩寺文殊堂、伊根舟屋。
+- 价格与出发地点来自同一 `departureId`；语言切换后详情/注册链接继续携带相同的脱敏 Test 推荐码与班次 ID。
+- 有效码显示“来源已核验”和新人券条件；无效码只显示无效/停用提示，不显示确定性领券文案或注册领券按钮。核验中、网络失败和不符合新人条件另有独立状态及自动化覆盖。
+- 8 个语言初始 HTML 均为 200、正确 `<html lang>`、非空路线级 OG、`x-jtw-share-render=published-route-v1`、`cache-control=no-store, max-age=0`；未知路线为 404。
+- 有效码、无效码与路线目录的浏览器 Console 均为 0 error / 0 warning。
+
+截图：
+
+- `artifacts/referral-growth/invitation-v2-final-390-zh.png`
+- `artifacts/referral-growth/invitation-v2-final-390-en.png`
+- `artifacts/referral-growth/invitation-v2-final-desktop-ja.png`
+- `artifacts/referral-growth/invitation-v2-final-390-invalid-zh.png`
+
+### 自动化、发布和环境一致性
+
+- focused Vitest：2 files / 12 tests PASS。
+- CI 全量 Vitest：264 files / 1193 tests PASS；typecheck、build、build:server、content、launch、数据库 reset/lint/V7 regression 均 PASS。
+- 前端 SHA、API 环境 SHA、内网 `/health` 和公网 `/api/health` 均为 `9eb91849bc533a11763e50f1e017b01a4a6a743c`，`mode=test`。
+- Nginx `/api/` 上游为 `127.0.0.1:18773`；构建指纹为 Test Supabase `hzxoofvodpqpdomtmzlf`、Stripe Test、`live_payments=false`、`seed_data=false`。
+- `/api/ready` 仍为 503；database、stripeModeSafe、webhookSecret 为 true，唯一既有缺口为 `notificationReceiptSecret=false`。
+- 首次 V2 桌面截图暴露卡片内部被全局 padding 压窄，已修复；随后 CI 捕获二维码异步任务卸载后回写，已加入生命周期取消保护。最终 CI 及 Test SHA 均以 `9eb9184` 为准。
+
+### T02—T18 正式 E2E 状态
+
+| ID | 当前结论 | 当前正式状态 |
+|---|---|---|
+| T02 | BLOCKED | 有效/无效公开页已实测；仍缺 A/B 独立邮箱账号完成正式绑定。 |
+| T03 | NOT_RUN | 缺可实际收信、验证并回跳的独立新账号会话。 |
+| T04 | NOT_RUN | 缺 A/B/C 三个独立登录会话验证归属不覆盖与 B 自有码。 |
+| T05 | BLOCKED | 无效码实测通过；自荐和停用码仍缺正式账号场景。 |
+| T06 | BLOCKED | 自动化 5 席口径通过；未创建正式 5 人 Stripe Test 订单。 |
+| T07 | BLOCKED | 自动化退款反转通过；未获准对正式 Test 订单执行部分退款。 |
+| T08—T14 | PASS | 既有自动化、数据库回归和权限门保持通过。 |
+| T15 | CONTENT_PENDING | 正式题库仍未发布，不用草案或模拟通过代替。 |
+| T16 | PASS | 60/90 天状态及恢复回归保持通过。 |
+| T17 | BLOCKED | RLS/lint 通过；缺两个真实家庭账号做浏览器越权验证。 |
+| T18 | BLOCKED | 本轮视觉、语言、视频和异常码浏览器验收通过；批准渠道的私密发送/接收/取消与多设备仍未执行。 |
+
+开始正式 E2E 所需最小人工动作仅为：在可见浏览器内登录或输入独立 Test 账号/邮箱凭证；确认允许使用指定 Test 班次创建 5 人 Stripe Test 订单并退款/核券；指定一个批准的私密分享接收人、渠道和回执。不得在聊天粘贴秘密，也未用 SQL 伪造邮箱、付款、登车、完成或奖励。
+
+因此整体仍为 **FINAL：NOT READY**。视觉单项及 Test 发布为 PASS；正式业务 E2E 未完成，不降低原验收标准。
+
+Production：**未访问 / 未部署 / 未写入 / 未使用 Live Stripe**。
+
+---
+
+## 第二轮验证（历史基线；上方邀请卡 V2 小节为当前有效）
 
 被测/已部署应用 SHA：`196b4d8ee9cdd192723023b5c9fdb8f047cf545e`
 

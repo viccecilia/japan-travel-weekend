@@ -181,3 +181,52 @@ Production：**未访问 / 未部署 / 未写入 / 未使用 Live Stripe**。
 本轮没有可用的两个新游客邮箱凭证、Stripe Test 支付凭证、批准的测试收件箱或可安全变更的专用 Test 产品，因此没有绕过正式接口用 SQL 冒充以下流程：邮箱验证、A/B/C 双账号归属、5 人真实支付/Webhook/履约、退款、核券、第三方真实发送接收。Gate A 的专用产品草稿保存→发布也未执行，以避免修改现有运营内容。
 
 当前结论仍为 **FINAL：NOT READY**；原因是正式业务 E2E 未完成，而不是应用构建、Test 发布或分享 HTML 失败。Production 仍为：**未访问 / 未部署 / 未写入 / 未使用 Live Stripe**。
+
+---
+
+## 10. 邀请卡 V2 续接收口（2026-10-14）
+
+本节继续第二轮，不重建推荐系统。既有已发布详细介绍读取、OG/语言/缓存隔离、推荐人次、90 天券与资格占位均保留。
+
+### 10.1 代码与体验结果
+
+- 邀请卡按 V2 参考收口：语言选择进入媒体右上角，去掉顶部空白；视频、长标题、详细介绍和原生控制条互不重叠。
+- `/r/:code` 为路线目录；`/r/:code/:slug` 聚焦单卡。
+- 景点摘要仅汇总 attraction 节点；天桥立样板完整显示天桥立、智恩寺文殊堂、伊根舟屋。
+- 同一个有效班次同时提供价格、集合点和 `departureId`，未写死生产示例值。
+- 推荐核验中、有效、无效/停用、网络失败、不符合新人条件分别展示；只有有效状态显示条件性新人券文案。
+- 修复桌面全局 section padding 压窄卡片内容；修复二维码异步生成在组件卸载后回写导致 CI unhandled rejection。
+
+主要续接文件：`src/app/RouteInvitation.tsx`、`src/app/routeInvitation.css`、`src/app/routeInvitationCopy.ts`、`src/shared/integrations/supabaseProduction.ts`、`src/app/AmbassadorCenter.tsx`、`tests/routeInvitation.test.tsx`，以及本报告、检测 JSON 和四张脱敏截图。
+
+提交：
+
+- `4aab770082cd9b9f7a5ef6b064e815a5281bf92f` — 邀请卡 V2、真实班次/景点与推荐状态收口
+- `16bf099dba6c8cea682bdebf8a64dae1997eeb8b` — 桌面卡片宽度修正
+- `9eb91849bc533a11763e50f1e017b01a4a6a743c` — CI 捕获的二维码卸载后异步回写修复
+
+### 10.2 最终 Test 发布
+
+- Release ID：`jtw-referral-invitation-v2-final-20261014-9eb9184`
+- Artifact SHA256：`26ab72d19151218fec013d084f396c0fbf3e2ff11842978d668b08c53d66adac`
+- CI：[38486828996](https://github.com/viccecilia/japan-travel-weekend/actions/runs/38486828996)，application/database PASS。
+- Frontend/API SHA：均为 `9eb91849bc533a11763e50f1e017b01a4a6a743c`；`mode=test`；Nginx API upstream 为 `127.0.0.1:18773`。
+- Test Supabase：`hzxoofvodpqpdomtmzlf`；本续接未新增 migration。
+- `/api/ready` 唯一既有缺口仍是 `notificationReceiptSecret=false`。
+
+### 10.3 实际浏览器证据
+
+- 390px 中/英文、桌面日文与无效码中文截图均已入库；卡片无横向溢出，桌面不再逐字换行。
+- 视频真实加载并播放；切换语言后推荐码和班次不变。
+- 三个实际景点完整；有效码与无效码优惠状态一致且不伪造承诺。
+- 8 语言初始 HTML/OG/no-store、未知路线 404、Console 0 error/0 warning 均通过。
+
+截图：`artifacts/referral-growth/invitation-v2-final-390-zh.png`、`invitation-v2-final-390-en.png`、`invitation-v2-final-desktop-ja.png`、`invitation-v2-final-390-invalid-zh.png`。
+
+### 10.4 正式验收结论
+
+邮箱验证与回跳、A/B/C 归属不覆盖、正式 5 人 Stripe Test 支付/Webhook/履约、正式退款、券预留/释放/核销、双家庭账号越权和批准渠道私密分享仍缺必要的真实账号会话或用户批准对象，未以 SQL 或模拟状态伪造。
+
+因此视觉与发布单项为 PASS，但整体仍为 **FINAL：NOT READY**。正式题库保持 **CONTENT_PENDING**。
+
+Production：**未访问 / 未部署 / 未写入 / 未使用 Live Stripe**。
