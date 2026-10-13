@@ -4,6 +4,7 @@ import {describe,expect,it} from 'vitest';
 
 const server=readFileSync(join(process.cwd(),'deploy/nginx/weekend-test.conf'),'utf8');
 const common=readFileSync(join(process.cwd(),'deploy/nginx/weekend-test-common.conf'),'utf8');
+const releaseBuilder=readFileSync(join(process.cwd(),'deploy/scripts/build-test-closure-release.ps1'),'utf8');
 const config=`${server}\n${common}`;
 
 describe('手机验收测试前端部署边界',()=>{
@@ -12,4 +13,15 @@ describe('手机验收测试前端部署边界',()=>{
   it('同源测试 API 只代理到本机测试端口',()=>{expect(config).toContain('location /api-test/');expect(config).toContain('proxy_pass http://127.0.0.1:18773/;')});
   it('公网路径在 Test 仍代理到隔离的 Test API 而不是 Live 或 SPA',()=>{expect(config).toContain('location /api/');expect(config).toContain('proxy_pass http://127.0.0.1:18773/;');expect(config).not.toContain('proxy_pass http://127.0.0.1:18774/;')});
   it('CSP 覆盖 Stripe.js 官方必要来源',()=>{for(const source of ['https://js.stripe.com','https://*.js.stripe.com','https://api.stripe.com','https://hooks.stripe.com','https://maps.googleapis.com'])expect(config).toContain(source)});
+  it('Test Artifact 构建时强制校验公开服务指纹',()=>{
+    for(const expected of [
+      '[Parameter(Mandatory = $true)][string]$PublicConfigPath',
+      "VITE_API_BASE_URL=/api-test",
+      'hzxoofvodpqpdomtmzlf.supabase.co',
+      'VITE_SUPABASE_PUBLISHABLE_KEY',
+      'VITE_STRIPE_MODE',
+      'VITE_LIVE_PAYMENTS_ENABLED',
+      'PUBLIC_BUILD_FINGERPRINT.txt',
+    ])expect(releaseBuilder).toContain(expected);
+  });
 });
