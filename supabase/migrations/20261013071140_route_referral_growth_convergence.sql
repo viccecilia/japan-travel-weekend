@@ -12,10 +12,8 @@ alter table public.passengers drop constraint if exists passengers_commerce_stat
 alter table public.passengers add constraint passengers_commerce_status_check
   check(commerce_status in ('paid','free','cancelled','refunded'));
 
--- One family order may be allocated across multiple vehicle groups. Passenger
--- check-ins remain the authority for which paid seat completed which group.
-alter table public.vehicle_group_orders drop constraint if exists vehicle_group_orders_order_id_key;
-create index if not exists vehicle_group_orders_order_idx on public.vehicle_group_orders(order_id,vehicle_group_id);
+-- Passenger check-ins, rather than the order-level allocation row, remain the
+-- authority for which paid seat completed which vehicle group's journey.
 
 create table if not exists public.referral_qualified_seats(
   passenger_id uuid primary key references public.passengers(id) on delete restrict,

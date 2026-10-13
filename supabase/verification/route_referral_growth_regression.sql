@@ -32,7 +32,7 @@ begin
   insert into public.vehicle_assignments(departure_id,sequence,vehicle_type,capacity,planned_passengers) values(departure_id,2,'fixture-b',10,3) returning id into assignment_b;
   insert into public.vehicle_groups(departure_id,vehicle_assignment_id) values(departure_id,assignment_a) returning id into group_a;
   insert into public.vehicle_groups(departure_id,vehicle_assignment_id) values(departure_id,assignment_b) returning id into group_b;
-  insert into public.vehicle_group_orders(vehicle_group_id,order_id) values(group_a,fixture_order),(group_b,fixture_order);
+  insert into public.vehicle_group_orders(vehicle_group_id,order_id) values(group_a,fixture_order);
   insert into public.vehicle_group_journey_state(vehicle_group_id,status,updated_by) values(group_a,'in_progress',inviter),(group_b,'in_progress',inviter);
   for idx in 1..5 loop
     insert into public.passengers(order_id,display_name,passenger_type,paid_seat_eligible,commerce_status)
