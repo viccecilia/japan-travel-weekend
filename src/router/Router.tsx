@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import {PassengerMessages} from '../app/PassengerMessages';
 import {lazy,Suspense,useEffect,type ReactNode} from "react";
 import {
@@ -56,6 +56,7 @@ import {TripMap} from '../app/TripMap';
 import {VipCharter} from '../app/VipCharter';
 import {ReferralGrowth,TravelMoments} from '../app/GrowthPages';
 import {AmbassadorCenter} from '../app/AmbassadorCenter';
+import {RouteInvitation} from '../app/RouteInvitation';
 import {OperationsLayout} from "../app/operations/OperationsLayout";
 const OperationsDashboard=lazy(()=>import('../app/OperationsDashboard').then(module=>({default:module.OperationsDashboard})));
 const ProductCenter=lazy(()=>import('../app/operations/ProductCenter').then(module=>({default:module.ProductCenter})));
@@ -76,7 +77,6 @@ const CharterRequestCenter=lazy(()=>import('../app/operations/CharterRequestCent
 const OperationsPage=({children}:{children:ReactNode})=><RequireAccount><RequireOperations><OperationsLayout><Suspense fallback={<main className="operations-page"><p>正在加载管理功能…</p></main>}>{children}</Suspense></OperationsLayout></RequireOperations></RequireAccount>;
 const OperationsNotFound=()=> <main className="operations-page"><section className="operations-error" role="alert"><h2>管理页面不存在</h2><p>该管理链接可能来自旧版本，请通过左侧导航进入现有模块。</p></section></main>;
 function ScrollToTop(){const {pathname}=useLocation();useEffect(()=>{if(!navigator.userAgent.includes('jsdom'))window.scrollTo({top:0,left:0,behavior:'auto'});},[pathname]);return null;}
-function ReferralLink(){const {code=''}=useParams();return <Navigate replace to={`/app/create-account?ref=${encodeURIComponent(code)}`}/>;}
 function AttractionGuideRoute(){
   return <AppShell nav><Suspense fallback={<main className="app-content"><p>Loading guide…</p></main>}><AttractionGuidePage/></Suspense></AppShell>;
 }
@@ -112,7 +112,8 @@ export function Router() {
           </AppShell>
         }
       />
-      <Route path="/r/:code" element={<ReferralLink/>}/>
+      <Route path="/r/:code" element={<RouteInvitation/>}/>
+      <Route path="/r/:code/:slug" element={<RouteInvitation/>}/>
       <Route path="/app/create-account" element={<AppShell><CreateAccount /></AppShell>} />
       <Route path="/app/forgot-password" element={<AppShell><ForgotPassword /></AppShell>} />
       <Route path="/app/reset-password" element={<AppShell><ResetPassword /></AppShell>} />

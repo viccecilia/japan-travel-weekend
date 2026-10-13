@@ -77,6 +77,7 @@ export class ProductionBrowserServices {
     return this.auth.signUp(email, password,displayName,referralCode,returnTo);
   }
   loadOwnReferralSummary(){return this.auth.loadOwnReferralSummary()}
+  resolvePublicReferralInvitation(code:string){return this.auth.resolvePublicReferralInvitation(code)}
   loadOwnCashCommissionSummary(){return this.auth.loadOwnCashCommissionSummary()}
   loadOwnAmbassadorDashboard(){return this.auth.loadOwnAmbassadorDashboard()}
   listOwnReferralRecords(offset=0,limit=30){return this.auth.listOwnReferralRecords(offset,limit)}

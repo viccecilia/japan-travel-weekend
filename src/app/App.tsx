@@ -49,6 +49,7 @@ import './routeDetailContinuous.css';
 import {GrowthEntry,GrowthProfileRows} from './GrowthPages';
 import {useCurrentTime} from './useCurrentTime';
 import {PassengerPageHeader} from './PassengerPageHeader';
+import {captureReferralAttribution,loadReferralAttribution} from '../shared/referralAttribution';
 import './passengerFrame.css';
 const homePriceUnit:Record<PassengerLocale,string>={'zh-CN':'人','zh-TW':'人',ja:'人',en:'person',es:'persona',vi:'người',ne:'व्यक्ति',ko:'인'};
 import {composePassengerDisplayName,splitPassengerDisplayName,type PassengerSalutation} from './passengerDisplayName';
@@ -341,7 +342,7 @@ export function Login() {
   const returnTo = safeReturnTo(
     new URLSearchParams(location.search).get("returnTo"),
   );
-  const referralCode = referralCodeFromSearch(location.search);
+  const referralCode = referralCodeFromSearch(location.search)||loadReferralAttribution()?.code||'';
   const [error, setError] = useState("");
   const [busy,setBusy]=useState(false);
   const [showPassword,setShowPassword]=useState(false);
@@ -1056,7 +1057,16 @@ export function AppTrip() {
   const now=useCurrentTime();
   const resolvedTrip = travelRepository.getTrip(useParams().slug || "");
   const location=useLocation();
-  const { departures,state } = useApp();
+  const { departures,state,setUi } = useApp();
+  const invitationApplied=useRef(false);
+  const invitationParams=new URLSearchParams(location.search);
+  const invitationLocale=invitationParams.get('lang') as PassengerLocale;
+  const invitationCode=referralCodeFromSearch(location.search);
+  useEffect(()=>{
+    if(invitationApplied.current)return;invitationApplied.current=true;
+    if(passengerLocales.some(item=>item.code===invitationLocale)&&state.ui.locale!==invitationLocale)setUi({...state.ui,locale:invitationLocale});
+    if(invitationCode&&resolvedTrip)captureReferralAttribution({code:invitationCode,routeSlug:resolvedTrip.slug,locale:passengerLocales.some(item=>item.code===invitationLocale)?invitationLocale:state.ui.locale??'zh-CN',departureId:invitationParams.get('departureId')??''});
+  },[invitationCode,invitationLocale,resolvedTrip,setUi,state.ui]);
   const locale=state.ui.locale ?? 'zh-CN';
   const r=passengerRoutesCopy[locale];
 

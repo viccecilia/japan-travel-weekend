@@ -2,11 +2,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Departure, SeatStatus } from "../types";
 
 export type AmbassadorDashboard={
-  qualification:{active:boolean;status:string;achievedAt:string|null;source:string|null;currentValidReferrals:number};
+  qualification:{active:boolean;status:string;achievedAt:string|null;source:string|null;currentValidReferrals:number;currentPaidSeats:number;learningEligible:boolean;learningStatus:string;contentPublished:boolean};
+  activity:{status:string;pendingFirstPaid:number;lastQualifiedAt:string|null};
   referralCode:string;
-  currentMonth:{registered:number;firstPaid:number;validReferrals:number;rewardAmount:number};
-  previousMonth:{registered:number;firstPaid:number;validReferrals:number;rewardAmount:number};
-  lifetime:{registered:number;validReferrals:number;totalReward:number;totalPaidOut:number;currentBalance:number};
+  currentMonth:{registered:number;firstPaid:number;validReferrals:number;paidSeats:number;rewardAmount:number};
+  previousMonth:{registered:number;firstPaid:number;validReferrals:number;paidSeats:number;rewardAmount:number};
+  lifetime:{registered:number;validReferrals:number;paidSeats:number;completedOrders:number;totalReward:number;totalPaidOut:number;currentBalance:number};
   withdrawal:{threshold:number;eligibleAmount:number;requestedThisMonth:boolean;status:string};
   cashRule:{id:string;percent:number};
 };
@@ -281,7 +282,8 @@ export class SupabaseAuthRepository {
       return null;
     }
   }
-  async loadOwnReferralSummary(){if(!this.client)return null;try{const {data,error}=await this.client.rpc('get_own_referral_summary');return error?null:data as {code:string;active:boolean;discountPercent:number;validityDays:number;successfulInvites:number;completedInvites:number;pendingInvites:number;achievementKey:string;nextMilestone:number|null;coupons:Array<{id:string;discountPercent:number;status:string;expiresAt:string;recipientKind:string;activatedAt:string|null;availableAt:string|null;qualifyingTripStartsAt:string|null}>}}catch{return null}}
+  async loadOwnReferralSummary(){if(!this.client)return null;try{const {data,error}=await this.client.rpc('get_own_referral_summary');return error?null:data as {code:string;active:boolean;discountPercent:number;validityDays:number;registeredAccounts:number;successfulInvites:number;completedOrders:number;completedInvites:number;qualifyingPaidSeats:number;pendingInvites:number;achievementKey:string;nextMilestone:number|null;learning:{status:string;eligibleAt:string|null;contentPublished:boolean;qualifyingPaidSeats:number};coupons:Array<{id:string;discountPercent:number;status:string;expiresAt:string;recipientKind:string;activatedAt:string|null;availableAt:string|null;qualifyingTripStartsAt:string|null}>}}catch{return null}}
+  async resolvePublicReferralInvitation(code:string){if(!this.client)return {valid:false,code:''};try{const {data,error}=await this.client.rpc('resolve_public_referral_invitation',{p_code:code});if(error||!data||typeof data!=='object')return {valid:false,code:''};return data as {valid:boolean;code:string}}catch{return {valid:false,code:''}}}
   async loadOwnCashCommissionSummary(){if(!this.client)return null;const {data,error}=await this.client.rpc('get_own_cash_commission_summary');return error?null:data as {qualificationStatus:string;pendingJpy:number;availableJpy:number;lockedJpy:number;paidJpy:number;recoveryDueJpy:number;entries:Array<{id:string;sourceOrderId:string;basisAmountJpy:number;commissionPercent:number;amountJpy:number;status:string;unlockedAt:string|null}>;payouts:Array<{id:string;weekStart:string;amountJpy:number;status:string;requestedAt:string}>}}
   async loadOwnAmbassadorDashboard(){if(!this.client)return null;const {data,error}=await this.client.rpc('get_ambassador_dashboard');return error?null:data as AmbassadorDashboard}
   async listOwnReferralRecords(offset=0,limit=30){if(!this.client)return null;const {data,error}=await this.client.rpc('list_own_referral_records',{p_offset:offset,p_limit:limit});return error?null:data as AmbassadorReferralRecords}
