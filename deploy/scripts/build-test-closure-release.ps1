@@ -76,6 +76,7 @@ $apiBase = Require-PublicValue -Config $publicConfig -Name 'VITE_API_BASE_URL'
 $seedEnabled = Require-PublicValue -Config $publicConfig -Name 'VITE_ENABLE_SEED_DATA'
 $supabaseUrl = Require-PublicValue -Config $publicConfig -Name 'VITE_SUPABASE_URL'
 $null = Require-PublicValue -Config $publicConfig -Name 'VITE_SUPABASE_PUBLISHABLE_KEY'
+$stripePublishableKey = Require-PublicValue -Config $publicConfig -Name 'VITE_STRIPE_PUBLISHABLE_KEY'
 $stripeMode = Require-PublicValue -Config $publicConfig -Name 'VITE_STRIPE_MODE'
 $livePayments = Require-PublicValue -Config $publicConfig -Name 'VITE_LIVE_PAYMENTS_ENABLED'
 if ($runtimeMode -ne 'production') { throw 'Test frontend must use VITE_RUNTIME_MODE=production' }
@@ -83,6 +84,7 @@ if ($apiBase -ne '/api-test') { throw 'Test frontend must use VITE_API_BASE_URL=
 if ($seedEnabled -ne 'false') { throw 'Test frontend must disable seed data' }
 if ($supabaseUrl -ne $expectedSupabaseUrl) { throw 'public config does not target the approved Test Supabase project' }
 if ($stripeMode -ne 'test') { throw 'Test frontend must use Stripe test mode' }
+if (-not $stripePublishableKey.StartsWith('pk_test_')) { throw 'Test frontend must use a Stripe test publishable key' }
 if ($livePayments -ne 'false') { throw 'Test frontend must disable live payments' }
 
 New-Item -ItemType Directory -Path $bundle -Force | Out-Null
@@ -112,11 +114,10 @@ try {
   $builtJavascript = (Get-ChildItem -LiteralPath 'dist\assets' -Filter '*.js' -File | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }) -join "`n"
   if (-not $builtJavascript.Contains($expectedSupabaseUrl)) { throw 'built frontend is missing the approved Test Supabase URL' }
   if (-not $builtJavascript.Contains($publicConfig['VITE_SUPABASE_PUBLISHABLE_KEY'])) { throw 'built frontend is missing the approved Supabase publishable key' }
+  if (-not $builtJavascript.Contains($stripePublishableKey)) { throw 'built frontend is missing the approved Stripe test publishable key' }
   if ($builtJavascript -match 'https://[a-z]{20}\.supabase\.co' -and $builtJavascript -match 'https://(?!hzxoofvodpqpdomtmzlf)[a-z]{20}\.supabase\.co') {
     throw 'built frontend contains an unapproved Supabase project URL'
   }
-  if ($builtJavascript.Contains('pk_live_')) { throw 'built frontend contains a live Stripe publishable key' }
-
   Copy-Item -LiteralPath 'dist' -Destination (Join-Path $bundle 'dist') -Recurse
   Copy-Item -LiteralPath '.server-dist' -Destination (Join-Path $bundle '.server-dist') -Recurse
   Copy-Item -LiteralPath 'deploy\nginx\weekend-test-common.conf' -Destination (Join-Path $bundle 'weekend-test-common.conf')
