@@ -283,3 +283,56 @@ Production：**未访问 / 未部署 / 未写入 / 未使用 Live Stripe**。
 当前只需要补充：A、B、C、D、E 五个获准 Test 邮箱；如要执行 T18，再补充私密分享渠道和本人控制的接收目标。密码、Token、密钥和验证码不在聊天提供。
 
 正式 `0 → 5 → 8 → 10`、3 个新游客账号、3 张主订单、10 个有效付费人次、退款/核券和双家庭权限仍为 **NOT_RUN/BLOCKED**，整体继续为 **FINAL：NOT READY**。Production：**未访问 / 未部署 / 未写入 / 未使用 Live Stripe**。
+
+## 13. 5＋3＋2 正式验收阶段结果（2026-10-14）
+
+五个获准 Test 账号 A/B/C/D/E 已通过正常注册流程创建并确认邮箱。B/C/D 的唯一上游关系均为 A；E 为独立推荐源，未覆盖既有归属；B 也取得自己的独立推荐码。
+
+B、C、D 已通过正常报名、报价、Stripe Test 支付和 Webhook 入账，分别形成 5、3、2 席主订单：
+
+- B：订单 `0440a662…`，原价 ¥500，新人券只优惠 1 席，实付 ¥490；库存 committed 5。
+- C：订单 `7f8095e8…`，原价 ¥300，新人券只优惠 1 席，实付 ¥290；库存 committed 3。
+- D：订单 `f38ac58b…`，原价 ¥200，新人券只优惠 1 席，实付 ¥190；库存 committed 2。
+
+三张新人券均为 `referral-newcomer-90d-v1`，各自唯一、已核销且没有扩大到全部同行席位。三条推荐生命周期均只到 `first_payment_completed`；A 的 qualified seats 仍为 0、learning status 为 `not_eligible`，没有 direct grant，也没有因已支付 10 席提前获得学习资格或大使资格。
+
+三个未来班次已保存 planned passengers 为 5/3/2 的配车草稿，但尚无 vehicle group，未正式派单或发送通知。D 的真实浏览器会话访问 B、C 订单均得到“未找到订单／当前账户无权查看”，同时仍能读取 D 自己的订单，订单所有权隔离通过。
+
+真实班次日期为 2026-11-02、11-03、11-04。在这些日期前不得伪造登车、行程完成或 0→5→8→10 人次。尚待执行：A 独立重新登录读回、E 独立异常订单的失败释放/退款链路、正式履约后的 5/8/10、学习资格解锁、批准目标的私密分享。
+
+当前应用基线仍为 `58351d4977c59df639bddf3901bd0d2001c72043`，前端/API 一致、`mode=test`；本阶段没有代码修改、migration 或重复部署。既有 `notificationReceiptSecret=false` readiness 缺口保持独立。
+
+阶段结论：已完成账号、归属、防覆盖、5＋3＋2 支付、券核销、配车草稿和跨账号订单隔离；整体仍为 **FINAL：NOT READY**。Production：**未访问 / 未部署 / 未写入 / 未使用 Live Stripe**。
+
+## 14. 三个主订单班次改期（2026-10-14）
+
+按用户授权，仅在 Test 运营后台将 B/C/D 三张既有主订单对应的三个独立班次改到 2026-10-16；没有新建订单、修改席位、价格、优惠券、车辆容量或订单合同快照。
+
+- B：订单 `0440a662…`，5 席，班次 `04b66a3f…`，09:30–19:30 JST。
+- C：订单 `7f8095e8…`，3 席，班次 `6ca16f3e…`，09:45–19:45 JST。
+- D：订单 `f38ac58b…`，2 席，班次 `2697af7b…`，10:00–20:00 JST。
+- 三个班次销售截止分别改为 2026-10-15 09:30、09:45、10:00 JST；状态继续为 `open`。
+- 后台逐班显示“班次已更新；1 个已付款订单的合同快照保持不变”。10 月日历实际显示三班为 5/3/2 人。
+- 同一路线同一出发时刻受 `departures_trip_departure_unique` 约束，不能把三个独立班次全部设为 09:30；因此按 15 分钟间隔错开。
+
+当前三份配车草稿仍引用同一辆 `M019-350080` 和同一名 `HUMAN-QA-DRIVER`，时间区间互相重叠。改期已经完成，但正式派单/登车/行程完成前必须为三个班次分别解决车辆与司机资源；本轮未绕过容量、资质或冲突校验，也未发送真实客户通知。
+
+已在真实 Chrome 运营后台核对 10 月 16 日日历，三班分别显示 09:30/5 人、09:45/3 人、10:00/2 人。本阶段为 Test 运营数据变更，无代码、migration、commit 或重复部署。整体继续为 **FINAL：NOT READY**；Production：**未访问 / 未部署 / 未写入 / 未使用 Live Stripe**。
+
+## 15. 推广大使学习认证发布（2026-10-14）
+
+已按确认规则实现并发布 10 道题的逐题认证：每题提交后立即显示正确或错误，答错可重新作答，只有 10 题全部答对才完成学习认证。认证通过后仍须 Operations 审核，不会自动激活推广大使或现金奖励。
+
+- 应用提交：`d7fd18b`（认证功能）与 `d5a3a32`（认证表直接访问收口）。
+- Test migration：`20261014113520_referral_certification_quiz_v1`、`20261014114432_referral_certification_direct_access_denial`，均已在项目 `hzxoofvodpqpdomtmzlf` 应用并核对。
+- 题库共 10 道计分题；答案只在服务端评分，登录用户不能直接读取题目答案；RPC 校验当前用户、10 人次资格、课程版本和逐题作答状态。
+- Targeted：4 files / 15 tests PASS；全量 Vitest：266 files / 1198 tests PASS；typecheck、build、build:server、`git diff --check` PASS。
+- 全局 ESLint 仍为既有仓库基线失败（200 errors / 31 warnings），本轮未将其伪报为通过；新增认证测试、构建和类型检查均已通过。
+- Test artifact：`jtw-referral-certification-20261014-d5a3a32`；SHA256 `86521f39f3a3b48aa0b113c07c4bb993fdb3aae81ec62547f0a51dbe2aaf57f9`。
+- 前端 `/RELEASE_SHA` 与 API `/health.version` 均为 `d5a3a328ff8e87ef558abd98ed5182c62bd0d4a2`，API `mode=test`；Nginx 与 API 服务正常。
+- 真实浏览器已确认未登录访问 `/app/ambassador` 会按预期回到 JTW 登录页；A 当前仍为 0 个合资格完成人次，不能通过 SQL 伪造 10 人资格，因此合资格后的远程逐题 UI 尚待真实履约后验收。
+- `/api/ready` 仍仅因既有 `notificationReceiptSecret=false` 返回 503，该缺口与本轮认证功能分开记录。
+
+认证内容状态由 `CONTENT_PENDING` 更新为 **`PUBLISHED_WAITING_ELIGIBILITY`**。下一步仍需先解决 10 月 16 日三个班次的车辆/司机冲突，并通过真实登车和行程完成形成 `0 → 5 → 8 → 10`；随后由 A 完成 10/10 认证、Operations 审核，再用两个新账号验证推广金。整体继续为 **FINAL：NOT READY**。
+
+本轮仅发布 Test；Production：**未访问 / 未部署 / 未写入 / 未使用 Live Stripe**。

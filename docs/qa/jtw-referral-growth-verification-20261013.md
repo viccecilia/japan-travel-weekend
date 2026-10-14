@@ -95,6 +95,71 @@ CI：[run 38364151121](https://github.com/viccecilia/japan-travel-weekend/action
 
 Production：**未访问 / 未部署 / 未写入 / 未使用 Live Stripe**。
 
+## 2026-10-14 三班次改期验证
+
+Test 运营后台已将 B/C/D 三张主订单对应的三个独立班次改至 2026-10-16，并逐班返回成功提示；订单仍分别为 5、3、2 席，订单 ID、已支付状态、库存 committed 状态和合同快照均保持不变。
+
+| 账号 | 班次（脱敏） | 新时间 JST | 席位 | 结果 |
+|---|---|---:|---:|---|
+| B | `04b66a3f…` | 09:30–19:30 | 5 | PASS |
+| C | `6ca16f3e…` | 09:45–19:45 | 3 | PASS |
+| D | `2697af7b…` | 10:00–20:00 | 2 | PASS |
+
+同路线同一出发时刻会触发 `departures_trip_departure_unique`，因此三班不能全部使用 09:30，已按 15 分钟错开。真实 Chrome 运营后台的 10 月班次日历实际显示三条记录及 5/3/2 人数。
+
+资源回归：三个草稿仍同时引用 `M019-350080` 与 `HUMAN-QA-DRIVER`，且时间重叠，故只能记录为 `DRAFT_CONFLICT`，不得正式派单或伪造履约。需要分别绑定满足容量、资质及可用窗口的车辆和司机后，才能继续登车及完成节点。人次继续为 0，整体仍为 **FINAL：NOT READY**。
+
+### 5＋3＋2 正式验收阶段证据（2026-10-14）
+
+本节记录真实 Test 注册、Stripe Test 支付和只读服务端回查；不把已支付、已配车草稿写成已履约。报告不记录密码、Token、验证码或支付密钥。
+
+| 节点 | 实际证据 | 状态 |
+|---|---|---|
+| A/B/C/D/E 注册 | 五个专用 Test 邮箱均通过正常注册流程创建且 `email_confirmed=true`；A 与 E 无上游推荐关系 | PASS |
+| A→B/C/D 归属 | B、C、D 各只有一条上游关系，推荐码均为 A；E 为独立推荐源，B/C/D 未被 E 覆盖 | PASS |
+| 推荐码独立性 | A、B、C、D、E 均有各自 active account referral source；B 自有码与 A 不同 | PASS |
+| 5＋3＋2 支付 | B/C/D 三张订单分别 5、3、2 席；Stripe Test Webhook 均为 `succeeded`，订单均为 `paid`，库存分别 committed 5/3/2 | PASS |
+| 新人券 | B/C/D 各一张 `referral-newcomer-90d-v1`；只优惠 1 席，分别抵扣 ¥10；均随各自主订单核销，无重复券 | PASS |
+| 履约前门禁 | 三条 lifecycle 均停在 `first_payment_completed`；没有 completed order、qualified seat 或有效推荐奖励 | PASS |
+| A 当前资格 | 有效付费人次 0；learning status=`not_eligible`；ambassador status=`pending`，无 direct grant，不因支付 10 席提前解锁 | PASS |
+| 配车 | 11/2、11/3、11/4 三个班次各有 9 席车辆配车草稿，planned passengers 分别 5/3/2；没有 vehicle group，未正式派单或通知 | PASS / DRAFT_ONLY |
+| 订单权限隔离 | D 的真实登录会话可读取自己的 2 席订单；访问 B 或 C 的订单均显示“未找到订单／当前账户无权查看” | PASS |
+| A 重新登录 | 服务端已读回 A 状态；尚未在新的独立浏览器会话重新登录 A，不能用 D 会话冒充 | BLOCKED_MANUAL_LOGIN |
+| 独立退款/核券异常单 | 主订单新人券成功核销已实测；失败释放、独立退款及奖励调整需要 E 独立登录并进行一次新的 Stripe Test 支付，尚未执行 | NOT_RUN_CONFIRMATION_REQUIRED |
+| 0→5→8→10 | 班次实际日期为 2026-11-02、11-03、11-04；不得提前伪造登车或完成，因此当前仍为 0 | WAITING_REAL_FULFILMENT_DATE |
+| T18 私密分享 | 未指定批准的接收目标，没有外发 | BLOCKED |
+
+订单证据（脱敏）：B `0440a662…`（¥490）、C `7f8095e8…`（¥290）、D `f38ac58b…`（¥190）。三单合计 10 个已支付且可计费的乘客席位，但有效推荐人次仍为 0；人次数不能由支付席位替代。
+
+当前 Test 前端 `/RELEASE_SHA` 与 API `/health.version` 均为 `58351d4977c59df639bddf3901bd0d2001c72043`，`mode=test`。`/api/ready` 为 503；database、stripeModeSafe、webhookSecret 为 true，既有 `notificationReceiptSecret=false` 缺口不混入本次业务结论。
+
+阶段结论：注册、归属、防覆盖、5＋3＋2 Stripe Test 支付、优惠券核销、配车草稿和一组真实跨账号订单隔离已通过。正式履约、人次 5/8/10、学习资格解锁、独立退款释放、A 独立重新登录及 T18 尚未完成，整体继续为 **FINAL：NOT READY**。
+
+Production：**未访问 / 未部署 / 未写入 / 未使用 Live Stripe**。
+
+## 推广大使认证增量验收（2026-10-14）
+
+| 检查项 | 结果 | 证据/限制 |
+|---|---|---|
+| 10 道题逐题提交 | PASS | 每题立即返回正确/错误；错误可重试 |
+| 全对门槛 | PASS | 仅 10/10 标记认证通过，不自动批准大使 |
+| 服务端评分与答案保护 | PASS | authenticated 无题库表直接读取权限；RPC 校验 `auth.uid()`、资格与课程版本 |
+| 数据库发布 | PASS | 两个 2026-10-14 migration 已应用到 Test 项目 `hzxoofvodpqpdomtmzlf` |
+| Targeted tests | PASS | 4 files / 15 tests |
+| Full Vitest | PASS | 266 files / 1198 tests |
+| typecheck / build / build:server | PASS | 固定 SHA clean artifact 构建 |
+| `git diff --check` | PASS | 无空白错误 |
+| 全局 ESLint | BASELINE_FAIL | 既有 200 errors / 31 warnings；未伪报通过 |
+| Test artifact | PASS | `jtw-referral-certification-20261014-d5a3a32`；SHA256 `86521f39f3a3b48aa0b113c07c4bb993fdb3aae81ec62547f0a51dbe2aaf57f9` |
+| 前端/API 版本 | PASS | 均为 `d5a3a328ff8e87ef558abd98ed5182c62bd0d4a2`，`mode=test` |
+| 未登录浏览器路由 | PASS | `/app/ambassador` 正确回到 JTW 登录页 |
+| 合资格真实浏览器逐题验收 | WAITING | A 尚为 0 个合资格完成人次，不以 SQL 伪造 10 人资格 |
+| Readiness | KNOWN_GAP | 仅既有 `notificationReceiptSecret=false` |
+
+正式题库状态现为 **`PUBLISHED_WAITING_ELIGIBILITY`**。10 月 16 日三个班次仍需先解决车辆/司机资源冲突，再经真实登车与行程完成形成 10 个有效人次。随后才能执行 A 的 10/10 认证、Operations 审核及两个新账号推广金验收。
+
+本增量结论：认证代码、数据库和 Test 发布通过；完整业务链仍为 **FINAL：NOT READY**。Production：**未访问 / 未部署 / 未写入 / 未使用 Live Stripe**。
+
 ---
 
 ## 邀请卡 V2 视觉与发布收口（2026-10-14，当前有效）

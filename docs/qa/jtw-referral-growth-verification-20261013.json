@@ -394,5 +394,126 @@
     "productionDeployed": false,
     "productionWritten": false,
     "liveStripeUsed": false
+  },
+  "formalExecutionProgress20261014": {
+    "environment": "test",
+    "applicationSha": "58351d4977c59df639bddf3901bd0d2001c72043",
+    "accounts": {
+      "createdAndEmailConfirmed": ["A", "B", "C", "D", "E"],
+      "aDirectInvitees": 3,
+      "aIncomingRelationships": 0,
+      "eIncomingRelationships": 0,
+      "bHasOwnReferralCode": true,
+      "attributionNotOverwritten": true,
+      "status": "PASS"
+    },
+    "mainOrders": [
+      {"account": "B", "orderIdRedacted": "0440a662…", "seats": 5, "grossJpy": 500, "discountJpy": 10, "paidJpy": 490, "payment": "succeeded", "inventory": "committed"},
+      {"account": "C", "orderIdRedacted": "7f8095e8…", "seats": 3, "grossJpy": 300, "discountJpy": 10, "paidJpy": 290, "payment": "succeeded", "inventory": "committed"},
+      {"account": "D", "orderIdRedacted": "f38ac58b…", "seats": 2, "grossJpy": 200, "discountJpy": 10, "paidJpy": 190, "payment": "succeeded", "inventory": "committed"}
+    ],
+    "couponEvidence": {
+      "rulesVersion": "referral-newcomer-90d-v1",
+      "couponCount": 3,
+      "maxDiscountedSeatsEach": 1,
+      "statuses": ["redeemed", "redeemed", "redeemed"],
+      "status": "PASS"
+    },
+    "preFulfilmentGate": {
+      "lifecycleStatuses": ["first_payment_completed", "first_payment_completed", "first_payment_completed"],
+      "qualifiedSeats": 0,
+      "learningStatus": "not_eligible",
+      "ambassadorStatus": "pending",
+      "activeDirectGrants": 0,
+      "status": "PASS"
+    },
+    "dispatchDrafts": {
+      "plannedPassengers": [5, 3, 2],
+      "vehicleCapacity": 9,
+      "vehicleGroupsCreated": 0,
+      "rescheduledDepartures": [
+        {"account": "B", "departureIdRedacted": "04b66a3f…", "departsAtJst": "2026-10-16T09:30", "endsAtJst": "2026-10-16T19:30", "seats": 5},
+        {"account": "C", "departureIdRedacted": "6ca16f3e…", "departsAtJst": "2026-10-16T09:45", "endsAtJst": "2026-10-16T19:45", "seats": 3},
+        {"account": "D", "departureIdRedacted": "2697af7b…", "departsAtJst": "2026-10-16T10:00", "endsAtJst": "2026-10-16T20:00", "seats": 2}
+      ],
+      "sharedVehicle": "M019-350080",
+      "sharedDriver": "HUMAN-QA-DRIVER",
+      "resourceConflict": true,
+      "status": "DRAFT_CONFLICT"
+    },
+    "browserIsolation": {
+      "authenticatedAs": "D",
+      "ownOrderReadable": true,
+      "bOrderDenied": true,
+      "cOrderDenied": true,
+      "status": "PASS"
+    },
+    "remaining": {
+      "aFreshBrowserRelogin": "BLOCKED_MANUAL_LOGIN",
+      "isolatedRefundCouponFailureRelease": "NOT_RUN_CONFIRMATION_REQUIRED",
+      "qualifiedSeatStages": "WAITING_REAL_FULFILMENT_DATE",
+      "earliestDatesJst": ["2026-10-16", "2026-10-16", "2026-10-16"],
+      "dispatchResourceResolution": "BLOCKED_VEHICLE_DRIVER_CONFLICT",
+      "privateShare": "BLOCKED_NO_APPROVED_TARGET",
+      "certificationContent": "PUBLISHED_WAITING_ELIGIBILITY"
+    },
+    "readiness": {
+      "httpStatus": 503,
+      "database": true,
+      "stripeModeSafe": true,
+      "webhookSecret": true,
+      "notificationReceiptSecret": false
+    },
+    "final": "NOT_READY",
+    "productionAccessed": false,
+    "productionDeployed": false,
+    "productionWritten": false,
+    "liveStripeUsed": false
+  },
+  "certificationRelease20261014": {
+    "environment": "test",
+    "applicationSha": "d5a3a328ff8e87ef558abd98ed5182c62bd0d4a2",
+    "commits": ["d7fd18b", "d5a3a32"],
+    "artifact": {
+      "id": "jtw-referral-certification-20261014-d5a3a32",
+      "sha256": "86521f39f3a3b48aa0b113c07c4bb993fdb3aae81ec62547f0a51dbe2aaf57f9"
+    },
+    "quiz": {
+      "questionCount": 10,
+      "immediateFeedback": true,
+      "wrongAnswerRetry": true,
+      "allCorrectRequired": true,
+      "automaticAmbassadorApproval": false,
+      "contentStatus": "PUBLISHED_WAITING_ELIGIBILITY"
+    },
+    "migrations": [
+      "20261014113520_referral_certification_quiz_v1",
+      "20261014114432_referral_certification_direct_access_denial"
+    ],
+    "verification": {
+      "targetedTests": "PASS_4_FILES_15_TESTS",
+      "fullVitest": "PASS_266_FILES_1198_TESTS",
+      "typecheck": "PASS",
+      "build": "PASS",
+      "buildServer": "PASS",
+      "diffCheck": "PASS",
+      "globalLint": "BASELINE_FAIL_200_ERRORS_31_WARNINGS",
+      "frontendApiShaConsistent": true,
+      "apiMode": "test",
+      "unauthenticatedBrowserRoute": "PASS",
+      "eligibleBrowserQuiz": "WAITING_REAL_QUALIFIED_SEATS"
+    },
+    "readiness": {
+      "httpStatus": 503,
+      "database": true,
+      "stripeModeSafe": true,
+      "webhookSecret": true,
+      "notificationReceiptSecret": false
+    },
+    "final": "NOT_READY",
+    "productionAccessed": false,
+    "productionDeployed": false,
+    "productionWritten": false,
+    "liveStripeUsed": false
   }
 }
