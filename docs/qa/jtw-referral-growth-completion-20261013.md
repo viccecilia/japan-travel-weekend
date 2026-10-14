@@ -230,3 +230,37 @@ Production：**未访问 / 未部署 / 未写入 / 未使用 Live Stripe**。
 因此视觉与发布单项为 PASS，但整体仍为 **FINAL：NOT READY**。正式题库保持 **CONTENT_PENDING**。
 
 Production：**未访问 / 未部署 / 未写入 / 未使用 Live Stripe**。
+
+---
+
+## 11. 5＋3＋2 正式验收条件预检（2026-10-14）
+
+本轮没有继续开发推荐系统，也没有创建远程账号、班次或订单，没有付款、退款、履约完成或实际外部分享。只读核对结果如下：
+
+- 预检起始 GitHub 开发线与上一份报告提交：`8b3db461bedfc34b6416e6144f542062a941e22c`；本节的新报告提交 SHA 由 Git 历史单独记录，不冒充应用 SHA。
+- Test 实际应用：前端/API 均为 `9eb91849bc533a11763e50f1e017b01a4a6a743c`，`mode=test`，Supabase `hzxoofvodpqpdomtmzlf`；报告提交未被误写为部署 SHA。
+- `/api/ready`：database、stripeModeSafe、webhookSecret 为 true；唯一既有缺口仍是 `notificationReceiptSecret=false`。
+- Chrome 中有已授权的 Operations 会话 `s_pang@daitora-jp.com`，但没有 A/B/C/D/E 独立游客会话。当前浏览器缓存页面仍为 `76d111db…`，正式验收前必须先完成应用更新并复核为 `9eb91849…`。
+- 已有 `ROUTE-STUDIO-V1-QA · Test Only` 专用班次，10/20 08:30、¥100、open、0 已付款、0 锁定，但销售容量仅 8，不能单班承载 5＋3＋2 合计 10 席。
+- Test 中存在可用 9 席及 6 席车辆资源；隔离司机资源存在，但后台提示未绑定登录账号。必须先确认三阶段班次/车辆组及获准执行登车和完成的账号。
+- Stripe Test 与正式 Webhook 配置通过 readiness；本地未加载密钥，也未在未获授权时运行会创建订单的脚本。
+- 新游客实际收信验证、T12 正式预留/释放/核销、独立退款案例、双家庭浏览器权限以及私密分享接收目标仍未具备。
+- 不依赖远程账号的推荐/优惠券定向回归已复跑：7 files / 26 tests PASS。
+
+### 11.1 用户下一步最小动作
+
+1. 准备普通游客 A、三名新游客 B/C/D 和第二推荐人 E 的 Test 邮箱/账号；秘密仅在可见浏览器输入。
+2. 批准创建或选定三个 Test-only 班次及车辆组，分别承载 5、3、2 席，并指定允许执行登车/完成的 Operations 或工作人员账号。
+3. 批准三张 Stripe Test 订单，以及优先独立于主案例的退款/核券异常订单。
+4. 指定一个获准的私密分享渠道、接收人或设备；实际发送前按动作再次确认。
+
+### 11.2 计划状态
+
+- `0 → 5 → 8 → 10`：**NOT_RUN**，不得补造中间证据。
+- 3 个新账号 / 3 张订单 / 10 个有效付费人次：**NOT_RUN**。
+- A 归属不被 E 覆盖、B 自有码：**NOT_RUN**。
+- T12 正式券预留/释放/核销：**NOT_RUN**，未被 T08—T14 合并 PASS 覆盖。
+- 正式题库：**CONTENT_PENDING**。
+- 当前整体：**FINAL：NOT READY**。
+
+本节仅修订报告，不修改应用，不构建、不部署相同版本。Production：**未访问 / 未部署 / 未写入 / 未使用 Live Stripe**。

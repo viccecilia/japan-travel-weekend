@@ -209,5 +209,105 @@
     ],
     "contentStatus": "CONTENT_PENDING",
     "final": "NOT_READY"
+  },
+  "preflight532": {
+    "dateJst": "2026-10-14",
+    "classification": "INSPECT_VERIFY_REPORT",
+    "codeChanged": false,
+    "applicationDeployed": false,
+    "preflightBaseReportSha": "8b3db461bedfc34b6416e6144f542062a941e22c",
+    "testedApplicationSha": "9eb91849bc533a11763e50f1e017b01a4a6a743c",
+    "deployedApplicationSha": "9eb91849bc533a11763e50f1e017b01a4a6a743c",
+    "environment": {
+      "name": "test",
+      "frontendApiConsistent": true,
+      "mode": "test",
+      "supabaseProject": "hzxoofvodpqpdomtmzlf",
+      "stripeModeSafe": true,
+      "webhookSecret": true,
+      "notificationReceiptSecret": false,
+      "productionAccessed": false,
+      "productionDeployed": false,
+      "productionWritten": false,
+      "liveStripeUsed": false
+    },
+    "availableConditions": {
+      "operationsBrowserSession": "AVAILABLE_S_PANG",
+      "passengerIsolatedSessions": "MISSING",
+      "browserLoadedApplicationSha": "76d111dbf996c993a3166472f19e68124ef4554a",
+      "browserUpdatePending": true,
+      "testDeparture": {
+        "label": "ROUTE-STUDIO-V1-QA · Test Only",
+        "departureId": "71725a8f-6849-4d5e-9529-30c9fad80d79",
+        "departsAtJst": "2026-10-20T08:30:00+09:00",
+        "seatPriceJpy": 100,
+        "salesCapacity": 8,
+        "status": "open",
+        "paidOrders": 0,
+        "lockedSeats": 0,
+        "suitableForTotalTenSeats": false
+      },
+      "availableTestVehicleSeats": [9, 6, 6],
+      "isolatedDriverResourcesPresent": true,
+      "isolatedDriverLoginBound": false,
+      "localTestSecretsLoaded": false
+    },
+    "plan532": {
+      "inviterAccounts": 1,
+      "newInviteeAccounts": 3,
+      "nonOverwriteInviterAccounts": 1,
+      "orders": [5, 3, 2],
+      "checkpoints": [0, 5, 8, 10],
+      "status": "NOT_RUN",
+      "noRetroactiveCheckpointEvidence": true,
+      "mainCaseRefundPreferred": false
+    },
+    "evidenceLayers": {
+      "automation": {
+        "status": "PASS_EXISTING",
+        "focusedRerun": {"files": 7, "tests": 26, "status": "PASS"},
+        "note": "保留既有推荐、90天券、退款收敛、RLS及幂等回归证据；本轮复跑不依赖远程账号的定向测试。"
+      },
+      "formalApi": {
+        "status": "NOT_RUN",
+        "note": "5＋3＋2付款/Webhook/履约及T12预留释放核销尚未执行。"
+      },
+      "authorizedAccountBrowser": {
+        "status": "BLOCKED",
+        "note": "只有Operations会话；缺A/B/C/D/E独立游客会话，且当前浏览器需更新到9eb91849。"
+      },
+      "thirdPartySend": {
+        "status": "BLOCKED",
+        "note": "缺获准的私密渠道、接收目标和接收确认。"
+      }
+    },
+    "matrix": {
+      "T01": "PASS",
+      "T02": "BLOCKED",
+      "T03": "NOT_RUN",
+      "T04": "NOT_RUN",
+      "T05": "BLOCKED",
+      "T06": "BLOCKED",
+      "T07": "BLOCKED",
+      "T08": "PASS",
+      "T09": "PASS",
+      "T10": "PASS",
+      "T11": "PASS",
+      "T12": "NOT_RUN",
+      "T13": "PASS",
+      "T14": "PASS",
+      "T15": "CONTENT_PENDING",
+      "T16": "PASS",
+      "T17": "BLOCKED",
+      "T18": "BLOCKED"
+    },
+    "minimumUserActions": [
+      "准备A/B/C/D/E的Test邮箱与隔离浏览器会话，秘密只在可见浏览器输入",
+      "批准创建或选定三个Test-only班次及车辆组，并指定登车/完成执行账号",
+      "批准三张5/3/2 Stripe Test订单和一个优先独立的退款/核券异常订单",
+      "指定批准的私密分享渠道、接收人或设备"
+    ],
+    "contentStatus": "CONTENT_PENDING",
+    "final": "NOT_READY"
   }
 }
