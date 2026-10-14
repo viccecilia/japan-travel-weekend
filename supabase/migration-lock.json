@@ -837,6 +837,10 @@
     {
       "name": "20261014113520_referral_certification_quiz_v1.sql",
       "sha256": "c4ab3a085b45c145546ea5aa599ae86da60259f489d38d7cca8645850c019e61"
+    },
+    {
+      "name": "20261014114432_referral_certification_direct_access_denial.sql",
+      "sha256": "d821a7e191bd571fb2ddc18b4cf260c5fde4d6c20be6a639bf7271d31cb22af4"
     }
   ]
 }
