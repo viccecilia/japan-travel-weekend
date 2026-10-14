@@ -1,15 +1,16 @@
 import {useEffect,useState} from 'react';
 import {stripeMode} from '../../shared/integrations/stripeClient';
+import {readReadinessStatus,type ReadinessStatus} from '../../shared/readinessStatus';
 import {useApp} from '../store';
 
 const testEntrances=[['游客端','/app/login'],['司导端','/staff'],['管理端','/app/operations']] as const;
 
 export function SystemSettings(){
   const {services}=useApp();
-  const [status,setStatus]=useState<{ok:boolean;mode:string;version?:string;checks:Record<string,boolean>}|null>(null);
+  const [status,setStatus]=useState<ReadinessStatus|null>(null);
   const [databaseRelease,setDatabaseRelease]=useState<{migrationVersion:string;databaseTime:string}|null>(null);
   const [error,setError]=useState('');
-  useEffect(()=>{let active=true;void Promise.all([fetch('/api/ready',{headers:{accept:'application/json'}}).then(async response=>{if(!response.ok)throw new Error('服务状态读取失败');return response.json()}),services?.operations.loadSystemReleaseInfo()]).then(([body,database])=>{if(active){setStatus(body);setDatabaseRelease(database?.data??null);if(database?.error)setError(database.error)}}).catch(reason=>{if(active)setError(reason instanceof Error?reason.message:'服务状态读取失败')});return()=>{active=false}},[services]);
+  useEffect(()=>{let active=true;void Promise.all([fetch('/api/ready',{headers:{accept:'application/json'}}).then(readReadinessStatus),services?.operations.loadSystemReleaseInfo()]).then(([body,database])=>{if(active){setStatus(body);setDatabaseRelease(database?.data??null);if(database?.error)setError(database.error)}}).catch(reason=>{if(active)setError(reason instanceof Error?reason.message:'服务状态读取失败')});return()=>{active=false}},[services]);
   return <main className="operations-page">
     <header className="operations-hero"><div><span>SYSTEM SETTINGS</span><h1>系统设置</h1><p>测试入口、运行环境和版本状态集中在这里，不占用日常运营工作台。</p></div></header>
     <section className="operations-section"><header><div><span>测试工具</span><h2>三端测试入口</h2></div><small>账号与密码仅从内部安全配置读取，不在页面展示</small></header><div className="operations-account-list">{testEntrances.map(([role,url])=><article key={role}><div><strong>{role}</strong></div><a href={url} target="_blank" rel="noreferrer">新标签打开</a><small>{url}</small></article>)}</div></section>
