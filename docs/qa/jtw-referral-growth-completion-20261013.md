@@ -264,3 +264,22 @@ Production：**未访问 / 未部署 / 未写入 / 未使用 Live Stripe**。
 - 当前整体：**FINAL：NOT READY**。
 
 本节仅修订报告，不修改应用，不构建、不部署相同版本。Production：**未访问 / 未部署 / 未写入 / 未使用 Live Stripe**。
+
+## 12. 5＋3＋2 执行授权后的版本收口（2026-10-14）
+
+用户已批准创建/选定三个 Test-only 班次、三张 5/3/2 Stripe Test 主订单、一个隔离退款/核券异常订单，以及 Operations 在原权限内执行履约。该授权不再重复索取。
+
+开始浏览器验收时发现真实可观测性缺陷：`/api/ready` 会因既有 `notificationReceiptSecret=false` 正常返回 HTTP 503，但后台“系统状态与版本”把任何非 2xx 都显示成“服务状态读取失败”，导致无法核对前端/API SHA、Test 模式和其余 readiness。已做最小修复：合法 readiness JSON 即使是 503 也显示逐项状态；网络错误或非法响应仍报错。
+
+- 修复提交：`58351d4977c59df639bddf3901bd0d2001c72043`，已推送 `origin/codex/referral-growth` 与 `origin/feature/production-app-foundation`。
+- 测试：定向 Vitest 3 files / 10 tests PASS；`npm run typecheck`、`npm run build`、`npm run build:server`、`git diff --check` PASS。
+- Test Release：`jtw-referral-readiness-v2-20261014-58351d4`；artifact SHA256 `87b1c2b65bbf617e9e85f455d0ffa78a91607047493beef1f762147f6adc8bbb`。
+- 发布后 GitHub、前端 `/RELEASE_SHA` 与 API `/health.version` 均为 `58351d4977c59df639bddf3901bd0d2001c72043`；API `mode=test`；Nginx Test upstream 与服务监听均为 `127.0.0.1:18773`；结论 `CONSISTENT`。
+- 浏览器通过既有“现在更新”入口从 `9eb91849bc53` 更新到 `58351d4977c5`，后台同屏显示前端/API 一致、内部测试、数据库正常、Stripe 测试模式、支付回调已配置；通知回执仍明确显示未配置。
+- 本次无 migration；数据库页面报告版本保持 `20261012133709`。
+
+尚未创建远程账号、班次或订单，也未付款、退款、履约或外发。原因不是授权不足，而是 A/B/C/D/E 仍为“填写实际邮箱”占位符，不能向随机地址发验证邮件，也不能通过重置历史账号制造新用户。私密分享渠道与接收目标同样未填写，因此 T18 独立保持 BLOCKED。为遵守真实销售截止及履约时间，三个专用班次将在邮箱条件具备后按可完成的真实时间窗口创建，不提前占用 Test 资源。
+
+当前只需要补充：A、B、C、D、E 五个获准 Test 邮箱；如要执行 T18，再补充私密分享渠道和本人控制的接收目标。密码、Token、密钥和验证码不在聊天提供。
+
+正式 `0 → 5 → 8 → 10`、3 个新游客账号、3 张主订单、10 个有效付费人次、退款/核券和双家庭权限仍为 **NOT_RUN/BLOCKED**，整体继续为 **FINAL：NOT READY**。Production：**未访问 / 未部署 / 未写入 / 未使用 Live Stripe**。

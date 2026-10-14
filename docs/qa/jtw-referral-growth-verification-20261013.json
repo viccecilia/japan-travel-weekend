@@ -309,5 +309,90 @@
     ],
     "contentStatus": "CONTENT_PENDING",
     "final": "NOT_READY"
+  },
+  "authorizedExecution532": {
+    "dateJst": "2026-10-14",
+    "classification": "IMPLEMENT_VERIFY_TEST_RELEASE",
+    "authorization": {
+      "threeDedicatedTestDepartures": true,
+      "mainOrdersSeats": [5, 3, 2],
+      "isolatedRefundCouponOrder": true,
+      "operationsWithinExistingPermissions": true,
+      "stripeTestOnly": true,
+      "productionAllowed": false
+    },
+    "observabilityFix": {
+      "applicationSha": "58351d4977c59df639bddf3901bd0d2001c72043",
+      "reason": "结构化503 readiness响应此前被后台误报为读取失败，无法展示版本和逐项状态。",
+      "behavior": "合法readiness JSON即使HTTP 503也展示明细；非法或非JSON响应继续报错。",
+      "tests": {"focusedFiles": 3, "focusedTests": 10, "focusedStatus": "PASS", "typecheck": "PASS", "build": "PASS", "buildServer": "PASS", "diffCheck": "PASS"}
+    },
+    "release": {
+      "id": "jtw-referral-readiness-v2-20261014-58351d4",
+      "artifact": "jtw-referral-readiness-v2-20261014-58351d4.tar.gz",
+      "artifactSha256": "87b1c2b65bbf617e9e85f455d0ffa78a91607047493beef1f762147f6adc8bbb",
+      "githubReferralSha": "58351d4977c59df639bddf3901bd0d2001c72043",
+      "githubFeatureSha": "58351d4977c59df639bddf3901bd0d2001c72043",
+      "frontendSha": "58351d4977c59df639bddf3901bd0d2001c72043",
+      "apiSha": "58351d4977c59df639bddf3901bd0d2001c72043",
+      "mode": "test",
+      "nginxApiUpstream": "127.0.0.1:18773",
+      "serviceActive": true,
+      "migrationAdded": false,
+      "databaseRelease": "20261012133709",
+      "verdict": "CONSISTENT"
+    },
+    "browser": {
+      "previousLoadedSha": "9eb91849bc53",
+      "updateMethod": "EXISTING_NOW_UPDATE_ENTRY",
+      "loadedSha": "58351d4977c5",
+      "frontendApiSamePage": true,
+      "modeTestVisible": true,
+      "stripeTestVisible": true,
+      "notificationReceiptSecretVisibleMissing": true,
+      "status": "PASS"
+    },
+    "readiness": {
+      "httpStatus": 503,
+      "database": true,
+      "stripeModeSafe": true,
+      "webhookSecret": true,
+      "notificationReceiptSecret": false,
+      "classification": "KNOWN_EXISTING_GAP"
+    },
+    "formalExecution": {
+      "accountsCreated": 0,
+      "departuresCreated": 0,
+      "ordersCreated": 0,
+      "paidSeatsCompleted": 0,
+      "emailsSent": 0,
+      "externalSharesSent": 0,
+      "status": "BLOCKED",
+      "blockers": [
+        "A/B/C/D/E仍是填写实际邮箱占位符，不能随机创建账号或发送验证邮件",
+        "私密分享渠道和接收目标未填写，T18单独保持BLOCKED"
+      ],
+      "nextRequiredInputs": [
+        "A、B、C、D、E五个获准Test邮箱",
+        "如执行T18，提供私密分享渠道及本人控制的接收目标"
+      ]
+    },
+    "matrix": {
+      "T02": "BLOCKED",
+      "T03": "NOT_RUN",
+      "T04": "NOT_RUN",
+      "T05": "BLOCKED",
+      "T06": "BLOCKED",
+      "T07": "BLOCKED",
+      "T12": "NOT_RUN",
+      "T15": "CONTENT_PENDING",
+      "T17": "BLOCKED",
+      "T18": "BLOCKED"
+    },
+    "final": "NOT_READY",
+    "productionAccessed": false,
+    "productionDeployed": false,
+    "productionWritten": false,
+    "liveStripeUsed": false
   }
 }

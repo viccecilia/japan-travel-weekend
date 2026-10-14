@@ -192,6 +192,24 @@ Production：**未访问 / 未部署 / 未写入 / 未使用 Live Stripe**。
 
 当前结论：条件预检完成，正式 `5＋3＋2` 尚未获批执行，**FINAL：NOT READY**。
 
+### 已授权执行后的当前状态（2026-10-14）
+
+此前“尚未获批”的限制已由用户解除：三个 Test-only 班次、5/3/2 三张 Stripe Test 主订单、一个隔离退款/核券异常订单及 Operations 原权限内履约均已批准。执行条件仍缺 A/B/C/D/E 的实际 Test 邮箱；私密分享渠道/接收目标未填写时只阻塞 T18，不阻塞其他已具备条件的节点。
+
+| 项目 | 当前证据 | 结论 |
+|---|---|---|
+| 可观测性修复 | `58351d4977c59df639bddf3901bd0d2001c72043` 接受结构化 503 readiness JSON，仍拒绝非法响应；3 files / 10 tests、typecheck、build、build:server、diff check 通过 | PASS |
+| Test artifact | `jtw-referral-readiness-v2-20261014-58351d4`；SHA256 `87b1c2b65bbf617e9e85f455d0ffa78a91607047493beef1f762147f6adc8bbb` | PASS |
+| GitHub/服务器 | 两个获准远端分支、前端 `/RELEASE_SHA`、API `/health.version` 均为 `58351d4977c59df639bddf3901bd0d2001c72043`；`mode=test` | CONSISTENT |
+| Test 路由 | Nginx Test upstream 和 API 监听均为 `127.0.0.1:18773`；服务 active；最近 30 行无 error/fatal/exception/startup failure | PASS |
+| 浏览器更新 | 使用既有“现在更新”入口从 `9eb91849bc53` 切换至 `58351d4977c5`；页面同屏显示前端/API 一致、内部测试、数据库正常、Stripe 测试模式 | PASS |
+| readiness | database、stripeModeSafe、webhookSecret 为 true；`notificationReceiptSecret=false` 仍明确显示，HTTP 503 不再掩盖明细 | KNOWN_EXISTING_GAP |
+| A/B/C/D/E | 提示中的邮箱仍是占位符，没有实际地址或隔离游客会话；未发信、未注册、未创建订单 | BLOCKED |
+| 三个班次与 5/3/2 | 授权已具备；为遵守真实销售截止/履约时间，待邮箱可用后创建可完成的真实时间窗口 | NOT_RUN |
+| 私密分享 | 渠道和接收目标未填写；没有外发 | T18 BLOCKED |
+
+没有 migration；没有重复部署旧应用。尚未用 SQL 伪造邮箱、付款、登车、完成、退款或奖励。正式 `0/5/8/10` 证据链仍未开始，整体保持 **FINAL：NOT READY**。
+
 ---
 
 ## 第二轮验证（历史基线；上方邀请卡 V2 小节为当前有效）
