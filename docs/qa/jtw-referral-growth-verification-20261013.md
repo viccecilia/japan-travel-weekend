@@ -200,7 +200,7 @@ Production：**未访问 / 未部署 / 未写入 / 未使用 Live Stripe**。
 |---|---|---|
 | 可观测性修复 | `58351d4977c59df639bddf3901bd0d2001c72043` 接受结构化 503 readiness JSON，仍拒绝非法响应；3 files / 10 tests、typecheck、build、build:server、diff check 通过 | PASS |
 | Test artifact | `jtw-referral-readiness-v2-20261014-58351d4`；SHA256 `87b1c2b65bbf617e9e85f455d0ffa78a91607047493beef1f762147f6adc8bbb` | PASS |
-| GitHub/服务器 | 两个获准远端分支、前端 `/RELEASE_SHA`、API `/health.version` 均为 `58351d4977c59df639bddf3901bd0d2001c72043`；`mode=test` | CONSISTENT |
+| GitHub/服务器 | 应用提交 `58351d4977c59df639bddf3901bd0d2001c72043` 已进入两个获准远端分支；前端 `/RELEASE_SHA` 与 API `/health.version` 均为该应用提交；`mode=test`。后续报告-only 提交不冒充部署 SHA | CONSISTENT |
 | Test 路由 | Nginx Test upstream 和 API 监听均为 `127.0.0.1:18773`；服务 active；最近 30 行无 error/fatal/exception/startup failure | PASS |
 | 浏览器更新 | 使用既有“现在更新”入口从 `9eb91849bc53` 切换至 `58351d4977c5`；页面同屏显示前端/API 一致、内部测试、数据库正常、Stripe 测试模式 | PASS |
 | readiness | database、stripeModeSafe、webhookSecret 为 true；`notificationReceiptSecret=false` 仍明确显示，HTTP 503 不再掩盖明细 | KNOWN_EXISTING_GAP |
