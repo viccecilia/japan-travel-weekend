@@ -13,6 +13,8 @@ export type AmbassadorDashboard={
 };
 export type AmbassadorReferralRecords={total:number;records:Array<{id:string;referredUser:string;referredAt:string;stage:'registered'|'first_paid'|'completed_first_trip'|'invalid';rewardAmount:number|null;rewardStatus:string}>};
 export type AmbassadorCommissionHistory={entries:Array<{id:string;referredUser:string;createdAt:string;confirmedAt:string|null;amountJpy:number;status:string;invalidReason:string|null}>;payouts:Array<{id:string;periodMonth:string;amountJpy:number;status:string;requestedAt:string;paidAt:string|null}>};
+export type ReferralCertification={available:boolean;status:string;courseVersion:string|null;total:number;correctQuestionKeys:string[];questions:Array<{questionKey:string;order:number}>;passedAt:string|null};
+export type ReferralCertificationAnswer={correct:boolean;correctCount:number;total:number;passed:boolean};
 type ShareCampaignSubmissionRow=Record<string,unknown>&{id:unknown;platform:unknown;status:unknown;post_url:unknown;created_at:unknown;campaign?:{campaign_month?:string|null}|null};
 type ShareCampaignOrderRow={order_id:unknown;trip_title:unknown;departure_at:unknown};
 
@@ -297,6 +299,8 @@ export class SupabaseAuthRepository {
   }
   async loadOwnCashCommissionSummary(){if(!this.client)return null;const {data,error}=await this.client.rpc('get_own_cash_commission_summary');return error?null:data as {qualificationStatus:string;pendingJpy:number;availableJpy:number;lockedJpy:number;paidJpy:number;recoveryDueJpy:number;entries:Array<{id:string;sourceOrderId:string;basisAmountJpy:number;commissionPercent:number;amountJpy:number;status:string;unlockedAt:string|null}>;payouts:Array<{id:string;weekStart:string;amountJpy:number;status:string;requestedAt:string}>}}
   async loadOwnAmbassadorDashboard(){if(!this.client)return null;const {data,error}=await this.client.rpc('get_ambassador_dashboard');return error?null:data as AmbassadorDashboard}
+  async loadOwnReferralCertification(){if(!this.client)return null;const {data,error}=await this.client.rpc('get_own_referral_certification');return error?null:data as ReferralCertification}
+  async submitOwnReferralCertificationAnswer(questionKey:string,selectedOption:number,courseVersion:string){if(!this.client)return {data:null,error:'账户服务未配置'};const {data,error}=await this.client.rpc('submit_own_referral_certification_answer',{p_question_key:questionKey,p_selected_option:selectedOption,p_course_version:courseVersion});return {data:error?null:data as ReferralCertificationAnswer,error:error?.message??null}}
   async listOwnReferralRecords(offset=0,limit=30){if(!this.client)return null;const {data,error}=await this.client.rpc('list_own_referral_records',{p_offset:offset,p_limit:limit});return error?null:data as AmbassadorReferralRecords}
   async listOwnCommissionHistory(offset=0,limit=30){if(!this.client)return null;const {data,error}=await this.client.rpc('list_own_commission_history',{p_offset:offset,p_limit:limit});return error?null:data as AmbassadorCommissionHistory}
   async applyForAmbassador(note=''){if(!this.client)return {ok:false,error:'账户服务未配置'};const {error}=await this.client.rpc('apply_for_ambassador',{p_note:note});return {ok:!error,error:error?.message??null}}

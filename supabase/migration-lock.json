@@ -833,6 +833,10 @@
     {
       "name": "20261013071140_route_referral_growth_convergence.sql",
       "sha256": "d26819f300b51815c29e1c791c5852e92a44036e1c5635c928dbc7820940e425"
+    },
+    {
+      "name": "20261014113520_referral_certification_quiz_v1.sql",
+      "sha256": "c4ab3a085b45c145546ea5aa599ae86da60259f489d38d7cca8645850c019e61"
     }
   ]
 }

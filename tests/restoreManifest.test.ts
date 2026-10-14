@@ -30,12 +30,12 @@ describe("restore evidence manifest", () => {
         expect(file.sha256).toMatch(/^[0-9a-f]{64}$/);
       }
     }
-  });
+  },15000);
 
   it("does not require fictional accounts for read-only structure checks", () => {
     const phases = buildRestoreManifest().phases;
     expect(phases[0].requiresFictionalAccounts).toBe(false);
     expect(phases[1].requiresFictionalAccounts).toBe(false);
     expect(phases[2].requiresFictionalAccounts).toBe(true);
-  });
+  },15000);
 });

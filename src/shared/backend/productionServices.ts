@@ -80,6 +80,8 @@ export class ProductionBrowserServices {
   resolvePublicReferralInvitation(code:string){return this.auth.resolvePublicReferralInvitation(code)}
   loadOwnCashCommissionSummary(){return this.auth.loadOwnCashCommissionSummary()}
   loadOwnAmbassadorDashboard(){return this.auth.loadOwnAmbassadorDashboard()}
+  loadOwnReferralCertification(){return this.auth.loadOwnReferralCertification()}
+  submitOwnReferralCertificationAnswer(questionKey:string,selectedOption:number,courseVersion:string){return this.auth.submitOwnReferralCertificationAnswer(questionKey,selectedOption,courseVersion)}
   listOwnReferralRecords(offset=0,limit=30){return this.auth.listOwnReferralRecords(offset,limit)}
   listOwnCommissionHistory(offset=0,limit=30){return this.auth.listOwnCommissionHistory(offset,limit)}
   requestOwnCommissionPayout(idempotencyKey:string){return this.auth.requestOwnCommissionPayout(idempotencyKey)}
