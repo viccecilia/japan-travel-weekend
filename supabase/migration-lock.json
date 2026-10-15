@@ -845,6 +845,10 @@
     {
       "name": "20261015041830_operations_driver_availability_window.sql",
       "sha256": "c8dc7dd0fe198d318bd7481ddb354cee87a80585e77e44f61ee0de788a259835"
+    },
+    {
+      "name": "20261015045120_operations_assign_group_guide.sql",
+      "sha256": "81ed33dea4b3fd4512ef747469c1e0454a9980ec75c9058fc9eede2b587bfc2c"
     }
   ]
 }

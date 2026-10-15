@@ -535,7 +535,7 @@ function OperationsLiveDashboard() {
               <Kpi label="通知异常" value={snapshot.notificationDeliveryIssues.length} href="#notification-issues" />
             </section>
             {referral&&<section id="referral-monitor" className="operations-section operations-referral-monitor">
-              <header><div><span>增长、结算与风控</span><h2>推荐归因与历史优惠券</h2></div><small>当前现金规则：新人首笔符合资格订单的基础票价 10%，行程完成且无退款争议后解锁，每个日本自然周最多提现一次</small></header>
+              <header><div><span>增长、结算与风控</span><h2>推荐归因与历史优惠券</h2></div><small>当前现金规则：新人首笔符合资格订单的基础票价 10%，行程完成且无退款争议后解锁，每个日本自然月最多提现一次</small></header>
               <form className="operations-controls" onSubmit={saveReferral}>
                 <label>优惠比例（%）<input name="discountPercent" type="number" min="1" max="50" defaultValue={referral.discountPercent}/></label>
                 <label>有效期（天）<input name="validityDays" type="number" min="1" max="365" defaultValue={referral.validityDays}/></label>
