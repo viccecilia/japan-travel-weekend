@@ -841,6 +841,10 @@
     {
       "name": "20261014114432_referral_certification_direct_access_denial.sql",
       "sha256": "d821a7e191bd571fb2ddc18b4cf260c5fde4d6c20be6a639bf7271d31cb22af4"
+    },
+    {
+      "name": "20261015041830_operations_driver_availability_window.sql",
+      "sha256": "c8dc7dd0fe198d318bd7481ddb354cee87a80585e77e44f61ee0de788a259835"
     }
   ]
 }

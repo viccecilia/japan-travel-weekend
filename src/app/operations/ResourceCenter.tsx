@@ -87,6 +87,16 @@ export function ResourceCenter({ kind }: { kind: ResourceKind }) {
     event.preventDefault();
     if (!services || !editingDriver) return;
     const form = new FormData(event.currentTarget);
+    const availableFrom = String(form.get("availableFrom") ?? "").trim();
+    const availableUntil = String(form.get("availableUntil") ?? "").trim();
+    if (Boolean(availableFrom) !== Boolean(availableUntil)) {
+      setNotice("保存失败：新增可用时间必须同时填写开始和结束时间。");
+      return;
+    }
+    if (availableFrom && new Date(availableUntil) <= new Date(availableFrom)) {
+      setNotice("保存失败：可用结束时间必须晚于开始时间。");
+      return;
+    }
     setBusy(editingDriver.id);
     const result = await services.operations.updateDriverResource({
       id: editingDriver.id,
@@ -97,11 +107,23 @@ export function ResourceCenter({ kind }: { kind: ResourceKind }) {
       internalPhone: String(form.get("internalPhone")),
       operationsNote: String(form.get("operationsNote")),
     });
+    const availabilityResult = result.ok && availableFrom
+      ? await services.operations.addDriverAvailabilityWindow({
+          id: editingDriver.id,
+          startsAt: new Date(availableFrom).toISOString(),
+          endsAt: new Date(availableUntil).toISOString(),
+        })
+      : { ok: true, error: null };
     setBusy("");
+    const saved = result.ok && availabilityResult.ok;
     setNotice(
-      result.ok ? "司导资料已保存并记录审计。" : `保存失败：${result.error}`,
+      saved
+        ? availableFrom
+          ? "司导资料和新增可用时间已保存并记录审计。"
+          : "司导资料已保存并记录审计。"
+        : `保存失败：${result.error ?? availabilityResult.error}`,
     );
-    if (result.ok) {
+    if (saved) {
       setEditingDriver(null);
       await load();
     }
@@ -474,6 +496,18 @@ export function ResourceCenter({ kind }: { kind: ResourceKind }) {
               maxLength={500}
               defaultValue={editingDriver.operations_note ?? ""}
             />
+          </label>
+          <div className="operations-dialog-section">
+            <h3>新增可用时间</h3>
+            <p>仅追加本次排班所需的时间窗，不覆盖历史记录；开始和结束必须同时填写。</p>
+          </div>
+          <label>
+            新增可用开始时间
+            <input name="availableFrom" type="datetime-local" />
+          </label>
+          <label>
+            新增可用结束时间
+            <input name="availableUntil" type="datetime-local" />
           </label>
         </form>
         </OperationsEditorDialog>

@@ -1,11 +1,12 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ResourceCenter } from "./ResourceCenter";
 
 const mocks = vi.hoisted(() => {
   const operations = {
     loadSnapshot: vi.fn(),
     updateDriverResource: vi.fn(),
+    addDriverAvailabilityWindow: vi.fn(),
     updateFleetVehicle: vi.fn(),
     createDriver: vi.fn(),
     createVehicle: vi.fn(),
@@ -56,7 +57,9 @@ const snapshot = {
 };
 
 describe("人员与车辆大弹窗", () => {
+  afterEach(() => cleanup());
   beforeEach(() => {
+    vi.clearAllMocks();
     HTMLDialogElement.prototype.showModal = vi.fn(function (this: HTMLDialogElement) {
       this.open = true;
     });
@@ -65,6 +68,7 @@ describe("人员与车辆大弹窗", () => {
     });
     mocks.loadSnapshot.mockResolvedValue({ data: snapshot, error: null });
     mocks.updateDriverResource.mockResolvedValue({ ok: true, error: null });
+    mocks.addDriverAvailabilityWindow.mockResolvedValue({ ok: true, error: null });
   });
 
   it("从原列表打开人员弹窗，保存成功后重新读取列表", async () => {
@@ -86,5 +90,28 @@ describe("人员与车辆大弹窗", () => {
     expect(await screen.findByText("保存失败：版本冲突")).toBeInTheDocument();
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByLabelText("显示名")).toHaveValue("未保存姓名");
+  });
+
+  it("可在现有账号档案上追加排班可用时间", async () => {
+    render(<ResourceCenter kind="staff" />);
+    fireEvent.click(await screen.findByRole("button", { name: "编辑司导资料" }));
+    fireEvent.change(screen.getByLabelText("新增可用开始时间"), { target: { value: "2026-10-16T08:00" } });
+    fireEvent.change(screen.getByLabelText("新增可用结束时间"), { target: { value: "2026-10-16T21:00" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存修改" }));
+    await waitFor(() => expect(mocks.addDriverAvailabilityWindow).toHaveBeenCalledWith({
+      id: "driver-1",
+      startsAt: new Date("2026-10-16T08:00").toISOString(),
+      endsAt: new Date("2026-10-16T21:00").toISOString(),
+    }));
+  });
+
+  it("只填写一个可用时间时不提交", async () => {
+    render(<ResourceCenter kind="staff" />);
+    fireEvent.click(await screen.findByRole("button", { name: "编辑司导资料" }));
+    fireEvent.change(screen.getByLabelText("新增可用开始时间"), { target: { value: "2026-10-16T08:00" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存修改" }));
+    expect(await screen.findByText("保存失败：新增可用时间必须同时填写开始和结束时间。")).toBeInTheDocument();
+    expect(mocks.updateDriverResource).not.toHaveBeenCalled();
+    expect(mocks.addDriverAvailabilityWindow).not.toHaveBeenCalled();
   });
 });

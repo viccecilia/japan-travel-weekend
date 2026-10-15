@@ -377,7 +377,7 @@ export type OperationsCommissionPayout = {
   accountId: string;
   displayName: string;
   amountJpy: number;
-  weekStart: string;
+  periodMonth: string;
   status: string;
   requestedAt: string;
   providerReference: string | null;
@@ -848,7 +848,7 @@ export class SupabaseOperationsRepository {
     const { data, error } = await this.client
       .from("commission_payout_requests")
       .select(
-        "id,account_id,amount_jpy,week_start,status,requested_at,provider_reference,profiles!commission_payout_requests_account_id_fkey(display_name)",
+        "id,account_id,amount_jpy,period_month,status,requested_at,provider_reference,profiles!commission_payout_requests_account_id_fkey(display_name)",
       )
       .order("requested_at", { ascending: false })
       .limit(200);
@@ -862,7 +862,7 @@ export class SupabaseOperationsRepository {
           accountId: String(row.account_id),
           displayName: String(profile?.display_name ?? "未命名账户"),
           amountJpy: Number(row.amount_jpy),
-          weekStart: String(row.week_start),
+          periodMonth: String(row.period_month),
           status: String(row.status),
           requestedAt: String(row.requested_at),
           providerReference: row.provider_reference
@@ -904,6 +904,17 @@ export class SupabaseOperationsRepository {
       p_public_phone: input.publicPhone,
       p_internal_phone: input.internalPhone,
       p_operations_note: input.operationsNote,
+    });
+  }
+  async addDriverAvailabilityWindow(input: {
+    id: string;
+    startsAt: string;
+    endsAt: string;
+  }) {
+    return this.transition("operations_add_driver_availability_window", {
+      p_driver: input.id,
+      p_starts_at: input.startsAt,
+      p_ends_at: input.endsAt,
     });
   }
   async updateFleetVehicle(input: {
