@@ -39,6 +39,7 @@ export function ResourceCenter({ kind }: { kind: ResourceKind }) {
   const [creatingDriver, setCreatingDriver] = useState(false);
   const [creatingVehicle, setCreatingVehicle] = useState(false);
   const [editorDirty, setEditorDirty] = useState(false);
+  const [legacyRecoveryReason, setLegacyRecoveryReason] = useState("");
   const load = useCallback(async () => {
     if (!services) {
       setError("运营数据服务未配置");
@@ -149,6 +150,30 @@ export function ResourceCenter({ kind }: { kind: ResourceKind }) {
     );
     if (result.ok) {
       setEditingVehicle(null);
+      await load();
+    }
+  };
+  const recoverLegacyStaffAccess = async () => {
+    if (!services || !editingDriver) return;
+    const reason = legacyRecoveryReason.trim();
+    if (reason.length < 3) {
+      setNotice("恢复失败：请填写至少 3 个字的审计原因。");
+      return;
+    }
+    setBusy(editingDriver.id);
+    const result = await services.operations.recoverLegacyStaffAccess({
+      id: editingDriver.id,
+      reason,
+    });
+    setBusy("");
+    setNotice(
+      result.ok
+        ? "旧司导登录权限已恢复，并记录为已批准申请与审计事件。"
+        : `恢复失败：${result.error}`,
+    );
+    if (result.ok) {
+      setEditingDriver(null);
+      setLegacyRecoveryReason("");
       await load();
     }
   };
@@ -294,7 +319,7 @@ export function ResourceCenter({ kind }: { kind: ResourceKind }) {
                       {item.private_phone ?? "内部联系方式待补"} ·{" "}
                       {item.employment_base ?? "营业所待补"}
                     </small>
-                    <button onClick={() => { setEditorDirty(false); setEditingDriver(item); }}>
+                    <button onClick={() => { setEditorDirty(false); setLegacyRecoveryReason(""); setEditingDriver(item); }}>
                       编辑司导资料
                     </button>
                   </article>
@@ -509,6 +534,31 @@ export function ResourceCenter({ kind }: { kind: ResourceKind }) {
             新增可用结束时间
             <input name="availableUntil" type="datetime-local" />
           </label>
+          {editingDriver.account_id && editingDriver.status === "available" &&
+            !(snapshot?.staffApplications ?? []).some(
+              (application) => application.accountId === editingDriver.account_id,
+            ) && (
+              <div className="operations-dialog-section">
+                <h3>旧账号登录权限恢复</h3>
+                <p>仅用于已有司导角色和可用档案、但缺少新版审批记录的旧账号。此动作不会修改职责或排班，并会写入审批审计。</p>
+                <label className="full">
+                  恢复原因
+                  <textarea
+                    value={legacyRecoveryReason}
+                    maxLength={500}
+                    onChange={(event) => setLegacyRecoveryReason(event.target.value)}
+                    placeholder="例如：旧导游账号缺少新版审批记录，核对现有角色与档案后恢复登录"
+                  />
+                </label>
+                <button
+                  type="button"
+                  disabled={busy === editingDriver.id || legacyRecoveryReason.trim().length < 3}
+                  onClick={() => void recoverLegacyStaffAccess()}
+                >
+                  恢复司导登录权限
+                </button>
+              </div>
+            )}
         </form>
         </OperationsEditorDialog>
       )}

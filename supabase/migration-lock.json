@@ -849,6 +849,10 @@
     {
       "name": "20261015045120_operations_assign_group_guide.sql",
       "sha256": "81ed33dea4b3fd4512ef747469c1e0454a9980ec75c9058fc9eede2b587bfc2c"
+    },
+    {
+      "name": "20261016094500_staff_meeting_start_and_legacy_access_recovery.sql",
+      "sha256": "baea6e097f69e40c00497f018e9a35daf9db815de92193ee3890e4a5624428b5"
     }
   ]
 }

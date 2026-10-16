@@ -917,6 +917,12 @@ export class SupabaseOperationsRepository {
       p_ends_at: input.endsAt,
     });
   }
+  async recoverLegacyStaffAccess(input: { id: string; reason: string }) {
+    return this.transition("operations_recover_legacy_staff_access", {
+      p_driver: input.id,
+      p_reason: input.reason,
+    });
+  }
   async updateFleetVehicle(input: {
     id: string;
     status: string;
