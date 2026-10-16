@@ -75,8 +75,8 @@ describe("工作人员端", () => {
       {...task,staff_assignment_id:'running',trip_title:'正在运行',journey_status:'in_progress',departs_at:new Date(atTokyoHour(-1,9)).toISOString()},
     ]);
     expect(await screen.findByRole('heading',{name:'正在运行'})).toBeInTheDocument();
-    expect(screen.getByRole('heading',{name:'工作首页'})).toBeInTheDocument();
-    expect(screen.getByRole('region',{name:'待处理'})).toHaveTextContent('乘客未确认');
+    expect(screen.getByText(/工作人员 · 司机/)).toBeInTheDocument();
+    expect(screen.getByText(/未登车/)).toHaveTextContent('4');
   });
   it('未来班次残留运行状态时单独告警且不显示正在执行',async()=>{
     renderTodayWithTasks([
@@ -84,7 +84,7 @@ describe("工作人员端", () => {
     ]);
     expect(await screen.findByRole('alert')).toHaveTextContent('未来班次已进入执行状态');
     expect(screen.getByText(/下一次出勤：/)).toHaveTextContent('明日模拟运行');
-    expect(screen.getByText(/有 1 个待确认班次/)).toBeInTheDocument();
+    expect(screen.getByText('下次任务已排定')).toBeInTheDocument();
   });
   it('多个运行中任务显示冲突，不静默隐藏',async()=>{
     renderTodayWithTasks([
@@ -106,7 +106,7 @@ describe("工作人员端", () => {
     const calls:string[]=[];
     const client={auth:{getUser:async()=>({data:{user:{id:'staff-ack'}},error:null}),getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},rpc:async(name:string)=>{calls.push(name);if(name==='get_staff_portal_tasks')return {data:[{...task,departs_at:new Date(atTokyoHour(0,10)).toISOString(),journey_status:'pending',assignment_acknowledged:false}],error:null};if(name==='acknowledge_own_staff_assignment')return {data:new Date().toISOString(),error:null};return {data:null,error:null}}} as unknown as SupabaseClient;
     render(<MemoryRouter initialEntries={['/staff']}><AppProvider services={new ProductionBrowserServices(client,undefined)}><Routes><Route path="/staff/*" element={<StaffPortal/>}/></Routes></AppProvider></MemoryRouter>);
-    const button=await screen.findByRole('button',{name:'确认任务'});
+    const button=await screen.findByRole('button',{name:'确认本人派班'});
     fireEvent.click(button);
     expect(await screen.findByText(/任务已确认/)).toBeInTheDocument();
     expect(calls).toContain('acknowledge_own_staff_assignment');
@@ -145,11 +145,9 @@ describe("工作人员端", () => {
         </AppProvider>
       </MemoryRouter>,
     );
-    expect(await screen.findByText("剩余未登车")).toBeInTheDocument();
-    expect(screen.getByText("仅履约名单")).toBeInTheDocument();
+    expect(await screen.findByText(/未登车/)).toHaveTextContent('4');
     expect(document.body.textContent).not.toMatch(/¥|银行卡|卡号：|优惠券|付款资格|待人工确认|不可登车/);
-    expect(screen.getByText("司机权限")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "乘客点名" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "乘客名单" })).toHaveAttribute(
       "href",
       "/staff/tasks/assignment-1/passengers",
     );
@@ -186,6 +184,31 @@ describe("工作人员端", () => {
       "/staff/messages",
     );
     expect(screen.getByRole("link", { name: "我的" })).toHaveAttribute("href","/staff/profile");
+  });
+  it('集合已开始时分别展示行程状态与本人派班状态，且不重复提供发起集合',async()=>{
+    renderTodayWithTasks([{...task,assignment_role:'guide',journey_status:'meeting',assignment_acknowledged:false,boarded_count:0,departs_at:new Date(atTokyoHour(0,9)).toISOString()}]);
+    expect(await screen.findByText(/当前：集合中/)).toHaveTextContent('0/12 人已登车');
+    expect(screen.getByText('我的派班：待确认')).toBeInTheDocument();
+    expect(screen.getByRole('button',{name:'确认本人派班'})).toBeInTheDocument();
+    expect(screen.getByRole('link',{name:'打开乘客名单'})).toBeInTheDocument();
+    expect(screen.queryByRole('button',{name:'发起集合'})).not.toBeInTheDocument();
+    expect(screen.getByText('导游工作台')).toBeInTheDocument();
+  });
+  it('待集合时只允许发起一次，成功后立即重读并切换为集合中',async()=>{
+    const calls:string[]=[];let loaded=0;
+    const client={auth:{getUser:async()=>({data:{user:{id:'staff-meeting'}},error:null}),getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},rpc:async(name:string)=>{calls.push(name);if(name==='get_staff_portal_tasks'){loaded+=1;return {data:[{...task,departs_at:new Date(atTokyoHour(0,9)).toISOString(),journey_status:loaded>1?'meeting':'pending',assignment_acknowledged:true,boarded_count:0}],error:null}}if(name==='record_staff_execution_event')return {data:'event-1',error:null};return {data:null,error:null}}} as unknown as SupabaseClient;
+    render(<MemoryRouter initialEntries={['/staff']}><AppProvider services={new ProductionBrowserServices(client,undefined)}><Routes><Route path="/staff/*" element={<StaffPortal/>}/></Routes></AppProvider></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button',{name:'发起集合'}));
+    expect(await screen.findByText(/当前：集合中/)).toBeInTheDocument();
+    expect(screen.queryByRole('button',{name:'发起集合'})).not.toBeInTheDocument();
+    expect(calls.filter(value=>value==='record_staff_execution_event')).toHaveLength(1);
+    expect(calls.filter(value=>value==='get_staff_portal_tasks').length).toBeGreaterThan(1);
+  });
+  it('地图入口按任务参数锁定对应 vehicleGroupId 的任务',async()=>{
+    const rows=[{...task,staff_assignment_id:'assignment-a',vehicle_group_id:'group-a',trip_title:'任务 A'},{...task,staff_assignment_id:'assignment-b',vehicle_group_id:'group-b',trip_title:'任务 B'}];
+    const client={auth:{getUser:async()=>({data:{user:{id:'staff-map'}},error:null}),getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},rpc:async(name:string)=>name==='get_staff_portal_tasks'?{data:rows,error:null}:{data:[],error:null}} as unknown as SupabaseClient;
+    render(<MemoryRouter initialEntries={['/staff/map?task=assignment-b']}><AppProvider services={new ProductionBrowserServices(client,undefined)}><Routes><Route path="/staff/*" element={<StaffPortal/>}/></Routes></AppProvider></MemoryRouter>);
+    expect(await screen.findByRole('combobox',{name:'地图任务'})).toHaveValue('assignment-b');
   });
   it.each([
     ['/staff','今天暂无已安排任务','首页'],

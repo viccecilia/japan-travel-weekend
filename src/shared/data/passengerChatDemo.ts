@@ -1,6 +1,8 @@
 import type {ItineraryStop} from '../services/itineraryMeeting';
 export const passengerChatDemo={
   tripName:'京都与奈良一日游',stage:'奈良公园自由活动',status:'traveling' as const,meetingActive:true,party:{arrived:9,total:12,distanceMeters:380,walkMinutes:6},
+  meetingContext:{roomId:'demo-room',vehicleGroupId:'demo-group',status:'active' as const,revision:3,time:'11:30',place:'东大寺南大门东侧'},
+  arrivalPassengers:[{passengerId:'demo-passenger',label:'游客 B1',status:'pending' as const,meetingRevision:null}],
   guide:{name:'山田 美咲',role:'司导',phone:'+81-90-0000-1188',avatar:'山',vehicle:{type:'海狮',color:'珍珠白',plate:'大阪 830 あ 12-34'}},
   stops:[
     {id:'osaka',name:'大阪出发',arrivalTime:'07:50',meetingTime:'08:00',meetingPointName:'日本桥2号出口',meetingPointDescription:'2号出口地面，黄色工作人员旗帜旁',latitude:34.6687,longitude:135.5062,status:'completed'},

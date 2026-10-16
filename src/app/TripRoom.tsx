@@ -205,7 +205,7 @@ export function TripRoom() {
     );
   const room = state.tripRoom;
   if (!room) return <Empty locale={state.ui.locale??'zh-CN'} />;
-  return <PassengerChatRoom {...passengerChatDemo} onLocaleChange={(next) => setUi({ ...state.ui, locale: next })} />;
+  return <PassengerChatRoom {...passengerChatDemo} onArrive={async()=>true} onLocaleChange={(next) => setUi({ ...state.ui, locale: next })} />;
 }
 
 type RemoteMessage = {
@@ -275,6 +275,7 @@ type RemoteAttendance = {
   status_at: string | null;
   contact_status: string | null;
   late_minutes?: number | null;
+  meeting_revision?: number | null;
 };
 const staffTemplates = [
   ["introduce", "自我介绍"],
@@ -544,11 +545,12 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
   const updateOwnAttendance = async (
     passengerId: string,
     status: "confirmed_departure" | "at_meeting_point" | "needs_assistance",
+    meetingRevision?: number,
   ) => {
-    const ok = await services.tripRoom.setOwnCheckin(passengerId, status);
+    const ok = await services.tripRoom.setOwnCheckin(passengerId, status, status==='at_meeting_point'&&room?{vehicleGroupId:room.vehicle_group_id,meetingRevision}:undefined);
     if (!ok) {
       setNotice("签到未能保存，请确认本车成员资格和当前账户。");
-      return;
+      return false;
     }
     setAttendance(
       (await services.tripRoom.loadAttendance(
@@ -556,6 +558,7 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
       )) as RemoteAttendance[],
     );
     setNotice("签到状态已保存，司机端会同步更新。");
+    return true;
   };
   const updateStaffAttendance = async (
     passengerId: string,
@@ -834,6 +837,8 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
         }}
         stops={matchedIndex>=0?itineraryStops:[remoteStop,...itineraryStops]}
         messages={passengerMessages}
+        arrivalPassengers={attendance.map(item=>({passengerId:item.passenger_id,label:item.passenger_label,status:item.status,meetingRevision:item.meeting_revision}))}
+        meetingContext={meeting?{roomId:room.room_id,vehicleGroupId:room.vehicle_group_id,status:meeting.status,revision:meeting.revision,time:new Date(meeting.meeting_at).toLocaleTimeString(locale,{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit',hour12:false}),place:meeting.meeting_name}:undefined}
         readOnly={!access.enabled}
         readOnlyNotice={room.room_status === "frozen" ? passengerRound1Copy[locale].chat.locked : undefined}
         mapHref={`/app/trip-map?vehicleGroup=${encodeURIComponent(room.vehicle_group_id)}`}
@@ -842,10 +847,12 @@ function RemoteTripRoom({ services }: { services: ProductionBrowserServices }) {
         onSend={(content) =>
           void services.tripRoom.sendMessage(room.room_id, content)
         }
-        onArrive={() => {
-          const own = attendance[0];
-          if (own)
-            void updateOwnAttendance(own.passenger_id, "at_meeting_point");
+        onArrive={async(passengerIds,meetingRevision)=>{
+          if(!meeting||meeting.status!=='active'||meeting.revision!==meetingRevision||room.room_status!=='open')return false;
+          const allowed=new Set(attendance.map(item=>item.passenger_id));
+          if(passengerIds.length===0||passengerIds.some(id=>!allowed.has(id)))return false;
+          const results=await Promise.all(passengerIds.map(id=>updateOwnAttendance(id,"at_meeting_point",meetingRevision)));
+          return results.every(Boolean);
         }}
         initialLateMinutes={(attendance[0] as {late_minutes?:number|null}|undefined)?.late_minutes}
         onLate={async (minutes) => {

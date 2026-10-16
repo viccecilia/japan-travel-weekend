@@ -1004,12 +1004,17 @@ export class SupabaseTripRoomRepository {
   async setOwnCheckin(
     passengerId: string,
     status: "confirmed_departure" | "at_meeting_point" | "needs_assistance",
+    meeting?: { vehicleGroupId: string; meetingRevision?: number },
   ) {
     if (!this.client) return false;
     const { error } = await this.client.rpc("set_own_passenger_checkin", {
       p_passenger: passengerId,
       p_status: status,
-      p_idempotency_key: crypto.randomUUID(),
+      p_idempotency_key: status === "at_meeting_point" && meeting?.meetingRevision
+        ? `arrival:${meeting.vehicleGroupId}:${passengerId}:r${meeting.meetingRevision}`
+        : crypto.randomUUID(),
+      p_vehicle_group: meeting?.vehicleGroupId ?? null,
+      p_meeting_revision: meeting?.meetingRevision ?? null,
     });
     return !error;
   }
