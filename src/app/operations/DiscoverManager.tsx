@@ -29,7 +29,7 @@ export function DiscoverManager() {
      if(!alive)return;
      setProducts(list?.data??[]);
      setRows(result?.error?initialDiscoverHeroes:result?.data??[]);
-     setNotice(result?.error?'Discover 存储尚不可用：'+result.error+'。以下为初始内容参考，尚未从数据库读取。':list?.error??'');
+     setNotice(result?.error?'Discover 内容暂时无法读取：'+result.error+'。请稍后重新加载。':list?.error??'');
      setLoaded(!result?.error&&!!result);
    }).catch(error=>{if(alive)setNotice(String(error))});
    return ()=>{alive=false};
@@ -180,7 +180,7 @@ function DiscoverEditor({hero,products,writable,onSaved,onDeleted,onDirtyChange}
      <label>关联产品（可选）<select value={draft.product_id??products.find(p=>p.slug===draft.product_slug)?.id??''} onChange={event=>{const product=products.find(p=>p.id===event.target.value);setDraft({...draft,product_id:product?.id??null,product_slug:product?.slug??null})}}><option value="">不关联 · Soul 内容</option>{products.map(product=><option value={product.id} key={product.id}>{product.title} · {product.status==='published'?'已发布':'未公开'}</option>)}</select></label>
      <label>排序<input type="number" min={0} max={9999} value={draft.sort_order} onChange={event=>setDraft({...draft,sort_order:Number(event.target.value)})}/></label>
      <label><input type="checkbox" checked={draft.enabled} onChange={event=>setDraft({...draft,enabled:event.target.checked})}/> 启用</label>
-     <p role="status">{notice||(!writable?'本地结构预览；数据库迁移未应用，不能保存':dirty?'未保存':'已保存')}</p>
+     <p role="status">{notice||(!writable?'当前内容不可保存，请稍后重新加载':dirty?'未保存':'已保存')}</p>
      <button type="button" disabled={busy||!writable||!draft.video_url||!draft.poster_url} onClick={()=>void save()}>{busy?'处理中…':'保存内容'}</button>
      <button className="discover-delete" type="button" disabled={busy||!writable||draft.version<1} onClick={()=>void remove()}>删除此视频</button>
    </div>

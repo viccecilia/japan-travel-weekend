@@ -417,7 +417,7 @@ export function ProductCenter() {
           </article>
           <article>
             <b>测试过滤</b>
-            <p>搜索与筛选仅用于本页视图，不会更改数据库读取口径。</p>
+            <p>使用搜索与筛选可以快速找到需要管理的产品。</p>
           </article>
         </div>
       </section>

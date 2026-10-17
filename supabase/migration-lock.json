@@ -857,6 +857,14 @@
     {
       "name": "20261016123000_meeting_revision_passenger_arrival.sql",
       "sha256": "b88c82f665f3ce623f2d3d5d58d2329296cdc2695e0215d6d1fe15492d6b2313"
+    },
+    {
+      "name": "20261016152000_reuse_active_passenger_location_share.sql",
+      "sha256": "3017ff616cb1ffb30918c300dffee21197fd8212e181ab2b3d28516f77f72f42"
+    },
+    {
+      "name": "20261016152100_restrict_meeting_updates_to_operations.sql",
+      "sha256": "47080aa7fbc1acb4549f53769a0acb62097c448b214a1eca17617ac33ed28271"
     }
   ]
 }

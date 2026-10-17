@@ -1,7 +1,7 @@
 export type MapSessionMode = 'meeting'|'find_driver'|'guide'|'return_to_meeting'|'ended';
 export type RequestedMapMode = 'meeting'|'find_driver'|'guide';
 export type MapMarkerType = 'user_location'|'driver_vehicle'|'meeting_point'|'shared_place'|'guide_node';
-export type MapMarker = {id:string;type:MapMarkerType;lat:number;lng:number;label:string;subtitle?:string;source:'device'|'driver'|'meeting'|'staff_shared'|'guide';updatedAt?:string};
+export type MapMarker = {id:string;type:MapMarkerType;lat:number;lng:number;label:string;subtitle?:string;source:'device'|'driver'|'meeting'|'staff_shared'|'guide';updatedAt?:string;accuracyMeters?:number|null};
 export type MapCoordinates = {latitude:number;longitude:number};
 export type MapSessionInput = {
   roomStatus:string; meeting:{status?:string;latitude?:number;longitude?:number;meeting_name?:string;meeting_address?:string;changed_at?:string}|null;

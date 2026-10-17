@@ -391,7 +391,7 @@ describe("工作人员端", () => {
     );
     expect(screen.getByText(/Yuzu Dispatch/)).toBeInTheDocument();
   });
-  it("司导可读取并提交版本化集合信息", async () => {
+  it("司导只能读取集合信息并导航，不能修改正式集合点", async () => {
     const calls: string[] = [];
     const client = {
       auth: {
@@ -406,9 +406,7 @@ describe("工作人员端", () => {
         if (name === "get_staff_portal_tasks")
           return { data: [task], error: null };
         if (name === "get_current_vehicle_group_meeting")
-          return { maybeSingle: async () => ({ data: null, error: null }) };
-        if (name === "update_vehicle_group_meeting")
-          return { data: 1, error: null };
+          return { maybeSingle: async () => ({ data: {meeting_at:'2026-09-04T02:30:00Z',meeting_name:'东大寺南大门东侧',meeting_address:'奈良市春日野町',latitude:34.6889,longitude:135.8398,landmark_description:'黄色旗帜旁'}, error: null }) };
         return { data: null, error: null };
       },
     } as unknown as SupabaseClient;
@@ -426,46 +424,11 @@ describe("工作人员端", () => {
         </AppProvider>
       </MemoryRouter>,
     );
-    expect(await screen.findByText(/当前版本：尚未建立/)).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText(/集合时间/), {
-      target: { value: "2026-09-04T11:30" },
-    });
-    fireEvent.change(screen.getByLabelText("集合地点名称"), {
-      target: { value: "东大寺南大门东侧" },
-    });
-    fireEvent.change(screen.getByLabelText("详细地址"), {
-      target: { value: "奈良市春日野町" },
-    });
-    fireEvent.change(screen.getByLabelText("纬度"), {
-      target: { value: "34.6889" },
-    });
-    fireEvent.change(screen.getByLabelText("经度"), {
-      target: { value: "135.8398" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "保存集合信息" }));
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      "集合信息已保存",
-    );
-    expect(calls).toContain("update_vehicle_group_meeting");
-  });
-  it("按订单分组展示本车人数且每位乘客仍需逐一确认",async()=>{
-    const attendance=Array.from({length:9},(_,index)=>({
-      passenger_id:`passenger-${index+1}`,
-      passenger_label:`乘客 ${index+1}`,
-      order_id:index<4?'shared-account-order-a':'shared-account-order-b',
-      status:index===0?'boarded':'pending',status_at:null,contact_status:null,
-    }));
-    const client={auth:{getUser:async()=>({data:{user:{id:'staff-groups'}},error:null}),getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},rpc:async(name:string)=>{
-      if(name==='get_staff_portal_tasks')return {data:[task],error:null};
-      if(name==='get_vehicle_group_attendance')return {data:attendance,error:null};
-      if(name==='get_vehicle_group_boarding_status')return {data:[],error:null};
-      return {data:null,error:null};
-    }} as unknown as SupabaseClient;
-    render(<MemoryRouter initialEntries={["/staff/tasks/assignment-1/passengers"]}><AppProvider services={new ProductionBrowserServices(client,undefined)}><Routes><Route path="/staff/tasks/:assignmentId/:action" element={<StaffTaskAction/>}/></Routes></AppProvider></MemoryRouter>);
-    expect(await screen.findByText(/本车 4 人/)).toBeInTheDocument();
-    expect(screen.getByText(/本车 5 人/)).toBeInTheDocument();
-    expect(screen.getAllByText('逐人确认')).toHaveLength(2);
-    expect(screen.getAllByRole('button',{name:'已登车'})).toHaveLength(9);
-    expect(screen.getAllByRole('button',{name:'拨打乘客电话'})).toHaveLength(2);
+    expect(await screen.findByText('东大寺南大门东侧')).toBeInTheDocument();
+    expect(screen.getByText('奈良市春日野町')).toBeInTheDocument();
+    expect(screen.getByText('黄色旗帜旁')).toBeInTheDocument();
+    expect(screen.getByRole('link',{name:'打开地图导航'})).toHaveAttribute('href',expect.stringContaining('34.6889,135.8398'));
+    expect(screen.queryByRole("button", { name: "保存集合信息" })).not.toBeInTheDocument();
+    expect(calls).not.toContain("operations_update_vehicle_group_meeting");
   });
 });

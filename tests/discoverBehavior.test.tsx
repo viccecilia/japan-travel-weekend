@@ -154,7 +154,7 @@ describe('Discover maintenance',()=>{
   render(<MemoryRouter><DiscoverManager/></MemoryRouter>);
   fireEvent.click(await screen.findByRole('button',{name:/这一生/}));
   expect(screen.getByRole('button',{name:'保存内容'})).toBeDisabled();
-  expect(screen.getByText(/初始内容参考/)).toBeInTheDocument();
+  expect(screen.getByText(/Discover 内容暂时无法读取/)).toBeInTheDocument();
   await waitFor(()=>expect(mock.save).not.toHaveBeenCalled());
  });
 });

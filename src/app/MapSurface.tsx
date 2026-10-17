@@ -1,14 +1,16 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {useEffect,useRef,useState} from 'react';
 import type {MapMarker} from '../shared/services/mapSession';
 import {mapMarkerGlyph} from '../shared/services/mapSession';
 import './tripMap.css';
 
 type Point={lat:number;lng:number};
-type Props={markers:MapMarker[];activeMarkerId?:string|null;followMarkerId?:string|null;onMarkerClick?:(marker:MapMarker)=>void;onMapClick?:(point:Point)=>void;onUserMapInteraction?:()=>void;interactive:boolean;emptyLabel:string;unavailableLabel:string};
-declare global {interface Window {google?:any;__jtwGoogleMapsPromise?:Promise<void>;__jtwGoogleMapsReady?:()=>void}}
+type Props={markers:MapMarker[];activeMarkerId?:string|null;followMarkerId?:string|null;onMarkerClick?:(marker:MapMarker)=>void;onMapClick?:(point:Point)=>void;onUserMapInteraction?:()=>void;interactive:boolean;emptyLabel:string;unavailableLabel:string;language?:string};
+declare global {interface Window {google?:any;__jtwGoogleMapsPromise?:Promise<void>;__jtwGoogleMapsReady?:()=>void;gm_authFailure?:()=>void}}
 const googleMapsKey=import.meta.env.VITE_GOOGLE_MAPS_BROWSER_KEY as string|undefined;
 const mapsScriptId='jtw-google-maps-script';
-function loadGoogleMaps(){
+const mapLanguage=(language?:string)=>language==='zh-CN'?'zh-CN':language==='zh-TW'?'zh-TW':language==='ja'?'ja':language==='ko'?'ko':language==='es'?'es':language==='vi'?'vi':language==='ne'?'ne':'en';
+function loadGoogleMaps(language?:string){
   if(window.google?.maps)return Promise.resolve();
   if(!googleMapsKey?.trim())return Promise.reject(new Error('missing_google_maps_key'));
   if(!window.__jtwGoogleMapsPromise){
@@ -20,14 +22,15 @@ function loadGoogleMaps(){
       script.remove();
       script=null;
     }
-    let promise:Promise<void>;
-    promise=new Promise((resolve,reject)=>{
+    const promise:Promise<void>=new Promise((resolve,reject)=>{
       const fail=()=>{
         script?.remove();
         if(window.__jtwGoogleMapsPromise===promise)delete window.__jtwGoogleMapsPromise;
         delete window.__jtwGoogleMapsReady;
         reject(new Error('google_maps_load_failed'));
       };
+      const previousAuthFailure=window.gm_authFailure;
+      window.gm_authFailure=()=>{previousAuthFailure?.();fail()};
       window.__jtwGoogleMapsReady=()=>{
         if(window.google?.maps){
           delete window.__jtwGoogleMapsReady;
@@ -36,7 +39,8 @@ function loadGoogleMaps(){
       };
       if(!script){
         script=document.createElement('script');script.id=mapsScriptId;
-        script.src=`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(googleMapsKey)}&v=weekly&loading=async&libraries=marker&callback=__jtwGoogleMapsReady`;
+        const params=new URLSearchParams({key:googleMapsKey,v:'weekly',loading:'async',libraries:'marker',callback:'__jtwGoogleMapsReady',language:mapLanguage(language),region:'JP',auth_referrer_policy:'origin'});
+        script.src=`https://maps.googleapis.com/maps/api/js?${params.toString()}`;
         script.async=true;script.defer=true;
         script.addEventListener('error',fail,{once:true});document.head.append(script);
       }else{
@@ -47,10 +51,10 @@ function loadGoogleMaps(){
   }
   return window.__jtwGoogleMapsPromise;
 }
-export function MapSurface({markers,activeMarkerId,followMarkerId,onMarkerClick,onMapClick,onUserMapInteraction,interactive,emptyLabel,unavailableLabel}:Props){
+export function MapSurface({markers,activeMarkerId,followMarkerId,onMarkerClick,onMapClick,onUserMapInteraction,interactive,emptyLabel,unavailableLabel,language}:Props){
  const host=useRef<HTMLDivElement>(null);const map=useRef<any>(null);const nativeMarkers=useRef<any[]>([]);const mapClickRef=useRef(onMapClick);const markerClickRef=useRef(onMarkerClick);const interactionRef=useRef(onUserMapInteraction);const [status,setStatus]=useState<'loading'|'ready'|'unavailable'>(interactive?'loading':'unavailable');
- mapClickRef.current=onMapClick;markerClickRef.current=onMarkerClick;interactionRef.current=onUserMapInteraction;
- useEffect(()=>{let cancelled=false;if(!interactive){setStatus('unavailable');return}void loadGoogleMaps().then(()=>{if(cancelled||!host.current)return;map.current=new window.google.maps.Map(host.current,{center:markers[0]?{lat:markers[0].lat,lng:markers[0].lng}:{lat:35.0116,lng:135.7681},zoom:markers.length?14:11,disableDefaultUI:true,zoomControl:true,gestureHandling:'greedy'});map.current.addListener('click',(event:any)=>mapClickRef.current?.({lat:event.latLng.lat(),lng:event.latLng.lng()}));map.current.addListener('dragstart',()=>interactionRef.current?.());setStatus('ready')}).catch(()=>!cancelled&&setStatus('unavailable'));return()=>{cancelled=true;nativeMarkers.current.forEach(marker=>marker.setMap(null));nativeMarkers.current=[]};},[interactive]);
+ useEffect(()=>{mapClickRef.current=onMapClick;markerClickRef.current=onMarkerClick;interactionRef.current=onUserMapInteraction},[onMapClick,onMarkerClick,onUserMapInteraction]);
+ useEffect(()=>{let cancelled=false;if(!interactive){queueMicrotask(()=>setStatus('unavailable'));return}void loadGoogleMaps(language).then(()=>{if(cancelled||!host.current)return;map.current=new window.google.maps.Map(host.current,{center:{lat:35.0116,lng:135.7681},zoom:11,disableDefaultUI:true,zoomControl:true,gestureHandling:'cooperative'});map.current.addListener('click',(event:any)=>mapClickRef.current?.({lat:event.latLng.lat(),lng:event.latLng.lng()}));map.current.addListener('dragstart',()=>interactionRef.current?.());setStatus('ready')}).catch(()=>!cancelled&&setStatus('unavailable'));return()=>{cancelled=true;nativeMarkers.current.forEach(marker=>marker.setMap(null));nativeMarkers.current=[]};},[interactive,language]);
  useEffect(()=>{if(status!=='ready'||!map.current)return;nativeMarkers.current.forEach(marker=>marker.setMap(null));nativeMarkers.current=markers.map(marker=>{const native=new window.google.maps.Marker({map:map.current,position:{lat:marker.lat,lng:marker.lng},title:marker.label,label:{text:mapMarkerGlyph[marker.type],color:'#17242c',fontWeight:'700'}});native.addListener('click',()=>markerClickRef.current?.(marker));return native});const target=markers.find(marker=>marker.id===activeMarkerId)??markers[0];if(target)map.current.panTo({lat:target.lat,lng:target.lng})},[markers,status,activeMarkerId]);
  useEffect(()=>{if(status!=='ready'||!map.current||!followMarkerId)return;const target=markers.find(marker=>marker.id===followMarkerId);if(target)map.current.panTo({lat:target.lat,lng:target.lng})},[markers,status,followMarkerId]);
  if(status==='unavailable')return <section className="trip-map-fallback" role="status"><b>{unavailableLabel}</b><p>{markers.length?markers.map(marker=>`${mapMarkerGlyph[marker.type]} ${marker.label}`).join(' · '):emptyLabel}</p></section>;

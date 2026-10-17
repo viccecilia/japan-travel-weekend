@@ -20,7 +20,7 @@ import type {PassengerLocale} from '../shared/i18n/passengerLocale';
 import {passengerRound1Copy} from '../shared/i18n/passengerRound1';
 import {isRouteSourceLocale,presentMeetingText,presentRoute,routeStopIdentity,unavailableMeetingPresentation} from '../shared/routeLocalePresentation';
 const myTripCopy:Record<PassengerLocale,{empty:string;emptyText:string;browse:string;eyebrow:string;title:string}>={
-  'zh-CN':{empty:'暂无进行中的行程',emptyText:'正式环境不会自动生成车辆、司机、倒计时、聊天或位置数据。',browse:'浏览路线',eyebrow:'我的行程',title:'行程履约'},
+  'zh-CN':{empty:'暂无进行中的行程',emptyText:'完成预订并分配车辆后，可在这里查看行程、群聊和位置服务。',browse:'浏览路线',eyebrow:'我的行程',title:'行程履约'},
   'zh-TW':{empty:'目前沒有進行中的行程',emptyText:'正式環境不會自動產生車輛、司機、倒數、聊天或位置資料。',browse:'瀏覽路線',eyebrow:'我的行程',title:'行程服務'},
   ja:{empty:'進行中の旅程はありません',emptyText:'本番環境では車両、ドライバー、カウントダウン、チャット、位置情報は自動生成されません。',browse:'ツアーを見る',eyebrow:'マイトリップ',title:'旅程サービス'},
   en:{empty:'No active trips',emptyText:'Live service does not create vehicle, driver, countdown, chat or location data until a trip is assigned.',browse:'Browse trips',eyebrow:'My Trip',title:'Trip updates'},

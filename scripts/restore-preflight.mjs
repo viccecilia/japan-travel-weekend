@@ -5,7 +5,8 @@ import { createHash } from "node:crypto";
 import migrationLock from '../supabase/migration-lock.json' with {type:'json'};
 
 export const PROTECTED_PROJECT_REFS = new Set([
-  "olfucqcznulrtumytjak", // Active Japan Travel Weekend test project.
+  "hzxoofvodpqpdomtmzlf", // Active Japan Travel Weekend Test project.
+  "olfucqcznulrtumytjak", // Paused legacy Test project; still contains recoverable data.
   "udhvgshimnbtdgypbtie", // Paused legacy project; still contains recoverable data.
 ]);
 

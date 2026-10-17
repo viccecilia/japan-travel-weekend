@@ -12,8 +12,7 @@ import {StaffChat} from './StaffChat';
 import { isSeedEnabled } from "../shared/config/businessRules";
 import { useApp } from "./store";
 import {isExecutableStaffTask,isFutureActiveStaffTask,selectCurrentStaffTask,selectNextStaffTask,selectPrimaryStaffTask,taskPhase,taskSortTime,tokyoDay} from './staffTaskSelection';
-import {MapSurface} from './MapSurface';
-import type {MapMarker} from '../shared/services/mapSession';
+import {StaffLiveMap} from './StaffLiveMap';
 import {leaveCoverageForDay,taskLeaveConflict} from './staffLeave';
 
 export type StaffTask = {
@@ -234,25 +233,6 @@ function useStaffTasks() {
     };
   }, [services,refreshKey]);
   return { services, preview, tasks, resolved, error, retry:()=>{setResolved(false);setError(null);setRefreshKey(value=>value+1)} };
-}
-
-type SharedPassengerLocation={id:string;subject_id:string;display_name:string|null;latitude:number;longitude:number;accuracy_meters:number|null;sampled_at:string;expires_at:string};
-function StaffLiveMap({task}:{task:StaffTask}){
-  const {services}=useApp();
-  const [locations,setLocations]=useState<SharedPassengerLocation[]>([]);
-  const [attendance,setAttendance]=useState<AttendanceRow[]>([]);
-  const [driver,setDriver]=useState<{latitude:number;longitude:number;updated_at?:string}|null>(null);
-  const [gap,setGap]=useState('');
-  const [lastUpdated,setLastUpdated]=useState<string|null>(null);
-  const [loading,setLoading]=useState(true);
-  useEffect(()=>{let mounted=true;let generation=0;const load=async()=>{const current=++generation;try{if(!services)return;const [shared,rows,ownValue]=await Promise.all([services.tripRoom.loadPassengerLocations(task.vehicle_group_id),services.tripRoom.loadAttendance(task.vehicle_group_id),services.tripRoom.loadDriverLocation(task.vehicle_group_id)]);if(!mounted||current!==generation)return;const now=Date.now();const activeLocations=shared.filter(row=>new Date(row.expires_at).getTime()>now);const own=ownValue as {latitude?:unknown;longitude?:unknown;updated_at?:unknown}|null;setLocations(activeLocations);setAttendance(rows as AttendanceRow[]);setDriver(own&&typeof own.latitude==='number'&&typeof own.longitude==='number'?{latitude:own.latitude,longitude:own.longitude,updated_at:typeof own.updated_at==='string'?own.updated_at:undefined}:null);setLastUpdated(new Date().toISOString());setGap('');setLoading(false)}catch{if(mounted&&current===generation){setGap('实时位置连接中断，正在等待重新同步。');setLoading(false)}}};void load();const timer=window.setInterval(()=>void load(),10_000);const resume=()=>{if(document.visibilityState==='visible')void load()};window.addEventListener('online',resume);window.addEventListener('focus',resume);document.addEventListener('visibilitychange',resume);return()=>{mounted=false;generation+=1;window.clearInterval(timer);window.removeEventListener('online',resume);window.removeEventListener('focus',resume);document.removeEventListener('visibilitychange',resume)}},[services,task.vehicle_group_id]);
-  const markers:MapMarker[]=[
-    ...(task.map_lat!=null&&task.map_lng!=null?[{id:'meeting',type:'meeting_point' as const,lat:task.map_lat,lng:task.map_lng,label:task.meeting_name??'集合地点',subtitle:task.meeting_address??undefined,source:'meeting' as const}]:[]),
-    ...(driver?[{id:'driver',type:'driver_vehicle' as const,lat:driver.latitude,lng:driver.longitude,label:'司机 / 车辆',source:'driver' as const,updatedAt:driver.updated_at}]:[]),
-    ...locations.map((row,index)=>({id:`passenger:${row.id}`,type:'user_location' as const,lat:Number(row.latitude),lng:Number(row.longitude),label:row.display_name??`共享账号 ${index+1}`,source:'device' as const,updatedAt:row.sampled_at})),
-  ];
-  const total=Math.max(task.passenger_count,attendance.length);const shared=locations.length;
-  return <><section className="driver-live-map"><header><b>{timeLabel(task.departs_at)} · {task.trip_title}</b><span>{driverStageLabel[driverTaskStage(task)]}</span></header><MapSurface markers={markers} activeMarkerId={driver?'driver':'meeting'} interactive={Boolean(import.meta.env.VITE_GOOGLE_MAPS_BROWSER_KEY)} emptyLabel={loading?'正在同步实时位置…':'当前没有有效的共享位置。'} unavailableLabel="地图服务配置缺失或暂不可用，不能显示实时地图。"/><div className="driver-location-summary"><span>本车游客<b>{total}人</b></span><span>共享位置账号<b>{shared}个</b></span><span>地图点位<b>{markers.length}个</b></span></div><p>位置每10秒及恢复前台/网络时重新同步；仅显示本班次主动授权且未过期的账号位置，不按订单人数复制假点。</p>{lastUpdated&&<p>最后同步：{japanDateTime(lastUpdated)}</p>}{gap&&<p role="status">{gap}</p>}</section><section className="driver-map-actions"><div><small>集合地点</small><b>{task.meeting_name??'待确认'}</b></div>{task.map_lat!=null&&task.map_lng!=null&&<a href={`https://www.google.com/maps/dir/?api=1&destination=${task.map_lat},${task.map_lng}`} target="_blank" rel="noreferrer">导航至集合点</a>}<Link to={taskPath(task,'passengers')}>联系未确认乘客</Link></section></>;
 }
 
 export function StaffPortal() {
@@ -498,7 +478,7 @@ export function StaffTaskAction() {
       ) : action === "notice" ? (
         <NoticeAction task={task} />
       ) : action === "meeting" ? (
-        <MeetingAction task={task} preview={preview} />
+        <MeetingAction task={task} />
       ) : action === "journey" ? (
         <JourneyAction task={task} preview={preview} />
       ) : action === "delay" ? (
@@ -515,7 +495,7 @@ export function StaffTaskAction() {
 
 function JourneyAction({task,preview}:{task:StaffTask;preview:boolean}){
   const {services}=useApp();
-  const [stopName,setStopName]=useState(task.meeting_name??"");
+  const [stopName,setStopName]=useState("");
   const [routeStops,setRouteStops]=useState<Array<{id:string;name:string;meetingTime:string;meetingPointName:string;meetingPointDescription?:string;latitude:number;longitude:number}>>([]);
   const [reason,setReason]=useState("按今日行程到达");
   const [freeMinutes,setFreeMinutes]=useState(90);
@@ -528,13 +508,13 @@ function JourneyAction({task,preview}:{task:StaffTask;preview:boolean}){
   const locationFailures=useRef(0);
   const stopLocation=async()=>{if(locationWatch.current!==null){navigator.geolocation.clearWatch(locationWatch.current);locationWatch.current=null}const ok=preview||!services?true:await services.stopStaffLocation(task.vehicle_group_id);setResult(ok?'已停止采集和公开司机位置。':'当前没有可停止的位置共享。');};
   useEffect(()=>()=>{if(locationWatch.current!==null){navigator.geolocation.clearWatch(locationWatch.current);if(services)void services.stopStaffLocation(task.vehicle_group_id)}},[services,task.vehicle_group_id]);
-  useEffect(()=>{let active=true;if(services)void services.tripRoom.loadItinerary(task.vehicle_group_id).then(value=>{if(active)setRouteStops(value)});return()=>{active=false}},[services,task.vehicle_group_id]);
+  useEffect(()=>{let active=true;if(services)void services.tripRoom.loadItinerary(task.vehicle_group_id).then(value=>{if(active){setRouteStops(value);setStopName(current=>value.some(stop=>stop.name===current)?current:(value[0]?.name??''))}});return()=>{active=false}},[services,task.vehicle_group_id]);
   const transition=async(action:'stop_arrived'|'trip_completed')=>{
-    if(action==='stop_arrived'&&stopName.trim().length<2)return;
+    const selectedStop=routeStops.find(stop=>stop.name===stopName);
+    if(action==='stop_arrived'&&!selectedStop)return;
     if(!window.confirm(action==='trip_completed'?'确认结束本车行程？结束后群聊将转为只读。':`确认已到达“${stopName.trim()}”？`))return;
-    if(preview||!services){setResult(action==='trip_completed'?'本地预览：行程已结束，群聊转为只读。':'本地预览：已更新当前景点。');return}
-    const selectedStop=routeStops.find(stop=>stop.name===stopName.trim());
-    setBusy(action);const value=action==='stop_arrived'&&selectedStop?await services.advanceStaffToItineraryStop(task.vehicle_group_id,selectedStop.id,reason.trim()):await services.advanceStaffJourney(task.vehicle_group_id,action,stopName.trim(),reason.trim());setBusy("");
+    if(preview||!services){setResult('当前操作未提交。');return}
+    setBusy(action);const value=action==='stop_arrived'&&selectedStop?await services.advanceStaffToItineraryStop(task.vehicle_group_id,selectedStop.id,reason.trim()):await services.advanceStaffJourney(task.vehicle_group_id,action,selectedStop?.name??'',reason.trim());setBusy("");
     if(value&&action==='trip_completed'&&locationWatch.current!==null){navigator.geolocation.clearWatch(locationWatch.current);locationWatch.current=null;if(services)await services.stopStaffLocation(task.vehicle_group_id)}
     setResult(value?action==='trip_completed'?'行程已结束：司机定位已停止，群聊已转为只读。':'当前景点已更新，游客端已生成行程通知。':'操作失败，请检查任务状态、权限和说明。');
   };
@@ -543,7 +523,8 @@ function JourneyAction({task,preview}:{task:StaffTask;preview:boolean}){
     if(locationWatch.current!==null){setResult('行程位置正在采集中。');return}
     setBusy('location');const session=preview||!services?{sessionId:crypto.randomUUID(),expiresAt:new Date(Date.now()+30*60_000).toISOString()}:await services.startStaffLocation(task.vehicle_group_id);if(!session){setBusy('');setResult('无法开启定位会话，请检查任务、群聊和工作人员权限。');return}locationSession.current=session;locationSequence.current=0;locationFailures.current=0;locationWatch.current=navigator.geolocation.watchPosition(async position=>{if(locationSending.current)return;locationSending.current=true;let activeSession=locationSession.current;if(!preview&&services&&new Date(activeSession.expiresAt).getTime()-Date.now()<2*60_000){const renewed=await services.startStaffLocation(task.vehicle_group_id);if(!renewed){locationSending.current=false;if(locationWatch.current!==null)navigator.geolocation.clearWatch(locationWatch.current);locationWatch.current=null;setResult('定位会话无法续期，可能是任务已结束或账号权限已撤销，采集已停止。');return}locationSession.current=renewed;activeSession=renewed;locationSequence.current=0}locationSequence.current+=1;let ok=preview||!services?true:await services.publishStaffLocation(task.vehicle_group_id,activeSession.sessionId,position.coords.latitude,position.coords.longitude,position.coords.accuracy,new Date(position.timestamp).toISOString(),locationSequence.current);if(!ok&&!preview&&services){const renewed=await services.startStaffLocation(task.vehicle_group_id);if(renewed){locationSession.current=renewed;locationSequence.current=1;ok=await services.publishStaffLocation(task.vehicle_group_id,renewed.sessionId,position.coords.latitude,position.coords.longitude,position.coords.accuracy,new Date(position.timestamp).toISOString(),1)}}locationSending.current=false;setBusy('');if(ok){locationFailures.current=0;setResult(`位置持续采集中；最近采集 ${new Date(position.timestamp).toLocaleTimeString('zh-CN')}，精度约 ${Math.round(position.coords.accuracy)} 米。会话会在到期前自动续期。`)}else{locationFailures.current+=1;if(locationFailures.current>=2&&locationWatch.current!==null){navigator.geolocation.clearWatch(locationWatch.current);locationWatch.current=null;setResult('连续两次位置上报失败，可能是任务结束或权限撤销，采集已安全停止。')}else setResult('位置上报失败，系统将再尝试一次续期。')}},()=>{setBusy('');setResult('无法读取当前位置，请允许浏览器定位后重试。')},{enableHighAccuracy:true,timeout:15000,maximumAge:10000});
   };
-  return <section className="staff-detail"><div className="staff-detail-note">到达景点会写入本车时间线并通知游客。开始自由活动会向已付款游客发送随行提醒；结束行程会停止定位并将群聊转为只读。</div>{task.map_lat!=null&&task.map_lng!=null&&<a className="button full" target="_blank" rel="noreferrer" href={`https://www.google.com/maps/dir/?api=1&destination=${task.map_lat},${task.map_lng}`}>导航到今日集合点</a>}{routeStops.length>0&&<div className="staff-template-grid" aria-label="今日线路节点">{routeStops.map(stop=><article key={stop.id} className={stopName===stop.name?'active':''}><button type="button" onClick={()=>setStopName(stop.name)}><b>{stop.meetingTime}</b><span>{stop.name}</span><small>{stop.meetingPointName}</small></button><a target="_blank" rel="noreferrer" href={`https://www.google.com/maps/dir/?api=1&destination=${stop.latitude},${stop.longitude}`}>导航到此站</a></article>)}</div>}<form className="staff-escalation" onSubmit={e=>{e.preventDefault();void transition('stop_arrived')}}><label>当前到达景点<input required minLength={2} maxLength={160} value={stopName} onChange={e=>setStopName(e.target.value)}/></label><label>现场说明<textarea required minLength={3} maxLength={300} value={reason} onChange={e=>setReason(e.target.value)}/></label><button disabled={busy!==''}>确认到达景点</button></form><div className="staff-template-grid"><label>自由活动分钟<input type="number" min={5} max={360} value={freeMinutes} onChange={e=>setFreeMinutes(Number(e.target.value))}/></label><button type="button" disabled={busy!==''||stopName.trim().length<2} onClick={async()=>{if(!window.confirm(`确认在“${stopName.trim()}”开始约 ${freeMinutes} 分钟自由活动？`))return;setBusy('free-time');const ok=preview||!services?true:await services.startStaffFreeTime(task.vehicle_group_id,stopName.trim(),freeMinutes);setBusy('');setResult(ok?'自由活动已开始，已付款游客将收到 AI 随行与集合提醒。':'操作失败，请确认群聊已开放和工作人员权限。')}}>{busy==='free-time'?'正在发布':'开始自由活动'}</button><button type="button" disabled={busy!==''} onClick={shareLocation}>{busy==='location'?'正在读取定位':'开始共享行程位置'}</button><button type="button" disabled={busy!==''} onClick={()=>void stopLocation()}>停止位置共享</button><button type="button" disabled={busy!==''||reason.trim().length<3} onClick={()=>void transition('trip_completed')}>{busy==='trip_completed'?'正在结束':'结束本车行程'}</button></div>{result&&<p className="staff-result" role="status">{result}</p>}</section>
+  const selectedStop=routeStops.find(stop=>stop.name===stopName);
+  return <section className="staff-detail"><div className="staff-detail-note">按已发布路线确认到站、自由活动和行程结束。路线内容如需变更，请联系运营。</div>{task.map_lat!=null&&task.map_lng!=null&&<a className="button full" target="_blank" rel="noreferrer" href={`https://www.google.com/maps/dir/?api=1&destination=${task.map_lat},${task.map_lng}`}>导航到今日集合点</a>}{routeStops.length>0?<div className="staff-template-grid" aria-label="今日线路节点">{routeStops.map(stop=><article key={stop.id} className={stopName===stop.name?'active':''}><button type="button" onClick={()=>setStopName(stop.name)}><b>{stop.meetingTime}</b><span>{stop.name}</span><small>{stop.meetingPointName}</small></button><a target="_blank" rel="noreferrer" href={`https://www.google.com/maps/dir/?api=1&destination=${stop.latitude},${stop.longitude}`}>导航到此站</a></article>)}</div>:<p className="staff-result">当前路线尚未发布行程节点，请联系运营确认。</p>}<form className="staff-escalation" onSubmit={e=>{e.preventDefault();void transition('stop_arrived')}}><label>当前到达景点<select required value={stopName} onChange={e=>setStopName(e.target.value)}><option value="">请选择已发布景点</option>{routeStops.map(stop=><option key={stop.id} value={stop.name}>{stop.meetingTime} · {stop.name}</option>)}</select></label><label>现场说明<textarea required minLength={3} maxLength={300} value={reason} onChange={e=>setReason(e.target.value)}/></label><button disabled={busy!==''||!selectedStop}>确认到达景点</button></form><div className="staff-template-grid"><label>自由活动分钟<input type="number" min={5} max={360} value={freeMinutes} onChange={e=>setFreeMinutes(Number(e.target.value))}/></label><button type="button" disabled={busy!==''||!selectedStop} onClick={async()=>{if(!selectedStop||!window.confirm(`确认在“${selectedStop.name}”开始约 ${freeMinutes} 分钟自由活动？`))return;setBusy('free-time');const ok=preview||!services?true:await services.startStaffFreeTime(task.vehicle_group_id,selectedStop.name,freeMinutes);setBusy('');setResult(ok?'自由活动已开始，游客将收到随行与集合提醒。':'操作失败，请确认群聊已开放和工作人员权限。')}}>{busy==='free-time'?'正在发布':'开始自由活动'}</button><button type="button" disabled={busy!==''} onClick={shareLocation}>{busy==='location'?'正在读取定位':'开始共享行程位置'}</button><button type="button" disabled={busy!==''} onClick={()=>void stopLocation()}>停止位置共享</button><button type="button" disabled={busy!==''||reason.trim().length<3} onClick={()=>void transition('trip_completed')}>{busy==='trip_completed'?'正在结束':'结束本车行程'}</button></div>{result&&<p className="staff-result" role="status">{result}</p>}</section>
 }
 
 function PassengerAction({
@@ -671,7 +652,7 @@ function PassengerAction({
   return (
     <section className="staff-detail">
       <div className="staff-detail-note">
-        仅显示本车团员和履约必要信息。联系电话只在允许联系后按需显示，并记录查看人和时间。
+        仅履约名单和必要联系信息可见。联系电话只在允许联系后按需显示，并记录查看人和时间。
       </div>
       {summary && (
         <div
@@ -797,187 +778,24 @@ function NoticeAction({ task }: { task: StaffTask }) {
   );
 }
 
-function MeetingAction({
-  task,
-  preview,
-}: {
-  task: StaffTask;
-  preview: boolean;
-}) {
-  const { services } = useApp();
-  const [meetingAt, setMeetingAt] = useState("");
-  const [meetingName, setMeetingName] = useState(task.meeting_name ?? "");
-  const [meetingAddress, setMeetingAddress] = useState(
-    task.meeting_address ?? "",
-  );
-  const [latitude, setLatitude] = useState(task.map_lat?.toString() ?? "");
-  const [longitude, setLongitude] = useState(task.map_lng?.toString() ?? "");
-  const [landmark, setLandmark] = useState("");
-  const [reason, setReason] = useState("首次确认集合信息");
-  const [revision, setRevision] = useState<number | null>(null);
-  const [status, setStatus] = useState<"idle" | "loading" | "saving">(
-    services ? "loading" : "idle",
-  );
-  const [result, setResult] = useState("");
-  useEffect(() => {
-    let active = true;
-    if (!services) {
-      return () => {
-        active = false;
-      };
-    }
-    void services.loadStaffMeeting(task.vehicle_group_id).then((meeting) => {
-      if (!active) return;
-      if (meeting) {
-        const local = new Date(meeting.meeting_at);
-        local.setMinutes(local.getMinutes() - local.getTimezoneOffset());
-        setMeetingAt(local.toISOString().slice(0, 16));
-        setMeetingName(meeting.meeting_name);
-        setMeetingAddress(meeting.meeting_address);
-        setLatitude(String(meeting.latitude));
-        setLongitude(String(meeting.longitude));
-        setLandmark(meeting.landmark_description);
-        setReason("");
-        setRevision(meeting.revision);
-      }
-      setStatus("idle");
-    });
-    return () => {
-      active = false;
-    };
-  }, [services, task.vehicle_group_id]);
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    const lat = Number(latitude),
-      lng = Number(longitude);
-    if (
-      !meetingAt ||
-      !meetingName.trim() ||
-      !meetingAddress.trim() ||
-      !Number.isFinite(lat) ||
-      !Number.isFinite(lng) ||
-      reason.trim().length < 3
-    )
-      return;
-    if (preview || !services) {
-      setRevision((value) => (value ?? 0) + 1);
-      setResult("本地预览已更新，不会写入服务器或通知游客。");
-      return;
-    }
-    setStatus("saving");
-    const nextRevision = await services.updateStaffMeeting({
-      vehicleGroupId: task.vehicle_group_id,
-      meetingAt: new Date(meetingAt).toISOString(),
-      meetingName: meetingName.trim(),
-      meetingAddress: meetingAddress.trim(),
-      latitude: lat,
-      longitude: lng,
-      landmarkDescription: landmark.trim(),
-      reason: reason.trim(),
-    });
-    setStatus("idle");
-    if (nextRevision == null) {
-      setResult("集合信息未保存，请检查坐标、变更原因和本车权限。");
-      return;
-    }
-    setRevision(nextRevision);
-    setReason("");
-    setResult(
-      "集合信息已保存；游客端将读取新坐标，已开放群聊会生成重大变更通知。",
-    );
-  };
-  if (status === "loading")
-    return (
-      <StatusCard title="正在读取当前集合点">核对当前版本与坐标。</StatusCard>
-    );
-  return (
-    <section className="staff-detail">
-      <div className="staff-detail-note">
-        当前版本：{revision ?? "尚未建立"}
-        。首次确认和每次变更都必须填写原因；提交后旧坐标立即失效。
-      </div>
-      <form
-        className="staff-escalation"
-        onSubmit={(event) => void submit(event)}
-      >
-        <label>
-          集合时间（设备时区）
-          <input
-            type="datetime-local"
-            required
-            value={meetingAt}
-            onChange={(event) => setMeetingAt(event.target.value)}
-          />
-        </label>
-        <label>
-          集合地点名称
-          <input
-            required
-            minLength={2}
-            maxLength={160}
-            value={meetingName}
-            onChange={(event) => setMeetingName(event.target.value)}
-          />
-        </label>
-        <label>
-          详细地址
-          <input
-            required
-            minLength={3}
-            maxLength={300}
-            value={meetingAddress}
-            onChange={(event) => setMeetingAddress(event.target.value)}
-          />
-        </label>
-        <div className="staff-coordinate-grid">
-          <label>
-            纬度
-            <input
-              inputMode="decimal"
-              required
-              value={latitude}
-              onChange={(event) => setLatitude(event.target.value)}
-            />
-          </label>
-          <label>
-            经度
-            <input
-              inputMode="decimal"
-              required
-              value={longitude}
-              onChange={(event) => setLongitude(event.target.value)}
-            />
-          </label>
-        </div>
-        <label>
-          明显地标说明
-          <textarea
-            maxLength={500}
-            value={landmark}
-            onChange={(event) => setLandmark(event.target.value)}
-          />
-        </label>
-        <label>
-          确认／变更原因
-          <textarea
-            required
-            minLength={3}
-            maxLength={300}
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-          />
-        </label>
-        <button disabled={status === "saving"}>
-          {status === "saving" ? "正在保存" : "保存集合信息"}
-        </button>
-      </form>
-      {result && (
-        <p className="staff-result" role="status">
-          {result}
-        </p>
-      )}
-    </section>
-  );
+function MeetingAction({task}:{task:StaffTask}) {
+  const {services}=useApp();
+  const taskMeeting=task.meeting_name&&task.meeting_at&&task.map_lat!=null&&task.map_lng!=null?{meeting_at:task.meeting_at,meeting_name:task.meeting_name,meeting_address:task.meeting_address??'',latitude:task.map_lat,longitude:task.map_lng}:null;
+  const [meeting,setMeeting]=useState<{meeting_at:string;meeting_name:string;meeting_address:string;latitude:number;longitude:number;landmark_description?:string|null}|null>(()=>services?null:taskMeeting);
+  const [loading,setLoading]=useState(Boolean(services));
+  useEffect(()=>{let active=true;if(services)void services.loadStaffMeeting(task.vehicle_group_id).then(value=>{if(active){setMeeting(value);setLoading(false)}});return()=>{active=false}},[services,task.vehicle_group_id]);
+  if(loading)return <StatusCard title="正在读取集合信息">请稍候。</StatusCard>;
+  if(!meeting)return <StatusCard title="集合资料尚未确认">请稍后刷新；如临近集合时间仍未显示，请联系运营。</StatusCard>;
+  return <section className="staff-detail staff-meeting-readonly">
+    <dl>
+      <div><dt>集合时间</dt><dd>{japanDateTime(meeting.meeting_at)}</dd></div>
+      <div><dt>集合地点</dt><dd>{meeting.meeting_name}</dd></div>
+      <div><dt>详细地址</dt><dd>{meeting.meeting_address||'地址待确认'}</dd></div>
+      {meeting.landmark_description&&<div><dt>识别提示</dt><dd>{meeting.landmark_description}</dd></div>}
+      <div><dt>车辆</dt><dd>{task.vehicle_label??task.vehicle_type} · {task.vehicle_capacity}席</dd></div>
+    </dl>
+    <a className="button full" target="_blank" rel="noreferrer" href={`https://www.google.com/maps/dir/?api=1&destination=${meeting.latitude},${meeting.longitude}`}>打开地图导航</a>
+  </section>;
 }
 
 function DelayAction({ task, preview }: { task: StaffTask; preview: boolean }) {

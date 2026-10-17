@@ -720,7 +720,7 @@ export class SupabaseStaffRepository {
     if (!this.client) return null;
     try {
       const { data, error } = await this.client.rpc(
-        "update_vehicle_group_meeting",
+        "operations_update_vehicle_group_meeting",
         {
           p_vehicle_group: input.vehicleGroupId,
           p_meeting_at: input.meetingAt,

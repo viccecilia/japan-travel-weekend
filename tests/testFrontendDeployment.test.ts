@@ -13,6 +13,7 @@ describe('手机验收测试前端部署边界',()=>{
   it('同源测试 API 只代理到本机测试端口',()=>{expect(config).toContain('location /api-test/');expect(config).toContain('proxy_pass http://127.0.0.1:18773/;')});
   it('公网路径在 Test 仍代理到隔离的 Test API 而不是 Live 或 SPA',()=>{expect(config).toContain('location /api/');expect(config).toContain('proxy_pass http://127.0.0.1:18773/;');expect(config).not.toContain('proxy_pass http://127.0.0.1:18774/;')});
   it('CSP 覆盖 Stripe.js 官方必要来源',()=>{for(const source of ['https://js.stripe.com','https://*.js.stripe.com','https://api.stripe.com','https://hooks.stripe.com','https://maps.googleapis.com'])expect(config).toContain(source)});
+  it('CSP 允许 Google Maps JavaScript API 的脚本、瓦片、静态资源、字体与 worker',()=>{for(const source of ['https://maps.googleapis.com','https://mapsresources-pa.googleapis.com','https://maps.gstatic.com','https://fonts.googleapis.com','https://fonts.gstatic.com',"worker-src 'self' blob:"])expect(config).toContain(source)});
   it('Test Artifact 构建时强制校验公开服务指纹',()=>{
     for(const expected of [
       '[Parameter(Mandatory = $true)][string]$PublicConfigPath',

@@ -39,7 +39,7 @@ describe("restore target preflight", () => {
     });
   });
 
-  it.each(["olfucqcznulrtumytjak", "udhvgshimnbtdgypbtie"])(
+  it.each(["hzxoofvodpqpdomtmzlf", "olfucqcznulrtumytjak", "udhvgshimnbtdgypbtie"])(
     "refuses protected project %s",
     (projectRef) => {
       expect(() => validateRestoreTarget({
